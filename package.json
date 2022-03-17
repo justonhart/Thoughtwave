@@ -19,6 +19,7 @@
   "dependencies": {
     "@types/screeps": "^3.2.4",
     "dotenv": "^16.0.0",
+    "grunt": "^1.4.1",
     "grunt-screeps": "^1.5.0"
   }
 }
