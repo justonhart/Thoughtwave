@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/justonhart/Thoughtwave#readme",
   "dependencies": {
+    "@types/node": "^17.0.21",
     "@types/screeps": "^3.2.4",
     "dotenv": "^16.0.0",
     "grunt": "^1.4.1",
