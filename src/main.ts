@@ -1,3 +1,4 @@
+import driveCreep from "./modules/creepDriver";
 import populationControl from "./modules/populationControl";
 
 module.exports.loop = function () {
@@ -7,5 +8,9 @@ module.exports.loop = function () {
       populationControl(spawn);
     }
   });
+
+  Object.values(Game.creeps).forEach(creep => {
+    driveCreep(creep);
+  })
 
 };

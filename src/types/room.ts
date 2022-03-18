@@ -1,0 +1,3 @@
+interface RoomMemory{
+    sourceAccessPoints: RoomPosition[];
+}
