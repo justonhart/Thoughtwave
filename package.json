@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier --write --ignore-unknown .",
-    "build": "tsc --build"
+    "clean": "rimraf dist/",
+    "build": "npm run clean && tsc --build",
+    "deploy": "grunt screeps",
+    "bdeploy": "npm run clean && npm run build && npm run deploy"
   },
   "repository": {
     "type": "git",
@@ -29,7 +32,8 @@
   "devDependencies": {
     "husky": "^7.0.4",
     "lint-staged": "^12.3.7",
-    "prettier": "^2.6.0"
+    "prettier": "^2.6.0",
+    "rimraf": "^3.0.2"
   },
   "lint-staged": {
     "*.{js,ts,md}": "prettier --write"

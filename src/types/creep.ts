@@ -1,9 +1,9 @@
 interface CreepMemory {
   role: Role;
-  _move: Partial<TravelData>;
+  _move?: Partial<TravelData>;
 }
 
-enum Role {
+const enum Role {
   HARVESTER = 'Harvester',
   BUILDER = 'Builder',
 }
