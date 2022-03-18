@@ -24,3 +24,14 @@ export function constructRoads(room: Room, targets: RoomPosition[]) {
     }
   });
 }
+
+// Careful this will delete all road Constructions in a room (only for testing/cleanup purposes)
+export function clearRoadConstructions(room: Room) {
+  room
+    .find(FIND_CONSTRUCTION_SITES, {
+      filter: (structure: Structure) => {
+        return structure.structureType == STRUCTURE_ROAD;
+      },
+    })
+    .forEach((road) => road.remove());
+}

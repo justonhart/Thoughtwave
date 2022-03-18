@@ -20,7 +20,7 @@ A next-generation AI for Screeps
 
 - Types: All Typescript interfaces/types/enums
 - Modules: General logic modules such as spawning/room/empire
-- Commands: Methods that are not used in the game loop. Only used directly in the console.
+- Commands: Methods that are not used in the game loop. Only used directly in the console. Example: "require('roads').clearRoadConstructions(Game.spawns.Spawn1.room)"
 
 ## Roles
 
