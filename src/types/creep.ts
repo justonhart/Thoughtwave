@@ -5,6 +5,6 @@ interface CreepMemory {
 }
 
 const enum Role {
-  HARVESTER = 'Harvester',
+  WORKER = 'Worker',
   BUILDER = 'Builder',
 }
