@@ -2,7 +2,7 @@ require('dotenv').config();
 
 module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-screeps');
-
+  grunt.loadNpmTasks('grunt-replace');
   grunt.initConfig({
     screeps: {
       options: {
@@ -21,5 +21,26 @@ module.exports = function (grunt) {
         ],
       },
     },
+    replace: {
+      dist: {
+        options: {
+          patterns: [
+            {
+              match: /(?<=require\(".)(.*)(?=\/[\w]+")/g,
+              replacement: ''
+            }
+          ],
+          usePrefix: false
+        },
+        files: [
+          {
+            expand: true,
+            cwd: 'dist/',
+            src: ['**/*.js'],
+            dest: 'dist/'
+          }
+        ]
+      }
+    }
   });
 };
