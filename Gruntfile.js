@@ -11,14 +11,7 @@ module.exports = function (grunt) {
         branch: 'default',
       },
       dist: {
-        files: [
-          {
-            expand: true,
-            cwd: 'dist/',
-            src: ['**/*.js'],
-            flatten: true,
-          },
-        ],
+        src: ['dist/*.js'],
       },
     },
     replace: {
@@ -26,7 +19,7 @@ module.exports = function (grunt) {
         options: {
           patterns: [
             {
-              match: /(?<=require\(".)(.*)(?=\/[\w]+")/g,
+              match: /(?<=require\(".)(.*)(?=\/[\w\.]+")/g,
               replacement: ''
             }
           ],
@@ -37,10 +30,13 @@ module.exports = function (grunt) {
             expand: true,
             cwd: 'dist/',
             src: ['**/*.js'],
-            dest: 'dist/'
+            dest: 'dist/',
+            flatten: true,
           }
         ]
       }
     }
   });
+  
+  grunt.registerTask('default',  ['replace', 'screeps']);
 };

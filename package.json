@@ -7,9 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier --write --ignore-unknown .",
     "clean": "rimraf dist/",
-    "build": "npm run clean && tsc --build && grunt replace",
-    "deploy": "grunt screeps",
-    "bdeploy": "npm run clean && npm run build && npm run deploy"
+    "build": "npm run clean && tsc --build",
+    "deploy": "grunt",
+    "bdeploy": "npm run build && npm run deploy"
   },
   "repository": {
     "type": "git",
