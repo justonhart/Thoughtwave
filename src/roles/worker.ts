@@ -5,11 +5,12 @@ export class Worker extends WaveCreep {
         if (this.memory.gathering) {
             this.gatherEnergy();
         } else {
-            if (!this.memory.targetId) {
-                this.memory.targetId = this.findTarget();
-            }
-
             let target = Game.getObjectById(this.memory.targetId);
+
+            if (!this.memory.targetId || !target) {
+                this.memory.targetId = this.findTarget();
+                target = Game.getObjectById(this.memory.targetId);
+            }
 
             if (
                 target instanceof StructureExtension ||

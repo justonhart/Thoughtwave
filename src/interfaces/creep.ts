@@ -15,4 +15,5 @@ const enum Role {
     WORKER = 'Worker',
     BUILDER = 'Builder',
     UPGRADER = 'Upgrader',
+    MAINTAINTER = 'MAINTAINTER',
 }

@@ -65,9 +65,9 @@ export class WaveCreep extends Creep {
     }
 
     protected runUpgradeJob() {
-        switch (this.upgradeController(this.room.controller)) {
+        switch (this.upgradeController(Game.rooms[this.memory.room].controller)) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(this.room.controller, { visualizePathStyle: { stroke: '#ffffff' } });
+                this.travelTo(Game.rooms[this.memory.room].controller, { visualizePathStyle: { stroke: '#ffffff' } });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
@@ -85,6 +85,24 @@ export class WaveCreep extends Creep {
                 this.memory.gathering = true;
             case 0:
             case ERR_FULL:
+                delete this.memory.targetId;
+                break;
+        }
+    }
+
+    protected runRepairJob(target: Structure) {
+        if (target.hits == target.hitsMax) {
+            delete this.memory.targetId;
+            return;
+        }
+
+        switch (this.repair(target)) {
+            case ERR_NOT_IN_RANGE:
+                this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
+                break;
+            case ERR_NOT_ENOUGH_RESOURCES:
+                this.memory.gathering = true;
+            case ERR_INVALID_TARGET:
                 delete this.memory.targetId;
                 break;
         }
