@@ -20,7 +20,7 @@ export class WaveCreep extends Creep{
     }
 
     private releaseSourceAccessPoint(){
-        console.log(this.room.memory.availableSourceAccessPoints.push(this.memory.miningPos));
+        this.room.memory.availableSourceAccessPoints.push(this.memory.miningPos);
         delete this.memory.miningPos;
     }
 
