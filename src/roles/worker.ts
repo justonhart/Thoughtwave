@@ -19,7 +19,7 @@ export class Worker extends WaveCreep {
             ) {
                 switch (this.transfer(target, RESOURCE_ENERGY)) {
                     case ERR_NOT_IN_RANGE:
-                        this.moveTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
+                        this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
                         break;
                     case ERR_NOT_ENOUGH_RESOURCES:
                         this.memory.gathering = true;
@@ -31,7 +31,7 @@ export class Worker extends WaveCreep {
             } else if (target instanceof ConstructionSite) {
                 switch (this.build(target)) {
                     case ERR_NOT_IN_RANGE:
-                        this.moveTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
+                        this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
                         break;
                     case ERR_NOT_ENOUGH_RESOURCES:
                         this.memory.gathering = true;
@@ -42,7 +42,7 @@ export class Worker extends WaveCreep {
             } else if (target instanceof StructureController) {
                 switch (this.upgradeController(this.room.controller)) {
                     case ERR_NOT_IN_RANGE:
-                        this.moveTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
+                        this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
                         break;
                     case ERR_NOT_ENOUGH_RESOURCES:
                         this.memory.gathering = true;

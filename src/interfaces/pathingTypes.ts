@@ -10,6 +10,8 @@ interface TravelData {
     time?: number;
     path?: string;
     room?: string;
+    prevCoords?: Coord;
+    stuckCount?: number;
 }
 
 interface Destination {

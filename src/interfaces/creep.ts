@@ -5,8 +5,6 @@ interface CreepMemory {
     room?: string;
     role?: Role;
     _move?: TravelData;
-    prevCoords?: Coord;
-    stuckCount?: number;
 }
 
 interface Creep {

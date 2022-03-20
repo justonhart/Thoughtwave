@@ -2,9 +2,6 @@ const MATRIX_COST_OFF_ROAD = 10; // Twice the cost of swamp terrain to avoid roa
 const MAX_STUCK_COUNT = 2; // If a creep can't move after two ticks, the path will be reevaluated
 
 export class Pathing {
-    // Get _move.path ==> save length
-    // Check if length is one smaller  == currentPos
-
     // Store roads for each room
     private static roadStructuresCache: { [roomName: string]: Coord[] } = {};
     private static defaultOpts: TravelToOpts = { ignoreCreeps: true, avoidRoads: false, reusePath: 10 };
@@ -20,41 +17,39 @@ export class Pathing {
     public static travelTo(
         creep: Creep,
         destination: HasPos | RoomPosition,
-        opts: TravelToOpts = this.defaultOpts
+        opts?: TravelToOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
-        let result = this.myTravel(creep, destination, opts);
-        creep.memory.prevCoords = { x: creep.pos.x, y: creep.pos.y }; // Store coordinates to see if a creep is being blocked
+        let options = this.defaultOpts;
+        if (opts) {
+            options = { ...options, ...opts }; // Enable overriding any default options
+        }
+        let result = this.move(creep, destination, options);
+        creep.memory._move.prevCoords = { x: creep.pos.x, y: creep.pos.y }; // Store coordinates to see if a creep is being blocked
         return result;
     }
 
-    private static myTravel(
+    private static move(
         creep: Creep,
         destination: HasPos | RoomPosition,
         opts: TravelToOpts = this.defaultOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
-        let prevCoords = creep.memory.prevCoords;
-        let stuckCount = creep.memory.stuckCount;
+        let prevCoords = creep.memory._move.prevCoords ?? creep.pos;
+        let stuckCount = creep.memory._move.stuckCount ?? 0;
 
         // Set custom TravelTo options
         if (opts.avoidRoads) {
             this.addAvoidRoadCostMatrix(opts);
         }
 
-        // Creep has just spawned
-        if (!prevCoords) {
-            creep.memory.stuckCount = 0;
-            return creep.moveTo(destination, opts);
-        }
-
         // Recalculate path with creeps in mind
         if (this.isStuck(creep, prevCoords)) {
-            creep.memory.stuckCount++;
+            creep.memory._move.stuckCount++;
             // If creep is still stuck after two ticks find new path
             if (stuckCount >= MAX_STUCK_COUNT) {
-                return creep.moveTo(destination);
+                return creep.moveTo(destination, { reusePath: 3, maxOps: 5, visualizePathStyle: { stroke: '#ff0000' } });
             }
         } else {
-            creep.memory.stuckCount = 0; // Reset stuckCount
+            creep.memory._move.stuckCount = 0; // Reset stuckCount
         }
 
         // Default
@@ -78,13 +73,14 @@ export class Pathing {
 
     /**
      * Check if the creep hasn't moved from his last coordinates
+     * Fatigue will not count towards being stuck
      *
      * @param creep
      * @param travelData
      * @returns
      */
     private static isStuck(creep: Creep, prevCoords: Coord): boolean {
-        if (!prevCoords) {
+        if (!prevCoords || creep.fatigue > 0) {
             return false;
         }
         if (this.sameCoord(creep.pos, prevCoords)) {

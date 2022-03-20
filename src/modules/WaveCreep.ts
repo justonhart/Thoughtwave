@@ -46,7 +46,7 @@ export class WaveCreep extends Creep {
                     this.releaseSourceAccessPoint();
                 }
             } else {
-                this.moveTo(miningPos);
+                this.travelTo(miningPos);
             }
         }
     }
