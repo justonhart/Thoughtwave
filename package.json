@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "installPreCommit": "npx mrm@2 lint-staged && husky install"
+    "installPreCommit": "npx mrm@2 lint-staged && husky install",
     "format": "prettier --write --ignore-unknown .",
     "clean": "rimraf dist/",
     "build": "npm run clean && tsc --build",
