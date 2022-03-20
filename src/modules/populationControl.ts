@@ -39,7 +39,7 @@ export default function populationControl(spawn: StructureSpawn) {
                 let creepToConvert = potentialWorkers.sort((creep) => creep.getActiveBodyparts(WORK)).shift();
                 creepToConvert.memory.role = Role.WORKER;
                 creepToConvert.memory.targetId = null;
-            } else if (!_.filter(Game.creeps, (creep) => creep.memory.role === Role.WORKER && creep.memory.home === spawn.room.name).length) {
+            } else if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length) {
                 //spawn first available harvester
                 partsArray = [];
                 for (let i = 0; i < Math.floor(spawn.room.energyAvailable / 200); i++) partsArray = partsArray.concat(partsBlock);
