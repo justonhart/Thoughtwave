@@ -1,6 +1,9 @@
 interface CreepMemory {
+  targetId?: Id<Structure> | Id<ConstructionSite>;
+  miningPos?: string;
+  gathering?: boolean;
   room?: string;
-  role: Role;
+  role?: Role;
   _move?: TravelData;
   prevCoords?: Coord;
   stuckCount?: number;
@@ -11,6 +14,6 @@ interface Creep {
 }
 
 const enum Role {
-  HARVESTER = 'Harvester',
+  WORKER = 'Worker',
   BUILDER = 'Builder',
 }
