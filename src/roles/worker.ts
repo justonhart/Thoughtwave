@@ -22,6 +22,8 @@ export class Worker extends WaveCreep {
                 this.runBuildJob(target);
             } else if (target instanceof StructureController) {
                 this.runUpgradeJob();
+            } else {
+                delete this.memory.targetId;
             }
         }
     }
