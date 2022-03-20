@@ -2,7 +2,7 @@ import driveCreep from './modules/creepDriver';
 import { manageMemory } from './modules/memoryManagement';
 import populationControl from './modules/populationControl';
 import driveRoom from './modules/roomDriver';
-require('./types/room');
+require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
     Object.values(Game.spawns).forEach((spawn) => {

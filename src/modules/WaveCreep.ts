@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from './memoryManagement';
 
 export class WaveCreep extends Creep {
     public run() {

@@ -1,17 +1,3 @@
-interface RoomMemory {
-    availableSourceAccessPoints: string[];
-    sourceAccessPointCount: number;
-    roadsConstructed?: boolean;
-}
-
-interface Room {
-    initRoomMemory(): void;
-}
-
-interface RoomPosition {
-    toMemSafe(): string;
-}
-
 Room.prototype.initRoomMemory = function (this: Room) {
     this.memory.availableSourceAccessPoints = [];
 

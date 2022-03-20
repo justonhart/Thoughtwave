@@ -2,7 +2,7 @@ interface TravelToOpts extends MoveToOpts {
     /**
      * Avoid roads. This is only used, when no other "costCallback" matrix has been provided.
      */
-    avoidRoads: boolean;
+    avoidRoads?: boolean;
 }
 
 interface TravelData {

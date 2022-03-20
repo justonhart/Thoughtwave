@@ -1,4 +1,4 @@
-import { WaveCreep } from '../types/waveCreep';
+import { WaveCreep } from '../modules/WaveCreep';
 
 export class Worker extends WaveCreep {
     public run() {
