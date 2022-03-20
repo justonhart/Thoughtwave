@@ -1,0 +1,2 @@
+require('./room');
+require('./creep');

@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from './memoryManagement';
 
 export class WaveCreep extends Creep {
     public run() {
@@ -46,7 +46,7 @@ export class WaveCreep extends Creep {
                     this.releaseSourceAccessPoint();
                 }
             } else {
-                this.moveTo(miningPos);
+                this.travelTo(miningPos);
             }
         }
     }

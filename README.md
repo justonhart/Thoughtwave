@@ -18,7 +18,8 @@ A next-generation AI for Screeps
 
 ## Source Tree Layout
 
--   Types: All Typescript interfaces/types/enums
+-   Interfaces: All Typescript interfaces/types/enums (these will not be pushed up to the screeps server)
+-   Protypes: Any Screeps Prototype functions (to import these add the necessary require Step to the "requirePrototypes.ts" File)
 -   Modules: General logic modules such as spawning/room/empire
 -   Commands: Methods that are not used in the game loop. Only used directly in the console. Example: "require('roads').clearRoadConstructions(Game.spawns.Spawn1.room)"
 
