@@ -23,7 +23,14 @@ export class Pathing {
         if (opts) {
             options = { ...options, ...opts }; // Enable overriding any default options
         }
-        let result = this.move(creep, destination, options);
+
+        try {
+            var result = this.move(creep, destination, options);
+        } catch (error) {
+            // In case something goes horribly wrong (example: someone manually deleted the creep memory)
+            console.log(`${creep.name} encountered an error in TravelTo. Fallback to default MoveTo function.`);
+            result = creep.moveTo(destination, opts);
+        }
         creep.memory._move.prevCoords = { x: creep.pos.x, y: creep.pos.y }; // Store coordinates to see if a creep is being blocked
         return result;
     }
@@ -46,7 +53,7 @@ export class Pathing {
             creep.memory._move.stuckCount++;
             // If creep is still stuck after two ticks find new path
             if (stuckCount >= MAX_STUCK_COUNT) {
-                return creep.moveTo(destination, { reusePath: 3, maxOps: 5, visualizePathStyle: { stroke: '#ff0000' } });
+                return creep.moveTo(destination, { visualizePathStyle: { stroke: '#0000ff', opacity: 0.7, strokeWidth: 0.2, lineStyle: 'dashed' } });
             }
         } else {
             creep.memory._move.stuckCount = 0; // Reset stuckCount
