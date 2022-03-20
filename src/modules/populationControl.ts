@@ -7,11 +7,12 @@ export default function populationControl(spawn: StructureSpawn) {
     let options: SpawnOptions = {
         memory: {
             room: spawn.room.name,
+            _move: {},
         },
     };
 
     if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length < WORKER_LIMIT) {
         options.memory.role = Role.WORKER;
-        spawn.spawnCreep([WORK, CARRY, MOVE], `Creep ${Game.time}`, options);
+        spawn.spawnCreep([WORK, CARRY, MOVE], `${options.memory.role} ${Game.time}`, options);
     }
 }
