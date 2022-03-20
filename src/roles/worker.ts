@@ -17,38 +17,11 @@ export class Worker extends WaveCreep {
                 target instanceof StructureSpawn ||
                 target instanceof StructureStorage
             ) {
-                switch (this.transfer(target, RESOURCE_ENERGY)) {
-                    case ERR_NOT_IN_RANGE:
-                        this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
-                        break;
-                    case ERR_NOT_ENOUGH_RESOURCES:
-                        this.memory.gathering = true;
-                    case 0:
-                    case ERR_FULL:
-                        delete this.memory.targetId;
-                        break;
-                }
+                this.runStoreJob(target);
             } else if (target instanceof ConstructionSite) {
-                switch (this.build(target)) {
-                    case ERR_NOT_IN_RANGE:
-                        this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
-                        break;
-                    case ERR_NOT_ENOUGH_RESOURCES:
-                        this.memory.gathering = true;
-                    case ERR_INVALID_TARGET:
-                        delete this.memory.targetId;
-                        break;
-                }
+                this.runBuildJob(target);
             } else if (target instanceof StructureController) {
-                switch (this.upgradeController(this.room.controller)) {
-                    case ERR_NOT_IN_RANGE:
-                        this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
-                        break;
-                    case ERR_NOT_ENOUGH_RESOURCES:
-                        this.memory.gathering = true;
-                        delete this.memory.targetId;
-                        break;
-                }
+                this.runUpgradeJob();
             }
         }
     }
