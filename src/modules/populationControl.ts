@@ -16,9 +16,7 @@ export default function populationControl(spawn: StructureSpawn) {
     if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length < WORKER_LIMIT) {
         options.memory.role = Role.WORKER;
         spawn.spawnCreep([WORK, CARRY, MOVE], `${options.memory.role} ${Game.time}`, options);
-    }
-
-    if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT) {
+    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT) {
         options.memory.role = Role.UPGRADER;
         spawn.spawnCreep([WORK, CARRY, MOVE], `${options.memory.role} ${Game.time}`, options);
     }
