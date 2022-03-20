@@ -1,10 +1,10 @@
-import { Worker } from "../roles/worker";
-import { WaveCreep } from "../types/waveCreep";
+import { Worker } from '../roles/worker';
+import { WaveCreep } from '../types/waveCreep';
 
-export default function driveCreep(creep: Creep){
+export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
 
-    switch(creep.memory.role){
+    switch (creep.memory.role) {
         case Role.WORKER:
             waveCreep = new Worker(creep.id);
             break;
