@@ -18,7 +18,6 @@ module.exports.loop = function () {
     });
 
     Object.values(Game.rooms).forEach((room) => {
-        console.log('test');
         driveRoom(room);
     });
 
