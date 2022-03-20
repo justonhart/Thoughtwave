@@ -14,4 +14,5 @@ interface Creep {
 const enum Role {
     WORKER = 'Worker',
     BUILDER = 'Builder',
+    UPGRADER = 'Upgrader',
 }
