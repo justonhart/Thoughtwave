@@ -1,4 +1,3 @@
-import { Console } from 'console';
 import driveCreep from './modules/creepDriver';
 import { manageMemory } from './modules/memoryManagement';
 import populationControl from './modules/populationControl';
