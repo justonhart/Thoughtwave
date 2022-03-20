@@ -19,7 +19,10 @@ Room.prototype.initRoomMemory = function(this: Room){
 
     for(let source of sources){
         let accessPoints = this.lookForAtArea(LOOK_TERRAIN, source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true).filter(terrain => terrain.terrain != "wall").map(terrain => new RoomPosition(terrain.x, terrain.y, this.name));
-        accessPoints.forEach(pos => this.memory.availableSourceAccessPoints.push(pos.toMemSafe()));
+        accessPoints.forEach(pos => {
+            if(this.memory.availableSourceAccessPoints.indexOf(pos.toMemSafe()) === -1) 
+                this.memory.availableSourceAccessPoints.push(pos.toMemSafe());
+        });
     }
     
     Game.rooms[this.name].memory.sourceAccessPointCount = Game.rooms[this.name].memory.availableSourceAccessPoints.length;
