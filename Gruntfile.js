@@ -7,7 +7,7 @@ module.exports = function (grunt) {
     screeps: {
       options: {
         email: process.env.email,
-        token: process.env.token,
+        password: process.env.pass,
         branch: 'default',
       },
       dist: {
