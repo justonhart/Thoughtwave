@@ -50,4 +50,43 @@ export class WaveCreep extends Creep {
             }
         }
     }
+
+    protected runBuildJob(target: ConstructionSite) {
+        switch (this.build(target)) {
+            case ERR_NOT_IN_RANGE:
+                this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
+                break;
+            case ERR_NOT_ENOUGH_RESOURCES:
+                this.memory.gathering = true;
+            case ERR_INVALID_TARGET:
+                delete this.memory.targetId;
+                break;
+        }
+    }
+
+    protected runUpgradeJob() {
+        switch (this.upgradeController(this.room.controller)) {
+            case ERR_NOT_IN_RANGE:
+                this.travelTo(this.room.controller, { visualizePathStyle: { stroke: '#ffffff' } });
+                break;
+            case ERR_NOT_ENOUGH_RESOURCES:
+                this.memory.gathering = true;
+                delete this.memory.targetId;
+                break;
+        }
+    }
+
+    protected runStoreJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage) {
+        switch (this.transfer(target, RESOURCE_ENERGY)) {
+            case ERR_NOT_IN_RANGE:
+                this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
+                break;
+            case ERR_NOT_ENOUGH_RESOURCES:
+                this.memory.gathering = true;
+            case 0:
+            case ERR_FULL:
+                delete this.memory.targetId;
+                break;
+        }
+    }
 }
