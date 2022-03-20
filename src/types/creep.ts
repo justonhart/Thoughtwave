@@ -1,6 +1,9 @@
 interface CreepMemory {
+  targetId?: Id<Structure> | Id<ConstructionSite>;
+  miningPos?: string;
+  gathering?: boolean;
   room?: string;
-  role: Role;
+  role?: Role;
   _move?: Partial<TravelData>;
 }
 
