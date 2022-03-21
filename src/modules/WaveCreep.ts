@@ -51,8 +51,8 @@ export class WaveCreep extends Creep {
         if (miningPos) {
             if (this.pos.isEqualTo(miningPos)) {
                 //find the source in mining range w/ the highest energy and harvest from it - this matters for mining positions adjacent to more than one source
-                let sourcesInRange = this.pos.findInRange(FIND_SOURCES, 1).sort((a, b) => b.energy - a.energy);
-                let miningResult = this.harvest(sourcesInRange.shift());
+                let highestSourceInRange = this.pos.findInRange(FIND_SOURCES, 1).reduce((a, b) => (a.energy > b.energy ? a : b));
+                let miningResult = this.harvest(highestSourceInRange);
 
                 if ((miningResult === OK && this.isEnergyHarvestingFinished()) || miningResult === ERR_NOT_ENOUGH_RESOURCES) {
                     this.memory.gathering = false;
