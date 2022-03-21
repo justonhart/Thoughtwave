@@ -38,4 +38,8 @@ module.exports.loop = function () {
     } catch (e) {
         console.log(`Error caught in memory management: \n${e}`);
     }
+
+    if (Game.cpu.bucket === 10000) {
+        Game.cpu.generatePixel();
+    }
 };
