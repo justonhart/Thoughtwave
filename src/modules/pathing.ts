@@ -53,7 +53,10 @@ export class Pathing {
             creep.memory._move.stuckCount++;
             // If creep is still stuck after two ticks find new path
             if (stuckCount >= MAX_STUCK_COUNT) {
-                return creep.moveTo(destination, { visualizePathStyle: { stroke: '#0000ff', opacity: 0.7, strokeWidth: 0.2, lineStyle: 'dashed' } });
+                opts.visualizePathStyle = { stroke: '#0000ff', opacity: 0.7, strokeWidth: 0.2, lineStyle: 'dashed' };
+                opts.ignoreCreeps = false;
+                opts.reusePath = 5;
+                return creep.moveTo(destination, opts);
             }
         } else {
             creep.memory._move.stuckCount = 0; // Reset stuckCount
