@@ -8,7 +8,7 @@ export class WaveCreep extends Creep {
     private claimSourceAccessPoint() {
         if (this.room.memory.availableSourceAccessPoints.length) {
             let accessPoints = this.room.memory.availableSourceAccessPoints.map((s) => posFromMem(s));
-            let closest = this.pos.findClosestByPath(accessPoints);
+            let closest = this.pos.findClosestByPath(accessPoints, {ignoreCreeps: true});
             this.memory.miningPos = closest.toMemSafe();
 
             let index = accessPoints.findIndex((pos) => pos.isEqualTo(closest));
@@ -52,7 +52,9 @@ export class WaveCreep extends Creep {
     }
 
     protected runBuildJob(target: ConstructionSite) {
-        switch (this.build(target)) {
+        let jobCost = BUILD_POWER * this.getActiveBodyparts(WORK);
+        let buildSuccess = this.build(target);
+        switch (buildSuccess) {
             case ERR_NOT_IN_RANGE:
                 this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
                 break;
@@ -61,10 +63,20 @@ export class WaveCreep extends Creep {
             case ERR_INVALID_TARGET:
                 delete this.memory.targetId;
                 break;
+            case OK:
+                if(this.isBuildFinished(target)){
+                    delete this.memory.targetId;
+                }
+                if(this.usedAllRemainingEnergy(jobCost)){
+                    this.memory.gathering = true;
+                    delete this.memory.targetId;
+                }
+                break;
         }
     }
 
     protected runUpgradeJob() {
+        let jobCost = UPGRADE_CONTROLLER_POWER * this.getActiveBodyparts(WORK);
         switch (this.upgradeController(Game.rooms[this.memory.room].controller)) {
             case ERR_NOT_IN_RANGE:
                 this.travelTo(Game.rooms[this.memory.room].controller, { visualizePathStyle: { stroke: '#ffffff' } });
@@ -72,6 +84,12 @@ export class WaveCreep extends Creep {
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
                 delete this.memory.targetId;
+                break;
+            case OK:
+                if(this.usedAllRemainingEnergy(jobCost)){
+                    this.memory.gathering = true;
+                    delete this.memory.targetId;
+                }
                 break;
         }
     }
@@ -83,7 +101,7 @@ export class WaveCreep extends Creep {
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
-            case 0:
+            case OK:
             case ERR_FULL:
                 delete this.memory.targetId;
                 break;
@@ -91,12 +109,9 @@ export class WaveCreep extends Creep {
     }
 
     protected runRepairJob(target: Structure) {
-        if (target.hits == target.hitsMax) {
-            delete this.memory.targetId;
-            return;
-        }
-
-        switch (this.repair(target)) {
+        let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);
+        let repairSuccess = this.repair(target)
+        switch (repairSuccess) {
             case ERR_NOT_IN_RANGE:
                 this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
                 break;
@@ -105,6 +120,29 @@ export class WaveCreep extends Creep {
             case ERR_INVALID_TARGET:
                 delete this.memory.targetId;
                 break;
+            case OK:
+                if(this.isRepairFinished(target)) {
+                    delete this.memory.targetId;
+                }
+                if(this.usedAllRemainingEnergy(jobCost)){
+                    this.memory.gathering = true;
+                    delete this.memory.targetId;
+                }
+                break;
         }
+    }
+
+    private isRepairFinished(target: Structure): boolean {
+        let workValue = this.getActiveBodyparts(WORK) * REPAIR_POWER;
+        return target.hits >= target.hitsMax - workValue
+    }
+
+    private isBuildFinished(target: ConstructionSite): boolean {
+        let workValue = this.getActiveBodyparts(WORK) * BUILD_POWER;
+        return target.progress >= target.progressTotal - workValue
+    }
+
+    private usedAllRemainingEnergy(energyUsedPerWork: number){
+        return this.store[RESOURCE_ENERGY] <= energyUsedPerWork;
     }
 }
