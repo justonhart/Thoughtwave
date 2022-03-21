@@ -66,8 +66,8 @@ export function calculateCreepCapacity(room: Room): number {
     let workPartsNeeded = sourceCount * workPartsPerSource;
     let creepsNeeded = Math.ceil(workPartsNeeded / maxWorkPartsPerCreep);
 
-    //creepsNeeded is likely to be VERY HIGH in early rooms (higher than the access point count may be able to accommodate), so cap at 2.5 access point count
-    let restrictedCapacty = Math.ceil(accessPointCount * 2.5);
+    //creepsNeeded is likely to be VERY HIGH in early rooms (higher than the access point count may be able to accommodate), so cap based on access point count
+    let restrictedCapacty = Math.ceil(accessPointCount * 2);
     let creepCapacity = restrictedCapacty < creepsNeeded ? restrictedCapacty : creepsNeeded;
 
     return creepCapacity;
