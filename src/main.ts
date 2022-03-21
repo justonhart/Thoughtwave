@@ -1,6 +1,6 @@
 import driveCreep from './modules/creepDriver';
 import { manageMemory } from './modules/memoryManagement';
-import populationControl from './modules/populationControl';
+import { populationControl } from './modules/populationControl';
 import driveRoom from './modules/roomDriver';
 require('./prototypes/requirePrototypes');
 
