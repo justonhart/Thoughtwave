@@ -40,13 +40,12 @@ export class Pathing {
         destination: HasPos | RoomPosition,
         opts: TravelToOpts = this.defaultOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
-        let prevCoords = creep.memory._move.prevCoords ?? creep.pos;
-        let stuckCount = creep.memory._move.stuckCount ?? 0;
+        let memoryMove = creep.memory._move;
+        let prevCoords = memoryMove.prevCoords ?? creep.pos;
+        let stuckCount = memoryMove.stuckCount ?? 0;
 
         // Set custom TravelTo options
-        if (opts.avoidRoads) {
-            this.addAvoidRoadCostMatrix(opts);
-        }
+        this.handleCustomOptions(opts);
 
         // Recalculate path with creeps in mind
         if (this.isStuck(creep, prevCoords)) {
@@ -64,11 +63,26 @@ export class Pathing {
     }
 
     /**
+     * Handling of any custom TravelToOpts
+     */
+    static handleCustomOptions(opts: TravelToOpts) {
+        if (opts.avoidRoads) {
+            this.addAvoidRoadCostMatrix(opts);
+        }
+        // TODO: This does not work yet (method will probably be extended by creepMove to look at last position or next position)
+        // else if(opts.avoidRoadOnLastMove && memoryMove.path) {
+        //     let distanceToTarget = Room.deserializePath(memoryMove.path).length;
+        //
+        //     if(distanceToTarget < 3) {
+        //         this.addAvoidRoadCostMatrix(opts);
+        //     }
+        // }
+    }
+
+    /**
      * Move closer to the target, but tries to avoid the road
      *
-     * @param creep
-     * @param destination
-     * @param opts
+     * @param opts Adding the costMatrix to the options
      */
     private static addAvoidRoadCostMatrix(opts: TravelToOpts): void {
         if (!opts.costCallback) {
@@ -82,8 +96,8 @@ export class Pathing {
      * Check if the creep hasn't moved from his last coordinates
      * Fatigue will not count towards being stuck
      *
-     * @param creep
-     * @param travelData
+     * @param creep -
+     * @param prevCoords -
      * @returns
      */
     private static isStuck(creep: Creep, prevCoords: Coord): boolean {
@@ -99,8 +113,8 @@ export class Pathing {
     /**
      * Check if the two coordinates are the same
      *
-     * @param pos1
-     * @param pos2
+     * @param pos1 -
+     * @param pos2 -
      * @returns
      */
     private static sameCoord(pos1: Coord, pos2: Coord): boolean {
@@ -111,7 +125,7 @@ export class Pathing {
      * Store all road coordinates in room memory to save cpu time
      * TODO: Manually adding roads cant trigger this logik (maybe save tick time as well and periodically update this ==> say every 100 ticks or so)
      *
-     * @param room
+     * @param roomName -
      * @param forceUpdate in case of new construction (should not be called every tick)
      * @returns
      */

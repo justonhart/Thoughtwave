@@ -8,7 +8,7 @@ export class WaveCreep extends Creep {
     private claimSourceAccessPoint() {
         if (this.room.memory.availableSourceAccessPoints.length) {
             let accessPoints = this.room.memory.availableSourceAccessPoints.map((s) => posFromMem(s));
-            let closest = this.pos.findClosestByPath(accessPoints, {ignoreCreeps: true});
+            let closest = this.pos.findClosestByPath(accessPoints, { ignoreCreeps: true });
             this.memory.miningPos = closest.toMemSafe();
 
             let index = accessPoints.findIndex((pos) => pos.isEqualTo(closest));
@@ -56,7 +56,7 @@ export class WaveCreep extends Creep {
         let buildSuccess = this.build(target);
         switch (buildSuccess) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
+                this.travelTo(target, { range: 3, visualizePathStyle: { stroke: '#ffffff' } });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
@@ -64,10 +64,10 @@ export class WaveCreep extends Creep {
                 delete this.memory.targetId;
                 break;
             case OK:
-                if(this.isBuildFinished(target)){
+                if (this.isBuildFinished(target)) {
                     delete this.memory.targetId;
                 }
-                if(this.usedAllRemainingEnergy(jobCost)){
+                if (this.usedAllRemainingEnergy(jobCost)) {
                     this.memory.gathering = true;
                     delete this.memory.targetId;
                 }
@@ -79,14 +79,14 @@ export class WaveCreep extends Creep {
         let jobCost = UPGRADE_CONTROLLER_POWER * this.getActiveBodyparts(WORK);
         switch (this.upgradeController(Game.rooms[this.memory.room].controller)) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(Game.rooms[this.memory.room].controller, { visualizePathStyle: { stroke: '#ffffff' } });
+                this.travelTo(Game.rooms[this.memory.room].controller, { range: 3, visualizePathStyle: { stroke: '#ffffff' } });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
                 delete this.memory.targetId;
                 break;
             case OK:
-                if(this.usedAllRemainingEnergy(jobCost)){
+                if (this.usedAllRemainingEnergy(jobCost)) {
                     this.memory.gathering = true;
                     delete this.memory.targetId;
                 }
@@ -110,10 +110,10 @@ export class WaveCreep extends Creep {
 
     protected runRepairJob(target: Structure) {
         let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);
-        let repairSuccess = this.repair(target)
+        let repairSuccess = this.repair(target);
         switch (repairSuccess) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
+                this.travelTo(target, { range: 3, visualizePathStyle: { stroke: '#ffffff' } });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
@@ -121,10 +121,10 @@ export class WaveCreep extends Creep {
                 delete this.memory.targetId;
                 break;
             case OK:
-                if(this.isRepairFinished(target)) {
+                if (this.isRepairFinished(target)) {
                     delete this.memory.targetId;
                 }
-                if(this.usedAllRemainingEnergy(jobCost)){
+                if (this.usedAllRemainingEnergy(jobCost)) {
                     this.memory.gathering = true;
                     delete this.memory.targetId;
                 }
@@ -134,15 +134,15 @@ export class WaveCreep extends Creep {
 
     private isRepairFinished(target: Structure): boolean {
         let workValue = this.getActiveBodyparts(WORK) * REPAIR_POWER;
-        return target.hits >= target.hitsMax - workValue
+        return target.hits >= target.hitsMax - workValue;
     }
 
     private isBuildFinished(target: ConstructionSite): boolean {
         let workValue = this.getActiveBodyparts(WORK) * BUILD_POWER;
-        return target.progress >= target.progressTotal - workValue
+        return target.progress >= target.progressTotal - workValue;
     }
 
-    private usedAllRemainingEnergy(energyUsedPerWork: number){
+    private usedAllRemainingEnergy(energyUsedPerWork: number) {
         return this.store[RESOURCE_ENERGY] <= energyUsedPerWork;
     }
 }
