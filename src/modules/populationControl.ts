@@ -1,8 +1,8 @@
 export function populationControl(spawn: StructureSpawn) {
     const SPAWN_LIMIT = calculateCreepCapacity(spawn.room);
     const WORKER_LIMIT = SPAWN_LIMIT / 2;
-    const UPGRADER_LIMIT = Math.floor(SPAWN_LIMIT / 4);
-    const MAINTAINTER_LIMIT = Math.floor(SPAWN_LIMIT / 4);
+    const UPGRADER_LIMIT = SPAWN_LIMIT / 4;
+    const MAINTAINTER_LIMIT = SPAWN_LIMIT / 4;
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
 
@@ -66,7 +66,7 @@ export function calculateCreepCapacity(room: Room): number {
     let creepsNeeded = Math.ceil(workPartsNeeded / maxWorkPartsPerCreep);
 
     //creepsNeeded is likely to be VERY HIGH in early rooms (higher than the access point count may be able to accommodate), so cap based on access point count
-    let restrictedCapacty = Math.ceil(accessPointCount * 2);
+    let restrictedCapacty = accessPointCount * 2;
     let creepCapacity = restrictedCapacty < creepsNeeded ? restrictedCapacty : creepsNeeded;
 
     return creepCapacity;
