@@ -50,8 +50,8 @@ export class Worker extends WaveCreep {
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
             return constructionSites.sort((a, b) => b.progress / b.progressTotal - a.progress / a.progressTotal).shift().id;
-        } else {
-            return this.room.controller?.id;
-        }
+        } 
+        
+        return this.room.controller?.id;
     }
 }
