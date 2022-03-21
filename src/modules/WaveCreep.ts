@@ -19,11 +19,12 @@ export class WaveCreep extends Creep {
             });
 
             let closest = this.pos.findClosestByPath(Array.from(activeAccessPoints), { ignoreCreeps: true });
-            this.memory.miningPos = closest.toMemSafe();
-
-            let index = accessPoints.findIndex((pos) => pos.isEqualTo(closest));
-            this.room.memory.availableSourceAccessPoints.splice(index, 1).shift();
-            return OK;
+            if (closest) {
+                this.memory.miningPos = closest.toMemSafe();
+                let index = accessPoints.findIndex((pos) => pos.isEqualTo(closest));
+                this.room.memory.availableSourceAccessPoints.splice(index, 1).shift();
+                return OK;
+            }
         }
 
         return ERR_NOT_FOUND;
