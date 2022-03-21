@@ -114,8 +114,13 @@ export class WaveCreep extends Creep {
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
-            case OK:
             case ERR_FULL:
+                delete this.memory.targetId;
+                break;
+            case OK:
+                if (target.store.getFreeCapacity(RESOURCE_ENERGY) >= this.store[RESOURCE_ENERGY]) {
+                    this.memory.gathering = true;
+                }
                 delete this.memory.targetId;
                 break;
         }
