@@ -8,14 +8,25 @@ export class WaveCreep extends Creep {
     private claimSourceAccessPoint() {
         if (this.room.memory.availableSourceAccessPoints.length) {
             let accessPoints = this.room.memory.availableSourceAccessPoints.map((s) => posFromMem(s));
-            let closest = this.pos.findClosestByPath(accessPoints, { ignoreCreeps: true });
+            let activeSources = this.room.find(FIND_SOURCES_ACTIVE);
+            let activeAccessPoints = new Set<RoomPosition>();
+            accessPoints.forEach((pos) => {
+                activeSources.forEach((sourcePos) => {
+                    if (pos.isNearTo(sourcePos)) {
+                        activeAccessPoints.add(pos);
+                    }
+                });
+            });
+
+            let closest = this.pos.findClosestByPath(Array.from(activeAccessPoints), { ignoreCreeps: true });
             this.memory.miningPos = closest.toMemSafe();
 
             let index = accessPoints.findIndex((pos) => pos.isEqualTo(closest));
             this.room.memory.availableSourceAccessPoints.splice(index, 1).shift();
-        } else {
-            return -1;
+            return OK;
         }
+
+        return ERR_NOT_FOUND;
     }
 
     private releaseSourceAccessPoint() {
@@ -33,15 +44,16 @@ export class WaveCreep extends Creep {
 
         if (!this.memory.miningPos) {
             this.claimSourceAccessPoint();
-        } else {
-            let miningPos = posFromMem(this.memory.miningPos);
+        }
+
+        let miningPos = posFromMem(this.memory.miningPos);
+        if (miningPos) {
             if (this.pos.isEqualTo(miningPos)) {
                 //find the source in mining range w/ the highest energy and harvest from it - this matters for mining positions adjacent to more than one source
                 let sourcesInRange = this.pos.findInRange(FIND_SOURCES, 1).sort((a, b) => b.energy - a.energy);
                 let miningResult = this.harvest(sourcesInRange.shift());
 
-                //if a source is out of energy, get back to work
-                if (miningResult === ERR_NOT_ENOUGH_RESOURCES && this.store[RESOURCE_ENERGY] > 0) {
+                if ((miningResult === OK && this.isEnergyHarvestingFinished()) || miningResult === ERR_NOT_ENOUGH_RESOURCES) {
                     this.memory.gathering = false;
                     this.releaseSourceAccessPoint();
                 }
@@ -140,6 +152,11 @@ export class WaveCreep extends Creep {
     private isBuildFinished(target: ConstructionSite): boolean {
         let workValue = this.getActiveBodyparts(WORK) * BUILD_POWER;
         return target.progress >= target.progressTotal - workValue;
+    }
+
+    private isEnergyHarvestingFinished(): boolean {
+        let harvestedAmount = this.getActiveBodyparts(WORK) * 2;
+        return harvestedAmount >= this.store.getFreeCapacity(RESOURCE_ENERGY);
     }
 
     private usedAllRemainingEnergy(energyUsedPerWork: number) {
