@@ -38,7 +38,7 @@ export class Maintainer extends WaveCreep {
             let mostDamagedStructures = damagedStructures.filter(
                 (s) => s.hits / s.hitsMax === damagedStructures[0].hits / damagedStructures[0].hitsMax
             );
-            return this.pos.findClosestByPath(mostDamagedStructures).id;
+            return this.pos.findClosestByPath(mostDamagedStructures, {range: 3, ignoreCreeps: true}).id;
         }
 
         let constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);

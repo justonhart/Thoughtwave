@@ -8,7 +8,7 @@ export class WaveCreep extends Creep {
     private claimSourceAccessPoint() {
         if (this.room.memory.availableSourceAccessPoints.length) {
             let accessPoints = this.room.memory.availableSourceAccessPoints.map((s) => posFromMem(s));
-            let closest = this.pos.findClosestByPath(accessPoints);
+            let closest = this.pos.findClosestByPath(accessPoints, {ignoreCreeps: true});
             this.memory.miningPos = closest.toMemSafe();
 
             let index = accessPoints.findIndex((pos) => pos.isEqualTo(closest));
@@ -134,18 +134,12 @@ export class WaveCreep extends Creep {
 
     private isRepairFinished(target: Structure): boolean {
         let workValue = this.getActiveBodyparts(WORK) * REPAIR_POWER;
-        if (target.hits >= target.hitsMax - workValue) {
-            return true;
-        }
-        return false;
+        return target.hits >= target.hitsMax - workValue
     }
 
     private isBuildFinished(target: ConstructionSite): boolean {
         let workValue = this.getActiveBodyparts(WORK) * BUILD_POWER;
-        if (target.progress >= target.progressTotal - workValue) {
-            return true;
-        }
-        return false;
+        return target.progress >= target.progressTotal - workValue
     }
 
     private usedAllRemainingEnergy(energyUsedPerWork: number){
