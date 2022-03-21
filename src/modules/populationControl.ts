@@ -30,7 +30,6 @@ export function populationControl(spawn: StructureSpawn) {
         }
 
         let result = spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
-
         //if there are no worker, and there is not enough energy to spawn one immediately, convert another creep to worker
         if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.WORKER) {
             let potentialWorkers = roomCreeps.filter((creep) => creep.memory.role !== Role.WORKER && creep.getActiveBodyparts(WORK));
@@ -38,7 +37,7 @@ export function populationControl(spawn: StructureSpawn) {
                 let creepToConvert = potentialWorkers.sort((creep) => creep.getActiveBodyparts(WORK)).shift();
                 creepToConvert.memory.role = Role.WORKER;
                 creepToConvert.memory.targetId = null;
-            } else if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length) {
+            } else if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length === 0) {
                 //spawn first available worker
                 partsArray = [];
                 for (let i = 0; i < Math.floor(spawn.room.energyAvailable / 200); i++) partsArray = partsArray.concat(partsBlock);
