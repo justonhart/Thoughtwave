@@ -37,12 +37,12 @@ export class Worker extends WaveCreep {
         );
 
         if (spawnStructures.length) {
-            return this.pos.findClosestByPath(spawnStructures).id;
+            return this.pos.findClosestByPath(spawnStructures, {ignoreCreeps: true}).id;
         }
 
         let towers = this.room.find(FIND_MY_STRUCTURES).filter((s) => s.structureType === STRUCTURE_TOWER && s.store[RESOURCE_ENERGY] < 700);
         if (towers.length) {
-            return this.pos.findClosestByPath(towers).id;
+            return this.pos.findClosestByPath(towers, {ignoreCreeps: true}).id;
         }
 
         let constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
@@ -50,8 +50,8 @@ export class Worker extends WaveCreep {
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
             return constructionSites.sort((a, b) => b.progress / b.progressTotal - a.progress / a.progressTotal).shift().id;
-        } else {
-            return this.room.controller?.id;
-        }
+        } 
+        
+        return this.room.controller?.id;
     }
 }

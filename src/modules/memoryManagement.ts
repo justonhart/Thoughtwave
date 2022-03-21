@@ -14,7 +14,7 @@ export function manageMemory() {
 function handleDeadCreep(creepName: string) {
     console.log(`May ${creepName} rest in peace`);
 
-    var deadCreepMemory = Memory.creeps[creepName];
+    let deadCreepMemory = Memory.creeps[creepName];
 
     if (deadCreepMemory.miningPos) {
         Game.rooms[deadCreepMemory.room].memory.availableSourceAccessPoints.push(deadCreepMemory.miningPos);

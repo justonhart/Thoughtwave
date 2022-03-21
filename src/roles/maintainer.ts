@@ -15,7 +15,6 @@ export class Maintainer extends WaveCreep {
             if (target instanceof StructureController) {
                 this.runUpgradeJob();
             } else if (target instanceof Structure) {
-                this.targetProgressCheck(target);
                 this.runRepairJob(target);
             } else if (target instanceof ConstructionSite) {
                 this.runBuildJob(target);
@@ -39,7 +38,7 @@ export class Maintainer extends WaveCreep {
             let mostDamagedStructures = damagedStructures.filter(
                 (s) => s.hits / s.hitsMax === damagedStructures[0].hits / damagedStructures[0].hitsMax
             );
-            return this.pos.findClosestByPath(mostDamagedStructures).id;
+            return this.pos.findClosestByPath(mostDamagedStructures, {range: 3, ignoreCreeps: true}).id;
         }
 
         let constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
@@ -49,12 +48,6 @@ export class Maintainer extends WaveCreep {
             return constructionSites.sort((a, b) => b.progress / b.progressTotal - a.progress / a.progressTotal).shift().id;
         } else {
             return this.room.controller?.id;
-        }
-    }
-
-    private targetProgressCheck(target: Structure) {
-        if (target instanceof Structure && target.hits === target.hitsMax) {
-            this.memory.targetId = this.findTarget();
         }
     }
 }
