@@ -26,12 +26,11 @@ export class Maintainer extends WaveCreep {
     }
 
     private findTarget(): Id<Structure> | Id<ConstructionSite> {
-        let damagedStructures = this.room
-            .find(FIND_STRUCTURES)
-            .filter(
-                (structure) =>
-                    structure.structureType !== STRUCTURE_WALL && structure.structureType !== STRUCTURE_RAMPART && structure.hits < structure.hitsMax
-            );
+        let damagedStructures = this.room.find(FIND_STRUCTURES).filter(
+            (structure) =>
+                // @ts-ignore
+                ![STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < structure.hitsMax
+        );
         if (damagedStructures.length) {
             //sort ascending by health ratio
             damagedStructures.sort((a, b) => a.hits / a.hitsMax - b.hits / b.hitsMax);
