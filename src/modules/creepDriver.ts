@@ -1,3 +1,4 @@
+import { Maintainer } from '../roles/maintainer';
 import { Upgrader } from '../roles/upgrader';
 import { Worker } from '../roles/worker';
 import { WaveCreep } from './WaveCreep';
@@ -11,6 +12,9 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.UPGRADER:
             waveCreep = new Upgrader(creep.id);
+            break;
+        case Role.MAINTAINTER:
+            waveCreep = new Maintainer(creep.id);
             break;
         default:
             waveCreep = new WaveCreep(creep.id);

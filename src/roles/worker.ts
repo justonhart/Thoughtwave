@@ -5,11 +5,12 @@ export class Worker extends WaveCreep {
         if (this.memory.gathering) {
             this.gatherEnergy();
         } else {
-            if (!this.memory.targetId) {
-                this.memory.targetId = this.findTarget();
-            }
-
             let target = Game.getObjectById(this.memory.targetId);
+
+            if (!this.memory.targetId || !target) {
+                this.memory.targetId = this.findTarget();
+                target = Game.getObjectById(this.memory.targetId);
+            }
 
             if (
                 target instanceof StructureExtension ||
@@ -29,16 +30,19 @@ export class Worker extends WaveCreep {
     }
 
     private findTarget(): Id<Structure> | Id<ConstructionSite> {
-        let spawnStructures = this.room
-            .find(FIND_MY_STRUCTURES)
-            .filter(
-                (s) =>
-                    (s.structureType === STRUCTURE_SPAWN || s.structureType === STRUCTURE_EXTENSION) &&
-                    s.store[RESOURCE_ENERGY] < s.store.getCapacity(RESOURCE_ENERGY)
-            );
+        let spawnStructures = this.room.find(FIND_MY_STRUCTURES).filter(
+            (s) =>
+                // @ts-ignore
+                [STRUCTURE_EXTENSION, STRUCTURE_SPAWN].includes(s.structureType) && s.store[RESOURCE_ENERGY] < s.store.getCapacity(RESOURCE_ENERGY)
+        );
 
         if (spawnStructures.length) {
             return this.pos.findClosestByPath(spawnStructures).id;
+        }
+
+        let towers = this.room.find(FIND_MY_STRUCTURES).filter((s) => s.structureType === STRUCTURE_TOWER && s.store[RESOURCE_ENERGY] < 700);
+        if (towers.length) {
+            return this.pos.findClosestByPath(towers).id;
         }
 
         let constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);

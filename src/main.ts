@@ -1,6 +1,6 @@
 import driveCreep from './modules/creepDriver';
 import { manageMemory } from './modules/memoryManagement';
-import populationControl from './modules/populationControl';
+import { populationControl } from './modules/populationControl';
 import driveRoom from './modules/roomDriver';
 require('./prototypes/requirePrototypes');
 
@@ -37,5 +37,9 @@ module.exports.loop = function () {
         manageMemory();
     } catch (e) {
         console.log(`Error caught in memory management: \n${e}`);
+    }
+
+    if (Game.cpu.bucket === 10000) {
+        Game.cpu.generatePixel();
     }
 };
