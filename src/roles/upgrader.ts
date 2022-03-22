@@ -1,11 +1,7 @@
-import { WaveCreep } from '../modules/WaveCreep';
+import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
-export class Upgrader extends WaveCreep {
-    public run() {
-        if (this.memory.gathering) {
-            this.gatherEnergy();
-        } else {
-            this.runUpgradeJob();
-        }
+export class Upgrader extends WorkerCreep {
+    protected performDuties() {
+        this.runUpgradeJob();
     }
 }

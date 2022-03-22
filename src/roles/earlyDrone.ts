@@ -1,31 +1,27 @@
-import { WaveCreep } from '../modules/WaveCreep';
+import { EarlyCreep } from '../virtualCreeps/earlyCreep';
 
-export class Worker extends WaveCreep {
-    public run() {
-        if (this.memory.gathering) {
-            this.gatherEnergy();
+export class EarlyDrone extends EarlyCreep {
+    protected performDuties() {
+        let target = Game.getObjectById(this.memory.targetId);
+
+        if (!this.memory.targetId || !target) {
+            this.memory.targetId = this.findTarget();
+            target = Game.getObjectById(this.memory.targetId);
+        }
+
+        if (
+            target instanceof StructureExtension ||
+            target instanceof StructureTower ||
+            target instanceof StructureSpawn ||
+            target instanceof StructureStorage
+        ) {
+            this.runStoreJob(target);
+        } else if (target instanceof ConstructionSite) {
+            this.runBuildJob(target);
+        } else if (target instanceof StructureController) {
+            this.runUpgradeJob();
         } else {
-            let target = Game.getObjectById(this.memory.targetId);
-
-            if (!this.memory.targetId || !target) {
-                this.memory.targetId = this.findTarget();
-                target = Game.getObjectById(this.memory.targetId);
-            }
-
-            if (
-                target instanceof StructureExtension ||
-                target instanceof StructureTower ||
-                target instanceof StructureSpawn ||
-                target instanceof StructureStorage
-            ) {
-                this.runStoreJob(target);
-            } else if (target instanceof ConstructionSite) {
-                this.runBuildJob(target);
-            } else if (target instanceof StructureController) {
-                this.runUpgradeJob();
-            } else {
-                delete this.memory.targetId;
-            }
+            delete this.memory.targetId;
         }
     }
 

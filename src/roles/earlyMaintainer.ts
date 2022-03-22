@@ -1,6 +1,6 @@
-import { WorkerCreep } from '../virtualCreeps/workerCreep';
+import { EarlyCreep } from '../virtualCreeps/earlyCreep';
 
-export class Maintainer extends WorkerCreep {
+export class EarlyMaintainer extends EarlyCreep {
     protected performDuties() {
         let target = Game.getObjectById(this.memory.targetId);
 
@@ -21,9 +21,7 @@ export class Maintainer extends WorkerCreep {
     }
 
     private findTarget(): Id<Structure> | Id<ConstructionSite> {
-        let rammpartsAtRisk = this.room
-            .find(FIND_MY_STRUCTURES)
-            .filter((s) => s.structureType === STRUCTURE_RAMPART && s.hits <= this.getDefenseHitpointTarget() * 0.75);
+        let rammpartsAtRisk = this.room.find(FIND_MY_STRUCTURES).filter((s) => s.structureType === STRUCTURE_RAMPART && s.hits <= 1000);
         if (rammpartsAtRisk.length) {
             return this.pos.findClosestByPath(rammpartsAtRisk, { ignoreCreeps: true }).id;
         }
@@ -62,6 +60,6 @@ export class Maintainer extends WorkerCreep {
     }
 
     private getDefenseHitpointTarget() {
-        return this.room.controller.level * 50000;
+        return this.room.controller.level * 10000;
     }
 }
