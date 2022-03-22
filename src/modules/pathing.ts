@@ -4,7 +4,7 @@ const MAX_STUCK_COUNT = 2; // If a creep can't move after two ticks, the path wi
 export class Pathing {
     // Store roads for each room
     private static roadStructuresCache: { [roomName: string]: Coord[] } = {};
-    private static defaultOpts: TravelToOpts = { ignoreCreeps: true, avoidRoads: false, reusePath: 10 };
+    private static defaultOpts: TravelToOpts = { ignoreCreeps: true, avoidRoads: false, avoidRoadOnLastMove: false, reusePath: 10 };
 
     /**
      * Method to replace the default "moveTo" function
@@ -24,11 +24,13 @@ export class Pathing {
             options = { ...options, ...opts }; // Enable overriding any default options
         }
 
+        let roomPosition = this.normalizePos(destination);
+
         try {
-            var result = this.move(creep, destination, options);
-        } catch (error) {
+            var result = this.move(creep, roomPosition, options);
+        } catch (e) {
             // In case something goes horribly wrong (example: someone manually deleted the creep memory)
-            console.log(`${creep.name} encountered an error in TravelTo. Fallback to default MoveTo function.`);
+            console.log(`Error caught in ${creep.name} for TravelTo. Fallback to default MoveTo function. Error: \n${e}`);
             result = creep.moveTo(destination, opts);
         }
         creep.memory._move.prevCoords = { x: creep.pos.x, y: creep.pos.y }; // Store coordinates to see if a creep is being blocked
@@ -37,15 +39,17 @@ export class Pathing {
 
     private static move(
         creep: Creep,
-        destination: HasPos | RoomPosition,
+        destination: RoomPosition,
         opts: TravelToOpts = this.defaultOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
-        let prevCoords = creep.memory._move.prevCoords ?? creep.pos;
-        let stuckCount = creep.memory._move.stuckCount ?? 0;
+        const prevCoords = creep.memory._move.prevCoords ?? creep.pos;
+        const stuckCount = creep.memory._move.stuckCount ?? 0;
 
         // Set custom TravelTo options
         if (opts.avoidRoads) {
-            this.addAvoidRoadCostMatrix(opts);
+            opts.costCallback = this.getAvoidRoadsMatrix();
+        } else if (opts.avoidRoadOnLastMove) {
+            opts.costCallback = this.getAvoidRoadsMatrix(destination, opts.range);
         }
 
         // Recalculate path with creeps in mind
@@ -67,16 +71,22 @@ export class Pathing {
     }
 
     /**
-     * Move closer to the target, but tries to avoid the road
+     * CostCallback function to avoid matrix
      *
-     * @param opts Adding CostCallback to the provided options
      */
-    private static addAvoidRoadCostMatrix(opts: TravelToOpts): void {
-        if (!opts.costCallback) {
-            opts.costCallback = function (roomName, costMatrix) {
+    private static getAvoidRoadsMatrix(destination?: RoomPosition, range?: number) {
+        return (roomName: string, costMatrix: CostMatrix) => {
+            if (!destination) {
+                // avoid all roads
                 Pathing.getRoadStructures(roomName).forEach((road) => costMatrix.set(road.x, road.y, MATRIX_COST_OFF_ROAD));
-            };
-        }
+            } else if (roomName === destination.roomName) {
+                // Avoid roads at specific destination
+                Game.rooms[destination.roomName]
+                    .lookForAtArea(LOOK_STRUCTURES, destination.y - range, destination.x - range, destination.y + range, destination.x + range, true)
+                    .filter((structure) => structure.structure.structureType === 'road')
+                    .forEach((road) => costMatrix.set(road.x, road.y, MATRIX_COST_OFF_ROAD));
+            }
+        };
     }
 
     /**
@@ -123,5 +133,17 @@ export class Pathing {
                 .map((road) => road.pos);
         }
         return this.roadStructuresCache[roomName];
+    }
+
+    /**
+     * make position objects consistent so that either can be used as an argument
+     * @param destination
+     * @returns {any}
+     */
+    static normalizePos(destination: HasPos | RoomPosition): RoomPosition {
+        if (!(destination instanceof RoomPosition)) {
+            return destination.pos;
+        }
+        return destination;
     }
 }
