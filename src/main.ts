@@ -2,6 +2,7 @@ import driveCreep from './modules/creepDriver';
 import { manageMemory } from './modules/memoryManagement';
 import { populationControl } from './modules/populationControl';
 import driveRoom from './modules/roomDriver';
+import { WaveCreep } from './modules/WaveCreep';
 require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
@@ -19,6 +20,11 @@ module.exports.loop = function () {
         if (!creep.spawning) {
             try {
                 driveCreep(creep);
+                // This is an example and will be deleted later
+                // creep.addTaskToPriorityQueue(
+                //   Priority.LOW, () => {
+                //     creep.travelTo(Game.spawns.Spawn1);
+                //   });
             } catch (e) {
                 console.log(`Error caught in ${creep.name}: \n${e}`);
             }
@@ -31,6 +37,11 @@ module.exports.loop = function () {
         } catch (e) {
             console.log(`Error caught in ${room.name}: \n${e}`);
         }
+    });
+
+    // Run PriorityQueue
+    WaveCreep.getCreepsWithPriorityTask().forEach((creepName) => {
+        Game.creeps[creepName].runPriorityQueueTask();
     });
 
     try {

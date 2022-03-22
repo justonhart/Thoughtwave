@@ -4,7 +4,13 @@ const MAX_STUCK_COUNT = 2; // If a creep can't move after two ticks, the path wi
 export class Pathing {
     // Store roads for each room
     private static roadStructuresCache: { [roomName: string]: Coord[] } = {};
-    private static defaultOpts: TravelToOpts = { ignoreCreeps: true, avoidRoads: false, avoidRoadOnLastMove: false, reusePath: 10 };
+    private static defaultOpts: TravelToOpts = {
+        ignoreCreeps: true,
+        avoidRoads: false,
+        priority: Priority.MEDIUM,
+        avoidRoadOnLastMove: false,
+        reusePath: 10,
+    };
 
     /**
      * Method to replace the default "moveTo" function
@@ -23,6 +29,9 @@ export class Pathing {
         if (opts) {
             options = { ...options, ...opts }; // Enable overriding any default options
         }
+
+        // Set task Priority
+        creep.memory.currentTaskPriority = options.priority;
 
         let roomPosition = this.normalizePos(destination);
 
@@ -60,7 +69,7 @@ export class Pathing {
                 opts.visualizePathStyle = { stroke: '#0000ff', opacity: 0.7, strokeWidth: 0.2, lineStyle: 'dashed' };
                 opts.ignoreCreeps = false;
                 opts.reusePath = 5;
-                return creep.moveTo(destination, opts);
+                return creep.moveTo(destination, opts); // TODO: can be deleted --> simply set options if stuck and have moveTo at end (might have to delete current move set in memory)
             }
         } else {
             creep.memory._move.stuckCount = 0; // Reset stuckCount
