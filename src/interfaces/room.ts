@@ -1,4 +1,5 @@
 interface RoomMemory {
+    phase: number;
     availableSourceAccessPoints: string[];
     sourceAccessPointCount: number;
     roadsConstructed?: boolean;

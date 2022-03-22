@@ -1,6 +1,6 @@
 export default function driveRoom(room: Room) {
     if (room.memory?.sourceAccessPointCount == undefined) {
-        room.initRoomMemory();
+        initRoomMemory(room);
     }
 
     runTowers(room);
@@ -17,4 +17,24 @@ function runTowers(room: Room) {
     healers.length
         ? towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(healers)))
         : towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
+}
+
+function initRoomMemory(room: Room) {
+    room.memory.availableSourceAccessPoints = [].concat(
+        ...Array.from(
+            new Set(
+                room
+                    .find(FIND_SOURCES) //
+                    .map((source) =>
+                        room
+                            .lookForAtArea(LOOK_TERRAIN, source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true)
+                            .filter((terrain) => terrain.terrain != 'wall')
+                            .map((terrain) => new RoomPosition(terrain.x, terrain.y, room.name).toMemSafe())
+                    )
+            )
+        )
+    );
+
+    room.memory.sourceAccessPointCount = room.memory.availableSourceAccessPoints.length;
+    room.memory.phase = 1;
 }
