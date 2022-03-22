@@ -1,7 +1,7 @@
 import { EarlyMaintainer } from '../roles/earlyMaintainer';
 import { EarlyUpgrader } from '../roles/earlyUpgrader';
 import { EarlyDrone } from '../roles/earlyDrone';
-import { WaveCreep } from '../virtualCreeps/WaveCreep';
+import { WaveCreep } from '../virtualCreeps/waveCreep';
 import { Upgrader } from '../roles/upgrader';
 import { Maintainer } from '../roles/maintainer';
 
@@ -25,6 +25,7 @@ export default function driveCreep(creep: Creep) {
             } else {
                 waveCreep = new Maintainer(creep.id);
             }
+            break;
         default:
             waveCreep = new WaveCreep(creep.id);
     }

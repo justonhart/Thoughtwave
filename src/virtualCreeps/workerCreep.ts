@@ -65,7 +65,7 @@ export class WorkerCreep extends WaveCreep {
         let buildSuccess = this.build(target);
         switch (buildSuccess) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { range: 3, visualizePathStyle: { stroke: '#ffffff' } });
+                this.travelTo(target, { range: 3, avoidRoadOnLastMove: true, visualizePathStyle: { stroke: '#ffffff' } });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
@@ -88,7 +88,11 @@ export class WorkerCreep extends WaveCreep {
         let jobCost = UPGRADE_CONTROLLER_POWER * this.getActiveBodyparts(WORK);
         switch (this.upgradeController(Game.rooms[this.memory.room].controller)) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(Game.rooms[this.memory.room].controller, { range: 3, visualizePathStyle: { stroke: '#ffffff' } });
+                this.travelTo(Game.rooms[this.memory.room].controller, {
+                    range: 3,
+                    avoidRoadOnLastMove: true,
+                    visualizePathStyle: { stroke: '#ffffff' },
+                });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
@@ -108,7 +112,7 @@ export class WorkerCreep extends WaveCreep {
         let repairSuccess = this.repair(target);
         switch (repairSuccess) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { range: 3, visualizePathStyle: { stroke: '#ffffff' } });
+                this.travelTo(target, { range: 3, avoidRoadOnLastMove: true, visualizePathStyle: { stroke: '#ffffff' } });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
