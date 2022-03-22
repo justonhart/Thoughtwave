@@ -1,4 +1,5 @@
 interface CreepMemory {
+    assignedPos?: string;
     targetId?: Id<Structure> | Id<ConstructionSite>;
     miningPos?: string;
     gathering?: boolean;
