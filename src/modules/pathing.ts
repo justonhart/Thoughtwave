@@ -80,9 +80,15 @@ export class Pathing {
                 // avoid all roads
                 Pathing.getRoadStructures(roomName).forEach((road) => costMatrix.set(road.x, road.y, MATRIX_COST_OFF_ROAD));
             } else if (roomName === destination.roomName) {
+                // edge cases
+                const top = destination.y - range < 0 ? 0 : destination.y - range;
+                const bottom = destination.y + range > 49 ? 49 : destination.y + range;
+                const left = destination.x - range ? 0 : destination.x - range;
+                const right = destination.x + range ? 49 : destination.x + range;
+
                 // Avoid roads at specific destination
                 Game.rooms[destination.roomName]
-                    .lookForAtArea(LOOK_STRUCTURES, destination.y - range, destination.x - range, destination.y + range, destination.x + range, true)
+                    .lookForAtArea(LOOK_STRUCTURES, top, left, bottom, right, true)
                     .filter((structure) => structure.structure.structureType === 'road')
                     .forEach((road) => costMatrix.set(road.x, road.y, MATRIX_COST_OFF_ROAD));
             }
