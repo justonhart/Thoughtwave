@@ -3,24 +3,9 @@ import { WorkerCreep } from './workerCreep';
 
 export class EarlyCreep extends WorkerCreep {
     protected gatherEnergy() {
-        if (this.store[RESOURCE_ENERGY] === this.store.getCapacity()) {
+        if (this.memory.miningPos && this.store[RESOURCE_ENERGY] === this.store.getCapacity()) {
             this.releaseSourceAccessPoint();
             this.memory.gathering = false;
-            return;
-        }
-
-        let tombstones = this.room.find(FIND_TOMBSTONES).filter((t) => t.store[RESOURCE_ENERGY]);
-        if (tombstones.length) {
-            let target = this.pos.findClosestByPath(tombstones, { ignoreCreeps: true });
-            switch (this.withdraw(target, RESOURCE_ENERGY)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(target);
-                    break;
-                case 0:
-                    this.memory.gathering = false;
-                    break;
-            }
-
             return;
         }
 
