@@ -1,4 +1,4 @@
-import { TransportCreep } from '../virtualCreeps/transporterCreep';
+import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Distributor extends TransportCreep {
     protected findTarget() {
