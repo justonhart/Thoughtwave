@@ -25,27 +25,30 @@ export class Maintainer extends WaveCreep {
     }
 
     private findTarget(): Id<Structure> | Id<ConstructionSite> {
+        let rammpartsAtRisk = this.room.find(FIND_MY_STRUCTURES).filter((s) => s.structureType === STRUCTURE_RAMPART && s.hits <= 1000);
+        if (rammpartsAtRisk.length) {
+            return this.pos.findClosestByPath(rammpartsAtRisk, { ignoreCreeps: true }).id;
+        }
+
         let damagedStructures = this.room.find(FIND_STRUCTURES).filter(
             (structure) =>
                 // @ts-ignore
                 ![STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < structure.hitsMax
         );
         if (damagedStructures.length) {
-            //sort ascending by health ratio
-            damagedStructures.sort((a, b) => a.hits / a.hitsMax - b.hits / b.hitsMax);
+            //find the lowest health ratio
+            let lowestRatio = Math.min(...damagedStructures.map((s) => s.hits / s.hitsMax));
 
-            //take only the lowest ratio and find the closest target among them
-            let mostDamagedStructures = damagedStructures.filter(
-                (s) => s.hits / s.hitsMax === damagedStructures[0].hits / damagedStructures[0].hitsMax
-            );
-            return this.pos.findClosestByPath(mostDamagedStructures, {range: 3, ignoreCreeps: true}).id;
+            //take only those with the lowest ratio and find the closest target among them
+            let mostDamagedStructures = damagedStructures.filter((s) => s.hits / s.hitsMax === lowestRatio);
+            return this.pos.findClosestByPath(mostDamagedStructures, { range: 3, ignoreCreeps: true }).id;
         }
 
         let constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
 
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
-            return constructionSites.sort((a, b) => b.progress / b.progressTotal - a.progress / a.progressTotal).shift().id;
+            return constructionSites.reduce((a, b) => (a.progress / a.progressTotal > b.progress / b.progressTotal ? a : b)).id;
         } else {
             return this.room.controller?.id;
         }

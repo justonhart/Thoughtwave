@@ -1,8 +1,8 @@
 export function populationControl(spawn: StructureSpawn) {
     const SPAWN_LIMIT = calculateCreepCapacity(spawn.room);
     const WORKER_LIMIT = SPAWN_LIMIT / 2;
-    const UPGRADER_LIMIT = Math.floor(SPAWN_LIMIT / 4);
-    const MAINTAINTER_LIMIT = Math.floor(SPAWN_LIMIT / 4);
+    const UPGRADER_LIMIT = SPAWN_LIMIT / 4;
+    const MAINTAINTER_LIMIT = SPAWN_LIMIT / 4;
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
 
@@ -30,15 +30,14 @@ export function populationControl(spawn: StructureSpawn) {
         }
 
         let result = spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
-
         //if there are no worker, and there is not enough energy to spawn one immediately, convert another creep to worker
         if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.WORKER) {
             let potentialWorkers = roomCreeps.filter((creep) => creep.memory.role !== Role.WORKER && creep.getActiveBodyparts(WORK));
             if (potentialWorkers.length) {
-                let creepToConvert = potentialWorkers.sort((creep) => creep.getActiveBodyparts(WORK)).shift();
+                let creepToConvert = potentialWorkers.reduce((a, b) => (a.getActiveBodyparts(WORK) > b.getActiveBodyparts(WORK) ? a : b));
                 creepToConvert.memory.role = Role.WORKER;
                 creepToConvert.memory.targetId = null;
-            } else if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length) {
+            } else if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length === 0) {
                 //spawn first available worker
                 partsArray = [];
                 for (let i = 0; i < Math.floor(spawn.room.energyAvailable / 200); i++) partsArray = partsArray.concat(partsBlock);
@@ -67,7 +66,7 @@ export function calculateCreepCapacity(room: Room): number {
     let creepsNeeded = Math.ceil(workPartsNeeded / maxWorkPartsPerCreep);
 
     //creepsNeeded is likely to be VERY HIGH in early rooms (higher than the access point count may be able to accommodate), so cap based on access point count
-    let restrictedCapacty = Math.ceil(accessPointCount * 2);
+    let restrictedCapacty = accessPointCount * 2;
     let creepCapacity = restrictedCapacty < creepsNeeded ? restrictedCapacty : creepsNeeded;
 
     return creepCapacity;

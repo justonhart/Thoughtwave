@@ -1,6 +1,6 @@
 export function posFromMem(memPos: string): RoomPosition {
-    let split = memPos.split('.');
-    return new RoomPosition(Number(split[0]), Number(split[1]), split[2]);
+    let split = memPos?.split('.');
+    return split ? new RoomPosition(Number(split[0]), Number(split[1]), split[2]) : null;
 }
 
 export function manageMemory() {

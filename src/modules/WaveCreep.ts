@@ -10,14 +10,26 @@ export class WaveCreep extends Creep {
     private claimSourceAccessPoint() {
         if (this.room.memory.availableSourceAccessPoints.length) {
             let accessPoints = this.room.memory.availableSourceAccessPoints.map((s) => posFromMem(s));
-            let closest = this.pos.findClosestByPath(accessPoints, { ignoreCreeps: true });
-            this.memory.miningPos = closest.toMemSafe();
+            let activeSources = this.room.find(FIND_SOURCES_ACTIVE);
+            let activeAccessPoints = new Set<RoomPosition>();
+            accessPoints.forEach((pos) => {
+                activeSources.forEach((sourcePos) => {
+                    if (pos.isNearTo(sourcePos)) {
+                        activeAccessPoints.add(pos);
+                    }
+                });
+            });
 
-            let index = accessPoints.findIndex((pos) => pos.isEqualTo(closest));
-            this.room.memory.availableSourceAccessPoints.splice(index, 1).shift();
-        } else {
-            return -1;
+            let closest = this.pos.findClosestByPath(Array.from(activeAccessPoints), { ignoreCreeps: true });
+            if (closest) {
+                this.memory.miningPos = closest.toMemSafe();
+                let index = accessPoints.findIndex((pos) => pos.isEqualTo(closest));
+                this.room.memory.availableSourceAccessPoints.splice(index, 1).shift();
+                return OK;
+            }
         }
+
+        return ERR_NOT_FOUND;
     }
 
     private releaseSourceAccessPoint() {
@@ -35,16 +47,17 @@ export class WaveCreep extends Creep {
 
         if (!this.memory.miningPos) {
             this.claimSourceAccessPoint();
-        } else {
-            let miningPos = posFromMem(this.memory.miningPos);
+        }
+
+        let miningPos = posFromMem(this.memory.miningPos);
+        if (miningPos) {
             if (this.pos.isEqualTo(miningPos)) {
                 this.memory.currentTaskPriority = Priority.MEDIUM; // Priority for gathering Energy
                 //find the source in mining range w/ the highest energy and harvest from it - this matters for mining positions adjacent to more than one source
-                let sourcesInRange = this.pos.findInRange(FIND_SOURCES, 1).sort((a, b) => b.energy - a.energy);
-                let miningResult = this.harvest(sourcesInRange.shift());
+                let highestSourceInRange = this.pos.findInRange(FIND_SOURCES, 1).reduce((a, b) => (a.energy > b.energy ? a : b));
+                let miningResult = this.harvest(highestSourceInRange);
 
-                //if a source is out of energy, get back to work
-                if (miningResult === ERR_NOT_ENOUGH_RESOURCES && this.store[RESOURCE_ENERGY] > 0) {
+                if ((miningResult === OK && this.isEnergyHarvestingFinished()) || miningResult === ERR_NOT_ENOUGH_RESOURCES) {
                     this.memory.gathering = false;
                     this.releaseSourceAccessPoint();
                 }
@@ -110,9 +123,14 @@ export class WaveCreep extends Creep {
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
-            case OK:
             case ERR_FULL:
                 this.memory.currentTaskPriority = Priority.MEDIUM;
+                delete this.memory.targetId;
+                break;
+            case OK:
+                if (target.store.getFreeCapacity(RESOURCE_ENERGY) >= this.store[RESOURCE_ENERGY]) {
+                    this.memory.gathering = true;
+                }
                 delete this.memory.targetId;
                 break;
         }
@@ -175,6 +193,11 @@ export class WaveCreep extends Creep {
     private isBuildFinished(target: ConstructionSite): boolean {
         let workValue = this.getActiveBodyparts(WORK) * BUILD_POWER;
         return target.progress >= target.progressTotal - workValue;
+    }
+
+    private isEnergyHarvestingFinished(): boolean {
+        let harvestedAmount = this.getActiveBodyparts(WORK) * 2;
+        return harvestedAmount >= this.store.getFreeCapacity(RESOURCE_ENERGY);
     }
 
     private usedAllRemainingEnergy(energyUsedPerWork: number) {
