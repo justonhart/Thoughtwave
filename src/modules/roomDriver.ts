@@ -1,3 +1,5 @@
+import { posFromMem } from './memoryManagement';
+
 export default function driveRoom(room: Room) {
     if (room.memory?.phase == undefined) {
         initRoomMemory(room);
@@ -51,12 +53,12 @@ function initRoomMemory(room: Room) {
 function runPhaseOne(room: Room) {
     switch (room.memory.phaseShift) {
         case PhaseShiftStatus.PREPARE:
-            if (dropMiningContainersConstructed() && room.storage?.store[RESOURCE_ENERGY] >= calculateMinimumEnergy()) {
+            if (dropMiningContainersConstructed(room) && room.storage?.store[RESOURCE_ENERGY] >= calculateMinimumEnergy(room)) {
                 room.memory.phaseShift = PhaseShiftStatus.EXECUTE;
             }
             break;
         case PhaseShiftStatus.EXECUTE:
-            executePhaseShift();
+            executePhaseShift(room);
             break;
         default:
             if (room.storage?.my) {
@@ -87,6 +89,7 @@ function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
             possiblePositions = positionsWithContainers;
         }
 
+        //set closest position to storage as container position
         let candidate = room.storage.pos.findClosestByPath(possiblePositions, { ignoreCreeps: true });
         if (candidate) {
             containerPositions.add(candidate);
@@ -105,14 +108,48 @@ function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
     return ERR_NOT_FOUND;
 }
 
-function dropMiningContainersConstructed(): boolean {
-    return false;
+function dropMiningContainersConstructed(room: Room): boolean {
+    let positionsToCheck = room.memory.containerPositions.map((posString) => posFromMem(posString));
+
+    let allContainersConstructed = positionsToCheck
+        .map((pos) => pos.lookFor(LOOK_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_CONTAINER).length === 1)
+        .reduce((prevPosititonsHaveContainers, posHasContainer) => prevPosititonsHaveContainers && posHasContainer);
+
+    return allContainersConstructed;
 }
 
-function calculateMinimumEnergy(): number {
-    return 0;
+function calculateMinimumEnergy(room: Room): number {
+    const WORK_COST = 100;
+    const CARRY_COST = 50;
+    const MOVE_COST = 50;
+
+    let dropMinerCost = WORK_COST * 5 + MOVE_COST * 3;
+
+    let transportCreepPartCost = CARRY_COST * 2 + MOVE_COST;
+
+    let transportCreepCost = Math.floor(room.energyCapacityAvailable / transportCreepPartCost) * transportCreepPartCost;
+
+    return 2 * (2 * transportCreepCost + room.find(FIND_SOURCES).length * dropMinerCost);
 }
 
-function executePhaseShift() {}
+function executePhaseShift(room: Room) {
+    //wipe creep memory in room to stop gathering
+    Object.values(Memory.creeps)
+        .filter((creep) => creep.room === room.name)
+        .forEach((creep) => {
+            delete creep.gathering;
+            delete creep.currentTaskPriority;
+            delete creep.targetId;
+            delete creep.miningPos;
+            delete creep._move;
+        });
+
+    //remove phase one memory values
+    delete room.memory.availableSourceAccessPoints;
+    delete room.memory.sourceAccessPointCount;
+    delete room.memory.phaseShift;
+
+    this.memory.phase = 2;
+}
 
 function runPhaseTwo(room: Room) {}
