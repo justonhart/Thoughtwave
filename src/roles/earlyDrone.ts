@@ -15,7 +15,7 @@ export class EarlyDrone extends EarlyCreep {
             target instanceof StructureSpawn ||
             target instanceof StructureStorage
         ) {
-            this.runStoreJob(target);
+            this.runRefillJob(target);
         } else if (target instanceof ConstructionSite) {
             this.runBuildJob(target);
         } else if (target instanceof StructureController) {
