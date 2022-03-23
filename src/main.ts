@@ -20,11 +20,6 @@ module.exports.loop = function () {
         if (!creep.spawning) {
             try {
                 driveCreep(creep);
-                // This is an example and will be deleted later
-                // creep.addTaskToPriorityQueue(
-                //   Priority.LOW, () => {
-                //     creep.travelTo(Game.spawns.Spawn1);
-                //   });
             } catch (e) {
                 console.log(`Error caught in ${creep.name}: \n${e}`);
             }
