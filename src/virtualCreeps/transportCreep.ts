@@ -18,7 +18,7 @@ export class TransportCreep extends WaveCreep {
             } else {
                 this.gatherEnergy();
             }
-        } else if (this.store.getUsedCapacity()) {
+        } else if (target instanceof StructureStorage) {
             this.storeCargo();
         }
     }

@@ -1,3 +1,5 @@
+import { timeStamp } from 'console';
+
 export class WaveCreep extends Creep {
     public run() {
         this.say(`Running ${this.name}`);
@@ -18,16 +20,20 @@ export class WaveCreep extends Creep {
     }
 
     protected storeCargo() {
-        if (this.store.getUsedCapacity()) {
-            let resourceToStore: any = Object.keys(this.store).shift();
-            let storeResult = this.transfer(this.room.storage, resourceToStore);
-            switch (storeResult) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(this.room.storage, { ignoreCreeps: true, range: 1 });
-                    break;
-                case 0:
-                    break;
-            }
+        let resourceToStore: any = Object.keys(this.store).shift();
+        let storeResult = this.transfer(this.room.storage, resourceToStore);
+        switch (storeResult) {
+            case ERR_NOT_IN_RANGE:
+                this.travelTo(this.room.storage, { ignoreCreeps: true, range: 1 });
+                break;
+            case 0:
+                if (this.store[resourceToStore] === this.store.getUsedCapacity()) {
+                    delete this.memory.targetId;
+                }
+                break;
+            default:
+                delete this.memory.targetId;
+                break;
         }
     }
 }

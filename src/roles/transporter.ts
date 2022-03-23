@@ -6,6 +6,10 @@ export class Transporter extends TransportCreep {
 
         //store resources before running refills
         if (!target && this.store.getUsedCapacity() === this.store[RESOURCE_ENERGY]) {
+            target = this.room.storage.id;
+        }
+
+        if (!target) {
             target = this.findRefillTarget();
         }
 

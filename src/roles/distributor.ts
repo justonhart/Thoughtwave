@@ -11,6 +11,6 @@ export class Distributor extends TransportCreep {
         }
 
         //if target needs refill, store non-energy resources first
-        return this.store.energy === this.store.getUsedCapacity() ? target : null;
+        return this.store.energy === this.store.getUsedCapacity() ? target : this.room.storage.id;
     }
 }

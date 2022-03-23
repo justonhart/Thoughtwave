@@ -75,4 +75,16 @@ export class EarlyCreep extends WorkerCreep {
         let harvestedAmount = this.getActiveBodyparts(WORK) * 2;
         return harvestedAmount >= this.store.getFreeCapacity(RESOURCE_ENERGY);
     }
+
+    protected runFillStorage() {
+        if (this.store.getUsedCapacity() === 0) {
+            this.memory.gathering = true;
+        }
+
+        if (this.memory.gathering) {
+            this.gatherEnergy();
+        } else {
+            this.storeCargo();
+        }
+    }
 }

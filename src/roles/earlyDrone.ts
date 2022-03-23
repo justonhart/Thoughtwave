@@ -9,13 +9,10 @@ export class EarlyDrone extends EarlyCreep {
             target = Game.getObjectById(this.memory.targetId);
         }
 
-        if (
-            target instanceof StructureExtension ||
-            target instanceof StructureTower ||
-            target instanceof StructureSpawn ||
-            target instanceof StructureStorage
-        ) {
+        if (target instanceof StructureExtension || target instanceof StructureTower || target instanceof StructureSpawn) {
             this.runRefillJob(target);
+        } else if (target instanceof StructureStorage) {
+            this.runFillStorage();
         } else if (target instanceof ConstructionSite) {
             this.runBuildJob(target);
         } else if (target instanceof StructureController) {
@@ -46,6 +43,10 @@ export class EarlyDrone extends EarlyCreep {
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
             return constructionSites.reduce((a, b) => (a.progress / a.progressTotal > b.progress / b.progressTotal ? a : b)).id;
+        }
+
+        if (this.room.storage?.my) {
+            return this.room.storage.id;
         }
 
         return this.room.controller?.id;

@@ -11,6 +11,8 @@ export class EarlyMaintainer extends EarlyCreep {
 
         if (target instanceof StructureController) {
             this.runUpgradeJob();
+        } else if (target instanceof StructureStorage) {
+            this.runFillStorage();
         } else if (target instanceof Structure) {
             this.runRepairJob(target);
         } else if (target instanceof ConstructionSite) {
@@ -54,6 +56,10 @@ export class EarlyMaintainer extends EarlyCreep {
         );
         if (defenses.length) {
             return this.pos.findClosestByPath(defenses, { range: 3, ignoreCreeps: true }).id;
+        }
+
+        if (this.room.storage?.my) {
+            return this.room.storage.id;
         }
 
         return this.room.controller?.id;
