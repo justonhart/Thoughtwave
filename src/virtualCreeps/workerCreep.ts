@@ -73,6 +73,7 @@ export class WorkerCreep extends WaveCreep {
                 delete this.memory.targetId;
                 break;
             case OK:
+                this.memory.currentTaskPriority = Priority.MEDIUM;
                 if (this.isBuildFinished(target)) {
                     delete this.memory.targetId;
                 }
@@ -99,6 +100,7 @@ export class WorkerCreep extends WaveCreep {
                 delete this.memory.targetId;
                 break;
             case OK:
+                this.memory.currentTaskPriority = Priority.MEDIUM;
                 if (this.usedAllRemainingEnergy(jobCost)) {
                     this.memory.gathering = true;
                     delete this.memory.targetId;
@@ -120,6 +122,7 @@ export class WorkerCreep extends WaveCreep {
                 delete this.memory.targetId;
                 break;
             case OK:
+                this.memory.currentTaskPriority = Priority.MEDIUM;
                 if (this.isRepairFinished(target)) {
                     delete this.memory.targetId;
                 }
