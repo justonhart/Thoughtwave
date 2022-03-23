@@ -9,7 +9,7 @@ export class EarlyCreep extends WorkerCreep {
             return;
         }
 
-        if (this.room.storage?.my === false && this.room.storage.store[RESOURCE_ENERGY]) {
+        if (!this.room.storage?.my === false && this.room.storage.store[RESOURCE_ENERGY]) {
             switch (this.withdraw(this.room.storage, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(this.room.storage);
