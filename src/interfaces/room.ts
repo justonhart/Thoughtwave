@@ -7,9 +7,7 @@ interface RoomMemory {
     roadsConstructed?: boolean;
 }
 
-interface Room {
-    initRoomMemory(): void;
-}
+interface Room {}
 
 interface RoomPosition {
     toMemSafe(): string;

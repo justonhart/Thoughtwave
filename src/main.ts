@@ -1,7 +1,7 @@
 import driveCreep from './modules/creepDriver';
 import { manageMemory } from './modules/memoryManagement';
 import { populationControl } from './modules/populationControl';
-import driveRoom from './modules/roomDriver';
+import { driveRoom } from './modules/roomDriver';
 import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 

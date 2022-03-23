@@ -1,18 +1,18 @@
 import { posFromMem } from './memoryManagement';
 
-export default function driveRoom(room: Room) {
+export function driveRoom(room: Room) {
     if (room.memory?.phase == undefined) {
         initRoomMemory(room);
     }
 
-    switch (room.memory.phase) {
-        case 1:
-            runPhaseOne(room);
-            break;
-        case 2:
-            runPhaseTwo(room);
-            break;
-    }
+    // switch (room.memory.phase) {
+    //     case 1:
+    //         runPhaseOne(room);
+    //         break;
+    //     case 2:
+    //         runPhaseTwo(room);
+    //         break;
+    // }
 
     runTowers(room);
 }
@@ -53,7 +53,7 @@ function initRoomMemory(room: Room) {
 function runPhaseOne(room: Room) {
     switch (room.memory.phaseShift) {
         case PhaseShiftStatus.PREPARE:
-            if (dropMiningContainersConstructed(room) && room.storage?.store[RESOURCE_ENERGY] >= calculateMinimumEnergy(room)) {
+            if (dropMiningContainersConstructed(room) && room.storage?.store[RESOURCE_ENERGY] >= calculatePhaseShiftMinimum(room)) {
                 room.memory.phaseShift = PhaseShiftStatus.EXECUTE;
             }
             break;
@@ -118,7 +118,7 @@ function dropMiningContainersConstructed(room: Room): boolean {
     return allContainersConstructed;
 }
 
-function calculateMinimumEnergy(room: Room): number {
+export function calculatePhaseShiftMinimum(room: Room): number {
     const WORK_COST = 100;
     const CARRY_COST = 50;
     const MOVE_COST = 50;

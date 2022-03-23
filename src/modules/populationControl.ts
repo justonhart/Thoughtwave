@@ -10,7 +10,7 @@ export function populationControl(spawn: StructureSpawn) {
 }
 
 // function to calculate how many creeps a room can support
-export function calculateCreepCapacity(room: Room): number {
+export function calculateEarlyCreepCapacity(room: Room): number {
     //potentially useful values
     let sourceCount = room.find(FIND_SOURCES).length;
     let accessPointCount = room.memory.sourceAccessPointCount;
@@ -35,7 +35,7 @@ export function calculateCreepCapacity(room: Room): number {
 }
 
 function phaseOneSpawning(spawn: StructureSpawn) {
-    const SPAWN_LIMIT = calculateCreepCapacity(spawn.room);
+    const SPAWN_LIMIT = calculateEarlyCreepCapacity(spawn.room);
     const WORKER_LIMIT = SPAWN_LIMIT / 2;
     const UPGRADER_LIMIT = SPAWN_LIMIT / 4;
     const MAINTAINTER_LIMIT = SPAWN_LIMIT / 4;
@@ -83,4 +83,101 @@ function phaseOneSpawning(spawn: StructureSpawn) {
     }
 }
 
-function phaseTwoSpawning(spawn: StructureSpawn) {}
+function phaseTwoSpawning(spawn: StructureSpawn) {
+    const SPAWN_LIMIT = calculateWorkerCapacity(spawn.room);
+    const UPGRADER_LIMIT = SPAWN_LIMIT / 2;
+    const MAINTAINTER_LIMIT = SPAWN_LIMIT / 2;
+
+    let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
+
+    let options: SpawnOptions = {
+        memory: {
+            room: spawn.room.name,
+            _move: {},
+        },
+    };
+
+    const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
+    const TRANSPORT_PART_BLOCK = [CARRY, CARRY, MOVE];
+    const DROPMINER_BODY = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
+
+    let specialCase: boolean;
+    let partBlockToUse: BodyPartConstant[];
+
+    if (roomCreeps.filter((creep) => creep.memory.role === Role.DISTRIBUTOR).length === 0) {
+        options.memory.role = Role.DISTRIBUTOR;
+        partBlockToUse = TRANSPORT_PART_BLOCK;
+    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.DROPMINER).length < spawn.room.memory.containerPositions.length) {
+        options.memory.role = Role.DROPMINER;
+        partBlockToUse = DROPMINER_BODY; ///implement dropminer
+        specialCase = true;
+    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER).length === 0) {
+        options.memory.role = Role.TRANSPORTER;
+        partBlockToUse = TRANSPORT_PART_BLOCK;
+    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT) {
+        options.memory.role = Role.UPGRADER;
+        partBlockToUse = WORKER_PART_BLOCK;
+    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT) {
+        options.memory.role = Role.MAINTAINTER;
+        partBlockToUse = WORKER_PART_BLOCK;
+    }
+
+    if (options.memory.role) {
+        let partsArray = [];
+        let partsBlockCost = partBlockToUse.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
+
+        for (let i = 0; i < Math.floor(spawn.room.energyCapacityAvailable / partsBlockCost); i++) {
+            partsArray = partsArray.concat(partBlockToUse);
+        }
+
+        let result = spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
+        //if there are no distributors, and there is not enough energy to spawn one immediately, convert the transporter to distributor
+        if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.DISTRIBUTOR) {
+            let distributorCandidate = roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER);
+            if (distributorCandidate.length) {
+                let creepToConvert = distributorCandidate.shift();
+                creepToConvert.memory.role = Role.DISTRIBUTOR;
+                creepToConvert.memory.targetId = null;
+            } else {
+                //spawn first available distributor
+                partsArray = [];
+                for (let i = 0; i < Math.floor(spawn.room.energyAvailable / partsBlockCost); i++) {
+                    partsArray = partsArray.concat(partBlockToUse);
+                }
+                spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
+            }
+        }
+    }
+}
+
+//find the number of workers a phase-two room can support
+export function calculateWorkerCapacity(room: Room): number {
+    //a "cycle" is 300 ticks - the amount of time a source takes to recharge
+    const CYCLE_LENGTH = 300;
+
+    //potentially useful values
+    let sourceCount = room.find(FIND_SOURCES).length;
+    let energyCapacity = room.energyCapacityAvailable;
+
+    let sourceIncomePerCycle = sourceCount * 3000;
+    let remoteIncomePerCycle = 0; //define this once we get remote harvesting working
+
+    let totalIncomePerCycle = sourceIncomePerCycle + remoteIncomePerCycle;
+
+    //cost to create [WORK, CARRY, MOVE] is 200 energy
+    let maxPartsBlockPerCreep = Math.floor(energyCapacity / 200);
+
+    //assuming there are no construction / maintenance jobs, all workers should be upgrading
+    let upgadeWorkCostPerCyclePerCreep = maxPartsBlockPerCreep * UPGRADE_CONTROLLER_POWER * CYCLE_LENGTH;
+
+    let spawnCost = maxPartsBlockPerCreep * 200;
+
+    //creeps live for 1500 ticks -> 5 cycles
+    let creepSpawnCostPerCyclePerCreep = spawnCost / 5;
+
+    let energyExpenditurePerCyclePerCreep = creepSpawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
+
+    let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
+
+    return creepCapacity;
+}

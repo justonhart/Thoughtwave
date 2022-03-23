@@ -32,4 +32,7 @@ const enum Role {
     BUILDER = 'Builder',
     UPGRADER = 'Upgrader',
     MAINTAINTER = 'MAINTAINTER',
+    DISTRIBUTOR = 'DISTRIBUTOR',
+    TRANSPORTER = 'TRANSPORTER',
+    DROPMINER = 'DROPMINER',
 }
