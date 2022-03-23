@@ -25,13 +25,15 @@ module.exports.loop = function () {
         }
     });
 
-    Object.values(Game.rooms).forEach((room) => {
-        try {
-            driveRoom(room);
-        } catch (e) {
-            console.log(`Error caught in ${room.name}: \n${e}`);
-        }
-    });
+    Object.values(Game.rooms)
+        .filter((r) => r.controller?.my)
+        .forEach((room) => {
+            try {
+                driveRoom(room);
+            } catch (e) {
+                console.log(`Error caught in ${room.name}: \n${e}`);
+            }
+        });
 
     try {
         manageMemory();
