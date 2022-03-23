@@ -30,3 +30,13 @@ These are the different roles for our creeps:
 | Role     | Purpose        |
 | -------- | -------------- |
 | RoleName | What is it for |
+
+## Priority Queue
+
+To override default creep behavior you can use the Priority Queue implemented in the WaveCreep class. To pass an action to the priority queue the following code snippet can be used as a template:
+
+```
+creep.addTaskToPriorityQueue(Priority.LOW, () => {
+        creep.travelTo(Game.spawns.Spawn1);
+});
+```

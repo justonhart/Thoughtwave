@@ -7,6 +7,10 @@ interface TravelToOpts extends MoveToOpts {
      * Avoid road on the last move towards the Target.
      */
     avoidRoadOnLastMove?: boolean;
+    /**
+     * Set task priority.
+     */
+    priority?: Priority;
 }
 
 interface TravelData {

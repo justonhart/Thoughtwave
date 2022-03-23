@@ -4,7 +4,13 @@ const MAX_STUCK_COUNT = 2; // If a creep can't move after two ticks, the path wi
 export class Pathing {
     // Store roads for each room
     private static roadStructuresCache: { [roomName: string]: Coord[] } = {};
-    private static defaultOpts: TravelToOpts = { ignoreCreeps: true, avoidRoads: false, avoidRoadOnLastMove: false, reusePath: 10 };
+    private static defaultOpts: TravelToOpts = {
+        ignoreCreeps: true,
+        avoidRoads: false,
+        priority: Priority.MEDIUM,
+        avoidRoadOnLastMove: false,
+        reusePath: 30,
+    };
 
     /**
      * Method to replace the default "moveTo" function
@@ -23,6 +29,9 @@ export class Pathing {
         if (opts) {
             options = { ...options, ...opts }; // Enable overriding any default options
         }
+
+        // Set task Priority
+        creep.memory.currentTaskPriority = options.priority;
 
         let roomPosition = this.normalizePos(destination);
 
@@ -52,15 +61,20 @@ export class Pathing {
             opts.costCallback = this.getAvoidRoadsMatrix(destination, opts.range);
         }
 
+        // If there is a creep in the next location that is not moving then ask it to shove it
+        // this.shoveAway(creep) Works but sometimes they keep shoving each other so lets not do this for now
+
         // Recalculate path with creeps in mind
         if (this.isStuck(creep, prevCoords)) {
             creep.memory._move.stuckCount++;
+
             // If creep is still stuck after two ticks find new path
             if (stuckCount >= MAX_STUCK_COUNT) {
                 opts.visualizePathStyle = { stroke: '#0000ff', opacity: 0.7, strokeWidth: 0.2, lineStyle: 'dashed' };
                 opts.ignoreCreeps = false;
                 opts.reusePath = 5;
-                return creep.moveTo(destination, opts);
+                //  creep.memory._move.path = Room.serializePath(creep.pos.findPathTo(destination, opts)); I figured this would make the creep reevaluate the path but that doesn't seem to work
+                return creep.moveTo(destination, opts); // TODO: can be deleted --> simply set options if stuck and have moveTo at end (might have to delete current move set in memory)
             }
         } else {
             creep.memory._move.stuckCount = 0; // Reset stuckCount
@@ -104,13 +118,7 @@ export class Pathing {
      * @returns
      */
     private static isStuck(creep: Creep, prevCoords: Coord): boolean {
-        if (!prevCoords || creep.fatigue > 0) {
-            return false;
-        }
-        if (this.sameCoord(creep.pos, prevCoords)) {
-            return true;
-        }
-        return false;
+        return prevCoords && creep.fatigue === 0 && this.sameCoord(creep.pos, prevCoords);
     }
 
     /**
@@ -142,11 +150,44 @@ export class Pathing {
     }
 
     /**
+     * Creeps are able to shove other creeps in the opposite direction if they are not moving towards the same destination.
+     * See PriorityQueue implementation for task priority handling.
+     *
+     * @param creep -
+     * @returns -
+     */
+    private static shoveAway(creep: Creep) {
+        const path = Room.deserializePath(creep.memory._move.path);
+        const nextPos = path ? path[0] : null;
+        if (nextPos) {
+            //check if creep is in nextPos
+            const obstacleCreep = creep.room.lookForAt(LOOK_CREEPS, nextPos.x, nextPos.y);
+            if (
+                obstacleCreep.length &&
+                (!obstacleCreep[0].memory._move || JSON.stringify(obstacleCreep[0].memory._move.dest) !== JSON.stringify(creep.memory._move.dest))
+            ) {
+                obstacleCreep[0].addTaskToPriorityQueue(Priority.MEDIUM, () => {
+                    obstacleCreep[0].move(this.inverseDirection(nextPos.direction));
+                }); // switch positions
+            }
+        }
+    }
+
+    /**
+     * There are 8 directions 1-8. The opposite direction is always a difference of 4. Since the first direction is 1 we simply add 1 to the entire function.
+     * @param direction -
+     * @returns
+     */
+    private static inverseDirection(direction: DirectionConstant): DirectionConstant {
+        return (((direction + 3) % 8) + 1) as DirectionConstant;
+    }
+
+    /**
      * make position objects consistent so that either can be used as an argument
      * @param destination
      * @returns {any}
      */
-    static normalizePos(destination: HasPos | RoomPosition): RoomPosition {
+    private static normalizePos(destination: HasPos | RoomPosition): RoomPosition {
         if (!(destination instanceof RoomPosition)) {
             return destination.pos;
         }
