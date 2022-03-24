@@ -99,18 +99,14 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
 
     const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
     const TRANSPORT_PART_BLOCK = [CARRY, CARRY, MOVE];
-    const DROPMINER_BODY = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
 
-    let specialCase: boolean;
     let partBlockToUse: BodyPartConstant[];
 
     if (roomCreeps.filter((creep) => creep.memory.role === Role.DISTRIBUTOR).length === 0) {
         options.memory.role = Role.DISTRIBUTOR;
         partBlockToUse = TRANSPORT_PART_BLOCK;
-    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.DROPMINER).length < spawn.room.memory.containerPositions.length) {
-        options.memory.role = Role.DROPMINER;
-        partBlockToUse = DROPMINER_BODY; ///implement dropminer
-        specialCase = true;
+    } else if (needMiner(spawn.room)) {
+        spawnMiner(spawn);
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER).length === 0) {
         options.memory.role = Role.TRANSPORTER;
         partBlockToUse = TRANSPORT_PART_BLOCK;
@@ -180,4 +176,29 @@ export function calculateWorkerCapacity(room: Room): number {
     let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
 
     return creepCapacity;
+}
+function needMiner(room: Room): boolean {
+    let roomNeedsMiner = Object.values(room.memory.miningAssignments).some((assignment) => assignment === AssignmentStatus.UNASSIGNED);
+
+    return roomNeedsMiner;
+}
+
+function spawnMiner(spawn: StructureSpawn) {
+    let assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
+    let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
+
+    let options: SpawnOptions = {
+        memory: {
+            assignment: assigment,
+            room: spawn.room.name,
+            role: Role.MINER,
+            _move: {},
+        },
+    };
+
+    let minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
+
+    if (spawn.spawnCreep(minerBody, `${options.memory.role} ${Game.time}`, options) === OK) {
+        spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
+    }
 }

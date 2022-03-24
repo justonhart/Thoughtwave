@@ -111,9 +111,9 @@ function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
 function dropMiningContainersConstructed(room: Room): boolean {
     let positionsToCheck = room.memory.containerPositions.map((posString) => posFromMem(posString));
 
-    let allContainersConstructed = positionsToCheck
-        .map((pos) => pos.lookFor(LOOK_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_CONTAINER).length === 1)
-        .reduce((prevPosititonsHaveContainers, posHasContainer) => prevPosititonsHaveContainers && posHasContainer);
+    let allContainersConstructed = positionsToCheck.every(
+        (pos) => pos.lookFor(LOOK_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_CONTAINER).length === 1
+    );
 
     return allContainersConstructed;
 }
@@ -133,21 +133,41 @@ export function calculatePhaseShiftMinimum(room: Room): number {
 }
 
 function executePhaseShift(room: Room) {
+    console.log(`Executing phase shift in ${room.name}`);
+
     //wipe creep memory in room to stop gathering
-    Object.values(Memory.creeps)
-        .filter((creep) => creep.room === room.name)
-        .forEach((creep) => {
-            delete creep.gathering;
-            delete creep.currentTaskPriority;
-            delete creep.targetId;
-            delete creep.miningPos;
-            delete creep._move;
-        });
+    let roomCreeps = Object.values(Memory.creeps).filter((creep) => creep.room === room.name);
+
+    roomCreeps.forEach((creep) => {
+        delete creep.gathering;
+        delete creep.currentTaskPriority;
+        delete creep.targetId;
+        delete creep.miningPos;
+        creep._move = {};
+
+        //reassign EarlyWorkers to other roles
+        if (creep.role === Role.WORKER) {
+            let roleCount = new Map([
+                [Role.WORKER, 0],
+                [Role.UPGRADER, 0],
+                [Role.MAINTAINTER, 0],
+            ]);
+            roomCreeps.forEach((creep) => roleCount.set(creep.role, roleCount[creep.role] + 1));
+            creep.role = roleCount[Role.UPGRADER] <= roleCount[Role.MAINTAINTER] ? Role.UPGRADER : Role.MAINTAINTER;
+        }
+    });
+
+    //create assignment tracker
+    room.memory.miningAssignments = [];
+    room.memory.containerPositions.forEach((position) => {
+        room.memory.miningAssignments[position] = AssignmentStatus.UNASSIGNED;
+    });
 
     //remove phase one memory values
     delete room.memory.availableSourceAccessPoints;
     delete room.memory.sourceAccessPointCount;
     delete room.memory.phaseShift;
+    delete room.memory.containerPositions;
 
     this.memory.phase = 2;
 }

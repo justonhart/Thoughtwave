@@ -1,4 +1,5 @@
 interface RoomMemory {
+    miningAssignments: any[];
     containerPositions?: string[];
     phaseShift?: PhaseShiftStatus;
     phase?: number;
@@ -16,4 +17,9 @@ interface RoomPosition {
 const enum PhaseShiftStatus {
     PREPARE = 'Preparing',
     EXECUTE = 'Execute',
+}
+
+const enum AssignmentStatus {
+    UNASSIGNED = 'unassigned',
+    ASSIGNED = 'assigned',
 }

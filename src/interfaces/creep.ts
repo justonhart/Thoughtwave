@@ -1,5 +1,5 @@
 interface CreepMemory {
-    assignedPos?: string;
+    assignment?: string;
     targetId?: Id<Structure> | Id<ConstructionSite>;
     miningPos?: string;
     gathering?: boolean;
@@ -29,10 +29,9 @@ const enum Priority {
 
 const enum Role {
     WORKER = 'Worker',
-    BUILDER = 'Builder',
     UPGRADER = 'Upgrader',
     MAINTAINTER = 'MAINTAINTER',
     DISTRIBUTOR = 'DISTRIBUTOR',
     TRANSPORTER = 'TRANSPORTER',
-    DROPMINER = 'DROPMINER',
+    MINER = 'MINER',
 }

@@ -1,6 +1,6 @@
 import { EarlyCreep } from '../virtualCreeps/earlyCreep';
 
-export class EarlyDrone extends EarlyCreep {
+export class EarlyWorker extends EarlyCreep {
     protected performDuties() {
         let target = Game.getObjectById(this.memory.targetId);
 

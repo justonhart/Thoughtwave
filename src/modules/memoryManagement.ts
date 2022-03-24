@@ -19,6 +19,9 @@ function handleDeadCreep(creepName: string) {
     if (deadCreepMemory.miningPos) {
         Game.rooms[deadCreepMemory.room].memory.availableSourceAccessPoints.push(deadCreepMemory.miningPos);
     }
+    if (deadCreepMemory.assignment) {
+        Game.rooms[deadCreepMemory.room].memory.miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
+    }
 
     delete Memory.creeps[creepName];
 }
