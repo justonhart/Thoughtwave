@@ -1,4 +1,8 @@
 interface RoomMemory {
+    collectQueueCooldown: number;
+    repairSearchCooldown: number;
+    collectQueue: Id<Structure | Tombstone | Resource>[];
+    repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: Map<string, AssignmentStatus>;
     containerPositions?: string[];
     phaseShift?: PhaseShiftStatus;
@@ -8,7 +12,9 @@ interface RoomMemory {
     roadsConstructed?: boolean;
 }
 
-interface Room {}
+interface Room {
+    getRepairTarget(): Id<Structure>;
+}
 
 interface RoomPosition {
     toMemSafe(): string;
