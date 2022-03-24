@@ -5,14 +5,14 @@ export function driveRoom(room: Room) {
         initRoomMemory(room);
     }
 
-    // switch (room.memory.phase) {
-    //     case 1:
-    //         runPhaseOne(room);
-    //         break;
-    //     case 2:
-    //         runPhaseTwo(room);
-    //         break;
-    // }
+    switch (room.memory.phase) {
+        case 1:
+            runPhaseOne(room);
+            break;
+        case 2:
+            runPhaseTwo(room);
+            break;
+    }
 
     runTowers(room);
 }

@@ -12,7 +12,7 @@ export class Distributor extends TransportCreep {
             target = this.findRefillTarget();
         }
 
-        if (!target) {
+        if (!target && this.store.getUsedCapacity() < this.store.getCapacity() / 2) {
             target = this.findCollectionTarget();
         }
 
