@@ -179,6 +179,7 @@ export function calculateWorkerCapacity(room: Room): number {
 
     return creepCapacity;
 }
+
 function needMiner(room: Room): boolean {
     let roomNeedsMiner = Object.values(room.memory.miningAssignments).some((assignment) => assignment === AssignmentStatus.UNASSIGNED);
 
