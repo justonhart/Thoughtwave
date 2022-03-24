@@ -44,16 +44,20 @@ export class TransportCreep extends WaveCreep {
 
     protected findRefillTarget(): Id<Structure> {
         let spawnStructures = this.room.find(FIND_MY_STRUCTURES).filter(
-            (s) =>
+            (structure) =>
                 // @ts-ignore
-                [STRUCTURE_EXTENSION, STRUCTURE_SPAWN].includes(s.structureType) && s.store[RESOURCE_ENERGY] < s.store.getCapacity(RESOURCE_ENERGY)
+                [STRUCTURE_EXTENSION, STRUCTURE_SPAWN].includes(structure.structureType) &&
+                // @ts-ignore
+                structure.store[RESOURCE_ENERGY] < structure.store.getCapacity(RESOURCE_ENERGY)
         );
 
         if (spawnStructures.length) {
             return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
         }
 
-        let towers = this.room.find(FIND_MY_STRUCTURES).filter((s) => s.structureType === STRUCTURE_TOWER && s.store[RESOURCE_ENERGY] < 700);
+        let towers = this.room
+            .find(FIND_MY_STRUCTURES)
+            .filter((structure) => structure.structureType === STRUCTURE_TOWER && structure.store[RESOURCE_ENERGY] < 700);
         if (towers.length) {
             return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
         }
@@ -62,16 +66,20 @@ export class TransportCreep extends WaveCreep {
     protected findCollectionTarget(): Id<Resource> | Id<Structure> | Id<Tombstone> {
         let looseResources = this.room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > this.store.getCapacity() / 2);
         if (looseResources.length) {
-            return looseResources.reduce((a, b) => (a.amount > b.amount ? a : b)).id;
+            return looseResources.reduce((biggestResource, resourceToCompare) =>
+                biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
+            ).id;
         }
 
         //@ts-ignore
         let containers: StructureContainer[] = this.room
             .find(FIND_STRUCTURES)
-            .filter((s) => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity());
-        let fillingContainers = containers.filter((c) => c.store.getUsedCapacity() >= c.store.getCapacity() / 2);
+            .filter((structure) => structure.structureType === STRUCTURE_CONTAINER && structure.store.getUsedCapacity());
+        let fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
         if (fillingContainers.length) {
-            return fillingContainers.reduce((a, b) => (a.store.getUsedCapacity() > b.store.getUsedCapacity() ? a : b)).id;
+            return fillingContainers.reduce((fullestContainer, containerToRepair) =>
+                fullestContainer.store.getUsedCapacity() > containerToRepair.store.getUsedCapacity() ? fullestContainer : containerToRepair
+            ).id;
         }
 
         let tombstonesWithResources = this.room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
@@ -80,7 +88,9 @@ export class TransportCreep extends WaveCreep {
         }
 
         if (containers.length) {
-            return containers.reduce((a, b) => (a.store.getUsedCapacity() > b.store.getUsedCapacity() ? a : b)).id;
+            return containers.reduce((fullestContainer, containerToRepair) =>
+                fullestContainer.store.getUsedCapacity() > containerToRepair.store.getUsedCapacity() ? fullestContainer : containerToRepair
+            ).id;
         }
     }
 

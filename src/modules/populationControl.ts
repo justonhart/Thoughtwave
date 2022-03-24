@@ -70,7 +70,9 @@ function phaseOneSpawning(spawn: StructureSpawn) {
         if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.WORKER) {
             let potentialWorkers = roomCreeps.filter((creep) => creep.memory.role !== Role.WORKER && creep.getActiveBodyparts(WORK));
             if (potentialWorkers.length) {
-                let creepToConvert = potentialWorkers.reduce((a, b) => (a.getActiveBodyparts(WORK) > b.getActiveBodyparts(WORK) ? a : b));
+                let creepToConvert = potentialWorkers.reduce((biggestWorkCreep, creepToCheck) =>
+                    biggestWorkCreep.getActiveBodyparts(WORK) > creepToCheck.getActiveBodyparts(WORK) ? biggestWorkCreep : creepToCheck
+                );
                 creepToConvert.memory.role = Role.WORKER;
                 creepToConvert.memory.targetId = null;
             } else if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length === 0) {

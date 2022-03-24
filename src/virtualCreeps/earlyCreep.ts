@@ -27,7 +27,11 @@ export class EarlyCreep extends WorkerCreep {
             if (miningPos) {
                 if (this.pos.isEqualTo(miningPos)) {
                     //find the source in mining range w/ the highest energy and harvest from it - this matters for mining positions adjacent to more than one source
-                    let highestSourceInRange = this.pos.findInRange(FIND_SOURCES, 1).reduce((a, b) => (a.energy > b.energy ? a : b));
+                    let highestSourceInRange = this.pos
+                        .findInRange(FIND_SOURCES, 1)
+                        .reduce((biggestSource, sourceToCompare) =>
+                            biggestSource.energy > sourceToCompare.energy ? biggestSource : sourceToCompare
+                        );
                     let miningResult = this.harvest(highestSourceInRange);
 
                     if ((miningResult === OK && this.isEnergyHarvestingFinished()) || miningResult === ERR_NOT_ENOUGH_RESOURCES) {
@@ -43,7 +47,7 @@ export class EarlyCreep extends WorkerCreep {
 
     private claimSourceAccessPoint() {
         if (this.room.memory.availableSourceAccessPoints.length) {
-            let accessPoints = this.room.memory.availableSourceAccessPoints.map((s) => posFromMem(s));
+            let accessPoints = this.room.memory.availableSourceAccessPoints.map((posString) => posFromMem(posString));
             let activeSources = this.room.find(FIND_SOURCES_ACTIVE);
             let activeAccessPoints = new Set<RoomPosition>();
             accessPoints.forEach((pos) => {

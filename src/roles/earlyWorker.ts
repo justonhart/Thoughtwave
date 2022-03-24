@@ -24,9 +24,11 @@ export class EarlyWorker extends EarlyCreep {
 
     private findTarget(): Id<Structure> | Id<ConstructionSite> {
         let spawnStructures = this.room.find(FIND_MY_STRUCTURES).filter(
-            (s) =>
+            (structure) =>
                 // @ts-ignore
-                [STRUCTURE_EXTENSION, STRUCTURE_SPAWN].includes(s.structureType) && s.store[RESOURCE_ENERGY] < s.store.getCapacity(RESOURCE_ENERGY)
+                [STRUCTURE_EXTENSION, STRUCTURE_SPAWN].includes(structure.structureType) &&
+                // @ts-ignore
+                structure.store[RESOURCE_ENERGY] < structure.store.getCapacity(RESOURCE_ENERGY)
         );
 
         if (spawnStructures.length) {
@@ -42,7 +44,11 @@ export class EarlyWorker extends EarlyCreep {
 
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
-            return constructionSites.reduce((a, b) => (a.progress / a.progressTotal > b.progress / b.progressTotal ? a : b)).id;
+            return constructionSites.reduce((mostProgressedSite, siteToCheck) =>
+                mostProgressedSite.progress / mostProgressedSite.progressTotal > siteToCheck.progress / siteToCheck.progressTotal
+                    ? mostProgressedSite
+                    : siteToCheck
+            ).id;
         }
 
         if (this.room.storage?.my) {

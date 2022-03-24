@@ -23,7 +23,7 @@ export class Maintainer extends WorkerCreep {
     private findTarget(): Id<Structure> | Id<ConstructionSite> {
         let rammpartsAtRisk = this.room
             .find(FIND_MY_STRUCTURES)
-            .filter((s) => s.structureType === STRUCTURE_RAMPART && s.hits <= this.getDefenseHitpointTarget() * 0.75);
+            .filter((structure) => structure.structureType === STRUCTURE_RAMPART && structure.hits <= this.getDefenseHitpointTarget() * 0.75);
         if (rammpartsAtRisk.length) {
             return this.pos.findClosestByPath(rammpartsAtRisk, { ignoreCreeps: true }).id;
         }
@@ -35,10 +35,10 @@ export class Maintainer extends WorkerCreep {
         );
         if (damagedStructures.length) {
             //find the lowest health ratio
-            let lowestRatio = Math.min(...damagedStructures.map((s) => s.hits / s.hitsMax));
+            let lowestRatio = Math.min(...damagedStructures.map((structure) => structure.hits / structure.hitsMax));
 
             //take only those with the lowest ratio and find the closest target among them
-            let mostDamagedStructures = damagedStructures.filter((s) => s.hits / s.hitsMax === lowestRatio);
+            let mostDamagedStructures = damagedStructures.filter((structure) => structure.hits / structure.hitsMax === lowestRatio);
             return this.pos.findClosestByPath(mostDamagedStructures, { range: 3, ignoreCreeps: true }).id;
         }
 
@@ -46,13 +46,17 @@ export class Maintainer extends WorkerCreep {
 
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
-            return constructionSites.reduce((a, b) => (a.progress / a.progressTotal > b.progress / b.progressTotal ? a : b)).id;
+            return constructionSites.reduce((mostProgressedSite, siteToCheck) =>
+                mostProgressedSite.progress / mostProgressedSite.progressTotal > siteToCheck.progress / siteToCheck.progressTotal
+                    ? mostProgressedSite
+                    : siteToCheck
+            ).id;
         }
 
         let defenses = this.room.find(FIND_STRUCTURES).filter(
-            (s) =>
+            (structure) =>
                 //@ts-ignore
-                [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(s.structureType) && s.hits < this.getDefenseHitpointTarget()
+                [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
         );
         if (defenses.length) {
             return this.pos.findClosestByPath(defenses, { range: 3, ignoreCreeps: true }).id;
