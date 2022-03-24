@@ -1,11 +1,21 @@
 import driveCreep from './modules/creepDriver';
 import { manageMemory } from './modules/memoryManagement';
 import { populationControl } from './modules/populationControl';
-import driveRoom from './modules/roomDriver';
-import { WaveCreep } from './modules/WaveCreep';
+import { driveRoom } from './modules/roomDriver';
+import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
+    Object.values(Game.rooms)
+        .filter((r) => r.controller?.my)
+        .forEach((room) => {
+            try {
+                driveRoom(room);
+            } catch (e) {
+                console.log(`Error caught in ${room.name}: \n${e}`);
+            }
+        });
+
     Object.values(Game.spawns).forEach((spawn) => {
         if (!spawn.spawning) {
             try {
@@ -23,14 +33,6 @@ module.exports.loop = function () {
             } catch (e) {
                 console.log(`Error caught in ${creep.name}: \n${e}`);
             }
-        }
-    });
-
-    Object.values(Game.rooms).forEach((room) => {
-        try {
-            driveRoom(room);
-        } catch (e) {
-            console.log(`Error caught in ${room.name}: \n${e}`);
         }
     });
 

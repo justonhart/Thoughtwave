@@ -1,6 +1,6 @@
-import { WorkerCreep } from '../virtualCreeps/workerCreep';
+import { EarlyCreep } from '../virtualCreeps/earlyCreep';
 
-export class Maintainer extends WorkerCreep {
+export class EarlyMaintainer extends EarlyCreep {
     protected performDuties() {
         let target = Game.getObjectById(this.memory.targetId);
 
@@ -11,6 +11,8 @@ export class Maintainer extends WorkerCreep {
 
         if (target instanceof StructureController) {
             this.runUpgradeJob();
+        } else if (target instanceof StructureStorage) {
+            this.runFillStorage();
         } else if (target instanceof Structure) {
             this.runRepairJob(target);
         } else if (target instanceof ConstructionSite) {
@@ -23,7 +25,7 @@ export class Maintainer extends WorkerCreep {
     private findTarget(): Id<Structure> | Id<ConstructionSite> {
         let rammpartsAtRisk = this.room
             .find(FIND_MY_STRUCTURES)
-            .filter((structure) => structure.structureType === STRUCTURE_RAMPART && structure.hits <= this.getDefenseHitpointTarget() * 0.75);
+            .filter((structure) => structure.structureType === STRUCTURE_RAMPART && structure.hits <= 1000);
         if (rammpartsAtRisk.length) {
             return this.pos.findClosestByPath(rammpartsAtRisk, { ignoreCreeps: true }).id;
         }
@@ -46,10 +48,10 @@ export class Maintainer extends WorkerCreep {
 
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
-            return constructionSites.reduce((mostProgressedSite, siteToCheck) =>
-                mostProgressedSite.progress / mostProgressedSite.progressTotal > siteToCheck.progress / siteToCheck.progressTotal
+            return constructionSites.reduce((mostProgressedSite, thisSite) =>
+                mostProgressedSite.progress / mostProgressedSite.progressTotal > thisSite.progress / thisSite.progressTotal
                     ? mostProgressedSite
-                    : siteToCheck
+                    : thisSite
             ).id;
         }
 
@@ -62,10 +64,14 @@ export class Maintainer extends WorkerCreep {
             return this.pos.findClosestByPath(defenses, { range: 3, ignoreCreeps: true }).id;
         }
 
+        if (this.room.storage?.my) {
+            return this.room.storage.id;
+        }
+
         return this.room.controller?.id;
     }
 
     private getDefenseHitpointTarget() {
-        return this.room.controller.level * 50000;
+        return this.room.controller.level * 10000;
     }
 }

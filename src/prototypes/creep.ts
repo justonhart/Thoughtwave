@@ -1,5 +1,5 @@
 import { Pathing } from '../modules/pathing';
-import { WaveCreep } from '../modules/WaveCreep';
+import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 Creep.prototype.travelTo = function (destination, opts) {
     return Pathing.travelTo(this, destination, opts);
