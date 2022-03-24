@@ -6,6 +6,16 @@ import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
+    Object.values(Game.rooms)
+        .filter((r) => r.controller?.my)
+        .forEach((room) => {
+            try {
+                driveRoom(room);
+            } catch (e) {
+                console.log(`Error caught in ${room.name}: \n${e}`);
+            }
+        });
+
     Object.values(Game.spawns).forEach((spawn) => {
         if (!spawn.spawning) {
             try {
@@ -25,16 +35,6 @@ module.exports.loop = function () {
             }
         }
     });
-
-    Object.values(Game.rooms)
-        .filter((r) => r.controller?.my)
-        .forEach((room) => {
-            try {
-                driveRoom(room);
-            } catch (e) {
-                console.log(`Error caught in ${room.name}: \n${e}`);
-            }
-        });
 
     // Run PriorityQueue
     WaveCreep.getCreepsWithPriorityTask().forEach((creepName) => {

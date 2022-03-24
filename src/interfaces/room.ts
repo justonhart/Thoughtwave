@@ -1,5 +1,5 @@
 interface RoomMemory {
-    miningAssignments: any[];
+    miningAssignments: any;
     containerPositions?: string[];
     phaseShift?: PhaseShiftStatus;
     phase?: number;

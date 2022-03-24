@@ -71,10 +71,10 @@ function runPhaseOne(room: Room) {
     }
 }
 
-function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
+export function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
     let sources: Source[] = room.find(FIND_SOURCES);
 
-    let containerPositions: Set<RoomPosition>;
+    let containerPositions = new Set<RoomPosition>();
     sources.forEach((source) => {
         let possiblePositions = room
             .lookForAtArea(LOOK_TERRAIN, source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true)
@@ -100,7 +100,9 @@ function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
         room.memory.containerPositions = [];
         containerPositions.forEach((pos) => {
             room.memory.containerPositions.push(pos.toMemSafe());
-            room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
+            if (!pos.lookFor(LOOK_STRUCTURES).some((structure) => structure.structureType === STRUCTURE_CONTAINER)) {
+                room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
+            }
         });
         return OK;
     }
@@ -108,7 +110,7 @@ function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
     return ERR_NOT_FOUND;
 }
 
-function dropMiningContainersConstructed(room: Room): boolean {
+export function dropMiningContainersConstructed(room: Room): boolean {
     let positionsToCheck = room.memory.containerPositions.map((posString) => posFromMem(posString));
 
     let allContainersConstructed = positionsToCheck.every(
@@ -132,33 +134,34 @@ export function calculatePhaseShiftMinimum(room: Room): number {
     return 2 * (2 * transportCreepCost + room.find(FIND_SOURCES).length * dropMinerCost);
 }
 
-function executePhaseShift(room: Room) {
+export function executePhaseShift(room: Room) {
     console.log(`Executing phase shift in ${room.name}`);
 
     //wipe creep memory in room to stop gathering
-    let roomCreeps = Object.values(Memory.creeps).filter((creep) => creep.room === room.name);
+    let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
 
     roomCreeps.forEach((creep) => {
-        delete creep.gathering;
-        delete creep.currentTaskPriority;
-        delete creep.targetId;
-        delete creep.miningPos;
-        creep._move = {};
+        delete creep.memory.gathering;
+        delete creep.memory.currentTaskPriority;
+        delete creep.memory.targetId;
+        delete creep.memory.miningPos;
+        creep.memory._move = {};
 
         //reassign EarlyWorkers to other roles
-        if (creep.role === Role.WORKER) {
-            let roleCount = new Map([
-                [Role.WORKER, 0],
-                [Role.UPGRADER, 0],
-                [Role.MAINTAINTER, 0],
-            ]);
-            roomCreeps.forEach((creep) => roleCount.set(creep.role, roleCount[creep.role] + 1));
-            creep.role = roleCount[Role.UPGRADER] <= roleCount[Role.MAINTAINTER] ? Role.UPGRADER : Role.MAINTAINTER;
+        if (creep.memory.role === Role.WORKER) {
+            let upgraderCount = Object.values(Game.creeps).filter(
+                (creep) => creep.memory.room === room.name && creep.memory.role === Role.UPGRADER
+            ).length;
+            let maintainerCount = Object.values(Game.creeps).filter(
+                (creep) => creep.memory.room === room.name && creep.memory.role === Role.MAINTAINTER
+            ).length;
+
+            creep.memory.role = upgraderCount <= maintainerCount ? Role.UPGRADER : Role.MAINTAINTER;
         }
     });
 
     //create assignment tracker
-    room.memory.miningAssignments = [];
+    room.memory.miningAssignments = {};
     room.memory.containerPositions.forEach((position) => {
         room.memory.miningAssignments[position] = AssignmentStatus.UNASSIGNED;
     });
@@ -169,7 +172,7 @@ function executePhaseShift(room: Room) {
     delete room.memory.phaseShift;
     delete room.memory.containerPositions;
 
-    this.memory.phase = 2;
+    room.memory.phase = 2;
 }
 
 function runPhaseTwo(room: Room) {}

@@ -66,7 +66,9 @@ export class TransportCreep extends WaveCreep {
         }
 
         //@ts-ignore
-        let containers: StructureContainer[] = this.room.find(FIND_STRUCTURES).filter((s) => s.structureType === STRUCTURE_CONTAINER);
+        let containers: StructureContainer[] = this.room
+            .find(FIND_STRUCTURES)
+            .filter((s) => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity());
         let fillingContainers = containers.filter((c) => c.store.getUsedCapacity() >= c.store.getCapacity() / 2);
         if (fillingContainers.length) {
             return fillingContainers.reduce((a, b) => (a.store.getUsedCapacity() > b.store.getUsedCapacity() ? a : b)).id;
