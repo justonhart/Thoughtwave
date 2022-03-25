@@ -118,6 +118,11 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT) {
         options.memory.role = Role.MAINTAINTER;
         partBlockToUse = WORKER_PART_BLOCK;
+    } else if (Game.flags.claimer && !Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.CLAIMER).length) {
+        spawn.spawnCreep([MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM], `${options.memory.role} ${Game.time}`, { memory: { role: Role.CLAIMER } });
+    } else if (Game.flags.colonizer && Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.COLONIZER).length < 2) {
+        options.memory.role = Role.COLONIZER;
+        partBlockToUse = WORKER_PART_BLOCK;
     }
 
     if (options.memory.role) {

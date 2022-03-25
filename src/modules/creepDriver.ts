@@ -7,6 +7,8 @@ import { Maintainer } from '../roles/maintainer';
 import { Miner } from '../roles/miner';
 import { Distributor } from '../roles/distributor';
 import { Transporter } from '../roles/transporter';
+import { Claimer } from '../roles/claimer';
+import { Colonizer } from '../roles/colonizer';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -37,6 +39,12 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.TRANSPORTER:
             waveCreep = new Transporter(creep.id);
+            break;
+        case Role.CLAIMER:
+            waveCreep = new Claimer(creep.id);
+            break;
+        case Role.COLONIZER:
+            waveCreep = new Colonizer(creep.id);
             break;
         default:
             waveCreep = new WaveCreep(creep.id);
