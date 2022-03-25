@@ -1,7 +1,6 @@
 import { EarlyCreep } from '../virtualCreeps/earlyCreep';
 
 export class Colonizer extends EarlyCreep {
-    // TODO could be optimized to change from colonizer to normal worker after job is done
     protected performDuties() {
         const flag = Game.flags.colonizer;
 
@@ -20,8 +19,9 @@ export class Colonizer extends EarlyCreep {
                 } else {
                     // finished building spawn
                     Game.flags.colonizer.remove();
-                    console.log(`§{this.room.name} spawn has been build! Time to die.`);
-                    this.suicide();
+                    console.log(`${this.room.name} spawn has been build!`);
+                    this.memory.role = Role.WORKER; // Turn into worker
+                    this.memory.room = this.room.name; // Change to new room
                 }
             }
         }
