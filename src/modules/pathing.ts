@@ -1,5 +1,7 @@
 const MATRIX_COST_OFF_ROAD = 10; // Twice the cost of swamp terrain to avoid roads if possible
 const MAX_STUCK_COUNT = 2; // If a creep can't move after two ticks, the path will be reevaluated
+//@ts-ignore
+global.IN_ROOM = -20;
 
 export class Pathing {
     // Store roads for each room
@@ -187,7 +189,7 @@ export class Pathing {
      * @param destination
      * @returns {any}
      */
-    private static normalizePos(destination: HasPos | RoomPosition): RoomPosition {
+    public static normalizePos(destination: HasPos | RoomPosition): RoomPosition {
         if (!(destination instanceof RoomPosition)) {
             return destination.pos;
         }

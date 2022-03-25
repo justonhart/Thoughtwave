@@ -7,9 +7,7 @@ export class Colonizer extends EarlyCreep {
 
         if (flag) {
             // Go to the target room
-            if (flag.pos.roomName !== this.pos.roomName) {
-                this.travelTo(flag, { reusePath: 50, maxOps: 10000 });
-            } else {
+            if (this.travelToRoom(flag.pos.roomName) === IN_ROOM) {
                 let target = Game.getObjectById(this.memory.targetId);
 
                 if (!this.memory.targetId || !target) {
