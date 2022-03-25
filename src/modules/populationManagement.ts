@@ -177,7 +177,7 @@ export function calculateWorkerCapacity(room: Room): number {
 
     let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
 
-    return Math.ceil(creepCapacity) * 1.5;
+    return Math.ceil(creepCapacity);
 }
 
 function needMiner(room: Room): boolean {
