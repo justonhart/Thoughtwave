@@ -30,7 +30,7 @@ These are the different roles for our creeps:
 | Role      | Phase 2            | Purpose                                                                                                                                                                                           |
 | --------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | WORKER    | :heavy_check_mark: | Todo here                                                                                                                                                                                         |
-| CLAIMER   | :x:                | Place a flag on the controller you want to claim, then a Creep will automatically spawn and claim that controller if possible.                                                                    |
+| CLAIMER   | :x:                | Place a flag anywhere in the room you want to claim, then a Creep will automatically spawn and claim the controller in that if possible.                                                          |
 | COLONIZER | :x:                | Goes to the newly claimed room and builds the spawner. There should always be 2 colonizers until the spawner has been build. Then the flag will get removed and normal room operation will start. |
 
 ## Priority Queue
