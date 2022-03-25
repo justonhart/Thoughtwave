@@ -169,9 +169,6 @@ export function executePhaseShift(room: Room) {
     room.memory.repairQueue = [];
     room.memory.repairSearchCooldown = 0;
 
-    room.memory.collectQueue = [];
-    room.memory.collectQueueCooldown = 0;
-
     //remove phase one memory values
     delete room.memory.availableSourceAccessPoints;
     delete room.memory.sourceAccessPointCount;
@@ -184,9 +181,6 @@ export function executePhaseShift(room: Room) {
 function runPhaseTwo(room: Room) {
     if (room.memory.repairSearchCooldown > 0) {
         room.memory.repairSearchCooldown--;
-    }
-    if (room.memory.collectQueueCooldown > 0) {
-        room.memory.collectQueueCooldown--;
     }
 
     if (Game.time % 500) {

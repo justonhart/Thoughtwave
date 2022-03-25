@@ -1,7 +1,5 @@
 interface RoomMemory {
-    collectQueueCooldown: number;
     repairSearchCooldown: number;
-    collectQueue: Id<Structure | Tombstone | Resource>[];
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: Map<string, AssignmentStatus>;
     containerPositions?: string[];
