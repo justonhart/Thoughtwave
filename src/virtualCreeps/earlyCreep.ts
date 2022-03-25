@@ -8,17 +8,7 @@ export class EarlyCreep extends WorkerCreep {
             this.memory.gathering = false;
             return;
         }
-        const ruins = this.room.find(FIND_RUINS).filter((ruins) => ruins.store[RESOURCE_ENERGY]);
-        if (ruins.length) {
-            switch (this.withdraw(ruins[0], RESOURCE_ENERGY)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(ruins[0]);
-                    break;
-                case ERR_FULL:
-                    this.memory.gathering = false;
-                    break;
-            }
-        } else if (this.room.storage?.my === false && this.room.storage.store[RESOURCE_ENERGY]) {
+        if (this.room.storage?.my === false && this.room.storage.store[RESOURCE_ENERGY]) {
             switch (this.withdraw(this.room.storage, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(this.room.storage);
@@ -49,6 +39,19 @@ export class EarlyCreep extends WorkerCreep {
                     }
                 } else {
                     this.travelTo(miningPos);
+                }
+            } else {
+                // If all sources are taken then look for ruins
+                const ruins = this.room.find(FIND_RUINS).filter((ruins) => ruins.store[RESOURCE_ENERGY]);
+                if (ruins.length) {
+                    switch (this.withdraw(ruins[0], RESOURCE_ENERGY)) {
+                        case ERR_NOT_IN_RANGE:
+                            this.travelTo(ruins[0]);
+                            break;
+                        case ERR_FULL:
+                            this.memory.gathering = false;
+                            break;
+                    }
                 }
             }
         }
