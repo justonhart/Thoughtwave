@@ -28,5 +28,7 @@ interface Destination {
     room: string;
 }
 
+declare const IN_ROOM: IN_ROOM;
+type IN_ROOM = -20;
 type HasPos = { pos: RoomPosition };
 type Coord = { x: number; y: number };

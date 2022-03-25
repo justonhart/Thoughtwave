@@ -89,6 +89,7 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     const SPAWN_LIMIT = calculateWorkerCapacity(spawn.room);
     const UPGRADER_LIMIT = SPAWN_LIMIT / 2;
     const MAINTAINTER_LIMIT = SPAWN_LIMIT / 2;
+    const COLONIZER_LIMIT = 2;
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
 
@@ -117,6 +118,12 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
         partBlockToUse = WORKER_PART_BLOCK;
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT) {
         options.memory.role = Role.MAINTAINTER;
+        partBlockToUse = WORKER_PART_BLOCK;
+    } else if (Game.flags.claimer && !Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.CLAIMER).length) {
+        options.memory.role = Role.CLAIMER;
+        spawn.spawnCreep([MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM], `${options.memory.role} ${Game.time}`, options);
+    } else if (Game.flags.colonizer && Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.COLONIZER).length < COLONIZER_LIMIT) {
+        options.memory.role = Role.COLONIZER;
         partBlockToUse = WORKER_PART_BLOCK;
     }
 
