@@ -1,9 +1,6 @@
 import { posFromMem } from './memoryManagement';
 
 export function driveRoom(room: Room) {
-    if (room.memory?.phase == undefined && room.memory?.sourceAccessPointCount) {
-        room.memory.phase = 1;
-    }
     if (room.memory?.phase == undefined) {
         initRoomMemory(room);
     }
@@ -169,6 +166,9 @@ export function executePhaseShift(room: Room) {
         room.memory.miningAssignments[position] = AssignmentStatus.UNASSIGNED;
     });
 
+    room.memory.repairQueue = [];
+    room.memory.repairSearchCooldown = 0;
+
     //remove phase one memory values
     delete room.memory.availableSourceAccessPoints;
     delete room.memory.sourceAccessPointCount;
@@ -178,4 +178,34 @@ export function executePhaseShift(room: Room) {
     room.memory.phase = 2;
 }
 
-function runPhaseTwo(room: Room) {}
+function runPhaseTwo(room: Room) {
+    if (room.memory.repairSearchCooldown > 0) {
+        room.memory.repairSearchCooldown--;
+    }
+
+    if (Game.time % 500) {
+        room.memory.repairQueue = findRepairTargets(room);
+    }
+}
+
+export function findRepairTargets(room: Room): Id<Structure>[] {
+    if (!room.memory.repairQueue) {
+        room.memory.repairQueue = [];
+    }
+
+    let repairTargetQueue: Id<Structure>[] = [];
+
+    let damagedRoomStructures = room
+        .find(FIND_STRUCTURES)
+        .filter(
+            (structure) =>
+                structure.structureType !== STRUCTURE_WALL && structure.structureType !== STRUCTURE_RAMPART && structure.hits < structure.hitsMax
+        );
+
+    damagedRoomStructures.sort((structureA, structureB) => structureA.hits / structureA.hitsMax - structureB.hits / structureB.hitsMax);
+    damagedRoomStructures.forEach((structure) => {
+        repairTargetQueue.push(structure.id);
+    });
+
+    return repairTargetQueue;
+}
