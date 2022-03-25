@@ -13,7 +13,8 @@ export class Claimer extends WaveCreep {
                         this.travelTo(this.room.controller, { range: 1 });
                         break;
                     case OK:
-                        Game.flags.claimer.name = 'colonizer'; // Send colonizer next
+                        Game.flags.claimer.remove();
+                        flag.room.createFlag(flag.pos, 'colonizer'); // Send colonizer
                         console.log(`${this.room.name} has been claimed!`);
                         this.suicide();
                         break;
