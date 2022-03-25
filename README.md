@@ -29,10 +29,17 @@ These are the different roles for our creeps:
 
 | Role      | Phase 2            | Purpose                                                                                                                                                                                           |
 | --------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| WORKER    | :heavy_check_mark: | Todo here                                                                                                                                                                                         |
+| EARLYWORKER | :x: | Creep used at start of the game. Gathers energy for spawn, builds and repairs structures, upgrades controllers.                                                                                                 |
+| EARLYMAINTAINER | :x: | Specialized EARLYWORKER. Primarily repairs and builds structures, but will upgrade controllers if lacking work.                                                                 |
+| EARLYUPGRADER | :x: | Specialized EARLYWORKER. Exclusively upgrades the room controller.                                                                   |
+| MAINTAINER | ✔️ | Primarily repairs and builds structures, but will upgrade controllers if lacking work.                                                                  |
+| UPGRADER | ✔️ | Exclusively upgrades the room controller.
+| MINER | ✔️ | Stands at sources and harvests energy at 100% efficiency. |
+| DISTRIBUTOR | ✔️ | Distributes energy from storage to structures in need. Acts as a transporter if no distribution work needs done. |
+| TRANSPORTER | ✔️ | Gathers resources from containers or tombstones and moves them to storage. Acts as a distributor if no transportation work needs done. |
+| MINER | ✔️ | Stands at sources and harvests energy at 100% efficiency. |
 | CLAIMER   | :x:                | Place a flag anywhere in the room you want to claim, then a Creep will automatically spawn and claim the controller in that if possible.                                                          |
 | COLONIZER | :x:                | Goes to the newly claimed room and builds the spawner. There should always be 2 colonizers until the spawner has been build. Then the flag will get removed and normal room operation will start. |
-
 ## Priority Queue
 
 To override default creep behavior you can use the Priority Queue implemented in the WaveCreep class. To pass an action to the priority queue the following code snippet can be used as a template:
