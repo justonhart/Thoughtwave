@@ -8,7 +8,7 @@ export class Distributor extends TransportCreep {
             target = this.room.storage.id;
         }
 
-        if (!target) {
+        if (!target && (this.room.storage.store.energy > 0 || this.store.energy > 0)) {
             target = this.findRefillTarget();
         }
 
