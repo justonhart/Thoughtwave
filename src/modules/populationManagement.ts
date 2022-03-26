@@ -104,6 +104,7 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     const TRANSPORT_PART_BLOCK = [CARRY, CARRY, MOVE];
 
     let partBlockToUse: BodyPartConstant[];
+    let partsArray = [];
 
     if (roomCreeps.filter((creep) => creep.memory.role === Role.DISTRIBUTOR).length === 0) {
         options.memory.role = Role.DISTRIBUTOR;
@@ -121,14 +122,13 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
         partBlockToUse = WORKER_PART_BLOCK;
     } else if (Game.flags.claimer && !Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.CLAIMER).length) {
         options.memory.role = Role.CLAIMER;
-        spawn.spawnCreep([MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM], `${options.memory.role} ${Game.time}`, options);
+        partsArray = [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM];
     } else if (Game.flags.colonizer && Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.COLONIZER).length < COLONIZER_LIMIT) {
         options.memory.role = Role.COLONIZER;
         partBlockToUse = WORKER_PART_BLOCK;
     }
 
     if (options.memory.role) {
-        let partsArray = [];
         let partsBlockCost = partBlockToUse.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
 
         for (let i = 0; i < Math.floor(spawn.room.energyCapacityAvailable / partsBlockCost); i++) {
