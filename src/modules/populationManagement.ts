@@ -105,12 +105,14 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
 
     let partBlockToUse: BodyPartConstant[];
     let partsArray = [];
+    let specialSpawnCase = false;
 
     if (roomCreeps.filter((creep) => creep.memory.role === Role.DISTRIBUTOR).length === 0) {
         options.memory.role = Role.DISTRIBUTOR;
         partBlockToUse = TRANSPORT_PART_BLOCK;
     } else if (needMiner(spawn.room)) {
         spawnMiner(spawn);
+        specialSpawnCase = true;
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER).length === 0) {
         options.memory.role = Role.TRANSPORTER;
         partBlockToUse = TRANSPORT_PART_BLOCK;
@@ -128,26 +130,28 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
         partBlockToUse = WORKER_PART_BLOCK;
     }
 
-    if (partsArray.length === 0) {
-        partsArray = createPartsArray(partBlockToUse, spawn.room.energyCapacityAvailable);
-    }
+    if (!specialSpawnCase) {
+        if (partsArray.length === 0) {
+            partsArray = createPartsArray(partBlockToUse, spawn.room.energyCapacityAvailable);
+        }
 
-    let result = spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
+        let result = spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
 
-    //if there are no distributors, and there is not enough energy to spawn one immediately, convert the transporter to distributor
-    if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.DISTRIBUTOR) {
-        let distributorCandidate = roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER);
-        if (distributorCandidate.length) {
-            let creepToConvert = distributorCandidate.shift();
-            creepToConvert.memory.role = Role.DISTRIBUTOR;
-            creepToConvert.memory.targetId = null;
-        } else {
-            //spawn first available distributor
-            partsArray = [];
-            for (let i = 0; i < Math.floor(spawn.room.energyAvailable / 150); i++) {
-                partsArray = partsArray.concat(partBlockToUse);
+        //if there are no distributors, and there is not enough energy to spawn one immediately, convert the transporter to distributor
+        if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.DISTRIBUTOR) {
+            let distributorCandidate = roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER);
+            if (distributorCandidate.length) {
+                let creepToConvert = distributorCandidate.shift();
+                creepToConvert.memory.role = Role.DISTRIBUTOR;
+                creepToConvert.memory.targetId = null;
+            } else {
+                //spawn first available distributor
+                partsArray = [];
+                for (let i = 0; i < Math.floor(spawn.room.energyAvailable / 150); i++) {
+                    partsArray = partsArray.concat(partBlockToUse);
+                }
+                spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
             }
-            spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
         }
     }
 }
