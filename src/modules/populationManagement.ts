@@ -128,29 +128,26 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
         partBlockToUse = WORKER_PART_BLOCK;
     }
 
-    if (options.memory.role) {
-        let partsBlockCost = partBlockToUse.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
+    if (partsArray.length === 0) {
+        partsArray = createPartsArray(partBlockToUse, spawn.room.energyCapacityAvailable);
+    }
 
-        for (let i = 0; i < Math.floor(spawn.room.energyCapacityAvailable / partsBlockCost); i++) {
-            partsArray = partsArray.concat(partBlockToUse);
-        }
+    let result = spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
 
-        let result = spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
-        //if there are no distributors, and there is not enough energy to spawn one immediately, convert the transporter to distributor
-        if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.DISTRIBUTOR) {
-            let distributorCandidate = roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER);
-            if (distributorCandidate.length) {
-                let creepToConvert = distributorCandidate.shift();
-                creepToConvert.memory.role = Role.DISTRIBUTOR;
-                creepToConvert.memory.targetId = null;
-            } else {
-                //spawn first available distributor
-                partsArray = [];
-                for (let i = 0; i < Math.floor(spawn.room.energyAvailable / partsBlockCost); i++) {
-                    partsArray = partsArray.concat(partBlockToUse);
-                }
-                spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
+    //if there are no distributors, and there is not enough energy to spawn one immediately, convert the transporter to distributor
+    if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.DISTRIBUTOR) {
+        let distributorCandidate = roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER);
+        if (distributorCandidate.length) {
+            let creepToConvert = distributorCandidate.shift();
+            creepToConvert.memory.role = Role.DISTRIBUTOR;
+            creepToConvert.memory.targetId = null;
+        } else {
+            //spawn first available distributor
+            partsArray = [];
+            for (let i = 0; i < Math.floor(spawn.room.energyAvailable / 150); i++) {
+                partsArray = partsArray.concat(partBlockToUse);
             }
+            spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
         }
     }
 }
@@ -211,4 +208,15 @@ function spawnMiner(spawn: StructureSpawn) {
     if (spawn.spawnCreep(minerBody, `${options.memory.role} ${Game.time}`, options) === OK) {
         spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
     }
+}
+
+function createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailable: number): BodyPartConstant[] {
+    let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
+    let partsArray = [];
+
+    for (let i = 0; i < Math.floor(energyCapacityAvailable / partsBlockCost); i++) {
+        partsArray = partsArray.concat(partsBlock);
+    }
+
+    return partsArray;
 }
