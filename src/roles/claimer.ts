@@ -10,7 +10,7 @@ export class Claimer extends WaveCreep {
                 // Claim Controller in target room
                 switch (this.claimController(this.room.controller)) {
                     case ERR_NOT_IN_RANGE:
-                        this.travelTo(this.room.controller, { range: 1 });
+                        this.travelTo(this.room.controller, { range: 1, swampCost: 1 });
                         break;
                     case OK:
                         Game.flags.claimer.remove();
