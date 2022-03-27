@@ -6,7 +6,8 @@ interface CreepMemory {
     room?: string;
     role?: Role;
     currentTaskPriority?: Priority;
-    _move?: TravelData;
+    _move: MoveMemory;
+    _m?: TravelData;
 }
 
 interface Creep {
