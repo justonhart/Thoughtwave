@@ -9,6 +9,8 @@ import { Distributor } from '../roles/distributor';
 import { Transporter } from '../roles/transporter';
 import { Claimer } from '../roles/claimer';
 import { Colonizer } from '../roles/colonizer';
+import { Builder } from '../roles/builder';
+import { EarlyBuilder } from '../roles/earlyBuilder';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -29,6 +31,13 @@ export default function driveCreep(creep: Creep) {
                 waveCreep = new EarlyMaintainer(creep.id);
             } else {
                 waveCreep = new Maintainer(creep.id);
+            }
+            break;
+        case Role.BUILDER:
+            if (Memory.rooms[creep.memory.room].phase === 1) {
+                waveCreep = new EarlyBuilder(creep.id);
+            } else {
+                waveCreep = new Builder(creep.id);
             }
             break;
         case Role.MINER:

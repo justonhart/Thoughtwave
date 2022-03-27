@@ -37,9 +37,11 @@ export function calculateEarlyCreepCapacity(room: Room): number {
 function phaseOneSpawning(spawn: StructureSpawn) {
     const SPAWN_LIMIT = calculateEarlyCreepCapacity(spawn.room);
     const WORKER_LIMIT = SPAWN_LIMIT / 2;
-    const UPGRADER_LIMIT = SPAWN_LIMIT / 4;
-    const MAINTAINTER_LIMIT = SPAWN_LIMIT / 4;
+    const UPGRADER_LIMIT = Math.ceil(SPAWN_LIMIT / 4);
+    const MAINTAINTER_LIMIT = Math.ceil(SPAWN_LIMIT / 4);
+    const BUILDER_LIMIT = Math.ceil(SPAWN_LIMIT / 8);
 
+    let sizeLimitDivisor = 1;
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
 
     let options: SpawnOptions = {
@@ -55,13 +57,20 @@ function phaseOneSpawning(spawn: StructureSpawn) {
         options.memory.role = Role.UPGRADER;
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT) {
         options.memory.role = Role.MAINTAINTER;
+        sizeLimitDivisor = 2;
+    } else if (
+        roomCreeps.filter((creep) => creep.memory.role === Role.BUILDER).length < BUILDER_LIMIT &&
+        spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length
+    ) {
+        options.memory.role = Role.BUILDER;
+        sizeLimitDivisor = 2;
     }
 
     if (options.memory.role) {
         let partsArray: BodyPartConstant[] = [];
         let partsBlock = [WORK, CARRY, MOVE];
 
-        for (let i = 0; i < Math.floor(spawn.room.energyCapacityAvailable / 200); i++) {
+        for (let i = 0; i < Math.floor(spawn.room.energyCapacityAvailable / 200 / sizeLimitDivisor); i++) {
             partsArray = partsArray.concat(partsBlock);
         }
 
@@ -86,9 +95,10 @@ function phaseOneSpawning(spawn: StructureSpawn) {
 }
 
 function phaseTwoSpawning(spawn: StructureSpawn) {
-    const SPAWN_LIMIT = calculateWorkerCapacity(spawn.room);
-    const UPGRADER_LIMIT = SPAWN_LIMIT / 2;
-    const MAINTAINTER_LIMIT = SPAWN_LIMIT / 2;
+    const WORKER_SPAWN_LIMIT = calculateWorkerCapacity(spawn.room);
+    const UPGRADER_LIMIT = WORKER_SPAWN_LIMIT / 2;
+    const MAINTAINTER_LIMIT = WORKER_SPAWN_LIMIT / 2;
+    const BUILDER_LIMIT = Math.ceil(WORKER_SPAWN_LIMIT / 4);
     const COLONIZER_LIMIT = 2;
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
@@ -106,6 +116,7 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     let partBlockToUse: BodyPartConstant[];
     let partsArray = [];
     let specialSpawnCase = false;
+    let sizeLimitDivisor = 1;
 
     if (roomCreeps.filter((creep) => creep.memory.role === Role.DISTRIBUTOR).length === 0) {
         options.memory.role = Role.DISTRIBUTOR;
@@ -119,8 +130,15 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT) {
         options.memory.role = Role.UPGRADER;
         partBlockToUse = WORKER_PART_BLOCK;
-    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT) {
+    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT * 2) {
         options.memory.role = Role.MAINTAINTER;
+        partBlockToUse = WORKER_PART_BLOCK;
+        sizeLimitDivisor = 2;
+    } else if (
+        roomCreeps.filter((creep) => creep.memory.role === Role.BUILDER).length < BUILDER_LIMIT &&
+        spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length
+    ) {
+        options.memory.role = Role.BUILDER;
         partBlockToUse = WORKER_PART_BLOCK;
     } else if (Game.flags.claimer && !Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.CLAIMER).length) {
         options.memory.role = Role.CLAIMER;
@@ -131,8 +149,8 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     }
 
     if (!specialSpawnCase) {
-        if (partsArray.length === 0) {
-            partsArray = createPartsArray(partBlockToUse, spawn.room.energyCapacityAvailable);
+        if (partBlockToUse) {
+            partsArray = createPartsArray(partBlockToUse, spawn.room.energyCapacityAvailable, sizeLimitDivisor);
         }
 
         let result = spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
@@ -214,11 +232,11 @@ function spawnMiner(spawn: StructureSpawn) {
     }
 }
 
-function createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailable: number): BodyPartConstant[] {
+function createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailable: number, sizeLimitDivisor: number): BodyPartConstant[] {
     let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
     let partsArray = [];
 
-    for (let i = 0; i < Math.floor(energyCapacityAvailable / partsBlockCost); i++) {
+    for (let i = 0; i < Math.floor(energyCapacityAvailable / partsBlockCost / sizeLimitDivisor); i++) {
         partsArray = partsArray.concat(partsBlock);
     }
 

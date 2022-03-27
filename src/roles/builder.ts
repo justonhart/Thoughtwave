@@ -1,25 +1,6 @@
-import { WorkerCreep } from '../virtualCreeps/workerCreep';
+import { Maintainer } from './maintainer';
 
-export class Maintainer extends WorkerCreep {
-    protected performDuties() {
-        let target = Game.getObjectById(this.memory.targetId);
-
-        if (!this.memory.targetId || !target) {
-            this.memory.targetId = this.findTarget();
-            target = Game.getObjectById(this.memory.targetId);
-        }
-
-        if (target instanceof StructureController) {
-            this.runUpgradeJob();
-        } else if (target instanceof Structure) {
-            this.runRepairJob(target);
-        } else if (target instanceof ConstructionSite) {
-            this.runBuildJob(target);
-        } else {
-            delete this.memory.targetId;
-        }
-    }
-
+export class Builder extends Maintainer {
     protected findTarget(): Id<Structure> | Id<ConstructionSite> {
         let constructedDefenses = this.pos
             .findInRange(FIND_STRUCTURES, 3)
@@ -30,11 +11,6 @@ export class Maintainer extends WorkerCreep {
             return constructedDefenses.shift().id;
         }
 
-        let repairTarget = this.room.getRepairTarget();
-        if (repairTarget) {
-            return repairTarget;
-        }
-
         let constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
@@ -43,6 +19,11 @@ export class Maintainer extends WorkerCreep {
                     ? mostProgressedSite
                     : siteToCheck
             ).id;
+        }
+
+        let repairTarget = this.room.getRepairTarget();
+        if (repairTarget) {
+            return repairTarget;
         }
 
         let defenses = this.room.find(FIND_STRUCTURES).filter(

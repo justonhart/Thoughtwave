@@ -39,4 +39,5 @@ const enum Role {
     MINER = 'MINER',
     CLAIMER = 'CLAIMER',
     COLONIZER = 'COLONIZER',
+    BUILDER = 'BUILDER',
 }
