@@ -1,5 +1,6 @@
 const MATRIX_COST_OFF_ROAD = 10; // Twice the cost of swamp terrain to avoid roads if possible
 const MAX_STUCK_COUNT = 2; // If a creep can't move after two ticks, the path will be reevaluated
+const MAX_STUCK_ROUTE = 7; // How long the path should be reused when stuck
 //@ts-ignore
 global.IN_ROOM = -20;
 
@@ -32,6 +33,9 @@ export class Pathing {
             options = { ...options, ...opts }; // Enable overriding any default options
         }
 
+        // init memory
+        if (!creep.memory._m) creep.memory._m = { stuckCount: 0 };
+
         // Set task Priority
         creep.memory.currentTaskPriority = options.priority;
 
@@ -44,7 +48,9 @@ export class Pathing {
             console.log(`Error caught in ${creep.name} for TravelTo. Fallback to default MoveTo function. Error: \n${e}`);
             result = creep.moveTo(destination, opts);
         }
-        creep.memory._move.prevCoords = { x: creep.pos.x, y: creep.pos.y }; // Store coordinates to see if a creep is being blocked
+        if (creep.memory._move?.dest) {
+            creep.memory._m.prevPos = creep.pos; // Store coordinates to see if a creep is being blocked
+        }
         return result;
     }
 
@@ -53,9 +59,6 @@ export class Pathing {
         destination: RoomPosition,
         opts: TravelToOpts = this.defaultOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
-        const prevCoords = creep.memory._move.prevCoords ?? creep.pos;
-        const stuckCount = creep.memory._move.stuckCount ?? 0;
-
         // Set custom TravelTo options
         if (opts.avoidRoads) {
             opts.costCallback = this.getAvoidRoadsMatrix();
@@ -63,31 +66,36 @@ export class Pathing {
             opts.costCallback = this.getAvoidRoadsMatrix(destination, opts.range);
         }
 
-        // If there is a creep in the next location that is not moving then ask it to shove it
-        // this.shoveAway(creep) Works but sometimes they keep shoving each other so lets not do this for now
-
         // Recalculate path with creeps in mind
-        if (this.isStuck(creep, prevCoords)) {
-            creep.memory._move.stuckCount++;
+        if (this.isSameDest(creep, destination) && (this.isStuck(creep, creep.memory._m.prevPos) || creep.memory._m.stuckCount >= MAX_STUCK_COUNT)) {
+            creep.memory._m.stuckCount++;
 
             // If creep is still stuck after two ticks find new path
-            if (stuckCount >= MAX_STUCK_COUNT) {
+            if (creep.memory._m.stuckCount >= MAX_STUCK_COUNT && creep.memory._m.stuckCount < MAX_STUCK_ROUTE) {
                 opts.visualizePathStyle = { stroke: '#0000ff', opacity: 0.7, strokeWidth: 0.2, lineStyle: 'dashed' };
                 opts.ignoreCreeps = false;
-                opts.reusePath = 5;
-                //  creep.memory._move.path = Room.serializePath(creep.pos.findPathTo(destination, opts)); I figured this would make the creep reevaluate the path but that doesn't seem to work
-                return creep.moveTo(destination, opts); // TODO: can be deleted --> simply set options if stuck and have moveTo at end (might have to delete current move set in memory)
+                opts.reusePath = MAX_STUCK_ROUTE;
+                if (creep.memory._m.stuckCount === MAX_STUCK_COUNT) creep.memory._move = {}; // Reset current path
+            }
+            // Reset to avoid creeps
+            if (creep.memory._m.stuckCount === MAX_STUCK_ROUTE) {
+                creep.memory._move = {};
+                creep.memory._m.stuckCount = 0;
             }
         } else {
-            creep.memory._move.stuckCount = 0; // Reset stuckCount
+            creep.memory._m.stuckCount = 0; // Reset stuckCount
         }
 
         // Default
         return creep.moveTo(destination, opts);
     }
 
+    private static isSameDest(creep: Creep, destination: RoomPosition) {
+        return JSON.stringify(this.normalizeDestination(creep.memory._move.dest)) === JSON.stringify(destination);
+    }
+
     /**
-     * CostCallback function to avoid matrix
+     * CostCallback function to avoid matrix (this only runs when reusePath is used up)
      *
      */
     private static getAvoidRoadsMatrix(destination?: RoomPosition, range?: number) {
@@ -99,16 +107,23 @@ export class Pathing {
                 // edge cases
                 const top = destination.y - range < 0 ? 0 : destination.y - range;
                 const bottom = destination.y + range > 49 ? 49 : destination.y + range;
-                const left = destination.x - range ? 0 : destination.x - range;
-                const right = destination.x + range ? 49 : destination.x + range;
+                const left = destination.x - range < 0 ? 0 : destination.x - range;
+                const right = destination.x + range > 49 ? 49 : destination.x + range;
 
                 // Avoid roads at specific destination
-                Game.rooms[destination.roomName]
+                Game.rooms[roomName]
                     .lookForAtArea(LOOK_STRUCTURES, top, left, bottom, right, true)
                     .filter((structure) => structure.structure.structureType === 'road')
                     .forEach((road) => costMatrix.set(road.x, road.y, MATRIX_COST_OFF_ROAD));
             }
         };
+    }
+
+    private static normalizeDestination(destination: Destination): RoomPosition {
+        if (!destination) {
+            return null;
+        }
+        return new RoomPosition(destination.x, destination.y, destination.room);
     }
 
     /**
@@ -120,7 +135,7 @@ export class Pathing {
      * @returns
      */
     private static isStuck(creep: Creep, prevCoords: Coord): boolean {
-        return prevCoords && creep.fatigue === 0 && this.sameCoord(creep.pos, prevCoords);
+        return prevCoords && creep.fatigue === 0 && creep.memory._move?.dest && this.sameCoord(creep.pos, prevCoords);
     }
 
     /**
@@ -166,7 +181,7 @@ export class Pathing {
             const obstacleCreep = creep.room.lookForAt(LOOK_CREEPS, nextPos.x, nextPos.y);
             if (
                 obstacleCreep.length &&
-                (!obstacleCreep[0].memory._move || JSON.stringify(obstacleCreep[0].memory._move.dest) !== JSON.stringify(creep.memory._move.dest))
+                (!obstacleCreep[0].memory._m || JSON.stringify(obstacleCreep[0].memory._move.dest) !== JSON.stringify(creep.memory._move.dest))
             ) {
                 obstacleCreep[0].addTaskToPriorityQueue(Priority.MEDIUM, () => {
                     obstacleCreep[0].move(this.inverseDirection(nextPos.direction));

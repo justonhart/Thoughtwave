@@ -13,12 +13,20 @@ interface TravelToOpts extends MoveToOpts {
     priority?: Priority;
 }
 
-interface TravelData {
+/**
+ * This is the default memory implemented by screeps
+ */
+interface MoveMemory {
     dest?: Destination;
-    time?: number;
     path?: string;
     room?: string;
-    prevCoords?: Coord;
+}
+
+/**
+ * Custom movement information for the travel function
+ */
+interface TravelData {
+    prevPos?: RoomPosition;
     stuckCount?: number;
 }
 
