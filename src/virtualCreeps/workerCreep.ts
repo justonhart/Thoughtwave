@@ -110,27 +110,31 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected runRepairJob(target: Structure) {
-        let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);
-        let repairSuccess = this.repair(target);
-        switch (repairSuccess) {
-            case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { range: 3, avoidRoadOnLastMove: true, visualizePathStyle: { stroke: '#ffffff' } });
-                break;
-            case ERR_NOT_ENOUGH_RESOURCES:
-                this.memory.gathering = true;
-            case ERR_INVALID_TARGET:
-                delete this.memory.targetId;
-                break;
-            case OK:
-                this.memory.currentTaskPriority = Priority.MEDIUM;
-                if (this.isRepairFinished(target)) {
-                    delete this.memory.targetId;
-                }
-                if (this.usedAllRemainingEnergy(jobCost)) {
+        if (target.hits < target.hitsMax) {
+            let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);
+            let repairSuccess = this.repair(target);
+            switch (repairSuccess) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(target, { range: 3, visualizePathStyle: { stroke: '#ffffff' } });
+                    break;
+                case ERR_NOT_ENOUGH_RESOURCES:
                     this.memory.gathering = true;
+                case ERR_INVALID_TARGET:
                     delete this.memory.targetId;
-                }
-                break;
+                    break;
+                case OK:
+                    this.memory.currentTaskPriority = Priority.MEDIUM;
+                    if (this.isRepairFinished(target)) {
+                        delete this.memory.targetId;
+                    }
+                    if (this.usedAllRemainingEnergy(jobCost)) {
+                        this.memory.gathering = true;
+                        delete this.memory.targetId;
+                    }
+                    break;
+            }
+        } else {
+            delete this.memory.targetId;
         }
     }
 
@@ -146,5 +150,9 @@ export class WorkerCreep extends WaveCreep {
 
     protected usedAllRemainingEnergy(energyUsedPerWork: number) {
         return this.store[RESOURCE_ENERGY] <= energyUsedPerWork;
+    }
+
+    protected getDefenseHitpointTarget() {
+        return this.room.controller.level * 50000;
     }
 }

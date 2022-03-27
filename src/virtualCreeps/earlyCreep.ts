@@ -103,4 +103,8 @@ export class EarlyCreep extends WorkerCreep {
             this.storeCargo();
         }
     }
+
+    protected getDefenseHitpointTarget() {
+        return this.room.controller.level * 10000;
+    }
 }
