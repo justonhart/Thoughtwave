@@ -6,8 +6,7 @@ global.IN_ROOM = -20;
 
 export class Pathing {
     // Store roads for each room
-    private static roadStructuresCache: { [roomName: string]: Coord[] } = {};
-    private static defaultOpts: TravelToOpts = {
+    private defaultOpts: TravelToOpts = {
         ignoreCreeps: true,
         avoidRoads: false,
         priority: Priority.MEDIUM,
@@ -23,7 +22,7 @@ export class Pathing {
      * @param opts
      * @returns
      */
-    public static travelTo(
+    public travelTo(
         creep: Creep,
         destination: HasPos | RoomPosition,
         opts?: TravelToOpts
@@ -39,7 +38,7 @@ export class Pathing {
         // Set task Priority
         creep.memory.currentTaskPriority = options.priority;
 
-        let roomPosition = this.normalizePos(destination);
+        let roomPosition = Pathing.normalizePos(destination);
 
         try {
             var result = this.move(creep, roomPosition, options);
@@ -54,10 +53,10 @@ export class Pathing {
         return result;
     }
 
-    private static move(
+    private move(
         creep: Creep,
         destination: RoomPosition,
-        opts: TravelToOpts = this.defaultOpts
+        opts: TravelToOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
         // Set custom TravelTo options
         if (opts.avoidRoads) {
@@ -90,7 +89,7 @@ export class Pathing {
         return creep.moveTo(destination, opts);
     }
 
-    private static isSameDest(creep: Creep, destination: RoomPosition) {
+    private isSameDest(creep: Creep, destination: RoomPosition) {
         return JSON.stringify(this.normalizeDestination(creep.memory._move.dest)) === JSON.stringify(destination);
     }
 
@@ -98,11 +97,13 @@ export class Pathing {
      * CostCallback function to avoid matrix (this only runs when reusePath is used up)
      *
      */
-    private static getAvoidRoadsMatrix(destination?: RoomPosition, range?: number) {
+    private getAvoidRoadsMatrix(destination?: RoomPosition, range?: number) {
         return (roomName: string, costMatrix: CostMatrix) => {
             if (!destination) {
                 // avoid all roads
-                Pathing.getRoadStructures(roomName).forEach((road) => costMatrix.set(road.x, road.y, MATRIX_COST_OFF_ROAD));
+                Game.rooms[roomName]
+                    .find(FIND_STRUCTURES, { filter: (i) => i.structureType == STRUCTURE_ROAD })
+                    .forEach((road) => costMatrix.set(road.pos.x, road.pos.y, MATRIX_COST_OFF_ROAD));
             } else if (roomName === destination.roomName) {
                 // edge cases
                 const top = destination.y - range < 0 ? 0 : destination.y - range;
@@ -119,7 +120,7 @@ export class Pathing {
         };
     }
 
-    private static normalizeDestination(destination: Destination): RoomPosition {
+    private normalizeDestination(destination: Destination): RoomPosition {
         if (!destination) {
             return null;
         }
@@ -134,7 +135,7 @@ export class Pathing {
      * @param prevCoords -
      * @returns
      */
-    private static isStuck(creep: Creep, prevCoords: Coord): boolean {
+    private isStuck(creep: Creep, prevCoords: Coord): boolean {
         return prevCoords && creep.fatigue === 0 && creep.memory._move?.dest && this.sameCoord(creep.pos, prevCoords);
     }
 
@@ -145,25 +146,8 @@ export class Pathing {
      * @param pos2 -
      * @returns
      */
-    private static sameCoord(pos1: Coord, pos2: Coord): boolean {
+    private sameCoord(pos1: Coord, pos2: Coord): boolean {
         return pos1.x === pos2.x && pos1.y === pos2.y;
-    }
-
-    /**
-     * Store all road coordinates in room memory to save cpu time
-     * TODO: Manually adding roads cant trigger this logik (maybe save tick time as well and periodically update this ==> say every 100 ticks or so)
-     *
-     * @param roomName -
-     * @param forceUpdate in case of new construction (should not be called every tick)
-     * @returns
-     */
-    private static getRoadStructures(roomName: string, forceUpdate?: boolean): Coord[] {
-        if (!this.roadStructuresCache[roomName] || forceUpdate) {
-            this.roadStructuresCache[roomName] = Game.rooms[roomName]
-                .find(FIND_STRUCTURES, { filter: (i) => i.structureType == STRUCTURE_ROAD })
-                .map((road) => road.pos);
-        }
-        return this.roadStructuresCache[roomName];
     }
 
     /**
@@ -173,7 +157,7 @@ export class Pathing {
      * @param creep -
      * @returns -
      */
-    private static shoveAway(creep: Creep) {
+    private shoveAway(creep: Creep) {
         const path = Room.deserializePath(creep.memory._move.path);
         const nextPos = path ? path[0] : null;
         if (nextPos) {
@@ -195,7 +179,7 @@ export class Pathing {
      * @param direction -
      * @returns
      */
-    private static inverseDirection(direction: DirectionConstant): DirectionConstant {
+    private inverseDirection(direction: DirectionConstant): DirectionConstant {
         return (((direction + 3) % 8) + 1) as DirectionConstant;
     }
 
