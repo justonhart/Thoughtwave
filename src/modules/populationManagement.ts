@@ -53,7 +53,7 @@ function phaseOneSpawning(spawn: StructureSpawn) {
 
     if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length < WORKER_LIMIT) {
         options.memory.role = Role.WORKER;
-    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT) {
+    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT && !spawn.room.controller.upgradeBlocked) {
         options.memory.role = Role.UPGRADER;
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT) {
         options.memory.role = Role.MAINTAINTER;
