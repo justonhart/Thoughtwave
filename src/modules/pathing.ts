@@ -77,7 +77,7 @@ export class Pathing {
                 if (creep.memory._m.stuckCount === MAX_STUCK_COUNT) creep.memory._move = {}; // Reset current path
             }
             // Reset to avoid creeps
-            if (creep.memory._m.stuckCount === MAX_STUCK_ROUTE) {
+            if (creep.memory._m.stuckCount >= MAX_STUCK_ROUTE) {
                 creep.memory._move = {};
                 creep.memory._m.stuckCount = 0;
             }
