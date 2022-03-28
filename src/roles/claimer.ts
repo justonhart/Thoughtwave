@@ -2,23 +2,23 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Claimer extends WaveCreep {
     public run() {
-        const flag = Game.flags.claimer;
+        let destination = Game.rooms[this.memory.destination];
 
-        if (flag) {
-            // Go to the target room
-            if (this.travelToRoom(flag.pos.roomName) === IN_ROOM) {
-                // Claim Controller in target room
-                switch (this.claimController(this.room.controller)) {
-                    case ERR_NOT_IN_RANGE:
-                        this.travelTo(this.room.controller, { range: 1, swampCost: 1 });
-                        break;
-                    case OK:
-                        Game.flags.claimer.remove();
-                        flag.room.createFlag(flag.pos, 'colonizer'); // Send colonizer
-                        console.log(`${this.room.name} has been claimed!`);
-                        this.suicide();
-                        break;
-                }
+        // Go to the target room
+        if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
+            // Claim Controller in target room
+            switch (this.claimController(this.room.controller)) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(this.room.controller, { range: 1, swampCost: 1 });
+                    break;
+                case ERR_INVALID_TARGET:
+                case OK:
+                    console.log(`${this.room.name} has been claimed!`);
+
+                    let opIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === this.room.name);
+                    Memory.empire.colonizationOperations[opIndex].stage = ColonizeStage.BUILD;
+                    this.suicide();
+                    break;
             }
         }
     }

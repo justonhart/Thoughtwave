@@ -53,6 +53,8 @@ function phaseOneSpawning(spawn: StructureSpawn) {
 
     if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length < WORKER_LIMIT) {
         options.memory.role = Role.WORKER;
+    } else if (checkForSpawnAssignments(spawn.room)) {
+        spawnAssignedCreep(spawn);
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT && !spawn.room.controller.upgradeBlocked) {
         options.memory.role = Role.UPGRADER;
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT) {
@@ -99,7 +101,6 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     const UPGRADER_LIMIT = WORKER_SPAWN_LIMIT / 2;
     const MAINTAINTER_LIMIT = WORKER_SPAWN_LIMIT / 2;
     const BUILDER_LIMIT = Math.ceil(WORKER_SPAWN_LIMIT / 4);
-    const COLONIZER_LIMIT = 2;
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
 
@@ -115,7 +116,6 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
 
     let partBlockToUse: BodyPartConstant[];
     let partsArray = [];
-    let specialSpawnCase = false;
     let sizeLimitDivisor = 1;
 
     if (roomCreeps.filter((creep) => creep.memory.role === Role.DISTRIBUTOR).length === 0) {
@@ -123,10 +123,11 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
         partBlockToUse = TRANSPORT_PART_BLOCK;
     } else if (needMiner(spawn.room)) {
         spawnMiner(spawn);
-        specialSpawnCase = true;
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER).length === 0) {
         options.memory.role = Role.TRANSPORTER;
         partBlockToUse = TRANSPORT_PART_BLOCK;
+    } else if (checkForSpawnAssignments(spawn.room)) {
+        spawnAssignedCreep(spawn);
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT) {
         options.memory.role = Role.UPGRADER;
         partBlockToUse = WORKER_PART_BLOCK;
@@ -140,15 +141,9 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     ) {
         options.memory.role = Role.BUILDER;
         partBlockToUse = WORKER_PART_BLOCK;
-    } else if (Game.flags.claimer && !Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.CLAIMER).length) {
-        options.memory.role = Role.CLAIMER;
-        partsArray = [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM];
-    } else if (Game.flags.colonizer && Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.COLONIZER).length < COLONIZER_LIMIT) {
-        options.memory.role = Role.COLONIZER;
-        partBlockToUse = WORKER_PART_BLOCK;
     }
 
-    if (!specialSpawnCase) {
+    if (options.memory.role) {
         if (partBlockToUse) {
             partsArray = createPartsArray(partBlockToUse, spawn.room.energyCapacityAvailable, sizeLimitDivisor);
         }
@@ -232,7 +227,7 @@ function spawnMiner(spawn: StructureSpawn) {
     }
 }
 
-function createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailable: number, sizeLimitDivisor: number): BodyPartConstant[] {
+export function createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailable: number, sizeLimitDivisor: number = 1): BodyPartConstant[] {
     let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
     let partsArray = [];
 
@@ -241,4 +236,24 @@ function createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailabl
     }
 
     return partsArray;
+}
+
+function checkForSpawnAssignments(room: Room) {
+    return Memory.empire.spawnAssignments.find((assignment) => assignment.designee === room.name);
+}
+
+function spawnAssignedCreep(spawn: StructureSpawn) {
+    const ASSIGNMENT_INDEX = Memory.empire.spawnAssignments.findIndex((assignment) => assignment.designee === spawn.room.name);
+    let assignment = Memory.empire.spawnAssignments[ASSIGNMENT_INDEX];
+    let options: SpawnOptions = {
+        memory: {
+            _move: {},
+            ...assignment.memoryOptions,
+        },
+    };
+
+    let result = spawn.spawnCreep(assignment.body, `${options.memory.role} ${Game.time}`, options);
+    if (result === OK) {
+        Memory.empire.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);
+    }
 }

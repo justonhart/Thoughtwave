@@ -1,4 +1,5 @@
 interface CreepMemory {
+    destination?: string;
     assignment?: string;
     targetId?: Id<Structure> | Id<ConstructionSite>;
     miningPos?: string;
@@ -6,7 +7,7 @@ interface CreepMemory {
     room?: string;
     role?: Role;
     currentTaskPriority?: Priority;
-    _move: MoveMemory;
+    _move?: MoveMemory;
     _m?: TravelData;
 }
 

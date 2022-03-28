@@ -106,6 +106,9 @@ export class WorkerCreep extends WaveCreep {
                     delete this.memory.targetId;
                 }
                 break;
+            case ERR_INVALID_TARGET:
+                delete this.memory.targetId;
+                break;
         }
     }
 
