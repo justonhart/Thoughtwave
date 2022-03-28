@@ -17,10 +17,10 @@ function handleDeadCreep(creepName: string) {
     let deadCreepMemory = Memory.creeps[creepName];
 
     if (deadCreepMemory.miningPos) {
-        Game.rooms[deadCreepMemory.room].memory.availableSourceAccessPoints.push(deadCreepMemory.miningPos);
+        Memory.rooms[deadCreepMemory.room || deadCreepMemory.destination].availableSourceAccessPoints.push(deadCreepMemory.miningPos);
     }
-    if (deadCreepMemory.assignment) {
-        Game.rooms[deadCreepMemory.room].memory.miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
+    if (deadCreepMemory.role === Role.MINER) {
+        Memory.rooms[deadCreepMemory.room].miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
     }
 
     delete Memory.creeps[creepName];

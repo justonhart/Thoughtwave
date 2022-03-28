@@ -8,6 +8,7 @@ interface RoomMemory {
     availableSourceAccessPoints: string[];
     sourceAccessPointCount: number;
     roadsConstructed?: boolean;
+    spawnAssignments: Role[];
 }
 
 interface Room {

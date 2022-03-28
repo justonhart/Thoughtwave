@@ -1,4 +1,5 @@
 import driveCreep from './modules/creepDriver';
+import { manageEmpire } from './modules/empireManagement';
 import { manageMemory } from './modules/memoryManagement';
 import { populationControl } from './modules/populationManagement';
 import { driveRoom } from './modules/roomManagement';
@@ -6,6 +7,12 @@ import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
+    try {
+        manageEmpire();
+    } catch (e) {
+        console.log(`Error caught in empire management: \n${e}`);
+    }
+
     Object.values(Game.rooms)
         .filter((r) => r.controller?.my)
         .forEach((room) => {
