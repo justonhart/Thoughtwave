@@ -182,9 +182,9 @@ function runPhaseTwo(room: Room) {
     if (room.memory.repairSearchCooldown > 0) {
         room.memory.repairSearchCooldown--;
     }
-
     if (Game.time % 500) {
         room.memory.repairQueue = findRepairTargets(room);
+        room.memory.collectQueue = findCollectionTargets(room);
     }
 }
 
@@ -208,4 +208,44 @@ export function findRepairTargets(room: Room): Id<Structure>[] {
     });
 
     return repairTargetQueue;
+}
+
+export function findCollectionTargets(room: Room) {
+    if (!room.memory.collectQueue) {
+        room.memory.collectQueue = [];
+    }
+
+    let collectTargetQueue: (Id<Structure> | Id<Resource> | Id<Tombstone> | Id<Ruin>)[] = [];
+
+    let looseResources = room.find(FIND_DROPPED_RESOURCES).filter((resource) => resource.amount >= 100);
+    if (looseResources.length) {
+        looseResources.forEach((resource) => collectTargetQueue.push(resource.id));
+    }
+
+    //@ts-ignore
+    let containers: StructureContainer[] = room
+        .find(FIND_STRUCTURES)
+        .filter((structure) => structure.structureType === STRUCTURE_CONTAINER && structure.store.getUsedCapacity());
+
+    let fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
+    if (fillingContainers.length) {
+        fillingContainers.forEach((container) => collectTargetQueue.push(container.id));
+    }
+
+    let tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((tomb) => tomb.store.getUsedCapacity());
+    if (tombstonesWithResources.length) {
+        tombstonesWithResources.forEach((tomb) => collectTargetQueue.push(tomb.id));
+    }
+
+    let ruins = room.find(FIND_RUINS).filter((ruin) => ruin.store.getUsedCapacity());
+    if (ruins.length) {
+        ruins.forEach((ruin) => collectTargetQueue.push(ruin.id));
+    }
+
+    let lowContainers = containers.filter((container) => container.store.getUsedCapacity() < container.store.getCapacity() / 2);
+    if (lowContainers.length) {
+        lowContainers.forEach((container) => collectTargetQueue.push(container.id));
+    }
+
+    return collectTargetQueue;
 }

@@ -1,4 +1,6 @@
 interface RoomMemory {
+    collectSearchCooldown: number;
+    collectQueue: (Id<Structure> | Id<Resource> | Id<Tombstone> | Id<Ruin>)[];
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: Map<string, AssignmentStatus>;
@@ -13,6 +15,7 @@ interface RoomMemory {
 
 interface Room {
     getRepairTarget(): Id<Structure>;
+    getCollectionTarget(): Id<Structure> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
 }
 
 interface RoomPosition {

@@ -10,7 +10,7 @@ export class TransportCreep extends WaveCreep {
 
         if (target instanceof Resource) {
             this.runPickupJob(target);
-        } else if (target instanceof Tombstone || target instanceof StructureContainer) {
+        } else if (target instanceof Tombstone || target instanceof StructureContainer || target instanceof Ruin) {
             this.runCollectionJob(target);
         } else if (target instanceof StructureSpawn || target instanceof StructureExtension || target instanceof StructureTower) {
             if (this.store.energy) {
@@ -63,39 +63,12 @@ export class TransportCreep extends WaveCreep {
         }
     }
 
-    protected findCollectionTarget(): Id<Resource> | Id<Structure> | Id<Tombstone> {
-        let looseResources = this.room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > this.store.getCapacity() / 2);
-        if (looseResources.length) {
-            return looseResources.reduce((biggestResource, resourceToCompare) =>
-                biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
-            ).id;
-        }
-
-        //@ts-ignore
-        let containers: StructureContainer[] = this.room
-            .find(FIND_STRUCTURES)
-            .filter((structure) => structure.structureType === STRUCTURE_CONTAINER && structure.store.getUsedCapacity());
-        let fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
-        if (fillingContainers.length) {
-            return fillingContainers.reduce((fullestContainer, containerToRepair) =>
-                fullestContainer.store.getUsedCapacity() > containerToRepair.store.getUsedCapacity() ? fullestContainer : containerToRepair
-            ).id;
-        }
-
-        let tombstonesWithResources = this.room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
-        if (tombstonesWithResources.length) {
-            return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
-        }
-
-        if (containers.length) {
-            return containers.reduce((fullestContainer, containerToRepair) =>
-                fullestContainer.store.getUsedCapacity() > containerToRepair.store.getUsedCapacity() ? fullestContainer : containerToRepair
-            ).id;
-        }
+    protected findCollectionTarget(): Id<Resource> | Id<Structure> | Id<Tombstone> | Id<Ruin> {
+        return this.room.getCollectionTarget();
     }
 
     //gather resources for the purpose of storing
-    protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone): void {
+    protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone | Ruin): void {
         //@ts-ignore
         let resourceToWithdraw: ResourceConstant = Object.keys(target.store).shift();
         let result = this.withdraw(target, resourceToWithdraw);
