@@ -1,6 +1,6 @@
 const MATRIX_COST_OFF_ROAD = 10; // Twice the cost of swamp terrain to avoid roads if possible
 const MAX_STUCK_COUNT = 2; // If a creep can't move after two ticks, the path will be reevaluated
-const MAX_STUCK_ROUTE = 7; // How long the path should be reused when stuck
+const MAX_STUCK_ROUTE = 5; // How long the path should be reused when stuck
 //@ts-ignore
 global.IN_ROOM = -20;
 
@@ -50,6 +50,9 @@ export class Pathing {
         if (creep.memory._move?.dest) {
             creep.memory._m.prevPos = creep.pos; // Store coordinates to see if a creep is being blocked
         }
+        if (result === ERR_TIRED) {
+            creep.memory._m.stuckCount = 0;
+        }
         return result;
     }
 
@@ -69,12 +72,15 @@ export class Pathing {
         if (this.isSameDest(creep, destination) && (this.isStuck(creep, creep.memory._m.prevPos) || creep.memory._m.stuckCount >= MAX_STUCK_COUNT)) {
             creep.memory._m.stuckCount++;
 
+            // First try pushing the creep in front closer to their target
+            if (creep.memory._m.stuckCount === 1) {
+                this.pushForward(creep);
+            }
             // If creep is still stuck after two ticks find new path
             if (creep.memory._m.stuckCount >= MAX_STUCK_COUNT && creep.memory._m.stuckCount < MAX_STUCK_ROUTE) {
                 opts.visualizePathStyle = { stroke: '#0000ff', opacity: 0.7, strokeWidth: 0.2, lineStyle: 'dashed' };
                 opts.ignoreCreeps = false;
                 opts.reusePath = MAX_STUCK_ROUTE;
-                if (creep.memory._m.stuckCount === MAX_STUCK_COUNT) creep.memory._move = {}; // Reset current path
             }
             // Reset to avoid creeps
             if (creep.memory._m.stuckCount >= MAX_STUCK_ROUTE) {
@@ -151,25 +157,38 @@ export class Pathing {
     }
 
     /**
-     * Creeps are able to shove other creeps in the opposite direction if they are not moving towards the same destination.
+     * Creeps are able to push other creeps closer to their targets if possible.
      * See PriorityQueue implementation for task priority handling.
      *
      * @param creep -
      * @returns -
      */
-    private shoveAway(creep: Creep) {
-        const path = Room.deserializePath(creep.memory._move.path);
-        const nextPos = path ? path[0] : null;
+    private pushForward(creep: Creep) {
+        const nextPos = creep.memory._move?.path ? Room.deserializePath(creep.memory._move?.path)?.[0] : null;
         if (nextPos) {
             //check if creep is in nextPos
-            const obstacleCreep = creep.room.lookForAt(LOOK_CREEPS, nextPos.x, nextPos.y);
-            if (
-                obstacleCreep.length &&
-                (!obstacleCreep[0].memory._m || JSON.stringify(obstacleCreep[0].memory._move.dest) !== JSON.stringify(creep.memory._move.dest))
-            ) {
-                obstacleCreep[0].addTaskToPriorityQueue(Priority.MEDIUM, () => {
-                    obstacleCreep[0].move(this.inverseDirection(nextPos.direction));
-                }); // switch positions
+            const obstacleCreep = creep.room.lookForAt(LOOK_CREEPS, nextPos.x, nextPos.y)?.[0];
+            if (obstacleCreep && obstacleCreep.memory._move?.path) {
+                const obstacleNextPos = Room.deserializePath(obstacleCreep.memory._move?.path)?.[0];
+                if (
+                    !obstacleCreep.memory?._move?.dest ||
+                    (obstacleNextPos && obstacleNextPos.x === creep.pos.x && obstacleNextPos.y === creep.pos.y)
+                ) {
+                    // Creep without a destination or creeps that are going to switch places are exempt (creeps without destination could be changed to just move in a random direction?)
+                    return;
+                }
+                const obstacleCreepDest = this.normalizeDestination(obstacleCreep.memory._move?.dest);
+                const forwardPath = obstacleCreep.pos.findPathTo(obstacleCreepDest, { maxOps: 100 })?.[0];
+                if (
+                    !forwardPath ||
+                    obstacleCreep.pos.getRangeTo(obstacleCreepDest) <
+                        new RoomPosition(forwardPath.x, forwardPath.y, obstacleCreep.room.name).getRangeTo(obstacleCreepDest)
+                ) {
+                    return; // Do not switch if it causes the creep that is in the way to move away from his target
+                }
+                obstacleCreep.addTaskToPriorityQueue(Priority.MEDIUM, () => {
+                    obstacleCreep.move(forwardPath.direction);
+                });
             }
         }
     }
