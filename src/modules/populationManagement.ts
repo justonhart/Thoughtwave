@@ -261,9 +261,9 @@ function spawnAssignedCreep(spawn: StructureSpawn) {
 function getAdditionalUpgraderCount(room: Room): number {
     let storedEnergy = room.storage?.store[RESOURCE_ENERGY];
 
-    if (storedEnergy > 800000) {
+    if (storedEnergy > 500000) {
         return 2;
-    } else if (storedEnergy > 500000) {
+    } else if (storedEnergy > 200000) {
         return 1;
     }
     return 0;
