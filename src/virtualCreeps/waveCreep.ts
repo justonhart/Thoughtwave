@@ -8,17 +8,22 @@ export class WaveCreep extends Creep {
     }
 
     protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage) {
-        switch (this.transfer(target, RESOURCE_ENERGY)) {
-            case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { range: 1, visualizePathStyle: { stroke: '#ffffff' } });
-                break;
-            case ERR_NOT_ENOUGH_RESOURCES:
-                this.memory.gathering = true;
-            case OK:
-            case ERR_FULL:
-                this.memory.currentTaskPriority = Priority.MEDIUM;
-                delete this.memory.targetId;
-                break;
+        if (target.store.getFreeCapacity(RESOURCE_ENERGY)) {
+            switch (this.transfer(target, RESOURCE_ENERGY)) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(target, { range: 1, visualizePathStyle: { stroke: '#ffffff' } });
+                    break;
+                case ERR_NOT_ENOUGH_RESOURCES:
+                    this.memory.gathering = true;
+                case OK:
+                case ERR_FULL:
+                    this.memory.currentTaskPriority = Priority.MEDIUM;
+                    delete this.memory.targetId;
+                    break;
+            }
+        } else {
+            this.memory.currentTaskPriority = Priority.MEDIUM;
+            delete this.memory.targetId;
         }
     }
 
