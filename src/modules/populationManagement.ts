@@ -98,7 +98,7 @@ function phaseOneSpawning(spawn: StructureSpawn) {
 
 function phaseTwoSpawning(spawn: StructureSpawn) {
     const WORKER_SPAWN_LIMIT = calculateWorkerCapacity(spawn.room);
-    const UPGRADER_LIMIT = WORKER_SPAWN_LIMIT / 2;
+    const UPGRADER_LIMIT = WORKER_SPAWN_LIMIT / 2 + getAdditionalUpgraderCount(spawn.room);
     const MAINTAINTER_LIMIT = WORKER_SPAWN_LIMIT / 2;
     const BUILDER_LIMIT = Math.ceil(WORKER_SPAWN_LIMIT / 4);
 
@@ -256,4 +256,15 @@ function spawnAssignedCreep(spawn: StructureSpawn) {
     if (result === OK) {
         Memory.empire.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);
     }
+}
+
+function getAdditionalUpgraderCount(room: Room): number {
+    let storedEnergy = room.storage?.store[RESOURCE_ENERGY];
+
+    if (storedEnergy > 500000) {
+        return 2;
+    } else if (storedEnergy > 200000) {
+        return 1;
+    }
+    return 0;
 }
