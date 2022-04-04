@@ -80,7 +80,7 @@ export class Pathing {
             if (creep.memory._m.stuckCount >= MAX_STUCK_COUNT && creep.memory._m.stuckCount < MAX_STUCK_ROUTE) {
                 opts.visualizePathStyle = { stroke: '#0000ff', opacity: 0.7, strokeWidth: 0.2, lineStyle: 'dashed' };
                 opts.ignoreCreeps = false;
-                opts.reusePath = MAX_STUCK_ROUTE;
+                opts.reusePath = 0; //MAX_STUCK_ROUTE;
             }
             // Reset to avoid creeps
             if (creep.memory._m.stuckCount >= MAX_STUCK_ROUTE) {

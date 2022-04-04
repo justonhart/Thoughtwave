@@ -14,3 +14,21 @@ Room.prototype.getRepairTarget = function (this: Room): Id<Structure> {
 
     return this.memory.repairQueue.shift();
 };
+
+Object.defineProperty(Room.prototype, 'energyStatus', {
+    get: function (this: Room) {
+        if (!this.storage || !this.storage.my) {
+            return undefined;
+        } else if (this.storage.store[RESOURCE_ENERGY] >= 500000) {
+            return EnergyStatus.SURPLUS;
+        } else if (this.storage.store[RESOURCE_ENERGY] >= 250000) {
+            return EnergyStatus.STABLE;
+        } else if (this.storage.store[RESOURCE_ENERGY] >= this.energyCapacityAvailable * 10) {
+            return EnergyStatus.RECOVERING;
+        } else {
+            return EnergyStatus.CRITICAL;
+        }
+    },
+    enumerable: false,
+    configurable: true,
+});

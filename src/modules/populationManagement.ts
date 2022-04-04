@@ -99,7 +99,7 @@ function phaseOneSpawning(spawn: StructureSpawn) {
 function phaseTwoSpawning(spawn: StructureSpawn) {
     const WORKER_SPAWN_LIMIT = calculateWorkerCapacity(spawn.room);
     const UPGRADER_LIMIT = WORKER_SPAWN_LIMIT / 2 + getAdditionalUpgraderCount(spawn.room);
-    const MAINTAINTER_LIMIT = WORKER_SPAWN_LIMIT / 2;
+    const MAINTAINTER_LIMIT = 2; //WORKER_SPAWN_LIMIT / 2;
     const BUILDER_LIMIT = Math.ceil(WORKER_SPAWN_LIMIT / 4);
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);

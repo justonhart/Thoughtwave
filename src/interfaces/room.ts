@@ -12,6 +12,7 @@ interface RoomMemory {
 }
 
 interface Room {
+    energyStatus: EnergyStatus;
     getRepairTarget(): Id<Structure>;
 }
 
@@ -27,4 +28,11 @@ const enum PhaseShiftStatus {
 const enum AssignmentStatus {
     UNASSIGNED = 'unassigned',
     ASSIGNED = 'assigned',
+}
+
+const enum EnergyStatus {
+    CRITICAL,
+    RECOVERING,
+    STABLE,
+    SURPLUS,
 }
