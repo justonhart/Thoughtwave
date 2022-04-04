@@ -17,12 +17,23 @@ export class EarlyWorker extends EarlyCreep {
             this.runBuildJob(target);
         } else if (target instanceof StructureController) {
             this.runUpgradeJob();
+        } else if (target instanceof Structure) {
+            this.runRepairJob(target);
         } else {
             delete this.memory.targetId;
         }
     }
 
     private findTarget(): Id<Structure> | Id<ConstructionSite> {
+        let constructedDefenses = this.pos
+            .findInRange(FIND_STRUCTURES, 3)
+            .filter(
+                (structure) => (structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) && structure.hits === 1
+            );
+        if (constructedDefenses.length) {
+            return constructedDefenses.shift().id;
+        }
+
         let spawnStructures = this.room.find(FIND_MY_STRUCTURES).filter(
             (structure) =>
                 // @ts-ignore

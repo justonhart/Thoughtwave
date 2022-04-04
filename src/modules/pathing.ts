@@ -74,13 +74,14 @@ export class Pathing {
 
             // First try pushing the creep in front closer to their target
             if (creep.memory._m.stuckCount === 1) {
+                creep.say('shove');
                 this.pushForward(creep);
             }
             // If creep is still stuck after two ticks find new path
             if (creep.memory._m.stuckCount >= MAX_STUCK_COUNT && creep.memory._m.stuckCount < MAX_STUCK_ROUTE) {
                 opts.visualizePathStyle = { stroke: '#0000ff', opacity: 0.7, strokeWidth: 0.2, lineStyle: 'dashed' };
                 opts.ignoreCreeps = false;
-                opts.reusePath = 0; //MAX_STUCK_ROUTE;
+                opts.reusePath = 0;
             }
             // Reset to avoid creeps
             if (creep.memory._m.stuckCount >= MAX_STUCK_ROUTE) {

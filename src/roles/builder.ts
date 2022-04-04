@@ -5,7 +5,7 @@ export class Builder extends Maintainer {
         let constructedDefenses = this.pos
             .findInRange(FIND_STRUCTURES, 3)
             .filter(
-                (structure) => (structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) && structure.hits <= 1000
+                (structure) => (structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) && structure.hits === 1
             );
         if (constructedDefenses.length) {
             return constructedDefenses.shift().id;
