@@ -24,3 +24,11 @@ Creep.prototype.addTaskToPriorityQueue = function (priority: Priority, actionCal
 Creep.prototype.runPriorityQueueTask = function () {
     WaveCreep.runPriorityQueueTask(this);
 };
+
+Object.defineProperty(Creep.prototype, 'homeroom', {
+    get: function (this: Creep) {
+        return Game.rooms[this.memory.room];
+    },
+    enumerable: false,
+    configurable: true,
+});

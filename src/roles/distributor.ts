@@ -5,10 +5,10 @@ export class Distributor extends TransportCreep {
         let target: any;
 
         if (this.store.energy < this.store.getUsedCapacity()) {
-            target = this.room.storage.id;
+            target = this.homeroom.storage?.id;
         }
 
-        if (!target && (this.room.storage.store.energy > 0 || this.store.energy > 0)) {
+        if (!target && (this.homeroom.storage?.store.energy > 0 || this.store.energy > 0)) {
             target = this.findRefillTarget();
         }
 
@@ -17,7 +17,7 @@ export class Distributor extends TransportCreep {
         }
 
         if (!target) {
-            target = this.room.storage.id;
+            target = this.homeroom.storage?.id;
         }
 
         return target;

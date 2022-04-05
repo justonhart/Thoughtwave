@@ -33,10 +33,10 @@ export class WorkerCreep extends WaveCreep {
             return;
         }
 
-        if (this.room.storage?.my === true && this.room.storage.store[RESOURCE_ENERGY]) {
-            switch (this.withdraw(this.room.storage, RESOURCE_ENERGY)) {
+        if (this.homeroom.storage?.my === true && this.homeroom.storage.store[RESOURCE_ENERGY]) {
+            switch (this.withdraw(this.homeroom.storage, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(this.room.storage);
+                    this.travelTo(this.homeroom.storage);
                     break;
                 case 0:
                     this.memory.gathering = false;
@@ -46,10 +46,10 @@ export class WorkerCreep extends WaveCreep {
             return;
         }
 
-        if (this.room.terminal && this.room.terminal.store[RESOURCE_ENERGY]) {
-            switch (this.withdraw(this.room.terminal, RESOURCE_ENERGY)) {
+        if (this.homeroom.terminal && this.homeroom.terminal.store[RESOURCE_ENERGY]) {
+            switch (this.withdraw(this.homeroom.terminal, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(this.room.terminal, { ignoreCreeps: true, range: 1 });
+                    this.travelTo(this.homeroom.terminal, { ignoreCreeps: true, range: 1 });
                     break;
                 case 0:
                     this.memory.gathering = false;
@@ -87,9 +87,9 @@ export class WorkerCreep extends WaveCreep {
 
     protected runUpgradeJob() {
         let jobCost = UPGRADE_CONTROLLER_POWER * this.getActiveBodyparts(WORK);
-        switch (this.upgradeController(Game.rooms[this.memory.room].controller)) {
+        switch (this.upgradeController(this.homeroom.controller)) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(Game.rooms[this.memory.room].controller, {
+                this.travelTo(this.homeroom.controller, {
                     range: 3,
                     avoidRoadOnLastMove: true,
                     visualizePathStyle: { stroke: '#ffffff' },
