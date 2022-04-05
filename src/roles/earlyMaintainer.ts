@@ -32,7 +32,7 @@ export class EarlyMaintainer extends EarlyCreep {
             return constructedDefenses.shift().id;
         }
 
-        let damagedStructures = this.room.find(FIND_STRUCTURES).filter(
+        let damagedStructures = this.homeroom.find(FIND_STRUCTURES).filter(
             (structure) =>
                 // @ts-ignore
                 ![STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < structure.hitsMax
@@ -46,7 +46,7 @@ export class EarlyMaintainer extends EarlyCreep {
             return this.pos.findClosestByPath(mostDamagedStructures, { range: 3, ignoreCreeps: true }).id;
         }
 
-        let constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
+        let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
 
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
@@ -57,7 +57,7 @@ export class EarlyMaintainer extends EarlyCreep {
             ).id;
         }
 
-        let defenses = this.room.find(FIND_STRUCTURES).filter(
+        let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
             (structure) =>
                 //@ts-ignore
                 [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
@@ -66,10 +66,10 @@ export class EarlyMaintainer extends EarlyCreep {
             return this.pos.findClosestByPath(defenses, { range: 3, ignoreCreeps: true }).id;
         }
 
-        if (this.room.storage?.my) {
-            return this.room.storage.id;
+        if (this.homeroom.storage?.my) {
+            return this.homeroom.storage.id;
         }
 
-        return this.room.controller?.id;
+        return this.homeroom.controller?.id;
     }
 }

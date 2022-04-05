@@ -11,7 +11,7 @@ export class Builder extends Maintainer {
             return constructedDefenses.shift().id;
         }
 
-        let constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
+        let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
             return constructionSites.reduce((mostProgressedSite, siteToCheck) =>
@@ -21,12 +21,12 @@ export class Builder extends Maintainer {
             ).id;
         }
 
-        let repairTarget = this.room.getRepairTarget();
+        let repairTarget = this.homeroom.getRepairTarget();
         if (repairTarget) {
             return repairTarget;
         }
 
-        let defenses = this.room.find(FIND_STRUCTURES).filter(
+        let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
             (structure) =>
                 //@ts-ignore
                 [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
@@ -35,6 +35,6 @@ export class Builder extends Maintainer {
             return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare)).id;
         }
 
-        return this.room.controller?.id;
+        return this.homeroom.controller?.id;
     }
 }

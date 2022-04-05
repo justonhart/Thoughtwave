@@ -18,7 +18,7 @@ export class Transporter extends TransportCreep {
         // }
 
         if (!target) {
-            target = this.room.storage.id;
+            target = this.homeroom.storage?.id;
         }
 
         return target;

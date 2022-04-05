@@ -29,11 +29,11 @@ export class TransportCreep extends WaveCreep {
 
     //gather energy to distribute
     protected gatherEnergy(): void {
-        if (this.room.storage) {
-            let result = this.withdraw(this.room.storage, RESOURCE_ENERGY);
+        if (this.homeroom.storage) {
+            let result = this.withdraw(this.homeroom.storage, RESOURCE_ENERGY);
             switch (result) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(this.room.storage, { range: 1 });
+                    this.travelTo(this.homeroom.storage, { range: 1 });
                     break;
                 case 0:
                     this.memory.gathering = false;
@@ -43,7 +43,7 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findRefillTarget(): Id<Structure> {
-        let spawnStructures = this.room.find(FIND_MY_STRUCTURES).filter(
+        let spawnStructures = this.homeroom.find(FIND_MY_STRUCTURES).filter(
             (structure) =>
                 // @ts-ignore
                 [STRUCTURE_EXTENSION, STRUCTURE_SPAWN].includes(structure.structureType) &&
@@ -55,7 +55,7 @@ export class TransportCreep extends WaveCreep {
             return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
         }
 
-        let towers = this.room
+        let towers = this.homeroom
             .find(FIND_MY_STRUCTURES)
             .filter((structure) => structure.structureType === STRUCTURE_TOWER && structure.store[RESOURCE_ENERGY] < 700);
         if (towers.length) {
@@ -64,7 +64,7 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findCollectionTarget(): Id<Resource> | Id<Structure> | Id<Tombstone> {
-        let looseResources = this.room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > this.store.getCapacity() / 2);
+        let looseResources = this.homeroom.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > this.store.getCapacity() / 2);
         if (looseResources.length) {
             return looseResources.reduce((biggestResource, resourceToCompare) =>
                 biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
@@ -72,7 +72,7 @@ export class TransportCreep extends WaveCreep {
         }
 
         //@ts-ignore
-        let containers: StructureContainer[] = this.room
+        let containers: StructureContainer[] = this.homeroom
             .find(FIND_STRUCTURES)
             .filter((structure) => structure.structureType === STRUCTURE_CONTAINER && structure.store.getUsedCapacity());
         let fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
@@ -82,7 +82,7 @@ export class TransportCreep extends WaveCreep {
             ).id;
         }
 
-        let tombstonesWithResources = this.room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
+        let tombstonesWithResources = this.homeroom.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
         if (tombstonesWithResources.length) {
             return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
         }
