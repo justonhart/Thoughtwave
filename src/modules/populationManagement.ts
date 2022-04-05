@@ -1,5 +1,3 @@
-import { workerData } from 'worker_threads';
-
 export function populationControl(spawn: StructureSpawn) {
     switch (spawn.room.memory?.phase) {
         case 1:
