@@ -63,7 +63,11 @@ export class EarlyMaintainer extends EarlyCreep {
                 [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
         );
         if (defenses.length) {
-            return this.pos.findClosestByPath(defenses, { range: 3, ignoreCreeps: true }).id;
+            let closest = this.pos.findClosestByPath(defenses, { range: 3, ignoreCreeps: true });
+            if (!closest) {
+                return defenses.shift().id;
+            }
+            return closest.id;
         }
 
         if (this.homeroom.storage?.my) {
