@@ -134,7 +134,7 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
 
     let partBlockToUse: BodyPartConstant[];
     let partsArray = [];
-    let creepLevelCap = 15;
+    let creepLevelCap = Math.min(15, Math.floor(spawn.room.energyCapacityAvailable / 200));
 
     if (roomCreeps.filter((creep) => creep.memory.role === Role.DISTRIBUTOR).length === 0) {
         options.memory.role = Role.DISTRIBUTOR;
@@ -160,7 +160,7 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < maintainerLimit) {
         options.memory.role = Role.MAINTAINTER;
         partBlockToUse = WORKER_PART_BLOCK;
-        creepLevelCap = Math.ceil(spawn.room.energyCapacityAvailable / 200 / 2);
+        creepLevelCap = creepLevelCap / 2;
     }
 
     if (options.memory.role) {
