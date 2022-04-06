@@ -141,10 +141,6 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     ) {
         options.memory.role = Role.BUILDER;
         partBlockToUse = WORKER_PART_BLOCK;
-    } else if (!Memory.rooms[spawn.room.name].remoteMining && roomCreeps.filter((creep) => creep.memory.role === Role.SCOUT).length === 0) {
-        // For now only spawn scout once to look for remote mining (can be extended later)
-        options.memory.role = Role.SCOUT;
-        partsArray = [MOVE];
     }
 
     if (options.memory.role) {
