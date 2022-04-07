@@ -1,7 +1,7 @@
 interface CreepMemory {
     destination?: string;
     assignment?: string;
-    targetId?: Id<Structure> | Id<ConstructionSite>;
+    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep>;
     miningPos?: string;
     gathering?: boolean;
     room?: string;
@@ -42,4 +42,5 @@ const enum Role {
     CLAIMER = 'CLAIMER',
     COLONIZER = 'COLONIZER',
     BUILDER = 'BUILDER',
+    PROTECTOR = 'PROTECTOR',
 }
