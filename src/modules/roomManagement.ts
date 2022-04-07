@@ -1,4 +1,5 @@
 import { posFromMem } from './memoryManagement';
+import { createPartsArray } from './populationManagement';
 
 export function driveRoom(room: Room) {
     if (room.memory?.phase == undefined) {
@@ -15,6 +16,7 @@ export function driveRoom(room: Room) {
     }
 
     runTowers(room);
+    runHomeSecurity(room);
 }
 
 function runTowers(room: Room) {
@@ -28,6 +30,25 @@ function runTowers(room: Room) {
     healers.length
         ? towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(healers)))
         : towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
+}
+
+function runHomeSecurity(room: Room) {
+    const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+
+    // can be optimized to spawn more protectors if more enemies are in room. In that case, add a "wait" function in the protector to wait for all protectors to spawn before attacking
+    if (
+        hostileCreeps.length > 1 &&
+        !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR).length &&
+        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR).length
+    ) {
+        Memory.empire.spawnAssignments.push({
+            designee: room.name,
+            body: createPartsArray([ATTACK, MOVE], room.energyCapacityAvailable),
+            memoryOptions: {
+                role: Role.PROTECTOR,
+            },
+        });
+    }
 }
 
 function initRoomMemory(room: Room) {
