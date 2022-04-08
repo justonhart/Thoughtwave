@@ -2,7 +2,11 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Claimer extends WaveCreep {
     public run() {
-        let destination = Game.rooms[this.memory.destination];
+        let claimOpExists = Memory.empire.colonizationOperations.some((op) => op.destination === this.memory.destination);
+        if (!claimOpExists) {
+            console.log(`No colonize operation found for ${this.name}. Terminating.`);
+            this.suicide();
+        }
 
         // Go to the target room
         if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
