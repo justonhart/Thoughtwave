@@ -1,4 +1,5 @@
 const MATRIX_COST_OFF_ROAD = 10; // Twice the cost of swamp terrain to avoid roads if possible
+const AVOID_HOSTILES = 200; // Not 255 since sometimes a creep has no other choice
 const MAX_STUCK_COUNT = 2; // If a creep can't move after two ticks, the path will be reevaluated
 const MAX_STUCK_ROUTE = 5; // How long the path should be reused when stuck
 //@ts-ignore
@@ -12,6 +13,7 @@ export class Pathing {
         priority: Priority.MEDIUM,
         avoidRoadOnLastMove: false,
         reusePath: 30,
+        avoidHostiles: false,
     };
 
     /**
@@ -61,11 +63,9 @@ export class Pathing {
         destination: RoomPosition,
         opts: TravelToOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
-        // Set custom TravelTo options
-        if (opts.avoidRoads) {
-            opts.costCallback = this.getAvoidRoadsMatrix();
-        } else if (opts.avoidRoadOnLastMove) {
-            opts.costCallback = this.getAvoidRoadsMatrix(destination, opts.range);
+        // Get Custom matrix if called otherwise use default
+        if (opts.avoidHostiles || opts.avoidRoadOnLastMove || opts.avoidRoads) {
+            opts.costCallback = this.getMatrix(opts, destination);
         }
 
         // Recalculate path with creeps in mind
@@ -100,30 +100,48 @@ export class Pathing {
     }
 
     /**
-     * CostCallback function to avoid matrix (this only runs when reusePath is used up)
-     *
+     * CostCallback function to set avoid matrix.
+     * This will execute every time the path needs to be recalculated (new room or reusePath is up)
      */
-    private getAvoidRoadsMatrix(destination?: RoomPosition, range?: number) {
+    private getMatrix(opts: TravelToOpts, destination?: RoomPosition) {
         return (roomName: string, costMatrix: CostMatrix) => {
-            if (!destination) {
+            if (opts.avoidRoads) {
                 // avoid all roads
                 Game.rooms[roomName]
                     .find(FIND_STRUCTURES, { filter: (i) => i.structureType == STRUCTURE_ROAD })
                     .forEach((road) => costMatrix.set(road.pos.x, road.pos.y, MATRIX_COST_OFF_ROAD));
-            } else if (roomName === destination.roomName) {
+            } else if (opts.avoidRoadOnLastMove && roomName === destination.roomName) {
                 // edge cases
-                const top = destination.y - range < 0 ? 0 : destination.y - range;
-                const bottom = destination.y + range > 49 ? 49 : destination.y + range;
-                const left = destination.x - range < 0 ? 0 : destination.x - range;
-                const right = destination.x + range > 49 ? 49 : destination.x + range;
-
+                const avoidArea = this.getArea(destination, opts.range);
                 // Avoid roads at specific destination
                 Game.rooms[roomName]
-                    .lookForAtArea(LOOK_STRUCTURES, top, left, bottom, right, true)
+                    .lookForAtArea(LOOK_STRUCTURES, avoidArea.top, avoidArea.left, avoidArea.bottom, avoidArea.right, true)
                     .filter((structure) => structure.structure.structureType === 'road')
                     .forEach((road) => costMatrix.set(road.x, road.y, MATRIX_COST_OFF_ROAD));
             }
+            if (opts.avoidHostiles) {
+                const room = Game.rooms[roomName];
+                if (!room) return;
+                room.find(FIND_HOSTILE_CREEPS, {
+                    filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
+                }).forEach((creep) => {
+                    const avoidArea = this.getArea(creep.pos, 3);
+                    for (let x = avoidArea.left; x <= avoidArea.right; x++) {
+                        for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
+                            costMatrix.set(x, y, AVOID_HOSTILES);
+                        }
+                    }
+                });
+            }
         };
+    }
+
+    private getArea(pos: RoomPosition, range: number) {
+        const top = pos.y - range < 0 ? 0 : pos.y - range;
+        const bottom = pos.y + range > 49 ? 49 : pos.y + range;
+        const left = pos.x - range < 0 ? 0 : pos.x - range;
+        const right = pos.x + range > 49 ? 49 : pos.x + range;
+        return { top, left, bottom, right };
     }
 
     private normalizeDestination(destination: Destination): RoomPosition {

@@ -11,6 +11,7 @@ import { Claimer } from '../roles/claimer';
 import { Colonizer } from '../roles/colonizer';
 import { Builder } from '../roles/builder';
 import { EarlyBuilder } from '../roles/earlyBuilder';
+import { Protector } from '../roles/protector';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -54,6 +55,9 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.COLONIZER:
             waveCreep = new Colonizer(creep.id);
+            break;
+        case Role.PROTECTOR:
+            waveCreep = new Protector(creep.id);
             break;
         default:
             waveCreep = new WaveCreep(creep.id);
