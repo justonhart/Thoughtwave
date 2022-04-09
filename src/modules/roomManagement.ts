@@ -52,10 +52,10 @@ function runHomeSecurity(room: Room) {
 }
 
 function initRoomMemory(room: Room) {
-    room.memory.availableSourceAccessPoints = [].concat(
-        ...Array.from(
-            new Set(
-                room
+    room.memory.availableSourceAccessPoints = Array.from(
+        new Set(
+            [].concat(
+                ...room
                     .find(FIND_SOURCES) //
                     .map((source) =>
                         room
