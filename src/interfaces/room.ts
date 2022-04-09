@@ -1,4 +1,5 @@
 interface RoomMemory {
+    traps: CreepTrap[];
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: Map<string, AssignmentStatus>;
@@ -35,4 +36,13 @@ const enum EnergyStatus {
     RECOVERING,
     STABLE,
     SURPLUS,
+}
+
+interface CreepTrap {
+    gates: TrapGate[];
+}
+
+interface TrapGate {
+    id: Id<StructureRampart>;
+    lastToggled: number;
 }
