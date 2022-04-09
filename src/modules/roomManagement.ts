@@ -17,6 +17,10 @@ export function driveRoom(room: Room) {
 
     runTowers(room);
     runHomeSecurity(room);
+
+    if (room.memory.traps?.length) {
+        room.memory.traps.forEach((trap) => runTrap(trap));
+    }
 }
 
 function runTowers(room: Room) {
@@ -229,4 +233,26 @@ export function findRepairTargets(room: Room): Id<Structure>[] {
     });
 
     return repairTargetQueue;
+}
+
+function runTrap(trap: CreepTrap): void {
+    let gates = trap.gates.filter((gate) => Game.getObjectById(gate.id));
+
+    gates.forEach((gateId) => {
+        if (gateId.lastToggled === undefined) {
+            gateId.lastToggled = Game.time - 5;
+        }
+
+        let gate = Game.getObjectById(gateId.id);
+        let creepsInRange = gate.pos.findInRange(FIND_HOSTILE_CREEPS, 1).length > 0;
+
+        if (gate.isPublic && creepsInRange) {
+            gate.setPublic(false);
+            gateId.lastToggled = Game.time;
+        } else if (!gate.isPublic && !creepsInRange && Game.time - gateId.lastToggled > 3) {
+            gate.setPublic(true);
+        }
+    });
+
+    trap.gates = gates;
 }
