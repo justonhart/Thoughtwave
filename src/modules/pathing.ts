@@ -10,7 +10,6 @@ export class Pathing {
     private defaultOpts: TravelToOpts = {
         ignoreCreeps: true,
         avoidRoads: false,
-        priority: Priority.MEDIUM,
         avoidRoadOnLastMove: false,
         reusePath: 30,
         avoidHostiles: false,
@@ -36,9 +35,6 @@ export class Pathing {
 
         // init memory
         if (!creep.memory._m) creep.memory._m = { stuckCount: 0 };
-
-        // Set task Priority
-        creep.memory.currentTaskPriority = options.priority;
 
         let roomPosition = Pathing.normalizePos(destination);
 
@@ -196,16 +192,13 @@ export class Pathing {
                     return;
                 }
                 const obstacleCreepDest = this.normalizeDestination(obstacleCreep.memory._move?.dest);
-                const forwardPath = obstacleCreep.pos.findPathTo(obstacleCreepDest, { maxOps: 100 })?.[0];
-                if (
-                    !forwardPath ||
-                    obstacleCreep.pos.getRangeTo(obstacleCreepDest) <
-                        new RoomPosition(forwardPath.x, forwardPath.y, obstacleCreep.room.name).getRangeTo(obstacleCreepDest)
-                ) {
-                    return; // Do not switch if it causes the creep that is in the way to move away from his target
+                let forwardPath = obstacleCreep.pos.findPathTo(obstacleCreepDest, { maxOps: 100 })?.[0];
+                if (forwardPath && creep.room.lookForAt(LOOK_CREEPS, forwardPath.x, forwardPath.y)) {
+                    forwardPath = undefined; // If creep can go closer to his target but is blocked by yet another creep simply switch places with the first creep
                 }
-                obstacleCreep.addTaskToPriorityQueue(Priority.MEDIUM, () => {
-                    obstacleCreep.move(forwardPath.direction);
+                // Push the obstacleCreep closer to their target is possible, else just switch places (if creep can push depends on currentTaskPriority)
+                obstacleCreep.addTaskToPriorityQueue(creep.memory.currentTaskPriority, () => {
+                    obstacleCreep.move(forwardPath?.direction ?? this.inverseDirection(nextPos.direction));
                 });
             }
         }

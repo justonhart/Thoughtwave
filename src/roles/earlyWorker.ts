@@ -20,7 +20,7 @@ export class EarlyWorker extends EarlyCreep {
         } else if (target instanceof Structure) {
             this.runRepairJob(target);
         } else {
-            delete this.memory.targetId;
+            this.onTaskFinished();
         }
     }
 

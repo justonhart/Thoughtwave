@@ -10,6 +10,7 @@ interface RoomMemory {
     sourceAccessPointCount: number;
     roadsConstructed?: boolean;
     spawnAssignments: Role[];
+    remoteMining: Map<string, string[]>; // Map<room, sourceIds>
 }
 
 interface Room {

@@ -18,7 +18,7 @@ export class EarlyMaintainer extends EarlyCreep {
         } else if (target instanceof ConstructionSite) {
             this.runBuildJob(target);
         } else {
-            delete this.memory.targetId;
+            this.onTaskFinished();
         }
     }
 

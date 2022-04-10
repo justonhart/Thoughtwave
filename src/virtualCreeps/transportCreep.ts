@@ -96,6 +96,7 @@ export class TransportCreep extends WaveCreep {
 
     //gather resources for the purpose of storing
     protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone): void {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         //@ts-ignore
         let resourceToWithdraw: ResourceConstant = Object.keys(target.store).shift();
         let result = this.withdraw(target, resourceToWithdraw);
@@ -105,23 +106,24 @@ export class TransportCreep extends WaveCreep {
                 break;
             case 0:
                 if (Object.keys(target.store).length === 1 || target.store[resourceToWithdraw] >= this.store.getFreeCapacity()) {
-                    delete this.memory.targetId;
+                    this.onTaskFinished();
                 }
                 break;
             default:
-                delete this.memory.targetId;
+                this.onTaskFinished();
                 break;
         }
     }
 
     protected runPickupJob(resource: Resource): void {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         switch (this.pickup(resource)) {
             case ERR_NOT_IN_RANGE:
                 this.travelTo(resource, { range: 1 });
                 break;
             case 0:
             case ERR_FULL:
-                delete this.memory.targetId;
+                this.onTaskFinished();
         }
     }
 }
