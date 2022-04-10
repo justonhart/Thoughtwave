@@ -65,7 +65,7 @@ export function manageColonistCreeps() {
     });
 }
 
-function addColonizationOperation() {
+export function addColonizationOperation() {
     let bestOrigin = findBestColonyOrigin(Game.flags.colonize.pos);
 
     if (bestOrigin) {
