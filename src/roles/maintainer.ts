@@ -16,7 +16,7 @@ export class Maintainer extends WorkerCreep {
         } else if (target instanceof ConstructionSite) {
             this.runBuildJob(target);
         } else {
-            delete this.memory.targetId;
+            this.onTaskFinished();
         }
     }
 

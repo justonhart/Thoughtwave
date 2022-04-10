@@ -8,10 +8,6 @@ interface TravelToOpts extends MoveToOpts {
      */
     avoidRoadOnLastMove?: boolean;
     /**
-     * Set task priority.
-     */
-    priority?: Priority;
-    /**
      * Default it is set to false to minimize cpu cost as most creeps are traveling inside the base.
      */
     avoidHostiles?: boolean;

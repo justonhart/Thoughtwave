@@ -8,6 +8,7 @@ export class WaveCreep extends Creep {
     }
 
     protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage) {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         if (target.store.getFreeCapacity(RESOURCE_ENERGY)) {
             switch (this.transfer(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
@@ -17,17 +18,16 @@ export class WaveCreep extends Creep {
                     this.memory.gathering = true;
                 case OK:
                 case ERR_FULL:
-                    this.memory.currentTaskPriority = Priority.MEDIUM;
-                    delete this.memory.targetId;
+                    this.onTaskFinished();
                     break;
             }
         } else {
-            this.memory.currentTaskPriority = Priority.MEDIUM;
-            delete this.memory.targetId;
+            this.onTaskFinished();
         }
     }
 
     protected storeCargo() {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         let resourceToStore: any = Object.keys(this.store).shift();
         let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
         switch (storeResult) {
@@ -36,13 +36,18 @@ export class WaveCreep extends Creep {
                 break;
             case 0:
                 if (this.store[resourceToStore] === this.store.getUsedCapacity()) {
-                    delete this.memory.targetId;
+                    this.onTaskFinished();
                 }
                 break;
             default:
-                delete this.memory.targetId;
+                this.onTaskFinished();
                 break;
         }
+    }
+
+    protected onTaskFinished(): void {
+        this.memory.currentTaskPriority = Priority.LOW;
+        delete this.memory.targetId;
     }
 
     /**
@@ -54,7 +59,7 @@ export class WaveCreep extends Creep {
      */
     public static addToPriorityQueue(creep: Creep, priority: Priority, actionCallback: (creep: Creep) => void) {
         const currentTaskPriority = creep.memory.currentTaskPriority;
-        if (currentTaskPriority && priority >= currentTaskPriority) {
+        if (priority > currentTaskPriority) {
             creep.memory.currentTaskPriority = priority; // Set new priority
             WaveCreep.priorityQueue.set(creep.name, actionCallback);
         }
