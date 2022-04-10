@@ -3,6 +3,7 @@ import { WorkerCreep } from './workerCreep';
 
 export class EarlyCreep extends WorkerCreep {
     protected gatherEnergy() {
+        this.memory.currentTaskPriority = Priority.HIGH;
         if (this.memory.miningPos && this.store[RESOURCE_ENERGY] === this.store.getCapacity()) {
             this.releaseSourceAccessPoint();
             this.memory.gathering = false;
@@ -34,6 +35,7 @@ export class EarlyCreep extends WorkerCreep {
                     let miningResult = this.harvest(highestSourceInRange);
 
                     if ((miningResult === OK && this.isEnergyHarvestingFinished()) || miningResult === ERR_NOT_ENOUGH_RESOURCES) {
+                        this.memory.currentTaskPriority = Priority.LOW;
                         this.memory.gathering = false;
                         this.releaseSourceAccessPoint();
                     }
@@ -41,6 +43,7 @@ export class EarlyCreep extends WorkerCreep {
                     this.travelTo(miningPos);
                 }
             } else {
+                this.memory.currentTaskPriority = Priority.MEDIUM;
                 // If all sources are taken then look for ruins
                 const ruins = this.room.find(FIND_RUINS).filter((ruins) => ruins.store[RESOURCE_ENERGY]);
                 if (ruins.length) {
@@ -49,6 +52,7 @@ export class EarlyCreep extends WorkerCreep {
                             this.travelTo(ruins[0]);
                             break;
                         case ERR_FULL:
+                            this.memory.currentTaskPriority = Priority.LOW;
                             this.memory.gathering = false;
                             break;
                     }

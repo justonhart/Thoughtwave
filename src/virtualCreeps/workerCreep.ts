@@ -14,6 +14,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected gatherEnergy() {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         let ruins = this.room.find(FIND_RUINS, {
             filter: (r) => {
                 return r.store[RESOURCE_ENERGY];
@@ -61,6 +62,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected runBuildJob(target: ConstructionSite) {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         let jobCost = BUILD_POWER * this.getActiveBodyparts(WORK);
         let buildSuccess = this.build(target);
         switch (buildSuccess) {
@@ -70,22 +72,22 @@ export class WorkerCreep extends WaveCreep {
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
             case ERR_INVALID_TARGET:
-                delete this.memory.targetId;
+                this.onTaskFinished();
                 break;
             case OK:
-                this.memory.currentTaskPriority = Priority.MEDIUM;
                 if (this.isBuildFinished(target)) {
-                    delete this.memory.targetId;
+                    this.onTaskFinished();
                 }
                 if (this.usedAllRemainingEnergy(jobCost)) {
                     this.memory.gathering = true;
-                    delete this.memory.targetId;
+                    this.onTaskFinished();
                 }
                 break;
         }
     }
 
     protected runUpgradeJob() {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         let jobCost = UPGRADE_CONTROLLER_POWER * this.getActiveBodyparts(WORK);
         switch (this.upgradeController(this.homeroom.controller)) {
             case ERR_NOT_IN_RANGE:
@@ -97,22 +99,22 @@ export class WorkerCreep extends WaveCreep {
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
-                delete this.memory.targetId;
+                this.onTaskFinished();
                 break;
             case OK:
-                this.memory.currentTaskPriority = Priority.MEDIUM;
                 if (this.usedAllRemainingEnergy(jobCost)) {
                     this.memory.gathering = true;
-                    delete this.memory.targetId;
+                    this.onTaskFinished();
                 }
                 break;
             case ERR_INVALID_TARGET:
-                delete this.memory.targetId;
+                this.onTaskFinished();
                 break;
         }
     }
 
     protected runRepairJob(target: Structure) {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         if (target.hits < target.hitsMax) {
             let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);
             let repairSuccess = this.repair(target);
@@ -123,21 +125,20 @@ export class WorkerCreep extends WaveCreep {
                 case ERR_NOT_ENOUGH_RESOURCES:
                     this.memory.gathering = true;
                 case ERR_INVALID_TARGET:
-                    delete this.memory.targetId;
+                    this.onTaskFinished();
                     break;
                 case OK:
-                    this.memory.currentTaskPriority = Priority.MEDIUM;
                     if (this.isRepairFinished(target)) {
-                        delete this.memory.targetId;
+                        this.onTaskFinished();
                     }
                     if (this.usedAllRemainingEnergy(jobCost)) {
                         this.memory.gathering = true;
-                        delete this.memory.targetId;
+                        this.onTaskFinished();
                     }
                     break;
             }
         } else {
-            delete this.memory.targetId;
+            this.onTaskFinished();
         }
     }
 
