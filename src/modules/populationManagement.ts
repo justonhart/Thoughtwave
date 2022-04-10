@@ -40,8 +40,6 @@ function phaseOneSpawning(spawn: StructureSpawn) {
     const UPGRADER_LIMIT = Math.ceil(SPAWN_LIMIT / 4);
     const MAINTAINTER_LIMIT = Math.ceil(SPAWN_LIMIT / 4);
     const BUILDER_LIMIT = Math.ceil(SPAWN_LIMIT / 8);
-
-    let sizeLimitDivisor = 1;
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
 
     let options: SpawnOptions = {
@@ -59,20 +57,18 @@ function phaseOneSpawning(spawn: StructureSpawn) {
         options.memory.role = Role.UPGRADER;
     } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT) {
         options.memory.role = Role.MAINTAINTER;
-        sizeLimitDivisor = 2;
     } else if (
         roomCreeps.filter((creep) => creep.memory.role === Role.BUILDER).length < BUILDER_LIMIT &&
         spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length
     ) {
         options.memory.role = Role.BUILDER;
-        sizeLimitDivisor = 2;
     }
 
     if (options.memory.role) {
         let partsArray: BodyPartConstant[] = [];
         let partsBlock = [WORK, CARRY, MOVE];
 
-        for (let i = 0; i < Math.floor(spawn.room.energyCapacityAvailable / 200 / sizeLimitDivisor); i++) {
+        for (let i = 0; i < Math.floor(spawn.room.energyCapacityAvailable / 200); i++) {
             partsArray = partsArray.concat(partsBlock);
         }
 
@@ -97,10 +93,32 @@ function phaseOneSpawning(spawn: StructureSpawn) {
 }
 
 function phaseTwoSpawning(spawn: StructureSpawn) {
-    const WORKER_SPAWN_LIMIT = calculateWorkerCapacity(spawn.room);
-    const UPGRADER_LIMIT = WORKER_SPAWN_LIMIT / 2 + getAdditionalUpgraderCount(spawn.room);
-    const MAINTAINTER_LIMIT = WORKER_SPAWN_LIMIT / 2;
-    const BUILDER_LIMIT = Math.ceil(WORKER_SPAWN_LIMIT / 4);
+    const WORKER_CAPACITY = calculateWorkerCapacity(spawn.room);
+
+    let upgraderLimit: number, maintainerLimit: number, builderLimit: number;
+
+    switch (spawn.room.energyStatus) {
+        case EnergyStatus.CRITICAL:
+            upgraderLimit = 0;
+            maintainerLimit = 0;
+            builderLimit = 0;
+            break;
+        case EnergyStatus.RECOVERING:
+            upgraderLimit = spawn.room.controller.ticksToDowngrade < 10000 ? 1 : 0;
+            maintainerLimit = 1;
+            builderLimit = 0;
+            break;
+        case EnergyStatus.STABLE:
+            upgraderLimit = WORKER_CAPACITY - 1;
+            maintainerLimit = 2; //spawn two half-sized maintainers
+            builderLimit = WORKER_CAPACITY / 2; //consume an additional 50% energy
+            break;
+        case EnergyStatus.SURPLUS:
+            upgraderLimit = WORKER_CAPACITY - 1 + getAdditionalUpgraderCount(spawn.room);
+            maintainerLimit = 2; //spawn two half-sized maintainers
+            builderLimit = WORKER_CAPACITY / 2; //consume an additional 50% energy
+            break;
+    }
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
 
@@ -116,40 +134,41 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
 
     let partBlockToUse: BodyPartConstant[];
     let partsArray = [];
-    let sizeLimitDivisor = 1;
+    let creepLevelCap = Math.min(15, Math.floor(spawn.room.energyCapacityAvailable / 200));
 
     if (roomCreeps.filter((creep) => creep.memory.role === Role.DISTRIBUTOR).length === 0) {
         options.memory.role = Role.DISTRIBUTOR;
         partBlockToUse = TRANSPORT_PART_BLOCK;
+        creepLevelCap = 10;
     } else if (needMiner(spawn.room)) {
         spawnMiner(spawn);
-    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER).length === 0) {
+    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER).length === 0 && spawn.room.energyStatus >= EnergyStatus.STABLE) {
         options.memory.role = Role.TRANSPORTER;
         partBlockToUse = TRANSPORT_PART_BLOCK;
+        creepLevelCap = 10;
     } else if (checkForSpawnAssignments(spawn.room)) {
         spawnAssignedCreep(spawn);
-    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT) {
-        options.memory.role = Role.UPGRADER;
-        partBlockToUse = WORKER_PART_BLOCK;
-    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT * 2) {
-        options.memory.role = Role.MAINTAINTER;
-        partBlockToUse = WORKER_PART_BLOCK;
-        sizeLimitDivisor = 2;
     } else if (
-        roomCreeps.filter((creep) => creep.memory.role === Role.BUILDER).length < BUILDER_LIMIT &&
+        roomCreeps.filter((creep) => creep.memory.role === Role.BUILDER).length < builderLimit &&
         spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length
     ) {
         options.memory.role = Role.BUILDER;
         partBlockToUse = WORKER_PART_BLOCK;
+    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < upgraderLimit) {
+        options.memory.role = Role.UPGRADER;
+        partBlockToUse = WORKER_PART_BLOCK;
+    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < maintainerLimit) {
+        options.memory.role = Role.MAINTAINTER;
+        partBlockToUse = WORKER_PART_BLOCK;
+        creepLevelCap = creepLevelCap / 2;
     }
 
     if (options.memory.role) {
         if (partBlockToUse) {
-            partsArray = createPartsArray(partBlockToUse, spawn.room.energyCapacityAvailable, sizeLimitDivisor);
+            partsArray = createPartsArray(partBlockToUse, spawn.room.energyCapacityAvailable, creepLevelCap);
         }
 
         let result = spawn.spawnCreep(partsArray, `${options.memory.role} ${Game.time}`, options);
-
         //if there are no distributors, and there is not enough energy to spawn one immediately, convert the transporter to distributor
         if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.DISTRIBUTOR) {
             let distributorCandidate = roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER);
@@ -183,8 +202,8 @@ export function calculateWorkerCapacity(room: Room): number {
 
     let totalIncomePerCycle = sourceIncomePerCycle + remoteIncomePerCycle;
 
-    //cost to create [WORK, CARRY, MOVE] is 200 energy
-    let maxPartsBlockPerCreep = Math.floor(energyCapacity / 200);
+    //cost to create [WORK, CARRY, MOVE] is 200 energy - the largest a creep can be is 50 parts - stop at 45
+    let maxPartsBlockPerCreep = Math.min(Math.floor(energyCapacity / 200), 15);
 
     //assuming there are no construction / maintenance jobs, all workers should be upgrading
     let upgadeWorkCostPerCyclePerCreep = maxPartsBlockPerCreep * UPGRADE_CONTROLLER_POWER * CYCLE_LENGTH;
@@ -222,16 +241,23 @@ function spawnMiner(spawn: StructureSpawn) {
 
     let minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
 
-    if (spawn.spawnCreep(minerBody, `${options.memory.role} ${Game.time}`, options) === OK) {
+    let result = spawn.spawnCreep(minerBody, `${options.memory.role} ${Game.time}`, options);
+    if (result === OK) {
         spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
+    } else if (result === ERR_NOT_ENOUGH_ENERGY && spawn.room.storage?.store[RESOURCE_ENERGY] < 1000) {
+        let emergencyMinerBody = [WORK, WORK, MOVE, MOVE];
+        result = spawn.spawnCreep(emergencyMinerBody, `${options.memory.role} ${Game.time}`, options);
+        if (result === OK) {
+            spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
+        }
     }
 }
 
-export function createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailable: number, sizeLimitDivisor: number = 1): BodyPartConstant[] {
+export function createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailable: number, levelCap: number = 15): BodyPartConstant[] {
     let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
     let partsArray = [];
 
-    for (let i = 0; i < Math.floor(energyCapacityAvailable / partsBlockCost / sizeLimitDivisor); i++) {
+    for (let i = 0; i < Math.floor(energyCapacityAvailable / partsBlockCost) && (i + 1) * partsBlock.length < 50 && i < levelCap; i++) {
         partsArray = partsArray.concat(partsBlock);
     }
 
@@ -261,7 +287,7 @@ function spawnAssignedCreep(spawn: StructureSpawn) {
 function getAdditionalUpgraderCount(room: Room): number {
     let storedEnergy = room.storage?.store[RESOURCE_ENERGY];
 
-    if (storedEnergy > 500000) {
+    if (storedEnergy > 400000) {
         return 2;
     } else if (storedEnergy > 200000) {
         return 1;

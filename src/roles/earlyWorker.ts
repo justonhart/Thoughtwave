@@ -17,13 +17,24 @@ export class EarlyWorker extends EarlyCreep {
             this.runBuildJob(target);
         } else if (target instanceof StructureController) {
             this.runUpgradeJob();
+        } else if (target instanceof Structure) {
+            this.runRepairJob(target);
         } else {
             delete this.memory.targetId;
         }
     }
 
     private findTarget(): Id<Structure> | Id<ConstructionSite> {
-        let spawnStructures = this.room.find(FIND_MY_STRUCTURES).filter(
+        let constructedDefenses = this.pos
+            .findInRange(FIND_STRUCTURES, 3)
+            .filter(
+                (structure) => (structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) && structure.hits === 1
+            );
+        if (constructedDefenses.length) {
+            return constructedDefenses.shift().id;
+        }
+
+        let spawnStructures = this.homeroom.find(FIND_MY_STRUCTURES).filter(
             (structure) =>
                 // @ts-ignore
                 [STRUCTURE_EXTENSION, STRUCTURE_SPAWN].includes(structure.structureType) &&
@@ -35,12 +46,12 @@ export class EarlyWorker extends EarlyCreep {
             return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
         }
 
-        let towers = this.room.find(FIND_MY_STRUCTURES).filter((s) => s.structureType === STRUCTURE_TOWER && s.store[RESOURCE_ENERGY] < 700);
+        let towers = this.homeroom.find(FIND_MY_STRUCTURES).filter((s) => s.structureType === STRUCTURE_TOWER && s.store[RESOURCE_ENERGY] < 700);
         if (towers.length) {
             return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
         }
 
-        let constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
+        let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
 
         if (constructionSites.length) {
             //return the most-progressed construction site, proportionally
@@ -51,10 +62,10 @@ export class EarlyWorker extends EarlyCreep {
             ).id;
         }
 
-        if (this.room.storage?.my) {
-            return this.room.storage.id;
+        if (this.homeroom.storage?.my) {
+            return this.homeroom.storage.id;
         }
 
-        return this.room.controller?.id;
+        return this.homeroom.controller?.id;
     }
 }

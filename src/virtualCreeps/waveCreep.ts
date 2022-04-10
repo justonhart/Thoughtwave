@@ -29,10 +29,10 @@ export class WaveCreep extends Creep {
 
     protected storeCargo() {
         let resourceToStore: any = Object.keys(this.store).shift();
-        let storeResult = this.transfer(this.room.storage, resourceToStore);
+        let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
         switch (storeResult) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(this.room.storage, { ignoreCreeps: true, range: 1 });
+                this.travelTo(this.homeroom.storage, { ignoreCreeps: true, range: 1 });
                 break;
             case 0:
                 if (this.store[resourceToStore] === this.store.getUsedCapacity()) {

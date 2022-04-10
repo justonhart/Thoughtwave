@@ -9,7 +9,7 @@ Creep.prototype.travelToRoom = function (roomName, opts) {
     if (this.room.name === roomName && !this.onEdge()) {
         return IN_ROOM;
     }
-    return this.travelTo(new RoomPosition(25, 25, roomName), { ...opts, range: 23, reusePath: 50, maxOps: 10000 });
+    return this.travelTo(new RoomPosition(25, 25, roomName), { ...opts, range: 23, reusePath: 50, avoidHostiles: true, maxOps: 10000 });
 };
 
 Creep.prototype.onEdge = function () {
@@ -24,3 +24,11 @@ Creep.prototype.addTaskToPriorityQueue = function (priority: Priority, actionCal
 Creep.prototype.runPriorityQueueTask = function () {
     WaveCreep.runPriorityQueueTask(this);
 };
+
+Object.defineProperty(Creep.prototype, 'homeroom', {
+    get: function (this: Creep) {
+        return Game.rooms[this.memory.room];
+    },
+    enumerable: false,
+    configurable: true,
+});

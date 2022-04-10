@@ -1,7 +1,7 @@
 interface CreepMemory {
     destination?: string;
     assignment?: string;
-    targetId?: Id<Structure> | Id<ConstructionSite>;
+    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep>;
     miningPos?: string;
     gathering?: boolean;
     room?: string;
@@ -13,6 +13,7 @@ interface CreepMemory {
 }
 
 interface Creep {
+    homeroom: Room;
     travelTo(destination: HasPos | RoomPosition, opts?: TravelToOpts): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND;
     travelToRoom(roomName: string, opts?: TravelToOpts): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND | IN_ROOM;
     onEdge(position: HasPos | RoomPosition): boolean;
@@ -47,4 +48,5 @@ const enum Role {
     COLONIZER = 'COLONIZER',
     BUILDER = 'BUILDER',
     SCOUT = 'SCOUT',
+    PROTECTOR = 'PROTECTOR',
 }

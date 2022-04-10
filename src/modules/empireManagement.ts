@@ -84,7 +84,9 @@ function addColonizationOperation() {
 }
 
 function findBestColonyOrigin(targetRoom: string) {
-    let possibleSpawnRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.memory.phase === 2);
+    let possibleSpawnRooms = Object.values(Game.rooms).filter(
+        (room) => room.controller?.my && room.memory.phase === 2 && room.energyStatus >= EnergyStatus.STABLE
+    );
 
     let closestRoom = possibleSpawnRooms.reduce((closestRoom, roomToCompare) =>
         Game.map.getRoomLinearDistance(closestRoom.name, targetRoom) < Game.map.getRoomLinearDistance(roomToCompare.name, targetRoom)
