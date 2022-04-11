@@ -9,10 +9,6 @@ export function manageEmpire() {
         };
     }
 
-    if (Game.flags.colonize) {
-        addColonizationOperation();
-    }
-
     if (Memory.empire.colonizationOperations.length) {
         manageColonistCreeps();
     }

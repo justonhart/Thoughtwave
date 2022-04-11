@@ -1,5 +1,6 @@
 import driveCreep from './modules/creepDriver';
 import { manageEmpire } from './modules/empireManagement';
+import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
 import { populationControl } from './modules/populationManagement';
 import { driveRoom } from './modules/roomManagement';
@@ -7,6 +8,12 @@ import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
+    try {
+        manageFlags();
+    } catch (e) {
+        console.log(`Error caught in flag management: \n${e}`);
+    }
+
     try {
         manageEmpire();
     } catch (e) {
