@@ -8,7 +8,7 @@ export default function manageFlags() {
     }
 
     if (Game.flags.unclaim) {
-        unclaimRoom(Game.flags.unclaim.room.name);
+        unclaimRoom(Game.flags.unclaim.pos.roomName);
         Game.flags.unclaim.remove();
     }
 }
