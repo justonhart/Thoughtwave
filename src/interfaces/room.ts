@@ -1,4 +1,5 @@
 interface RoomMemory {
+    gates: Gate[];
     traps: CreepTrap[];
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
@@ -40,10 +41,10 @@ const enum EnergyStatus {
 }
 
 interface CreepTrap {
-    gates: TrapGate[];
+    gates: Gate[];
 }
 
-interface TrapGate {
+interface Gate {
     id: Id<StructureRampart>;
     lastToggled: number;
 }
