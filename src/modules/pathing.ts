@@ -27,6 +27,7 @@ export class Pathing {
         ignoreCreeps: true,
         avoidRoads: false,
         avoidRoadOnLastMove: false,
+        avoidHostileRooms: true,
         reusePath: 50,
         avoidHostiles: false,
         maxOps: 20000,
@@ -117,6 +118,7 @@ export class Pathing {
 
         // Recalculate path in each new room as well if the creep should avoid hostiles in each room
         if (!creep.memory._m.path || (opts.avoidHostiles && this.isExit(creep.pos))) {
+            //console.log(`${creep.name} in ${creep.pos.toMemSafe} is looking for new path.`);
             let pathFinder = this.findTravelPath(creep.pos, destination, this.getCreepMoveEfficiency(creep), opts);
             if (pathFinder.incomplete) {
                 // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
@@ -380,7 +382,9 @@ export class Pathing {
                     matrix.set(structure.pos.x, structure.pos.y, roadCost);
                 }
             } else {
-                matrix.set(structure.pos.x, structure.pos.y, 0xff);
+                if (structure.structureType !== STRUCTURE_CONTAINER) {
+                    matrix.set(structure.pos.x, structure.pos.y, 0xff);
+                }
             }
         }
         for (let site of room.find(FIND_MY_CONSTRUCTION_SITES)) {
