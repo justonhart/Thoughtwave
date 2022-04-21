@@ -5,6 +5,7 @@ interface Memory {
 interface EmpireMemory {
     spawnAssignments?: SpawnAssignment[];
     colonizationOperations?: ColonizationOperation[]; //room names
+    hostileRooms?: string[];
 }
 
 interface SpawnAssignment {

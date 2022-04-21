@@ -24,7 +24,7 @@ export class Protector extends WaveCreep {
 
             switch (result) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { ignoreCreeps: false, reusePath: 0, visualizePathStyle: { stroke: '#ffffff' } });
+                    this.travelTo(target, { ignoreCreeps: false, reusePath: 0 });
                     break;
                 case OK:
                     break;

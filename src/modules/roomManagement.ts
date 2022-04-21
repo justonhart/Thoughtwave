@@ -170,7 +170,6 @@ export function executePhaseShift(room: Room) {
         delete creep.memory.currentTaskPriority;
         delete creep.memory.targetId;
         delete creep.memory.miningPos;
-        creep.memory._move = {};
 
         //reassign EarlyWorkers to other roles
         if (creep.memory.role === Role.WORKER) {

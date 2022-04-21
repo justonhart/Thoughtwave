@@ -12,7 +12,7 @@ export class WaveCreep extends Creep {
         if (target.store.getFreeCapacity(RESOURCE_ENERGY)) {
             switch (this.transfer(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { range: 1, visualizePathStyle: { stroke: '#ffffff' } });
+                    this.travelTo(target, { range: 1 });
                     break;
                 case ERR_NOT_ENOUGH_RESOURCES:
                     this.memory.gathering = true;
@@ -60,7 +60,6 @@ export class WaveCreep extends Creep {
     public static addToPriorityQueue(creep: Creep, priority: Priority, actionCallback: (creep: Creep) => void) {
         const currentTaskPriority = creep.memory.currentTaskPriority;
         if (priority > currentTaskPriority) {
-            creep.memory.currentTaskPriority = priority; // Set new priority
             WaveCreep.priorityQueue.set(creep.name, actionCallback);
         }
     }

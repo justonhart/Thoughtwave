@@ -45,7 +45,6 @@ function phaseOneSpawning(spawn: StructureSpawn) {
     let options: SpawnOptions = {
         memory: {
             room: spawn.room.name,
-            _move: {},
         },
     };
 
@@ -125,7 +124,6 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
     let options: SpawnOptions = {
         memory: {
             room: spawn.room.name,
-            _move: {},
         },
     };
 
@@ -235,7 +233,6 @@ function spawnMiner(spawn: StructureSpawn) {
             assignment: assigment,
             room: spawn.room.name,
             role: Role.MINER,
-            _move: {},
         },
     };
 
@@ -273,7 +270,6 @@ function spawnAssignedCreep(spawn: StructureSpawn) {
     let assignment = Memory.empire.spawnAssignments[ASSIGNMENT_INDEX];
     let options: SpawnOptions = {
         memory: {
-            _move: {},
             ...assignment.memoryOptions,
         },
     };

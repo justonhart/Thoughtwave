@@ -2,14 +2,14 @@ import { Pathing } from '../modules/pathing';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 Creep.prototype.travelTo = function (destination, opts) {
-    return new Pathing().travelTo(this, destination, opts);
+    return Pathing.travelTo(this, destination, opts);
 };
 
 Creep.prototype.travelToRoom = function (roomName, opts) {
     if (this.room.name === roomName && !this.onEdge()) {
         return IN_ROOM;
     }
-    return this.travelTo(new RoomPosition(25, 25, roomName), { ...opts, range: 23, reusePath: 50, avoidHostiles: true, maxOps: 10000 });
+    return this.travelTo(new RoomPosition(25, 25, roomName), { ...opts, range: 23, avoidHostiles: true });
 };
 
 Creep.prototype.onEdge = function () {
