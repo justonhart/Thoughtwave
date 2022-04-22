@@ -48,6 +48,7 @@ interface TravelState {
     lastCoord?: string;
     destination?: string;
     path?: string;
+    stuckCount?: number;
 }
 
 interface Destination {
