@@ -89,30 +89,29 @@ export class Pathing {
             return ERR_TIRED;
         }
 
-        if (!creep.memory._m.destination || destination !== posFromMem(creep.memory._m.destination)) {
+        if (destination.toMemSafe() !== creep.memory._m.destination) {
             creep.memory._m.destination = destination.toMemSafe();
         }
 
-        // Creep has moved so remove nextDirection from memory
-        if (creep.memory._m.path && !this.isStuck(creep, posFromMem(creep.memory._m.lastCoord))) {
-            creep.memory._m.path = creep.memory._m.path.slice(1);
-        }
-
-        // Recalculate path with creeps in mind
-        if (creep.memory._m.destination && this.isStuck(creep, posFromMem(creep.memory._m.lastCoord))) {
-            // First try pushing the creep in front closer to their target
-            if (!this.pushForward(creep)) {
-                opts.pathColor = 'blue';
-                opts.ignoreCreeps = false;
-                delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
+        if (creep.memory._m.path) {
+            // Creep has moved so remove nextDirection from memory
+            if (!this.isStuck(creep, posFromMem(creep.memory._m.lastCoord))) {
+                creep.memory._m.path = creep.memory._m.path.slice(1);
             } else {
-                new RoomVisual(creep.pos.roomName).circle(creep.pos, {
-                    radius: 0.45,
-                    fill: 'transparent',
-                    stroke: 'green',
-                    strokeWidth: 0.15,
-                    opacity: 0.3,
-                });
+                // First try pushing the creep in front closer to their target
+                if (!this.pushForward(creep)) {
+                    opts.pathColor = 'blue';
+                    opts.ignoreCreeps = false;
+                    delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
+                } else {
+                    new RoomVisual(creep.pos.roomName).circle(creep.pos, {
+                        radius: 0.45,
+                        fill: 'transparent',
+                        stroke: 'green',
+                        strokeWidth: 0.15,
+                        opacity: 0.3,
+                    });
+                }
             }
         }
 
