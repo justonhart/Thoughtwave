@@ -3,6 +3,7 @@ import { posFromMem } from '../modules/memoryManagement';
 //@ts-ignore
 global.IN_ROOM = -20;
 
+const REPORT_CPU_THRESHOLD = 1000;
 /**
  * Quick overview of the different visuals.
  * Visuals:
@@ -97,6 +98,7 @@ export class Pathing {
             creep.memory._m.stuckCount++;
         }
 
+        const cpuBefore = Game.cpu.getUsed();
         if (creep.memory._m.path && creep.memory._m.stuckCount) {
             // First try pushing the creep in front closer to their target
             if (!Pathing.pushForward(creep) || creep.memory._m.stuckCount > 1) {
@@ -153,9 +155,16 @@ export class Pathing {
             creep.memory._m.stuckCount = 0;
         }
 
+        // Can be removed later but needed this for debugging
+        const cpuUsed = Game.cpu.getUsed() - cpuBefore;
+        if (cpuUsed > REPORT_CPU_THRESHOLD) {
+            console.log(
+                `Pathing: ${creep.name} shows heavy cpu use. cpu: ${cpuUsed}, pos: ${creep.pos.toMemSafe()}, dest: ${destination.toMemSafe()}`
+            );
+        }
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
         // If only one move is left then instantly get rid of it since above logic wont get executed
-        if (!newPath && !creep.memory._m.stuckCount) {
+        if (creep.memory._m.path.length === 1 || (!newPath && !creep.memory._m.stuckCount)) {
             creep.memory._m.path = creep.memory._m.path.slice(1);
         }
         return creep.move(nextDirection);
