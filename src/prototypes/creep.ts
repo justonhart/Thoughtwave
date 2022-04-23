@@ -5,11 +5,12 @@ Creep.prototype.travelTo = function (destination, opts) {
     return Pathing.travelTo(this, destination, opts);
 };
 
+// TODO: optimize where maxOps is default since it uses findRoute once for the rooms in route, then calculates path for each room on enter
 Creep.prototype.travelToRoom = function (roomName, opts) {
     if (this.room.name === roomName && !this.onEdge()) {
         return IN_ROOM;
     }
-    return this.travelTo(new RoomPosition(25, 25, roomName), { ...opts, range: 23, avoidHostiles: true });
+    return this.travelTo(new RoomPosition(25, 25, roomName), { ...opts, range: 23, avoidHostiles: true, maxOps: 20000 });
 };
 
 Creep.prototype.onEdge = function () {

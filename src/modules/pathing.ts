@@ -30,7 +30,7 @@ export class Pathing {
         avoidHostileRooms: true,
         reusePath: 50,
         avoidHostiles: false,
-        maxOps: 20000,
+        maxOps: 2000,
         range: 0,
         pathColor: 'orange',
     };
@@ -48,11 +48,7 @@ export class Pathing {
         destination: HasPos | RoomPosition,
         opts?: TravelToOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
-        let options = Pathing.defaultOpts;
-        if (opts) {
-            options = { ...options, ...opts }; // Enable overriding any default options
-        }
-
+        const options = { ...Pathing.defaultOpts, ...opts }; // Enable overriding any default options
         // TODO: save reusePath in creep memory to force new path calculation (decrease it by one every time)
         if (!options.reusePath && creep.memory._m?.path) {
             delete creep.memory._m.path; // Always recalculate path
@@ -94,32 +90,34 @@ export class Pathing {
             creep.memory._m.destination = destination.toMemSafe();
         }
 
-        if (creep.memory._m.path) {
-            // Creep has moved so remove nextDirection from memory
-            if (!Pathing.isStuck(creep, posFromMem(creep.memory._m.lastCoord))) {
-                creep.memory._m.path = creep.memory._m.path.slice(1);
-                creep.memory._m.stuckCount = 0;
+        // Stuck Logic
+        if (!Pathing.isStuck(creep, posFromMem(creep.memory._m.lastCoord))) {
+            creep.memory._m.stuckCount = 0;
+        } else {
+            creep.memory._m.stuckCount++;
+        }
+
+        if (creep.memory._m.path && creep.memory._m.stuckCount) {
+            // First try pushing the creep in front closer to their target
+            if (!Pathing.pushForward(creep) || creep.memory._m.stuckCount > 1) {
+                opts.pathColor = 'blue';
+                opts.ignoreCreeps = false;
+                delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
             } else {
-                creep.memory._m.stuckCount++;
-                // First try pushing the creep in front closer to their target
-                if (!Pathing.pushForward(creep) && creep.memory._m.stuckCount > 1) {
-                    opts.pathColor = 'blue';
-                    opts.ignoreCreeps = false;
-                    delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
-                } else {
-                    new RoomVisual(creep.pos.roomName).circle(creep.pos, {
-                        radius: 0.45,
-                        fill: 'transparent',
-                        stroke: 'green',
-                        strokeWidth: 0.15,
-                        opacity: 0.3,
-                    });
-                }
+                new RoomVisual(creep.pos.roomName).circle(creep.pos, {
+                    radius: 0.45,
+                    fill: 'transparent',
+                    stroke: 'green',
+                    strokeWidth: 0.15,
+                    opacity: 0.3,
+                });
             }
         }
 
+        let newPath = false;
         // Recalculate path in each new room as well if the creep should avoid hostiles in each room
         if (!creep.memory._m.path || (opts.avoidHostiles && Pathing.isExit(creep.pos))) {
+            newPath = true;
             //console.log(`${creep.name} in ${creep.pos.toMemSafe} is looking for new path.`);
             let pathFinder = Pathing.findTravelPath(creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), opts);
             if (pathFinder.incomplete) {
@@ -133,7 +131,10 @@ export class Pathing {
                 });
                 if (!pathFinder.path) {
                     // Not even a partial path was found (for example close to the target but blocked by creeps)
-                    pathFinder = Pathing.findTravelPath(creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), Pathing.defaultOpts); // Try to find path with default options (for example creeps could be blocking the target so this should at least find a path closer to the target)
+                    pathFinder = Pathing.findTravelPath(creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), {
+                        ...Pathing.defaultOpts,
+                        range: opts.range,
+                    }); // Try to find path with default options (for example creeps could be blocking the target so this should at least find a path closer to the target)
                     if (!pathFinder.path) {
                         // Error (hopefully shouldn't happen)
                         new RoomVisual(creep.pos.roomName).circle(creep.pos, {
@@ -149,11 +150,12 @@ export class Pathing {
             }
 
             creep.memory._m.path = Pathing.serializePath(creep.pos, pathFinder.path, { color: opts.pathColor, lineStyle: 'dashed' });
+            creep.memory._m.stuckCount = 0;
         }
 
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
         // If only one move is left then instantly get rid of it since above logic wont get executed
-        if (creep.memory._m.path?.length === 1) {
+        if (!newPath && !creep.memory._m.stuckCount) {
             creep.memory._m.path = creep.memory._m.path.slice(1);
         }
         return creep.move(nextDirection);
@@ -458,12 +460,11 @@ export class Pathing {
                 // Check if Creeps are going past each other
                 if (obstacleCreep.memory._m.path) {
                     const obstacleNextDirection = parseInt(obstacleCreep.memory._m.path[0], 10) as DirectionConstant;
-                    if (Pathing.inverseDirection(nextDirection) === obstacleNextDirection) {
-                        // In most cases there is no need to override the task as it should be the same but sometimes creeps start doing their task with a last step in their path. This prevents a deadlock
-                        obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
-                            obstacleCreep.move(obstacleNextDirection);
-                        });
-                    }
+                    // In most cases there is no need to override the task as it should be the same but sometimes creeps start doing their task with a last step in their path. This prevents a deadlock
+                    obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
+                        obstacleCreep.move(obstacleNextDirection);
+                    });
+                    return true;
                 }
 
                 // Find Path closer to target
