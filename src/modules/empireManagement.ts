@@ -9,10 +9,6 @@ export function manageEmpire() {
         };
     }
 
-    if (Game.flags.colonize) {
-        addColonizationOperation();
-    }
-
     if (Memory.empire.colonizationOperations.length) {
         manageColonistCreeps();
     }
@@ -65,8 +61,8 @@ export function manageColonistCreeps() {
     });
 }
 
-function addColonizationOperation() {
-    let bestOrigin = findBestColonyOrigin(Game.flags.colonize.pos.roomName);
+export function addColonizationOperation() {
+    let bestOrigin = findBestColonyOrigin(Game.flags.colonize.pos);
 
     if (bestOrigin) {
         let newOp: ColonizationOperation = {
@@ -83,16 +79,27 @@ function addColonizationOperation() {
     Game.flags.colonize.remove();
 }
 
-function findBestColonyOrigin(targetRoom: string) {
+function findBestColonyOrigin(spawnPosition: RoomPosition): string {
+    const MAX_ROOM_LINEAR_DISTANCE = 8;
+
     let possibleSpawnRooms = Object.values(Game.rooms).filter(
-        (room) => room.controller?.my && room.memory.phase === 2 && room.energyStatus >= EnergyStatus.STABLE
+        (room) =>
+            room.controller?.my &&
+            room.memory.phase === 2 &&
+            room.energyStatus > EnergyStatus.CRITICAL &&
+            Game.map.getRoomLinearDistance(room.name, spawnPosition.roomName) <= MAX_ROOM_LINEAR_DISTANCE
     );
 
-    let closestRoom = possibleSpawnRooms.reduce((closestRoom, roomToCompare) =>
-        Game.map.getRoomLinearDistance(closestRoom.name, targetRoom) < Game.map.getRoomLinearDistance(roomToCompare.name, targetRoom)
-            ? closestRoom
-            : roomToCompare
-    );
+    let bestRoom: Room;
+    if (possibleSpawnRooms.length) {
+        bestRoom = possibleSpawnRooms.reduce((closestSoFar, roomToCheck) => {
+            let bestPath = PathFinder.search(closestSoFar.storage.pos, spawnPosition, { swampCost: 1 });
+            let nextPath = PathFinder.search(roomToCheck.storage.pos, spawnPosition, { swampCost: 1 });
+            console.log(`${roomToCheck.name} cost: ${nextPath.cost}`);
 
-    return Game.map.getRoomLinearDistance(closestRoom.name, targetRoom) < 11 ? closestRoom.name : undefined;
+            return bestPath.cost <= nextPath.cost ? closestSoFar : roomToCheck;
+        });
+    }
+
+    return bestRoom.name;
 }
