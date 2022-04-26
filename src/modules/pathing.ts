@@ -1,18 +1,38 @@
-const MATRIX_COST_OFF_ROAD = 10; // Twice the cost of swamp terrain to avoid roads if possible
-const AVOID_HOSTILES = 200; // Not 255 since sometimes a creep has no other choice
-const MAX_STUCK_COUNT = 2; // If a creep can't move after two ticks, the path will be reevaluated
-const MAX_STUCK_ROUTE = 5; // How long the path should be reused when stuck
+import { posFromMem } from '../modules/memoryManagement';
+
 //@ts-ignore
 global.IN_ROOM = -20;
 
+const REPORT_CPU_THRESHOLD = 500;
+/**
+ * Quick overview of the different visuals.
+ * Visuals:
+ *   Circle:
+ *     Aqua: Creep is fatigued
+ *     Green: Creep is pushing obstacle away
+ *     Orange: Path with given options could not be found
+ *     Red: Path with default options coul not be found
+ *   Line:
+ *     Orange: Normal Path
+ *     Blue: New Path after being stuck
+ *
+ */
 export class Pathing {
+    private static structureMatrixCache: { [roomName: string]: { [roadCost: number]: CostMatrix } } = {};
+    private static creepMatrixCache: { [roomName: string]: CostMatrix } = {};
+    private static creepMatrixTick: { [roomName: string]: number } = {};
+    private static structureMatrixTick: { [roomName: string]: number } = {};
+
     // Store roads for each room
-    private defaultOpts: TravelToOpts = {
+    private static defaultOpts: TravelToOpts = {
         ignoreCreeps: true,
         avoidRoads: false,
-        avoidRoadOnLastMove: false,
-        reusePath: 30,
+        avoidHostileRooms: true,
+        reusePath: 50,
         avoidHostiles: false,
+        maxOps: 2000,
+        range: 0,
+        pathColor: 'orange',
     };
 
     /**
@@ -23,116 +43,386 @@ export class Pathing {
      * @param opts
      * @returns
      */
-    public travelTo(
+    public static travelTo(
         creep: Creep,
         destination: HasPos | RoomPosition,
         opts?: TravelToOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
-        let options = this.defaultOpts;
-        if (opts) {
-            options = { ...options, ...opts }; // Enable overriding any default options
+        const options = { ...Pathing.defaultOpts, ...opts }; // Enable overriding any default options
+        // TODO: save reusePath in creep memory to force new path calculation (decrease it by one every time)
+        if (!options.reusePath && creep.memory._m?.path) {
+            delete creep.memory._m.path; // Always recalculate path
         }
 
-        // init memory
-        if (!creep.memory._m) creep.memory._m = { stuckCount: 0 };
-
-        let roomPosition = Pathing.normalizePos(destination);
+        const roomPosition = Pathing.normalizePos(destination);
 
         try {
-            var result = this.move(creep, roomPosition, options);
+            var result = Pathing.move(creep, roomPosition, options);
         } catch (e) {
             // In case something goes horribly wrong (example: someone manually deleted the creep memory)
-            console.log(`Error caught in ${creep.name} for TravelTo. Fallback to default MoveTo function. Error: \n${e}`);
-            result = creep.moveTo(destination, opts);
+            console.log(`Error caught in ${creep.name} for TravelTo. Error: \n${e}`);
         }
-        if (creep.memory._move?.dest) {
-            creep.memory._m.prevPos = creep.pos; // Store coordinates to see if a creep is being blocked
+        if (result === OK) {
+            creep.memory._m.lastCoord = creep.pos.toMemSafe(); // Store coordinates to see if a creep is being blocked
         }
-        if (result === ERR_TIRED) {
-            creep.memory._m.stuckCount = 0;
-        }
+
         return result;
     }
 
-    private move(
-        creep: Creep,
-        destination: RoomPosition,
-        opts: TravelToOpts
-    ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
-        // Get Custom matrix if called otherwise use default
-        if (opts.avoidHostiles || opts.avoidRoadOnLastMove || opts.avoidRoads) {
-            opts.costCallback = this.getMatrix(opts, destination);
+    static move(creep: Creep, destination: RoomPosition, opts: TravelToOpts): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
+        if (!creep.memory._m) {
+            creep.memory._m = { stuckCount: 0 };
         }
 
-        // Recalculate path with creeps in mind
-        if (this.isSameDest(creep, destination) && (this.isStuck(creep, creep.memory._m.prevPos) || creep.memory._m.stuckCount >= MAX_STUCK_COUNT)) {
-            creep.memory._m.stuckCount++;
+        if (creep.fatigue > 0) {
+            creep.memory._m.stuckCount = 0;
+            new RoomVisual(creep.pos.roomName).circle(creep.pos, {
+                radius: 0.45,
+                fill: 'transparent',
+                stroke: 'aqua',
+                strokeWidth: 0.15,
+                opacity: 0.3,
+            });
+            return ERR_TIRED;
+        }
 
-            // First try pushing the creep in front closer to their target
-            if (creep.memory._m.stuckCount === 1) {
-                this.pushForward(creep);
-            }
-            // If creep is still stuck after two ticks find new path
-            if (creep.memory._m.stuckCount >= MAX_STUCK_COUNT && creep.memory._m.stuckCount < MAX_STUCK_ROUTE) {
-                opts.visualizePathStyle = { stroke: '#0000ff', opacity: 0.7, strokeWidth: 0.2, lineStyle: 'dashed' };
-                opts.ignoreCreeps = false;
-                opts.reusePath = 0;
-            }
-            // Reset to avoid creeps
-            if (creep.memory._m.stuckCount >= MAX_STUCK_ROUTE) {
-                creep.memory._move = {};
-                creep.memory._m.stuckCount = 0;
+        if (destination.toMemSafe() !== creep.memory._m.destination) {
+            creep.memory._m.destination = destination.toMemSafe();
+        }
+
+        // Stuck Logic
+        if (!Pathing.isStuck(creep, posFromMem(creep.memory._m.lastCoord))) {
+            creep.memory._m.stuckCount = 0;
+            // TODO: Info last moveset will not be removed as this logik is only run when a creep is still traveling
+            if (creep.memory._m.path) {
+                creep.memory._m.path = creep.memory._m.path.slice(1);
             }
         } else {
-            creep.memory._m.stuckCount = 0; // Reset stuckCount
+            creep.memory._m.stuckCount++;
         }
 
-        // Default
-        return creep.moveTo(destination, opts);
+        const cpuBefore = Game.cpu.getUsed();
+        if (creep.memory._m.path && creep.memory._m.stuckCount) {
+            // First try pushing the creep in front closer to their target
+            if (!Pathing.pushForward(creep) || creep.memory._m.stuckCount > 1) {
+                opts.pathColor = 'blue';
+                opts.ignoreCreeps = false;
+                delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
+            } else {
+                new RoomVisual(creep.pos.roomName).circle(creep.pos, {
+                    radius: 0.45,
+                    fill: 'transparent',
+                    stroke: 'green',
+                    strokeWidth: 0.15,
+                    opacity: 0.3,
+                });
+            }
+        }
+
+        // Recalculate path in each new room as well if the creep should avoid hostiles in each room
+        if (!creep.memory._m.path || (opts.avoidHostiles && Pathing.isExit(creep.pos))) {
+            //console.log(`${creep.name} in ${creep.pos.toMemSafe} is looking for new path.`);
+            let pathFinder = Pathing.findTravelPath(creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), opts);
+            if (pathFinder.incomplete) {
+                // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
+                new RoomVisual(creep.pos.roomName).circle(creep.pos, {
+                    radius: 0.45,
+                    fill: 'transparent',
+                    stroke: 'orange',
+                    strokeWidth: 0.15,
+                    opacity: 0.3,
+                });
+                if (!pathFinder.path) {
+                    // Not even a partial path was found (for example close to the target but blocked by creeps)
+                    pathFinder = Pathing.findTravelPath(creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), {
+                        ...Pathing.defaultOpts,
+                        range: opts.range,
+                    }); // Try to find path with default options (for example creeps could be blocking the target so this should at least find a path closer to the target)
+                    if (!pathFinder.path) {
+                        // Error (hopefully shouldn't happen)
+                        new RoomVisual(creep.pos.roomName).circle(creep.pos, {
+                            radius: 0.45,
+                            fill: 'transparent',
+                            stroke: 'red',
+                            strokeWidth: 0.15,
+                            opacity: 0.3,
+                        });
+                        console.log(`Could not find a path for ${creep.name}`);
+                    }
+                }
+            }
+
+            creep.memory._m.path = Pathing.serializePath(creep.pos, pathFinder.path, { color: opts.pathColor, lineStyle: 'dashed' });
+            creep.memory._m.stuckCount = 0;
+        }
+
+        // Can be removed later but needed this for debugging
+        const cpuUsed = Game.cpu.getUsed() - cpuBefore;
+        if (cpuUsed > REPORT_CPU_THRESHOLD) {
+            console.log(
+                `Pathing: ${creep.name} shows heavy cpu use. cpu: ${cpuUsed}, pos: ${creep.pos.toMemSafe()}, dest: ${destination.toMemSafe()}`
+            );
+        }
+        const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
+        return creep.move(nextDirection);
     }
 
-    private isSameDest(creep: Creep, destination: RoomPosition) {
-        return JSON.stringify(this.normalizeDestination(creep.memory._move.dest)) === JSON.stringify(destination);
+    static isSameDest(creep: Creep, destination: RoomPosition) {
+        return JSON.stringify(posFromMem(creep.memory._m.destination)) === JSON.stringify(destination);
     }
 
     /**
-     * CostCallback function to set avoid matrix.
-     * This will execute every time the path needs to be recalculated (new room or reusePath is up)
+     * Get Move Efficiency to properly calculate the costMatrix.
+     * @param creep -
+     * @returns
      */
-    private getMatrix(opts: TravelToOpts, destination?: RoomPosition) {
-        return (roomName: string, costMatrix: CostMatrix) => {
-            if (opts.avoidRoads) {
-                // avoid all roads
-                Game.rooms[roomName]
-                    .find(FIND_STRUCTURES, { filter: (i) => i.structureType == STRUCTURE_ROAD })
-                    .forEach((road) => costMatrix.set(road.pos.x, road.pos.y, MATRIX_COST_OFF_ROAD));
-            } else if (opts.avoidRoadOnLastMove && roomName === destination.roomName) {
-                // edge cases
-                const avoidArea = this.getArea(destination, opts.range);
-                // Avoid roads at specific destination
-                Game.rooms[roomName]
-                    .lookForAtArea(LOOK_STRUCTURES, avoidArea.top, avoidArea.left, avoidArea.bottom, avoidArea.right, true)
-                    .filter((structure) => structure.structure.structureType === 'road')
-                    .forEach((road) => costMatrix.set(road.x, road.y, MATRIX_COST_OFF_ROAD));
-            }
-            if (opts.avoidHostiles) {
-                const room = Game.rooms[roomName];
-                if (!room) return;
-                room.find(FIND_HOSTILE_CREEPS, {
-                    filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
-                }).forEach((creep) => {
-                    const avoidArea = this.getArea(creep.pos, 3);
-                    for (let x = avoidArea.left; x <= avoidArea.right; x++) {
-                        for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
-                            costMatrix.set(x, y, AVOID_HOSTILES);
-                        }
+    static getCreepMoveEfficiency(creep: Creep): number {
+        let totalreduction = 0;
+        let totalparts = 0;
+        let used = creep.store.getUsedCapacity();
+        creep.body.forEach((body) => {
+            switch (body.type) {
+                case MOVE:
+                    totalreduction += body.hits > 0 ? -2 : 0; // Each MOVE reduces fatigue by 2
+                    break;
+                case CARRY:
+                    if (used > 0 && body.hits > 0) {
+                        used -= CARRY_CAPACITY;
+                        totalparts += 1; // CARRY will only count if in use
                     }
-                });
+                    break;
+                default: // Other body parts
+                    totalparts += 1;
+                    break;
             }
+        });
+        return totalparts > 0 ? 0 - totalreduction / totalparts : totalreduction;
+    }
+    //check if room should be avoided
+    static checkAvoid(roomName: string): boolean {
+        if (Memory.empire.hostileRooms) {
+            const hostileRoom = Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName);
+            if (hostileRoom) {
+                if (hostileRoom.expireAt > Game.time) {
+                    return true;
+                }
+                Memory.empire.hostileRooms.splice(Memory.empire.hostileRooms.indexOf(hostileRoom), 1); // Cleanup expired rooms
+            }
+            return false;
+        }
+        return false;
+    }
+    //check if a position is an exit
+    static isExit(pos: RoomPosition): boolean {
+        return pos.x === 0 || pos.y === 0 || pos.x === 49 || pos.y === 49;
+    }
+    //check two coordinates match
+    static sameCoord(pos1: RoomPosition, pos2: RoomPosition): boolean {
+        return pos1.x === pos2.x && pos1.y === pos2.y;
+    }
+
+    // add hostile rooms
+    static addHostileRoom(room: Room, destinationRoom: string): void {
+        if (!room) {
+            return;
+        }
+        if (!Memory.empire.hostileRooms) {
+            Memory.empire.hostileRooms = [];
+        }
+        // Find hostileRooms
+        if (
+            room.name !== destinationRoom &&
+            !Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === room.name) &&
+            room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_TOWER })?.length
+        ) {
+            Memory.empire.hostileRooms.push({ room: room.name, expireAt: Game.time + 8000 }); // valid for 8000 Ticks right now (can be changed depending on room situation ==> invaders or players controller level)
+        }
+    }
+
+    /**
+     * Find path between two points
+     * @param origin -
+     * @param destination -
+     * @param options -
+     * @returns -
+     */
+    static findTravelPath(origin: HasPos | RoomPosition, destination: RoomPosition, efficiency: number, options: TravelToOpts = {}) {
+        origin = Pathing.normalizePos(origin);
+        destination = Pathing.normalizePos(destination);
+        const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
+        return PathFinder.search(
+            origin,
+            {
+                pos: destination,
+                range: range,
+            },
+            {
+                maxOps: options.maxOps,
+                plainCost: efficiency >= 2 ? 1 : 2,
+                swampCost: efficiency >= 2 ? Math.ceil(10 / efficiency) : 10,
+                roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options),
+            }
+        );
+    }
+
+    /**
+     * Create proper costMatrix for each room
+     * @param originRoom -
+     * @param destionationRoom -
+     * @param options -
+     * @returns -
+     */
+    static getRoomCallback(originRoom: string, destination: RoomPosition, options: TravelToOpts) {
+        return (roomName: string) => {
+            const room = Game.rooms[roomName];
+            Pathing.addHostileRoom(room, destination.roomName);
+            if (options.avoidHostileRooms && Pathing.checkAvoid(roomName) && roomName !== destination.roomName) {
+                return false;
+            }
+
+            let matrix: CostMatrix;
+            if (room) {
+                if (options.ignoreStructures) {
+                    matrix = new PathFinder.CostMatrix();
+                    if (!options.ignoreCreeps) {
+                        Pathing.addCreepsToMatrix(room, matrix);
+                    }
+                } else if (options.ignoreCreeps || roomName !== originRoom) {
+                    matrix = Pathing.getStructureMatrix(room, options);
+                } else {
+                    matrix = Pathing.getCreepMatrix(room);
+                }
+
+                if (options.avoidHostiles && roomName === originRoom) {
+                    matrix = matrix.clone();
+                    room.find(FIND_HOSTILE_CREEPS, {
+                        filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
+                    }).forEach((creep) => {
+                        const avoidArea = Pathing.getArea(creep.pos, 3);
+                        for (let x = avoidArea.left; x <= avoidArea.right; x++) {
+                            for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
+                                matrix.set(x, y, 0xc8);
+                            }
+                        }
+                    });
+                }
+            }
+
+            return matrix;
         };
     }
 
-    private getArea(pos: RoomPosition, range: number) {
+    static ensureRangeIsInRoom(originRoom: string, destination: RoomPosition, range: number): number {
+        if (originRoom !== destination.roomName && range > 1) {
+            if (destination.x + range > 48) {
+                range = destination.x === 49 ? 0 : 48 - destination.x;
+            } else if (destination.y + range > 48) {
+                range = destination.x === 49 ? 0 : 48 - destination.y;
+            } else if (range >= destination.x) {
+                range = destination.x > 0 ? destination.x - 1 : 0;
+            } else if (range >= destination.y) {
+                range = destination.y > 0 ? destination.y - 1 : 0;
+            }
+        }
+        return range;
+    }
+
+    /**
+     * Create new costmatrix based on the room and the provided options
+     * @param room current room (need visibility)
+     * @param options set proper roadcost
+     * @returns new costmatrix
+     */
+    static getStructureMatrix(room: Room, options: TravelToOpts): CostMatrix {
+        const roadcost = 1; // Could be configurable later to avoid roads
+        if (!Pathing.structureMatrixTick) {
+            Pathing.structureMatrixTick = {};
+        }
+
+        if (!Pathing.structureMatrixCache[room.name]) {
+            Pathing.structureMatrixCache[room.name] = {};
+        }
+        if (
+            !Pathing.structureMatrixCache[room.name][roadcost] ||
+            (options && options.freshMatrix && Game.time !== Pathing.structureMatrixTick[room.name])
+        ) {
+            Pathing.structureMatrixTick[room.name] = Game.time;
+            Pathing.structureMatrixCache[room.name][roadcost] = Pathing.addStructuresToMatrix(room, new PathFinder.CostMatrix(), roadcost);
+        }
+        return Pathing.structureMatrixCache[room.name][roadcost];
+    }
+
+    /**
+     * Costmatrix for creep + structures
+     * @param room current room (needs visibility)
+     * @returns new Costmatrix
+     */
+    static getCreepMatrix(room: Room): CostMatrix {
+        if (!Pathing.creepMatrixTick) {
+            Pathing.creepMatrixTick = {};
+        }
+        if (!Pathing.creepMatrixCache[room.name] || Game.time !== Pathing.creepMatrixTick[room.name]) {
+            Pathing.creepMatrixTick[room.name] = Game.time;
+            Pathing.creepMatrixCache[room.name] = Pathing.addCreepsToMatrix(room, Pathing.getStructureMatrix(room, { freshMatrix: true }).clone());
+        }
+        return Pathing.creepMatrixCache[room.name];
+    }
+
+    /**
+     * Costmatrix for structures
+     * @param room current room (needs visibility)
+     * @param matrix costmatrix to which to add the structure cost
+     * @param roadCost cost for traveling on roads
+     * @returns changed costmatrix
+     */
+    static addStructuresToMatrix(room: Room, matrix: CostMatrix, roadCost: number): CostMatrix {
+        let impassibleStructures = [];
+        for (let structure of room.find(FIND_STRUCTURES)) {
+            if (structure.structureType === STRUCTURE_RAMPART) {
+                if (!structure.my && !structure.isPublic) {
+                    impassibleStructures.push(structure);
+                }
+            } else if (structure.structureType === STRUCTURE_ROAD) {
+                if (matrix.get(structure.pos.x, structure.pos.y) < 0xff) {
+                    matrix.set(structure.pos.x, structure.pos.y, roadCost);
+                }
+            } else {
+                if (structure.structureType !== STRUCTURE_CONTAINER) {
+                    matrix.set(structure.pos.x, structure.pos.y, 0xff);
+                }
+            }
+        }
+        for (let site of room.find(FIND_MY_CONSTRUCTION_SITES)) {
+            if (site.structureType === STRUCTURE_CONTAINER || site.structureType === STRUCTURE_ROAD || site.structureType === STRUCTURE_RAMPART) {
+                continue;
+            }
+            matrix.set(site.pos.x, site.pos.y, 0xff);
+        }
+
+        return matrix;
+    }
+    //add creeps to matrix so that they will be avoided by other creeps
+    static addCreepsToMatrix(room: Room, matrix: CostMatrix): CostMatrix {
+        room.find(FIND_CREEPS).forEach((creep) => matrix.set(creep.pos.x, creep.pos.y, 0xff));
+        return matrix;
+    }
+    //serialize a path, Pathing style. Returns a string of directions.
+    static serializePath(startPos: RoomPosition, path: RoomPosition[], lineStyle?: LineStyle): string {
+        let serializedPath = '';
+        let lastPosition = startPos;
+        for (let position of path) {
+            if (position.roomName === lastPosition.roomName) {
+                if (lineStyle) {
+                    new RoomVisual(position.roomName).line(position, lastPosition, lineStyle);
+                }
+                serializedPath += lastPosition.getDirectionTo(position);
+            }
+            lastPosition = position;
+        }
+        return serializedPath;
+    }
+
+    static getArea(pos: RoomPosition, range: number) {
         const top = pos.y - range < 0 ? 0 : pos.y - range;
         const bottom = pos.y + range > 49 ? 49 : pos.y + range;
         const left = pos.x - range < 0 ? 0 : pos.x - range;
@@ -140,7 +430,7 @@ export class Pathing {
         return { top, left, bottom, right };
     }
 
-    private normalizeDestination(destination: Destination): RoomPosition {
+    static normalizeDestination(destination: Destination): RoomPosition {
         if (!destination) {
             return null;
         }
@@ -148,26 +438,15 @@ export class Pathing {
     }
 
     /**
-     * Check if the creep hasn't moved from his last coordinates
+     * Check if the creep hasn't moved from his last coordinates or creep is on an exit
      * Fatigue will not count towards being stuck
      *
      * @param creep -
      * @param prevCoords -
      * @returns
      */
-    private isStuck(creep: Creep, prevCoords: Coord): boolean {
-        return prevCoords && creep.fatigue === 0 && creep.memory._move?.dest && this.sameCoord(creep.pos, prevCoords);
-    }
-
-    /**
-     * Check if the two coordinates are the same
-     *
-     * @param pos1 -
-     * @param pos2 -
-     * @returns
-     */
-    private sameCoord(pos1: Coord, pos2: Coord): boolean {
-        return pos1.x === pos2.x && pos1.y === pos2.y;
+    static isStuck(creep: Creep, lastCoord: RoomPosition): boolean {
+        return lastCoord && (Pathing.sameCoord(creep.pos, lastCoord) || (Pathing.isExit(creep.pos) && Pathing.isExit(lastCoord)));
     }
 
     /**
@@ -177,31 +456,49 @@ export class Pathing {
      * @param creep -
      * @returns -
      */
-    private pushForward(creep: Creep) {
-        const nextPos = creep.memory._move?.path ? Room.deserializePath(creep.memory._move?.path)?.[0] : null;
-        if (nextPos) {
+    static pushForward(creep: Creep): boolean {
+        if (creep.memory._m.path) {
+            const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
             //check if creep is in nextPos
-            const obstacleCreep = creep.room.lookForAt(LOOK_CREEPS, nextPos.x, nextPos.y)?.[0];
-            if (obstacleCreep && obstacleCreep.memory._move?.path) {
-                const obstacleNextPos = Room.deserializePath(obstacleCreep.memory._move?.path)?.[0];
-                if (
-                    !obstacleCreep.memory?._move?.dest ||
-                    (obstacleNextPos && obstacleNextPos.x === creep.pos.x && obstacleNextPos.y === creep.pos.y)
-                ) {
-                    // Creep without a destination or creeps that are going to switch places are exempt (creeps without destination could be changed to just move in a random direction?)
-                    return;
+            const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
+            if (obstacleCreep?.memory?._m?.destination) {
+                // If obstacle creep is still moving it will move out of the way
+                if (obstacleCreep.memory._m?.path?.length > 1) {
+                    return true;
                 }
-                const obstacleCreepDest = this.normalizeDestination(obstacleCreep.memory._move?.dest);
-                let forwardPath = obstacleCreep.pos.findPathTo(obstacleCreepDest, { maxOps: 100 })?.[0];
-                if (forwardPath && creep.room.lookForAt(LOOK_CREEPS, forwardPath.x, forwardPath.y)) {
-                    forwardPath = undefined; // If creep can go closer to his target but is blocked by yet another creep simply switch places with the first creep
+
+                const obstacleCreepDestination = posFromMem(obstacleCreep.memory._m.destination);
+                // Swap places if creep is closer to the destination than the obstacleCreep
+                if (obstacleCreep.pos.getRangeTo(obstacleCreepDestination) >= creep.pos.getRangeTo(obstacleCreepDestination)) {
+                    obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
+                        obstacleCreep.move(Pathing.inverseDirection(nextDirection));
+                    });
+                    return true;
                 }
-                // Push the obstacleCreep closer to their target is possible, else just switch places (if creep can push depends on currentTaskPriority)
-                obstacleCreep.addTaskToPriorityQueue(creep.memory.currentTaskPriority, () => {
-                    obstacleCreep.move(forwardPath?.direction ?? this.inverseDirection(nextPos.direction));
-                });
+
+                // Find Path closer to target
+                const obstaclePathFinder = Pathing.findTravelPath(
+                    obstacleCreep.pos,
+                    obstacleCreepDestination,
+                    Pathing.getCreepMoveEfficiency(obstacleCreep),
+                    { ignoreCreeps: false, range: 1 }
+                );
+                // Push the obstacleCreep closer to their target (set always higher priority)
+                if (obstaclePathFinder?.path?.length > 0) {
+                    obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
+                        obstacleCreep.move(obstacleCreep.pos.getDirectionTo(obstaclePathFinder.path[0]));
+                    });
+                    return true;
+                } else if (creep.memory.currentTaskPriority > obstacleCreep.memory.currentTaskPriority) {
+                    // Swap places if creep has a higher priorty
+                    obstacleCreep.addTaskToPriorityQueue(creep.memory.currentTaskPriority, () => {
+                        obstacleCreep.move(Pathing.inverseDirection(nextDirection));
+                    });
+                    return true;
+                }
             }
         }
+        return false;
     }
 
     /**
@@ -209,7 +506,7 @@ export class Pathing {
      * @param direction -
      * @returns
      */
-    private inverseDirection(direction: DirectionConstant): DirectionConstant {
+    static inverseDirection(direction: DirectionConstant): DirectionConstant {
         return (((direction + 3) % 8) + 1) as DirectionConstant;
     }
 
@@ -218,7 +515,7 @@ export class Pathing {
      * @param destination
      * @returns {any}
      */
-    public static normalizePos(destination: HasPos | RoomPosition): RoomPosition {
+    static normalizePos(destination: HasPos | RoomPosition): RoomPosition {
         if (!(destination instanceof RoomPosition)) {
             return destination.pos;
         }
