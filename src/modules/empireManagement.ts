@@ -101,5 +101,5 @@ function findBestColonyOrigin(spawnPosition: RoomPosition): string {
         });
     }
 
-    return bestRoom.name;
+    return bestRoom?.name;
 }
