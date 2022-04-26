@@ -9,7 +9,6 @@ interface CreepMemory {
     currentTaskPriority?: Priority;
     _m?: TravelState;
     scout?: ScoutMemory;
-    _move?: MoveMemory;
 }
 
 interface Creep {
