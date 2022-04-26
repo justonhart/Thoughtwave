@@ -3,7 +3,7 @@ import { posFromMem } from '../modules/memoryManagement';
 //@ts-ignore
 global.IN_ROOM = -20;
 
-const REPORT_CPU_THRESHOLD = 1000;
+const REPORT_CPU_THRESHOLD = 500;
 /**
  * Quick overview of the different visuals.
  * Visuals:
@@ -119,10 +119,8 @@ export class Pathing {
             }
         }
 
-        let newPath = false;
         // Recalculate path in each new room as well if the creep should avoid hostiles in each room
         if (!creep.memory._m.path || (opts.avoidHostiles && Pathing.isExit(creep.pos))) {
-            newPath = true;
             //console.log(`${creep.name} in ${creep.pos.toMemSafe} is looking for new path.`);
             let pathFinder = Pathing.findTravelPath(creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), opts);
             if (pathFinder.incomplete) {
@@ -202,7 +200,17 @@ export class Pathing {
     }
     //check if room should be avoided
     static checkAvoid(roomName: string): boolean {
-        return Memory.empire.hostileRooms?.includes(roomName);
+        if (Memory.empire.hostileRooms) {
+            const hostileRoom = Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName);
+            if (hostileRoom) {
+                if (hostileRoom.expireAt > Game.time) {
+                    return true;
+                }
+                Memory.empire.hostileRooms.splice(Memory.empire.hostileRooms.indexOf(hostileRoom), 1); // Cleanup expired rooms
+            }
+            return false;
+        }
+        return false;
     }
     //check if a position is an exit
     static isExit(pos: RoomPosition): boolean {
@@ -214,7 +222,6 @@ export class Pathing {
     }
 
     // add hostile rooms
-    // TODO: add a timer to expire hostile rooms and if enemy attack creeps in room add it as well but with lower timer
     static addHostileRoom(room: Room, destinationRoom: string): void {
         if (!room) {
             return;
@@ -225,10 +232,10 @@ export class Pathing {
         // Find hostileRooms
         if (
             room.name !== destinationRoom &&
-            !Memory.empire.hostileRooms.includes(room.name) &&
+            !Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === room.name) &&
             room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_TOWER })?.length
         ) {
-            Memory.empire.hostileRooms.push(room.name);
+            Memory.empire.hostileRooms.push({ room: room.name, expireAt: Game.time + 8000 }); // valid for 8000 Ticks right now (can be changed depending on room situation ==> invaders or players controller level)
         }
     }
 
@@ -455,13 +462,8 @@ export class Pathing {
             //check if creep is in nextPos
             const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
             if (obstacleCreep?.memory?._m?.destination) {
-                // Check if Creeps are going past each other
+                // If obstacle creep is still moving it will move out of the way
                 if (obstacleCreep.memory._m?.path?.length > 1) {
-                    const obstacleNextDirection = parseInt(obstacleCreep.memory._m.path[0], 10) as DirectionConstant;
-                    // In most cases there is no need to override the task as it should be the same but sometimes creeps start doing their task with a last step in their path. This prevents a deadlock
-                    obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
-                        obstacleCreep.move(obstacleNextDirection);
-                    });
                     return true;
                 }
 
