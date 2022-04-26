@@ -140,10 +140,6 @@ function phaseTwoSpawning(spawn: StructureSpawn) {
         creepLevelCap = 10;
     } else if (needMiner(spawn.room)) {
         spawnMiner(spawn);
-    } else if (roomCreeps.filter((creep) => creep.memory.role === Role.TRANSPORTER).length === 0 && spawn.room.energyStatus >= EnergyStatus.STABLE) {
-        options.memory.role = Role.TRANSPORTER;
-        partBlockToUse = TRANSPORT_PART_BLOCK;
-        creepLevelCap = 10;
     } else if (checkForSpawnAssignments(spawn.room)) {
         spawnAssignedCreep(spawn);
     } else if (
