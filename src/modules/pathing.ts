@@ -27,7 +27,6 @@ export class Pathing {
     private static defaultOpts: TravelToOpts = {
         ignoreCreeps: true,
         avoidRoads: false,
-        avoidRoadOnLastMove: false,
         avoidHostileRooms: true,
         reusePath: 50,
         avoidHostiles: false,
@@ -94,6 +93,10 @@ export class Pathing {
         // Stuck Logic
         if (!Pathing.isStuck(creep, posFromMem(creep.memory._m.lastCoord))) {
             creep.memory._m.stuckCount = 0;
+            // TODO: Info last moveset will not be removed as this logik is only run when a creep is still traveling
+            if (creep.memory._m.path) {
+                creep.memory._m.path = creep.memory._m.path.slice(1);
+            }
         } else {
             creep.memory._m.stuckCount++;
         }
@@ -163,10 +166,6 @@ export class Pathing {
             );
         }
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
-        // If only one move is left then instantly get rid of it since above logic wont get executed
-        if (creep.memory._m.path.length === 1 || (!newPath && !creep.memory._m.stuckCount)) {
-            creep.memory._m.path = creep.memory._m.path.slice(1);
-        }
         return creep.move(nextDirection);
     }
 
@@ -285,16 +284,6 @@ export class Pathing {
                     matrix = Pathing.getStructureMatrix(room, options);
                 } else {
                     matrix = Pathing.getCreepMatrix(room);
-                }
-
-                if (options.avoidRoadOnLastMove && roomName === originRoom) {
-                    // edge cases
-                    matrix = matrix.clone();
-                    const avoidArea = Pathing.getArea(destination, options.range);
-                    // Avoid roads at specific destination
-                    room.lookForAtArea(LOOK_STRUCTURES, avoidArea.top, avoidArea.left, avoidArea.bottom, avoidArea.right, true)
-                        .filter((structure) => structure.structure.structureType === STRUCTURE_ROAD)
-                        .forEach((road) => matrix.set(road.x, road.y, 0xff));
                 }
 
                 if (options.avoidHostiles && roomName === originRoom) {
@@ -467,7 +456,7 @@ export class Pathing {
             const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
             if (obstacleCreep?.memory?._m?.destination) {
                 // Check if Creeps are going past each other
-                if (obstacleCreep.memory._m.path) {
+                if (obstacleCreep.memory._m?.path?.length > 1) {
                     const obstacleNextDirection = parseInt(obstacleCreep.memory._m.path[0], 10) as DirectionConstant;
                     // In most cases there is no need to override the task as it should be the same but sometimes creeps start doing their task with a last step in their path. This prevents a deadlock
                     obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
@@ -476,23 +465,30 @@ export class Pathing {
                     return true;
                 }
 
+                const obstacleCreepDestination = posFromMem(obstacleCreep.memory._m.destination);
+                // Swap places if creep is closer to the destination than the obstacleCreep
+                if (obstacleCreep.pos.getRangeTo(obstacleCreepDestination) >= creep.pos.getRangeTo(obstacleCreepDestination)) {
+                    obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
+                        obstacleCreep.move(Pathing.inverseDirection(nextDirection));
+                    });
+                    return true;
+                }
+
                 // Find Path closer to target
                 const obstaclePathFinder = Pathing.findTravelPath(
                     obstacleCreep.pos,
-                    posFromMem(obstacleCreep.memory._m?.destination),
+                    obstacleCreepDestination,
                     Pathing.getCreepMoveEfficiency(obstacleCreep),
                     { ignoreCreeps: false, range: 1 }
                 );
                 // Push the obstacleCreep closer to their target (set always higher priority)
                 if (obstaclePathFinder?.path?.length > 0) {
-                    delete obstacleCreep.memory._m?.path; // Recalculate path after being pushed
                     obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
                         obstacleCreep.move(obstacleCreep.pos.getDirectionTo(obstaclePathFinder.path[0]));
                     });
                     return true;
                 } else if (creep.memory.currentTaskPriority > obstacleCreep.memory.currentTaskPriority) {
-                    // Swap places if priority matches
-                    delete obstacleCreep.memory._m?.path; // Recalculate path after being pushed
+                    // Swap places if creep has a higher priorty
                     obstacleCreep.addTaskToPriorityQueue(creep.memory.currentTaskPriority, () => {
                         obstacleCreep.move(Pathing.inverseDirection(nextDirection));
                     });

@@ -67,7 +67,7 @@ export class WorkerCreep extends WaveCreep {
         let buildSuccess = this.build(target);
         switch (buildSuccess) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { range: 3, avoidRoadOnLastMove: true });
+                this.travelTo(target, { range: 3 });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
@@ -93,7 +93,6 @@ export class WorkerCreep extends WaveCreep {
             case ERR_NOT_IN_RANGE:
                 this.travelTo(this.homeroom.controller, {
                     range: 3,
-                    avoidRoadOnLastMove: true,
                 });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:

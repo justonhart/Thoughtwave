@@ -4,10 +4,6 @@ interface TravelToOpts extends PathFinderOpts {
      */
     avoidRoads?: boolean;
     /**
-     * Avoid road on the last move towards the Target.
-     */
-    avoidRoadOnLastMove?: boolean;
-    /**
      * Default it is set to false to minimize cpu cost as most creeps are traveling inside the base.
      */
     avoidHostiles?: boolean;
