@@ -6,6 +6,7 @@ interface EmpireMemory {
     spawnAssignments?: SpawnAssignment[];
     colonizationOperations?: ColonizationOperation[]; //room names
     hostileRooms?: HostileRoom[];
+    scoutAssignments?: Map<string, string[]>; //Map<roomName, targetRoomNames>
 }
 
 interface SpawnAssignment {

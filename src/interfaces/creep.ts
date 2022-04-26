@@ -8,6 +8,8 @@ interface CreepMemory {
     role?: Role;
     currentTaskPriority?: Priority;
     _m?: TravelState;
+    scout?: ScoutMemory;
+    _move?: MoveMemory;
 }
 
 interface Creep {
@@ -23,6 +25,10 @@ interface PriorityQueue {
     creepId: string;
     priority: Priority;
     actionCallback: (creep: Creep) => void;
+}
+
+interface ScoutMemory {
+    path?: string[]; // Used for Pathfinding
 }
 
 const enum Priority {
@@ -41,5 +47,6 @@ const enum Role {
     CLAIMER = 'CLAIMER',
     COLONIZER = 'COLONIZER',
     BUILDER = 'BUILDER',
+    SCOUT = 'SCOUT',
     PROTECTOR = 'PROTECTOR',
 }

@@ -19,7 +19,15 @@ export function driveRoom(room: Room) {
     runHomeSecurity(room);
 
     if (room.memory.traps?.length) {
-        room.memory.traps.forEach((trap) => runTrap(trap));
+        room.memory.gates = [];
+        room.memory.traps.forEach((trap) => {
+            room.memory.gates.push(...trap.gates);
+        });
+        delete room.memory.traps;
+    }
+
+    if (room.memory.gates?.length) {
+        runGates(room);
     }
 }
 
@@ -73,6 +81,7 @@ function initRoomMemory(room: Room) {
 
     room.memory.sourceAccessPointCount = room.memory.availableSourceAccessPoints.length;
     room.memory.phase = 1;
+    room.memory.gates = [];
 }
 
 function runPhaseOne(room: Room) {
@@ -234,8 +243,8 @@ export function findRepairTargets(room: Room): Id<Structure>[] {
     return repairTargetQueue;
 }
 
-function runTrap(trap: CreepTrap): void {
-    let gates = trap.gates.filter((gate) => Game.getObjectById(gate.id));
+function runGates(room: Room): void {
+    let gates = room.memory.gates.filter((gate) => Game.getObjectById(gate.id));
 
     gates.forEach((gateId) => {
         if (gateId.lastToggled === undefined) {
@@ -253,5 +262,5 @@ function runTrap(trap: CreepTrap): void {
         }
     });
 
-    trap.gates = gates;
+    room.memory.gates = gates;
 }

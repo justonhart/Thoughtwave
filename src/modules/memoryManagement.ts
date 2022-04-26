@@ -26,7 +26,9 @@ function handleDeadCreep(creepName: string) {
     delete Memory.creeps[creepName];
 }
 
-export function unclaimRoom(room: Room) {
+export function unclaimRoom(roomName: string) {
+    let room = Game.rooms[roomName];
+
     if (room?.controller?.my) {
         room.controller.unclaim();
     }
@@ -35,12 +37,12 @@ export function unclaimRoom(room: Room) {
         room.find(FIND_MY_CONSTRUCTION_SITES).forEach((site) => site.remove());
     }
 
-    let colonizeIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === room.name);
+    let colonizeIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === roomName);
     if (colonizeIndex !== -1) {
         Memory.empire.colonizationOperations.splice(colonizeIndex, 1);
     }
 
-    delete Memory.rooms[room.name];
+    delete Memory.rooms[roomName];
 
     return 'done';
 }
