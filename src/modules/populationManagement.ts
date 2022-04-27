@@ -204,12 +204,12 @@ export class PopulationManagement {
 
         let minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
 
-        let result = spawn.spawnCreep(minerBody, `${options.memory.role} ${Game.time}`, options);
+        let result = spawn.spawnCreep(minerBody, 'm' + this.getCreepTag(spawn.name), options);
         if (result === OK) {
             spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
         } else if (result === ERR_NOT_ENOUGH_ENERGY && spawn.room.storage?.store[RESOURCE_ENERGY] < 1000) {
             let emergencyMinerBody = [WORK, WORK, MOVE, MOVE];
-            result = spawn.spawnCreep(emergencyMinerBody, `${options.memory.role} ${Game.time}`, options);
+            result = spawn.spawnCreep(emergencyMinerBody, 'm' + this.getCreepTag(spawn.name), options);
             if (result === OK) {
                 spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
             }
