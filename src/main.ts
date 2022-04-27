@@ -2,7 +2,6 @@ import driveCreep from './modules/creepDriver';
 import { manageEmpire } from './modules/empireManagement';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
-import { populationControl } from './modules/populationManagement';
 import { driveRoom } from './modules/roomManagement';
 import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
@@ -29,16 +28,6 @@ module.exports.loop = function () {
                 console.log(`Error caught in ${room.name}: \n${e}`);
             }
         });
-
-    Object.values(Game.spawns).forEach((spawn) => {
-        if (!spawn.spawning) {
-            try {
-                populationControl(spawn);
-            } catch (e) {
-                console.log(`Error caught in ${spawn.name}: \n${e}`);
-            }
-        }
-    });
 
     Object.values(Game.creeps).forEach((creep) => {
         if (!creep.spawning) {

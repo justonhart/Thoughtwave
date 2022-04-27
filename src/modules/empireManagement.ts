@@ -1,4 +1,4 @@
-import { createPartsArray } from './populationManagement';
+import { PopulationManagement } from './populationManagement';
 
 export function manageEmpire() {
     if (!Memory.empire) {
@@ -46,7 +46,7 @@ export function manageColonistCreeps() {
                 if (numberOfColonizersFound < 2) {
                     Memory.empire.spawnAssignments.push({
                         designee: colonizeOp.origin,
-                        body: createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[colonizeOp.origin].energyCapacityAvailable),
+                        body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[colonizeOp.origin].energyCapacityAvailable),
                         memoryOptions: {
                             role: Role.COLONIZER,
                             destination: colonizeOp.destination,
