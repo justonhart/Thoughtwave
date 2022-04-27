@@ -484,7 +484,10 @@ export class Pathing {
                     { ignoreCreeps: false, range: 1 }
                 );
                 // Push the obstacleCreep closer to their target (set always higher priority)
-                if (obstaclePathFinder?.path?.length > 0) {
+                if (
+                    obstaclePathFinder?.path?.length > 0 &&
+                    obstacleCreep.pos.getRangeTo(obstacleCreepDestination) >= obstaclePathFinder.path[0].getRangeTo(obstacleCreepDestination)
+                ) {
                     obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
                         obstacleCreep.move(obstacleCreep.pos.getDirectionTo(obstaclePathFinder.path[0]));
                     });
