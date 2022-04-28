@@ -237,6 +237,10 @@ export class PopulationManagement {
         };
 
         let result = spawn.spawnCreep(assignment.body, `${options.memory.role} ${Game.time}`, options);
+        if (result === OK) {
+            const ASSIGNMENT_INDEX = Memory.empire.spawnAssignments.findIndex((a) => a === assignment);
+            Memory.empire.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);
+        }
 
         return result;
     }
