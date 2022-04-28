@@ -5,7 +5,7 @@ export function manageEmpire() {
         Memory.empire = {
             spawnAssignments: [],
             colonizationOperations: [],
-            scoutAssignments: new Map(),
+            scoutAssignments: {},
         };
     }
 

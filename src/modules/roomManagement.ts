@@ -219,6 +219,17 @@ function runPhaseTwo(room: Room) {
     if (Game.time % 500) {
         room.memory.repairQueue = findRepairTargets(room);
     }
+
+    if (Game.time % 8000 === 0 && !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.SCOUT).length) {
+        Memory.empire.spawnAssignments.push({
+            designee: room.name,
+            body: [MOVE],
+            memoryOptions: {
+                role: Role.SCOUT,
+                room: room.name,
+            },
+        });
+    }
 }
 
 export function findRepairTargets(room: Room): Id<Structure>[] {

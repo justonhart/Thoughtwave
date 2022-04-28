@@ -10,11 +10,15 @@ export class Scout extends WaveCreep {
             if (!this.memory.scout) {
                 this.memory.scout = { path: [this.room.name] };
             }
+            if (!Memory.empire.scoutAssignments) {
+                Memory.empire.scoutAssignments = {};
+            }
             if (!Memory.empire.scoutAssignments[this.memory.room]) {
                 Memory.empire.scoutAssignments[this.memory.room] = [];
             }
+
             if (!Memory.rooms[this.memory.room].remoteMining) {
-                Memory.rooms[this.memory.room].remoteMining = new Map();
+                Memory.rooms[this.memory.room].remoteMining = {};
             }
 
             nextTarget = this.findTarget();
@@ -25,9 +29,14 @@ export class Scout extends WaveCreep {
         // Go to the target room
         if (this.travelToRoom(nextTarget) === IN_ROOM) {
             // Set Room memory
-            if (!this.room.find(FIND_HOSTILE_STRUCTURES).length && !this.room.find(FIND_HOSTILE_CREEPS).length) {
+            if (
+                !this.room.controller?.owner?.username &&
+                !this.room.find(FIND_HOSTILE_CREEPS, {
+                    filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
+                }).length
+            ) {
                 if (!Memory.rooms[this.memory.room].remoteMining) {
-                    Memory.rooms[this.memory.room].remoteMining = new Map();
+                    Memory.rooms[this.memory.room].remoteMining = {};
                 }
                 const sourceIds = this.room.find(FIND_SOURCES).map((source) => source.id);
                 if (sourceIds.length) {
