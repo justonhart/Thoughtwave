@@ -19,3 +19,11 @@ StructureSpawn.prototype.spawnPhaseTwoWorker = function () {
 StructureSpawn.prototype.spawnAssignedCreep = function (assignment: SpawnAssignment) {
     return PopulationManagement.spawnAssignedCreep(this, assignment);
 };
+
+StructureSpawn.prototype.spawnFirst = function (partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap: number = 15) {
+    return PopulationManagement.spawnFirst(this, partsBlock, name, opts, levelCap);
+};
+
+StructureSpawn.prototype.spawnMax = function (partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap: number = 15) {
+    return PopulationManagement.spawnMax(this, partsBlock, name, opts, levelCap);
+};

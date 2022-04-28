@@ -38,6 +38,8 @@ export class PopulationManagement {
             },
         };
 
+        const PARTS = [WORK, CARRY, MOVE];
+
         if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length < WORKER_LIMIT) {
             options.memory.role = Role.WORKER;
         } else if (
@@ -55,29 +57,10 @@ export class PopulationManagement {
         }
 
         if (options.memory.role) {
-            let partsArray: BodyPartConstant[] = [];
-            let partsBlock = [WORK, CARRY, MOVE];
+            let result = spawn.spawnMax(PARTS, 'e' + this.getCreepTag(spawn.name), options);
 
-            for (let i = 0; i < Math.floor(spawn.room.energyCapacityAvailable / 200); i++) {
-                partsArray = partsArray.concat(partsBlock);
-            }
-
-            let result = spawn.spawnCreep(partsArray, 'e' + this.getCreepTag(spawn.name), options);
-            //if there are no worker, and there is not enough energy to spawn one immediately, convert another creep to worker
-            if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.WORKER) {
-                let potentialWorkers = roomCreeps.filter((creep) => creep.memory.role !== Role.WORKER && creep.getActiveBodyparts(WORK));
-                if (potentialWorkers.length) {
-                    let creepToConvert = potentialWorkers.reduce((biggestWorkCreep, creepToCheck) =>
-                        biggestWorkCreep.getActiveBodyparts(WORK) > creepToCheck.getActiveBodyparts(WORK) ? biggestWorkCreep : creepToCheck
-                    );
-                    creepToConvert.memory.role = Role.WORKER;
-                    creepToConvert.memory.targetId = null;
-                } else if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length === 0) {
-                    //spawn first available worker
-                    partsArray = [];
-                    for (let i = 0; i < Math.floor(spawn.room.energyAvailable / 200); i++) partsArray = partsArray.concat(partsBlock);
-                    spawn.spawnCreep(partsArray, 'e' + this.getCreepTag(spawn.name), options);
-                }
+            if (result !== OK) {
+                spawn.spawnFirst(PARTS, 'e' + this.getCreepTag(spawn.name), options);
             }
 
             return result;
@@ -121,32 +104,21 @@ export class PopulationManagement {
         };
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
-
-        let partBlockToUse: BodyPartConstant[];
-        let partsArray = [];
-        let creepLevelCap = Math.min(15, Math.floor(spawn.room.energyCapacityAvailable / 200));
-
+        let creepLevelCap = 15;
         if (
             roomCreeps.filter((creep) => creep.memory.role === Role.BUILDER).length < builderLimit &&
             spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length
         ) {
             options.memory.role = Role.BUILDER;
-            partBlockToUse = WORKER_PART_BLOCK;
         } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < upgraderLimit) {
             options.memory.role = Role.UPGRADER;
-            partBlockToUse = WORKER_PART_BLOCK;
         } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < maintainerLimit) {
             options.memory.role = Role.MAINTAINTER;
-            partBlockToUse = WORKER_PART_BLOCK;
             creepLevelCap = creepLevelCap / 2;
         }
 
         if (options.memory.role) {
-            if (partBlockToUse) {
-                partsArray = this.createPartsArray(partBlockToUse, spawn.room.energyCapacityAvailable, creepLevelCap);
-            }
-
-            let result = spawn.spawnCreep(partsArray, 'w' + this.getCreepTag(spawn.name), options);
+            let result = spawn.spawnMax(WORKER_PART_BLOCK, 'w' + this.getCreepTag(spawn.name), options, creepLevelCap);
 
             return result;
         }
@@ -253,18 +225,11 @@ export class PopulationManagement {
             },
         };
 
-        let partsBlock = [CARRY, CARRY, MOVE];
-        let partsArray = this.createPartsArray(partsBlock, spawn.room.energyCapacityAvailable, 10);
+        const PARTS = [CARRY, CARRY, MOVE];
+        let result = spawn.spawnMax(PARTS, 'd' + this.getCreepTag(spawn.name), options, 10);
 
-        let result = spawn.spawnCreep(partsArray, 'd' + this.getCreepTag(spawn.name), options);
-        //if there are no distributors, and there is not enough energy to spawn one immediately, convert the transporter to distributor
-        if (result === ERR_NOT_ENOUGH_ENERGY && options.memory.role === Role.DISTRIBUTOR) {
-            //spawn first available distributor
-            partsArray = [];
-            for (let i = 0; i < Math.floor(spawn.room.energyAvailable / 150); i++) {
-                partsArray = partsArray.concat(partsBlock);
-            }
-            result = spawn.spawnCreep(partsArray, 'd' + this.getCreepTag(spawn.name), options);
+        if (result !== OK) {
+            result = spawn.spawnFirst(PARTS, 'd' + this.getCreepTag(spawn.name), options, 10);
         }
 
         return result;
@@ -283,5 +248,45 @@ export class PopulationManagement {
 
     static getCreepTag(spawnName: string): string {
         return Game.shard.name.slice(-1) + spawnName.substring(5) + Game.time.toString().slice(-4);
+    }
+
+    // spawn the largest creep possible as calculated with spawn.energyAvailable
+    static spawnFirst(
+        spawn: StructureSpawn,
+        partsBlock: BodyPartConstant[],
+        name: string,
+        opts?: SpawnOptions,
+        levelCap: number = 15
+    ): ScreepsReturnCode {
+        let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
+        let partsArray = [];
+
+        for (let i = 0; i < Math.floor(spawn.room.energyAvailable / partsBlockCost) && (i + 1) * partsBlock.length < 50 && i < levelCap; i++) {
+            partsArray = partsArray.concat(partsBlock);
+        }
+
+        return spawn.spawnCreep(partsArray, name, opts);
+    }
+
+    // spawn the largest creep possible as calculated with spawn.energyCapacityAvailable
+    static spawnMax(
+        spawn: StructureSpawn,
+        partsBlock: BodyPartConstant[],
+        name: string,
+        opts?: SpawnOptions,
+        levelCap: number = 15
+    ): ScreepsReturnCode {
+        let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
+        let partsArray = [];
+
+        for (
+            let i = 0;
+            i < Math.floor(spawn.room.energyCapacityAvailable / partsBlockCost) && (i + 1) * partsBlock.length < 50 && i < levelCap;
+            i++
+        ) {
+            partsArray = partsArray.concat(partsBlock);
+        }
+
+        return spawn.spawnCreep(partsArray, name, opts);
     }
 }
