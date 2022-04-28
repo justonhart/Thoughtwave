@@ -38,6 +38,7 @@ export class PopulationManagement {
             },
         };
 
+        let tag = 'e';
         const PARTS = [WORK, CARRY, MOVE];
 
         if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length < WORKER_LIMIT) {
@@ -57,10 +58,10 @@ export class PopulationManagement {
         }
 
         if (options.memory.role) {
-            let result = spawn.spawnMax(PARTS, 'e' + this.getCreepTag(spawn.name), options);
+            let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options);
 
             if (result !== OK) {
-                spawn.spawnFirst(PARTS, 'e' + this.getCreepTag(spawn.name), options);
+                spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options);
             }
 
             return result;
@@ -105,20 +106,24 @@ export class PopulationManagement {
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 15;
+        let tag: string;
         if (
             roomCreeps.filter((creep) => creep.memory.role === Role.BUILDER).length < builderLimit &&
             spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length
         ) {
             options.memory.role = Role.BUILDER;
+            tag = 'b';
         } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < upgraderLimit) {
             options.memory.role = Role.UPGRADER;
+            tag = 'u';
         } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < maintainerLimit) {
             options.memory.role = Role.MAINTAINTER;
             creepLevelCap = creepLevelCap / 2;
+            tag = 'm';
         }
 
         if (options.memory.role) {
-            let result = spawn.spawnMax(WORKER_PART_BLOCK, 'w' + this.getCreepTag(spawn.name), options, creepLevelCap);
+            let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
 
             return result;
         }
@@ -174,14 +179,16 @@ export class PopulationManagement {
             },
         };
 
+        let tag = 'm';
+
         let minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
 
-        let result = spawn.spawnCreep(minerBody, 'm' + this.getCreepTag(spawn.name), options);
+        let result = spawn.spawnCreep(minerBody, this.getCreepTag(tag, spawn.name), options);
         if (result === OK) {
             spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
         } else if (result === ERR_NOT_ENOUGH_ENERGY && spawn.room.storage?.store[RESOURCE_ENERGY] < 1000) {
             let emergencyMinerBody = [WORK, WORK, MOVE, MOVE];
-            result = spawn.spawnCreep(emergencyMinerBody, 'm' + this.getCreepTag(spawn.name), options);
+            result = spawn.spawnCreep(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
             if (result === OK) {
                 spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
             }
@@ -208,7 +215,7 @@ export class PopulationManagement {
             },
         };
 
-        let result = spawn.spawnCreep(assignment.body, `${options.memory.role} ${Game.time}`, options);
+        let result = spawn.spawnCreep(assignment.body, this.getCreepTag('s', spawn.name), options);
         if (result === OK) {
             const ASSIGNMENT_INDEX = Memory.empire.spawnAssignments.findIndex((a) => a === assignment);
             Memory.empire.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);
@@ -226,10 +233,10 @@ export class PopulationManagement {
         };
 
         const PARTS = [CARRY, CARRY, MOVE];
-        let result = spawn.spawnMax(PARTS, 'd' + this.getCreepTag(spawn.name), options, 10);
+        let result = spawn.spawnMax(PARTS, this.getCreepTag('d', spawn.name), options, 10);
 
         if (result !== OK) {
-            result = spawn.spawnFirst(PARTS, 'd' + this.getCreepTag(spawn.name), options, 10);
+            result = spawn.spawnFirst(PARTS, this.getCreepTag('d', spawn.name), options, 10);
         }
 
         return result;
@@ -246,8 +253,8 @@ export class PopulationManagement {
         return 0;
     }
 
-    static getCreepTag(spawnName: string): string {
-        return Game.shard.name.slice(-1) + spawnName.substring(5) + Game.time.toString().slice(-4);
+    static getCreepTag(tag: string, spawnName: string): string {
+        return tag + Game.shard.name.slice(-1) + spawnName.substring(5) + Game.time.toString().slice(-4);
     }
 
     // spawn the largest creep possible as calculated with spawn.energyAvailable
