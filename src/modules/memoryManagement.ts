@@ -37,10 +37,8 @@ export function unclaimRoom(roomName: string) {
         room.find(FIND_MY_CONSTRUCTION_SITES).forEach((site) => site.remove());
     }
 
-    let colonizeIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === roomName);
-    if (colonizeIndex !== -1) {
-        Memory.empire.colonizationOperations.splice(colonizeIndex, 1);
-    }
+    Memory.empire.colonizationOperations = Memory.empire.colonizationOperations.filter((op) => op.destination !== roomName);
+    Memory.empire.spawnAssignments = Memory.empire.spawnAssignments.filter((asssignment) => asssignment.designee !== roomName);
 
     delete Memory.rooms[roomName];
 

@@ -85,6 +85,7 @@ function findBestColonyOrigin(spawnPosition: RoomPosition): string {
     let possibleSpawnRooms = Object.values(Game.rooms).filter(
         (room) =>
             room.controller?.my &&
+            room.canSpawn() &&
             room.memory.phase === 2 &&
             room.energyStatus > EnergyStatus.CRITICAL &&
             Game.map.getRoomLinearDistance(room.name, spawnPosition.roomName) <= MAX_ROOM_LINEAR_DISTANCE

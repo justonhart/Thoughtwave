@@ -17,6 +17,7 @@ interface RoomMemory {
 interface Room {
     energyStatus: EnergyStatus;
     getRepairTarget(): Id<Structure>;
+    canSpawn(): boolean;
 }
 
 interface RoomPosition {

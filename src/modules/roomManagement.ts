@@ -1,3 +1,4 @@
+import { spawn } from 'child_process';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 
@@ -51,7 +52,8 @@ function runHomeSecurity(room: Room) {
     if (
         hostileCreeps.length > 1 &&
         !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR).length &&
-        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR).length
+        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR).length &&
+        room.canSpawn()
     ) {
         Memory.empire.spawnAssignments.push({
             designee: room.name,
@@ -85,7 +87,9 @@ function initRoomMemory(room: Room) {
 }
 
 function runPhaseOne(room: Room) {
-    runPhaseOneSpawnLogic(room);
+    if (room.canSpawn()) {
+        runPhaseOneSpawnLogic(room);
+    }
 
     switch (room.memory.phaseShift) {
         case PhaseShiftStatus.PREPARE:
@@ -116,7 +120,9 @@ function runPhaseTwo(room: Room) {
         room.memory.repairQueue = findRepairTargets(room);
     }
 
-    runPhaseTwoSpawnLogic(room);
+    if (room.canSpawn()) {
+        runPhaseTwoSpawnLogic(room);
+    }
 }
 
 function runPhaseOneSpawnLogic(room: Room) {

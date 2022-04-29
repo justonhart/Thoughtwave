@@ -32,3 +32,7 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
     enumerable: false,
     configurable: true,
 });
+
+Room.prototype.canSpawn = function (this: Room): boolean {
+    return this.find(FIND_MY_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_SPAWN).length > 0;
+};
