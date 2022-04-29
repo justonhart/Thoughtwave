@@ -38,23 +38,27 @@ export class PopulationManagement {
             },
         };
 
-        let tag = 'e';
+        let tag: string;
         const PARTS = [WORK, CARRY, MOVE];
 
         if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length < WORKER_LIMIT) {
             options.memory.role = Role.WORKER;
+            tag = 'w';
         } else if (
             roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT &&
             !spawn.room.controller.upgradeBlocked
         ) {
             options.memory.role = Role.UPGRADER;
+            tag = 'u';
         } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT) {
             options.memory.role = Role.MAINTAINTER;
+            tag = 'm';
         } else if (
             roomCreeps.filter((creep) => creep.memory.role === Role.BUILDER).length < BUILDER_LIMIT &&
             spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length
         ) {
             options.memory.role = Role.BUILDER;
+            tag = 'b';
         }
 
         if (options.memory.role) {
