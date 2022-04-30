@@ -28,7 +28,7 @@ StructureSpawn.prototype.spawnMax = function (partsBlock: BodyPartConstant[], na
     return PopulationManagement.spawnMax(this, partsBlock, name, opts, levelCap);
 };
 
-StructureSpawn.prototype.overrideSpawnCreep = StructureSpawn.prototype.spawnCreep;
+StructureSpawn.prototype.overriddenSpawnCreep = StructureSpawn.prototype.spawnCreep;
 StructureSpawn.prototype.spawnCreep = function (this: StructureSpawn, body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
     let partsArrayCost = body.length ? body.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost) : 0;
 
@@ -36,5 +36,5 @@ StructureSpawn.prototype.spawnCreep = function (this: StructureSpawn, body: Body
         return ERR_NOT_ENOUGH_ENERGY;
     }
 
-    return this.overrideSpawnCreep(body, name, opts);
+    return this.overriddenSpawnCreep(body, name, opts);
 };
