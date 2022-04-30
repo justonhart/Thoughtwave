@@ -282,6 +282,10 @@ export class PopulationManagement {
             partsArray = partsArray.concat(partsBlock);
         }
 
+        if (!partsArray.length) {
+            return ERR_NOT_ENOUGH_ENERGY;
+        }
+
         return spawn.smartSpawn(partsArray, name, opts);
     }
 
