@@ -38,9 +38,9 @@ export class Colonizer extends EarlyCreep {
     private prepareRoom() {
         let opIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === this.room.name);
 
-        //@ts-ignore
         let preexistingStructures = this.room
             .find(FIND_STRUCTURES)
+            //@ts-ignore
             .filter((structure) => ![STRUCTURE_WALL, STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(structure.structureType));
 
         if (preexistingStructures.length) {
