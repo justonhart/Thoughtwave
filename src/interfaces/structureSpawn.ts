@@ -6,4 +6,5 @@ interface StructureSpawn {
     spawnAssignedCreep(assignment: SpawnAssignment): ScreepsReturnCode;
     spawnFirst(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number);
     spawnMax(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number);
+    overrideSpawnCreep(body: BodyPartConstant[], name: string, opts?: SpawnOptions);
 }

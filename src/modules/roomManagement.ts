@@ -7,6 +7,8 @@ export function driveRoom(room: Room) {
         initRoomMemory(room);
     }
 
+    room.memory.reservedEnergy = 0;
+
     switch (room.memory.phase) {
         case 1:
             runPhaseOne(room);
@@ -30,6 +32,8 @@ export function driveRoom(room: Room) {
     if (room.memory.gates?.length) {
         runGates(room);
     }
+
+    delete room.memory.reservedEnergy;
 }
 
 function runTowers(room: Room) {
@@ -127,7 +131,9 @@ function runPhaseTwo(room: Room) {
 
 function runPhaseOneSpawnLogic(room: Room) {
     //@ts-expect-error
-    let availableRoomSpawns: StructureSpawn[] = room.find(FIND_MY_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_SPAWN);
+    let availableRoomSpawns: StructureSpawn[] = room
+        .find(FIND_MY_STRUCTURES)
+        .filter((structure) => structure.structureType === STRUCTURE_SPAWN && !structure.spawning);
 
     let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
     assigments.forEach((assignment) => {
@@ -154,8 +160,11 @@ function runPhaseTwoSpawnLogic(room: Room) {
         let spawn = availableRoomSpawns.pop();
         spawn?.spawnDistributor();
     } else if (distributor.ticksToLive < 50) {
-        //reserve spawn for distributor
+        //reserve energy & spawn for distributor
         availableRoomSpawns.pop();
+        room.memory.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
+            .map((part) => BODYPART_COST[part])
+            .reduce((sum, next) => sum + next);
     }
 
     if (PopulationManagement.needsMiner(room)) {
