@@ -272,7 +272,13 @@ export class PopulationManagement {
         let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
         let partsArray = [];
 
-        for (let i = 0; i < Math.floor(spawn.room.energyAvailable / partsBlockCost) && (i + 1) * partsBlock.length < 50 && i < levelCap; i++) {
+        for (
+            let i = 0;
+            i < Math.floor((spawn.room.energyAvailable - (spawn.room.memory.reservedEnergy ?? 0)) / partsBlockCost) &&
+            (i + 1) * partsBlock.length < 50 &&
+            i < levelCap;
+            i++
+        ) {
             partsArray = partsArray.concat(partsBlock);
         }
 
