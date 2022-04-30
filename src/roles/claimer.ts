@@ -13,7 +13,9 @@ export class Claimer extends WaveCreep {
             if (this.room.controller.my) {
                 console.log(`${this.room.name} has been claimed!`);
                 let opIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === this.room.name);
-                Memory.empire.colonizationOperations[opIndex].stage = ColonizeStage.BUILD;
+                if (opIndex) {
+                    Memory.empire.colonizationOperations[opIndex].stage = this.room.canSpawn() ? ColonizeStage.COMPLETE : ColonizeStage.BUILD;
+                }
                 this.suicide();
             } else {
                 // Claim Controller in target room

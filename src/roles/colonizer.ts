@@ -43,9 +43,7 @@ export class Colonizer extends EarlyCreep {
             //@ts-ignore
             .filter((structure) => ![STRUCTURE_WALL, STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(structure.structureType));
 
-        if (preexistingStructures.length) {
-            preexistingStructures.forEach((struct) => struct.destroy());
-        }
+        preexistingStructures.forEach((struct) => struct.destroy());
 
         let spawnPos = posFromMem(Memory.empire.colonizationOperations[opIndex].spawnPosition);
         this.room.createConstructionSite(spawnPos.x, spawnPos.y, STRUCTURE_SPAWN);
