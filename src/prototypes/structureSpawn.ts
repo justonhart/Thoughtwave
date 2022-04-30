@@ -1,3 +1,4 @@
+import { rmSync } from 'fs';
 import { PopulationManagement } from '../modules/populationManagement';
 
 StructureSpawn.prototype.spawnMiner = function () {
@@ -28,13 +29,18 @@ StructureSpawn.prototype.spawnMax = function (partsBlock: BodyPartConstant[], na
     return PopulationManagement.spawnMax(this, partsBlock, name, opts, levelCap);
 };
 
-StructureSpawn.prototype.overriddenSpawnCreep = StructureSpawn.prototype.spawnCreep;
-StructureSpawn.prototype.spawnCreep = function (this: StructureSpawn, body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
+StructureSpawn.prototype.smartSpawn = function (this: StructureSpawn, body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
     let partsArrayCost = body.length ? body.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost) : 0;
 
-    if (partsArrayCost - this.room.memory.reservedEnergy ?? 0 > this.room.energyAvailable) {
+    if (partsArrayCost - (this.room.memory.reservedEnergy ?? 0) > this.room.energyAvailable) {
         return ERR_NOT_ENOUGH_ENERGY;
     }
 
-    return this.overriddenSpawnCreep(body, name, opts);
+    let result = this.spawnCreep(body, name, opts);
+
+    if (result !== OK) {
+        console.log(`Unexpected result from smartSpawn in spawn ${this.name}: ${result}`);
+    }
+
+    return result;
 };

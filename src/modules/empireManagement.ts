@@ -96,7 +96,6 @@ function findBestColonyOrigin(spawnPosition: RoomPosition): string {
         bestRoom = possibleSpawnRooms.reduce((closestSoFar, roomToCheck) => {
             let bestPath = PathFinder.search(closestSoFar.storage.pos, spawnPosition, { swampCost: 1 });
             let nextPath = PathFinder.search(roomToCheck.storage.pos, spawnPosition, { swampCost: 1 });
-            console.log(`${roomToCheck.name} cost: ${nextPath.cost}`);
 
             return bestPath.cost <= nextPath.cost ? closestSoFar : roomToCheck;
         });

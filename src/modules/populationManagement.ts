@@ -64,7 +64,7 @@ export class PopulationManagement {
         if (options.memory.role) {
             let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options);
 
-            if (result !== OK) {
+            if (result === ERR_NOT_ENOUGH_ENERGY && !roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length) {
                 spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options);
             }
 
@@ -187,12 +187,12 @@ export class PopulationManagement {
 
         let minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
 
-        let result = spawn.spawnCreep(minerBody, this.getCreepTag(tag, spawn.name), options);
+        let result = spawn.smartSpawn(minerBody, this.getCreepTag(tag, spawn.name), options);
         if (result === OK) {
             spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
         } else if (result === ERR_NOT_ENOUGH_ENERGY && spawn.room.storage?.store[RESOURCE_ENERGY] < 1000) {
             let emergencyMinerBody = [WORK, WORK, MOVE, MOVE];
-            result = spawn.spawnCreep(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
+            result = spawn.smartSpawn(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
             if (result === OK) {
                 spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
             }
@@ -219,7 +219,7 @@ export class PopulationManagement {
             },
         };
 
-        let result = spawn.spawnCreep(assignment.body, this.getCreepTag('s', spawn.name), options);
+        let result = spawn.smartSpawn(assignment.body, this.getCreepTag('s', spawn.name), options);
         if (result === OK) {
             const ASSIGNMENT_INDEX = Memory.empire.spawnAssignments.findIndex((a) => a === assignment);
             Memory.empire.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);
@@ -239,7 +239,7 @@ export class PopulationManagement {
         const PARTS = [CARRY, CARRY, MOVE];
         let result = spawn.spawnMax(PARTS, this.getCreepTag('d', spawn.name), options, 10);
 
-        if (result !== OK) {
+        if (result === ERR_NOT_ENOUGH_ENERGY) {
             result = spawn.spawnFirst(PARTS, this.getCreepTag('d', spawn.name), options, 10);
         }
 
@@ -276,7 +276,7 @@ export class PopulationManagement {
             partsArray = partsArray.concat(partsBlock);
         }
 
-        return spawn.spawnCreep(partsArray, name, opts);
+        return spawn.smartSpawn(partsArray, name, opts);
     }
 
     // spawn the largest creep possible as calculated with spawn.energyCapacityAvailable
@@ -298,6 +298,6 @@ export class PopulationManagement {
             partsArray = partsArray.concat(partsBlock);
         }
 
-        return spawn.spawnCreep(partsArray, name, opts);
+        return spawn.smartSpawn(partsArray, name, opts);
     }
 }
