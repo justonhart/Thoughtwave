@@ -1,4 +1,3 @@
-import { spawn } from 'child_process';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 

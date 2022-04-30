@@ -1,4 +1,3 @@
-import { rmSync } from 'fs';
 import { PopulationManagement } from '../modules/populationManagement';
 
 StructureSpawn.prototype.spawnMiner = function () {

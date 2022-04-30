@@ -103,3 +103,30 @@ function findBestColonyOrigin(spawnPosition: RoomPosition): string {
 
     return bestRoom?.name;
 }
+
+export function addHostileRoom(roomName: string, expirationTicks: number = 8000) {
+    if (!Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName)) {
+        Memory.empire.hostileRooms.push({ room: roomName, expireAt: Game.time + expirationTicks });
+    }
+}
+
+export function unclaimRoom(roomName: string) {
+    let room = Game.rooms[roomName];
+
+    if (room?.controller?.my) {
+        room.controller.unclaim();
+    }
+
+    if (room?.find(FIND_MY_CONSTRUCTION_SITES).length) {
+        room.find(FIND_MY_CONSTRUCTION_SITES).forEach((site) => site.remove());
+    }
+
+    Memory.empire.colonizationOperations = Memory.empire.colonizationOperations.filter((op) => op.destination !== roomName);
+    Memory.empire.spawnAssignments = Memory.empire.spawnAssignments.filter(
+        (asssignment) => asssignment.designee !== roomName && asssignment.memoryOptions.destination !== roomName
+    );
+
+    delete Memory.rooms[roomName];
+
+    return 'done';
+}
