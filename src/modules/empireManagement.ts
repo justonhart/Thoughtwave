@@ -61,16 +61,19 @@ export function manageColonistCreeps() {
     });
 }
 
-export function addColonizationOperation() {
-    let bestOrigin = findBestColonyOrigin(Game.flags.colonize.pos);
+export function addColonizationOperation(spawnPos: RoomPosition) {
+    let bestOrigin = findBestColonyOrigin(spawnPos);
 
     if (bestOrigin) {
         let newOp: ColonizationOperation = {
-            destination: Game.flags.colonize.pos.roomName,
+            destination: spawnPos.roomName,
             origin: bestOrigin,
             stage: ColonizeStage.CLAIM,
             spawnPosition: Game.flags.colonize.pos.toMemSafe(),
         };
+
+        console.log(`${bestOrigin} selected for colonization of ${spawnPos.roomName}`);
+
         Memory.empire.colonizationOperations.push(newOp);
     } else {
         console.log('No suitable colony origin found');

@@ -2,7 +2,7 @@ import { addColonizationOperation, addHostileRoom, unclaimRoom } from './empireM
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
-        addColonizationOperation();
+        addColonizationOperation(Game.flags.colonize.pos);
         Game.flags.colonize.remove();
     }
 
