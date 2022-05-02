@@ -1,3 +1,4 @@
+import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 
 export function manageEmpire() {
@@ -10,12 +11,20 @@ export function manageEmpire() {
     }
 
     if (Memory.empire.colonizationOperations.length) {
-        manageColonistCreeps();
+        manageColonizationOperations();
     }
+
+    cleanSpawnAssignments();
 }
 
-export function manageColonistCreeps() {
-    Memory.empire.colonizationOperations.forEach((colonizeOp, index) => {
+export function manageColonizationOperations() {
+    Memory.empire.colonizationOperations = Memory.empire.colonizationOperations.filter((op) => op.stage !== ColonizeStage.COMPLETE && op.origin);
+
+    Memory.empire.colonizationOperations.forEach((colonizeOp) => {
+        if (!Game.rooms[colonizeOp.origin]?.canSpawn()) {
+            colonizeOp.origin = findBestColonyOrigin(posFromMem(colonizeOp.spawnPosition));
+        }
+
         switch (colonizeOp.stage) {
             case ColonizeStage.CLAIM:
                 let claimerExistsOrAssigned: boolean =
@@ -25,7 +34,7 @@ export function manageColonistCreeps() {
                             (creep) => creep.memoryOptions.destination === colonizeOp.destination && creep.memoryOptions.role === Role.CLAIMER
                         ).length >
                     0;
-                if (!claimerExistsOrAssigned) {
+                if (colonizeOp.origin && !claimerExistsOrAssigned) {
                     Memory.empire.spawnAssignments.push({
                         designee: colonizeOp.origin,
                         body: [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM],
@@ -43,7 +52,7 @@ export function manageColonistCreeps() {
                     Memory.empire.spawnAssignments.filter(
                         (creep) => creep.memoryOptions.destination === colonizeOp.destination && creep.memoryOptions.role === Role.COLONIZER
                     ).length;
-                if (numberOfColonizersFound < 2) {
+                if (colonizeOp.origin && numberOfColonizersFound < 2) {
                     Memory.empire.spawnAssignments.push({
                         designee: colonizeOp.origin,
                         body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[colonizeOp.origin].energyCapacityAvailable),
@@ -53,9 +62,6 @@ export function manageColonistCreeps() {
                         },
                     });
                 }
-                break;
-            case ColonizeStage.COMPLETE:
-                Memory.empire.colonizationOperations.splice(index, 1);
                 break;
         }
     });
@@ -132,4 +138,11 @@ export function unclaimRoom(roomName: string) {
     delete Memory.rooms[roomName];
 
     return 'done';
+}
+
+//remove assignments to rooms that cannot spawn
+function cleanSpawnAssignments() {
+    Memory.empire.spawnAssignments = Memory.empire.spawnAssignments.filter(
+        (assignment) => Game.rooms[assignment.designee] && Game.rooms[assignment.designee].canSpawn()
+    );
 }
