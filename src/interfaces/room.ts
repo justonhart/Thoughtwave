@@ -12,11 +12,13 @@ interface RoomMemory {
     roadsConstructed?: boolean;
     spawnAssignments: Role[];
     remoteMining: Map<string, string[]>; // Map<room, sourceIds>
+    reservedEnergy?: number;
 }
 
 interface Room {
     energyStatus: EnergyStatus;
     getRepairTarget(): Id<Structure>;
+    canSpawn(): boolean;
 }
 
 interface RoomPosition {

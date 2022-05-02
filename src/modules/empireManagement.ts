@@ -1,4 +1,4 @@
-import { createPartsArray } from './populationManagement';
+import { PopulationManagement } from './populationManagement';
 
 export function manageEmpire() {
     if (!Memory.empire) {
@@ -46,7 +46,7 @@ export function manageColonistCreeps() {
                 if (numberOfColonizersFound < 2) {
                     Memory.empire.spawnAssignments.push({
                         designee: colonizeOp.origin,
-                        body: createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[colonizeOp.origin].energyCapacityAvailable),
+                        body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[colonizeOp.origin].energyCapacityAvailable),
                         memoryOptions: {
                             role: Role.COLONIZER,
                             destination: colonizeOp.destination,
@@ -61,16 +61,19 @@ export function manageColonistCreeps() {
     });
 }
 
-export function addColonizationOperation() {
-    let bestOrigin = findBestColonyOrigin(Game.flags.colonize.pos);
+export function addColonizationOperation(spawnPos: RoomPosition) {
+    let bestOrigin = findBestColonyOrigin(spawnPos);
 
     if (bestOrigin) {
         let newOp: ColonizationOperation = {
-            destination: Game.flags.colonize.pos.roomName,
+            destination: spawnPos.roomName,
             origin: bestOrigin,
             stage: ColonizeStage.CLAIM,
             spawnPosition: Game.flags.colonize.pos.toMemSafe(),
         };
+
+        console.log(`${bestOrigin} selected for colonization of ${spawnPos.roomName}`);
+
         Memory.empire.colonizationOperations.push(newOp);
     } else {
         console.log('No suitable colony origin found');
@@ -85,6 +88,7 @@ function findBestColonyOrigin(spawnPosition: RoomPosition): string {
     let possibleSpawnRooms = Object.values(Game.rooms).filter(
         (room) =>
             room.controller?.my &&
+            room.canSpawn() &&
             room.memory.phase === 2 &&
             room.energyStatus > EnergyStatus.CRITICAL &&
             Game.map.getRoomLinearDistance(room.name, spawnPosition.roomName) <= MAX_ROOM_LINEAR_DISTANCE
@@ -95,11 +99,37 @@ function findBestColonyOrigin(spawnPosition: RoomPosition): string {
         bestRoom = possibleSpawnRooms.reduce((closestSoFar, roomToCheck) => {
             let bestPath = PathFinder.search(closestSoFar.storage.pos, spawnPosition, { swampCost: 1 });
             let nextPath = PathFinder.search(roomToCheck.storage.pos, spawnPosition, { swampCost: 1 });
-            console.log(`${roomToCheck.name} cost: ${nextPath.cost}`);
 
             return bestPath.cost <= nextPath.cost ? closestSoFar : roomToCheck;
         });
     }
 
     return bestRoom?.name;
+}
+
+export function addHostileRoom(roomName: string, expirationTicks: number = 8000) {
+    if (!Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName)) {
+        Memory.empire.hostileRooms.push({ room: roomName, expireAt: Game.time + expirationTicks });
+    }
+}
+
+export function unclaimRoom(roomName: string) {
+    let room = Game.rooms[roomName];
+
+    if (room?.controller?.my) {
+        room.controller.unclaim();
+    }
+
+    if (room?.find(FIND_MY_CONSTRUCTION_SITES).length) {
+        room.find(FIND_MY_CONSTRUCTION_SITES).forEach((site) => site.remove());
+    }
+
+    Memory.empire.colonizationOperations = Memory.empire.colonizationOperations.filter((op) => op.destination !== roomName);
+    Memory.empire.spawnAssignments = Memory.empire.spawnAssignments.filter(
+        (asssignment) => asssignment.designee !== roomName && asssignment.memoryOptions.destination !== roomName
+    );
+
+    delete Memory.rooms[roomName];
+
+    return 'done';
 }

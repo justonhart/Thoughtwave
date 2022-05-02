@@ -12,42 +12,45 @@ export class Colonizer extends EarlyCreep {
                 target = Game.getObjectById(this.memory.targetId);
             }
             if (target instanceof ConstructionSite) {
-                // Create Spawn in target room
                 this.runBuildJob(target);
-            } else if (target instanceof StructureSpawn) {
-                console.log(`${this.room.name} spawn has been build!`);
-
-                let opIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === this.room.name);
-                if (Memory.empire.colonizationOperations[opIndex]) {
-                    Memory.empire.colonizationOperations[opIndex].stage = ColonizeStage.COMPLETE;
-                }
-                this.memory.role = Role.WORKER; // Turn into worker
-                this.memory.room = this.room.name; // Change to new room
             } else {
-                let opIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === this.room.name);
-
-                let preexistingSpawns = this.room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_SPAWN);
-                if (preexistingSpawns.length) {
-                    preexistingSpawns.forEach((spawn) => spawn.destroy());
+                let spawnCreated = this.room.find(FIND_MY_STRUCTURES).filter((struct) => struct.structureType === STRUCTURE_SPAWN).length > 0;
+                if (spawnCreated) {
+                    let opIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === this.room.name);
+                    if (Memory.empire.colonizationOperations[opIndex]) {
+                        Memory.empire.colonizationOperations[opIndex].stage = ColonizeStage.COMPLETE;
+                        console.log(`${this.room.name} spawn has been build!`);
+                    }
+                    this.convertToWorker();
+                } else {
+                    this.prepareRoom();
                 }
-
-                let spawnPos = posFromMem(Memory.empire.colonizationOperations[opIndex].spawnPosition);
-                this.room.createConstructionSite(spawnPos.x, spawnPos.y, STRUCTURE_SPAWN);
             }
         }
     }
 
-    private findTarget(): Id<ConstructionSite> | Id<Structure> {
+    private findTarget(): Id<ConstructionSite> {
+        let sites = this.room.find(FIND_MY_CONSTRUCTION_SITES).filter((site) => site.structureType === STRUCTURE_SPAWN);
+
+        return sites.pop()?.id;
+    }
+
+    private prepareRoom() {
         let opIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === this.room.name);
+
+        let preexistingStructures = this.room
+            .find(FIND_STRUCTURES)
+            //@ts-ignore
+            .filter((structure) => ![STRUCTURE_WALL, STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(structure.structureType));
+
+        preexistingStructures.forEach((struct) => struct.destroy());
+
         let spawnPos = posFromMem(Memory.empire.colonizationOperations[opIndex].spawnPosition);
+        this.room.createConstructionSite(spawnPos.x, spawnPos.y, STRUCTURE_SPAWN);
+    }
 
-        let lookResults = spawnPos.look();
-        if (lookResults.filter((object) => object.type === LOOK_CONSTRUCTION_SITES).length) {
-            return lookResults.filter((object) => object.type === LOOK_CONSTRUCTION_SITES).shift().constructionSite.id;
-        } else if (lookResults.filter((object) => object.type === LOOK_STRUCTURES).length) {
-            return lookResults.filter((object) => object.type === LOOK_STRUCTURES).shift().structure.id;
-        }
-
-        return undefined;
+    private convertToWorker() {
+        this.memory.role = Role.WORKER; // Turn into worker
+        this.memory.room = this.memory.destination; // Change to new room
     }
 }
