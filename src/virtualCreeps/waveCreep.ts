@@ -1,5 +1,3 @@
-import { timeStamp } from 'console';
-
 export class WaveCreep extends Creep {
     private static priorityQueue: Map<string, (creep: Creep) => void> = new Map();
 
