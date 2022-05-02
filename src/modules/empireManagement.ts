@@ -83,7 +83,7 @@ export function addColonizationOperation(spawnPos: RoomPosition) {
 }
 
 function findBestColonyOrigin(spawnPosition: RoomPosition): string {
-    const MAX_ROOM_LINEAR_DISTANCE = 8;
+    const MAX_ROOM_LINEAR_DISTANCE = 10;
 
     let possibleSpawnRooms = Object.values(Game.rooms).filter(
         (room) =>
@@ -97,10 +97,9 @@ function findBestColonyOrigin(spawnPosition: RoomPosition): string {
     let bestRoom: Room;
     if (possibleSpawnRooms.length) {
         bestRoom = possibleSpawnRooms.reduce((closestSoFar, roomToCheck) => {
-            let bestPath = PathFinder.search(closestSoFar.storage.pos, spawnPosition, { swampCost: 1 });
-            let nextPath = PathFinder.search(roomToCheck.storage.pos, spawnPosition, { swampCost: 1 });
-
-            return bestPath.cost <= nextPath.cost ? closestSoFar : roomToCheck;
+            let bestPath = PathFinder.search(closestSoFar.storage.pos, spawnPosition, { swampCost: 1, maxOps: 10000, maxCost: 590 });
+            let nextPath = PathFinder.search(roomToCheck.storage.pos, spawnPosition, { swampCost: 1, maxOps: 10000, maxCost: 590 });
+            return nextPath.incomplete || bestPath.cost <= nextPath.cost ? closestSoFar : roomToCheck;
         });
     }
 
