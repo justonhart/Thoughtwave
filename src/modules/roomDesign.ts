@@ -149,9 +149,143 @@ function canPlaceIndustryCenter(pos: RoomPosition): Direction {
     return undefined;
 }
 
-interface IndustrialCenter {
-    facing: Direction;
-    storagePosition: string; //room position
+export function findStarLocation(room: Room): RoomPosition {
+    let starCenter = new RoomPosition(25, 25, room.name);
+
+    let valid = checkStarBoundary(starCenter);
+
+    let stop = false;
+
+    if (!valid) {
+        for (let lookDistance = 1; lookDistance < 15 && !stop; lookDistance++) {
+            let lookPos: RoomPosition;
+            let x: number, y: number;
+
+            for (y = starCenter.y - lookDistance; y <= starCenter.y + lookDistance && !valid; y++) {
+                for (x = starCenter.x - lookDistance; x <= starCenter.x + lookDistance && !valid; x++) {
+                    if (y > starCenter.y - lookDistance && y < starCenter.y + lookDistance && x > starCenter.x - lookDistance) {
+                        x = starCenter.x + lookDistance;
+                    }
+                    lookPos = new RoomPosition(x, y, starCenter.roomName);
+
+                    valid = checkStarBoundary(lookPos);
+                    if (valid) {
+                        starCenter = lookPos;
+                        drawStar(starCenter);
+                    }
+                }
+            }
+        }
+    }
+
+    return valid ? starCenter : undefined;
+}
+
+function checkStarBoundary(starCenter: RoomPosition) {
+    let room = Game.rooms[starCenter.roomName];
+
+    let areaLooks = room.lookForAtArea(LOOK_TERRAIN, starCenter.y - 6, starCenter.x - 6, starCenter.y + 6, starCenter.x + 6, true);
+
+    //if there are any walls in the area
+    return !areaLooks.some((look) => look.terrain === 'wall');
+}
+
+function drawStar(starCenter: RoomPosition) {
+    let roomVis = Game.rooms[starCenter.roomName].visual;
+
+    //draw roads
+    roomVis.poly([
+        [starCenter.x, starCenter.y - 3],
+        [starCenter.x + 3, starCenter.y],
+        [starCenter.x, starCenter.y + 3],
+        [starCenter.x - 3, starCenter.y],
+        [starCenter.x, starCenter.y - 3],
+    ]);
+    roomVis.line(starCenter.x, starCenter.y - 3, starCenter.x, starCenter.y - 6);
+    roomVis.line(starCenter.x + 3, starCenter.y, starCenter.x + 6, starCenter.y);
+    roomVis.line(starCenter.x, starCenter.y + 3, starCenter.x, starCenter.y + 6);
+    roomVis.line(starCenter.x - 3, starCenter.y, starCenter.x - 6, starCenter.y);
+    roomVis.line(starCenter.x - 2 + 0.5, starCenter.y - 2 + 0.5, starCenter.x - 4, starCenter.y - 4);
+    roomVis.line(starCenter.x + 2 - 0.5, starCenter.y - 2 + 0.5, starCenter.x + 4, starCenter.y - 4);
+    roomVis.line(starCenter.x + 2 - 0.5, starCenter.y + 2 - 0.5, starCenter.x + 4, starCenter.y + 4);
+    roomVis.line(starCenter.x - 2 + 0.5, starCenter.y + 2 - 0.5, starCenter.x - 4, starCenter.y + 4);
+
+    //draw border
+    roomVis.rect(starCenter.x - 6 - 0.5, starCenter.y - 6 - 0.5, 13, 13, { fill: '#00E2FF', opacity: 0.1 });
+}
+
+export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, referencePos: RoomPosition): BuildableStructureConstant {
+    switch (layout) {
+        case RoomLayout.STAR:
+            let xdif = targetPos.x - referencePos.x;
+            let ydif = targetPos.y - referencePos.y;
+
+            console.log(xdif + ' ' + ydif);
+
+            if (targetPos === referencePos || Math.abs(xdif) > 7 || Math.abs(ydif) > 7) {
+                return undefined;
+            }
+
+            if (Math.abs(xdif) === 7 || Math.abs(ydif) === 7) {
+                return STRUCTURE_ROAD;
+            }
+
+            if (xdif === 0) {
+                switch (ydif) {
+                    case 1:
+                        return STRUCTURE_TERMINAL;
+                    case -1:
+                        return STRUCTURE_SPAWN;
+                    case -2:
+                    case 2:
+                        return STRUCTURE_EXTENSION;
+                    default:
+                        return STRUCTURE_ROAD;
+                }
+            }
+            if (ydif === 0) {
+                switch (xdif) {
+                    case -2:
+                        return STRUCTURE_OBSERVER;
+                    case -1:
+                        return STRUCTURE_LINK;
+                    case 1:
+                        return STRUCTURE_FACTORY;
+                    case 2:
+                        return STRUCTURE_SPAWN;
+                    default:
+                        return STRUCTURE_ROAD;
+                }
+            }
+
+            if (ydif === -1 && xdif === -1) {
+                return STRUCTURE_SPAWN;
+            }
+            if (ydif === -1 && xdif === 1) {
+                return STRUCTURE_STORAGE;
+            }
+            if (ydif === 1 && xdif === 1) {
+                return STRUCTURE_POWER_SPAWN;
+            }
+            if (ydif === 1 && xdif === -1) {
+                return STRUCTURE_NUKER;
+            }
+
+            if (Math.abs(ydif) === Math.abs(xdif) && Math.abs(ydif) <= 3) {
+                return STRUCTURE_ROAD;
+            }
+            if ((ydif === -3 && xdif >= -1 && xdif <= 2) || (xdif === 3 && ydif >= -2 && ydif <= 1)) {
+                return STRUCTURE_TOWER;
+            }
+            if (ydif <= -2 && ydif >= -5 && xdif <= -3 && xdif >= -4) {
+                return STRUCTURE_LAB;
+            }
+            if (ydif <= -3 && ydif >= -4 && (xdif === -2 || xdif === -5)) {
+                return STRUCTURE_LAB;
+            }
+
+            return STRUCTURE_EXTENSION;
+    }
 }
 
 const enum Direction {
