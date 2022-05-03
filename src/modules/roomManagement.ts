@@ -8,10 +8,11 @@ export function driveRoom(room: Room) {
     }
 
     if (
+        room.memory.layout !== undefined &&
         room.canSpawn() &&
         Object.keys(Game.constructionSites).length < 75 &&
         room.find(FIND_MY_CONSTRUCTION_SITES).length < 10 &&
-        Game.time % 500 === 0
+        Game.time % 20 === 0
     ) {
         //place construction site
         placeConstructionSites(room);
@@ -26,6 +27,15 @@ export function driveRoom(room: Room) {
         case 2:
             runPhaseTwo(room);
             break;
+    }
+
+    const targets = room.find(FIND_HOSTILE_CREEPS, {
+        filter: function (object) {
+            return object.owner.username === 'Tigga' && (object.getActiveBodyparts(ATTACK) > 0 || object.getActiveBodyparts(RANGED_ATTACK) > 0);
+        },
+    });
+    if (targets.length && room.canSpawn() && room.controller.level >= 4) {
+        room.controller.activateSafeMode();
     }
 
     runTowers(room);
@@ -92,11 +102,13 @@ function initRoom(room: Room) {
     room.memory.gates = [];
 
     //calculate room layout here
-    room.memory.layout = RoomLayout.STAR;
     let hqPos = findStarLocation(room);
-    room.memory.hqPos = findStarLocation(room).toMemSafe();
 
-    room.createConstructionSite(hqPos.x, hqPos.y - 1, STRUCTURE_SPAWN);
+    if (hqPos) {
+        room.memory.layout = RoomLayout.STAR;
+        room.memory.hqPos = findStarLocation(room).toMemSafe();
+        room.createConstructionSite(hqPos.x, hqPos.y - 1, STRUCTURE_SPAWN);
+    }
 }
 
 function runPhaseOne(room: Room) {
@@ -348,23 +360,22 @@ export function placeConstructionSites(room: Room) {
     let referencePos = posFromMem(room.memory.hqPos);
 
     let placed = 0;
-    for (let lookDistance = 1; lookDistance < 15 && placed < 5; lookDistance++) {
-        let lookPos: RoomPosition;
+    for (let lookDistance = 1; lookDistance < 7 && placed < 5; lookDistance++) {
         let x: number, y: number;
 
-        for (y = referencePos.y - lookDistance; y <= referencePos.y + lookDistance; y++) {
-            for (x = referencePos.x - lookDistance; x <= referencePos.x + lookDistance; x++) {
+        for (y = referencePos.y - lookDistance; y <= referencePos.y + lookDistance && placed < 5; y++) {
+            for (x = referencePos.x - lookDistance; x <= referencePos.x + lookDistance && placed < 5; x++) {
                 if (y > referencePos.y - lookDistance && y < referencePos.y + lookDistance && x > referencePos.x - lookDistance) {
                     x = referencePos.x + lookDistance;
                 }
 
-                let addResult = room.createConstructionSite(
-                    x,
-                    y,
-                    getStructureForPos(room.memory.layout, new RoomPosition(x, y, room.name), referencePos)
-                );
-                if (addResult == OK) {
-                    placed++;
+                let structureType = getStructureForPos(room.memory.layout, new RoomPosition(x, y, room.name), referencePos);
+
+                if (structureType !== STRUCTURE_ROAD) {
+                    let addResult = room.createConstructionSite(x, y, structureType);
+                    if (addResult == OK) {
+                        placed++;
+                    }
                 }
             }
         }
