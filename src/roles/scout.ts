@@ -1,7 +1,5 @@
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
-// TODO: if scout goes into first room and instantly gets killed (for example cause invader) then another will spawn and do the same thing over and over. Add avoidRooms to RoomMemory with gameTick so creeps will avoid it and other scouted rooms until timer is up
-// TODO: right now it wont assign any room with hostileStructures or enemyCreeps (can be improved later to where enemy creeps might not be a deciding factor) ==> could also add this room to avoidRooms globally but might wanna keep check on enemy
 export class Scout extends WaveCreep {
     public run() {
         let nextTarget = this.memory.scout?.path[this.memory.scout.path.length - 1];
@@ -18,7 +16,7 @@ export class Scout extends WaveCreep {
             }
 
             if (!Memory.rooms[this.memory.room].remoteMining) {
-                Memory.rooms[this.memory.room].remoteMining = {};
+                Memory.rooms[this.memory.room].remoteMining = [];
             }
 
             nextTarget = this.findTarget();
@@ -36,12 +34,9 @@ export class Scout extends WaveCreep {
                 }).length
             ) {
                 if (!Memory.rooms[this.memory.room].remoteMining) {
-                    Memory.rooms[this.memory.room].remoteMining = {};
+                    Memory.rooms[this.memory.room].remoteMining = [];
                 }
-                const sourceIds = this.room.find(FIND_SOURCES).map((source) => source.id);
-                if (sourceIds.length) {
-                    Memory.rooms[this.memory.room].remoteMining[nextTarget] = sourceIds;
-                }
+                this.room.find(FIND_SOURCES).forEach((source) => Memory.rooms[this.memory.room].remoteMining.push(source.pos.toMemSafe()));
                 nextTarget = this.findTarget();
             } else {
                 nextTarget = this.findTarget(true);

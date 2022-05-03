@@ -11,7 +11,7 @@ interface RoomMemory {
     sourceAccessPointCount: number;
     roadsConstructed?: boolean;
     spawnAssignments: Role[];
-    remoteMining: { [roomName: string]: string[] }; //Map<roomName, sourceIds>
+    remoteMining: string[]; //Sources by roomposition
     reservedEnergy?: number;
 }
 
