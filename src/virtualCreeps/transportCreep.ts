@@ -64,21 +64,21 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findCollectionTarget(): Id<Resource> | Id<Structure> | Id<Tombstone> {
-        let looseResources = this.homeroom.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > this.store.getCapacity() / 2);
-        if (looseResources.length) {
-            return looseResources.reduce((biggestResource, resourceToCompare) =>
-                biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
-            ).id;
-        }
-
         //@ts-ignore
         let containers: StructureContainer[] = this.homeroom
             .find(FIND_STRUCTURES)
             .filter((structure) => structure.structureType === STRUCTURE_CONTAINER && structure.store.getUsedCapacity());
         let fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
         if (fillingContainers.length) {
-            return fillingContainers.reduce((fullestContainer, containerToRepair) =>
-                fullestContainer.store.getUsedCapacity() > containerToRepair.store.getUsedCapacity() ? fullestContainer : containerToRepair
+            return fillingContainers.reduce((fullestContainer, nextContainer) =>
+                fullestContainer.store.getUsedCapacity() > nextContainer.store.getUsedCapacity() ? fullestContainer : nextContainer
+            ).id;
+        }
+
+        let looseResources = this.homeroom.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
+        if (looseResources.length) {
+            return looseResources.reduce((biggestResource, resourceToCompare) =>
+                biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
             ).id;
         }
 
@@ -88,8 +88,8 @@ export class TransportCreep extends WaveCreep {
         }
 
         if (containers.length) {
-            return containers.reduce((fullestContainer, containerToRepair) =>
-                fullestContainer.store.getUsedCapacity() > containerToRepair.store.getUsedCapacity() ? fullestContainer : containerToRepair
+            return containers.reduce((fullestContainer, nextContainer) =>
+                fullestContainer.store.getUsedCapacity() > nextContainer.store.getUsedCapacity() ? fullestContainer : nextContainer
             ).id;
         }
     }

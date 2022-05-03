@@ -1,10 +1,12 @@
 import { posFromMem } from './memoryManagement';
-import { createPartsArray } from './populationManagement';
+import { PopulationManagement } from './populationManagement';
 
 export function driveRoom(room: Room) {
     if (room.memory?.phase == undefined) {
         initRoomMemory(room);
     }
+
+    room.memory.reservedEnergy = 0;
 
     switch (room.memory.phase) {
         case 1:
@@ -29,6 +31,8 @@ export function driveRoom(room: Room) {
     if (room.memory.gates?.length) {
         runGates(room);
     }
+
+    delete room.memory.reservedEnergy;
 }
 
 function runTowers(room: Room) {
@@ -51,11 +55,12 @@ function runHomeSecurity(room: Room) {
     if (
         hostileCreeps.length > 1 &&
         !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR).length &&
-        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR).length
+        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR).length &&
+        room.canSpawn()
     ) {
         Memory.empire.spawnAssignments.push({
             designee: room.name,
-            body: createPartsArray([ATTACK, MOVE], room.energyCapacityAvailable),
+            body: PopulationManagement.createPartsArray([ATTACK, MOVE], room.energyCapacityAvailable),
             memoryOptions: {
                 role: Role.PROTECTOR,
             },
@@ -85,6 +90,10 @@ function initRoomMemory(room: Room) {
 }
 
 function runPhaseOne(room: Room) {
+    if (room.canSpawn()) {
+        runPhaseOneSpawnLogic(room);
+    }
+
     switch (room.memory.phaseShift) {
         case PhaseShiftStatus.PREPARE:
             if (dropMiningContainersConstructed(room) && room.storage?.store[RESOURCE_ENERGY] >= calculatePhaseShiftMinimum(room)) {
@@ -103,6 +112,75 @@ function runPhaseOne(room: Room) {
             }
             break;
     }
+}
+
+function runPhaseTwo(room: Room) {
+    if (room.memory.repairSearchCooldown > 0) {
+        room.memory.repairSearchCooldown--;
+    }
+
+    if (Game.time % 500) {
+        room.memory.repairQueue = findRepairTargets(room);
+    }
+
+    if (room.canSpawn()) {
+        runPhaseTwoSpawnLogic(room);
+    }
+}
+
+function runPhaseOneSpawnLogic(room: Room) {
+    //@ts-expect-error
+    let availableRoomSpawns: StructureSpawn[] = room
+        .find(FIND_MY_STRUCTURES)
+        .filter((structure) => structure.structureType === STRUCTURE_SPAWN && !structure.spawning);
+
+    let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
+    assigments.forEach((assignment) => {
+        let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
+        if (canSpawnAssignment) {
+            let spawn = availableRoomSpawns.pop();
+            spawn?.spawnAssignedCreep(assignment);
+        }
+    });
+
+    availableRoomSpawns.forEach((spawn) => spawn.spawnEarlyWorker());
+}
+
+function runPhaseTwoSpawnLogic(room: Room) {
+    //@ts-expect-error
+    let availableRoomSpawns: StructureSpawn[] = room
+        .find(FIND_MY_STRUCTURES)
+        .filter((structure) => structure.structureType === STRUCTURE_SPAWN && !structure.spawning);
+
+    let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
+    let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
+
+    if (distributor === undefined) {
+        let spawn = availableRoomSpawns.pop();
+        spawn?.spawnDistributor();
+    } else if (distributor.ticksToLive < 50) {
+        //reserve energy & spawn for distributor
+        availableRoomSpawns.pop();
+        room.memory.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
+            .map((part) => BODYPART_COST[part])
+            .reduce((sum, next) => sum + next);
+    }
+
+    if (PopulationManagement.needsMiner(room)) {
+        let spawn = availableRoomSpawns.pop();
+        spawn?.spawnMiner();
+    }
+
+    let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
+    assigments.forEach((assignment) => {
+        let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
+        if (canSpawnAssignment) {
+            let spawn = availableRoomSpawns.pop();
+            spawn?.spawnAssignedCreep(assignment);
+        }
+    });
+
+    availableRoomSpawns.forEach((spawn) => spawn.spawnPhaseTwoWorker());
 }
 
 export function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
@@ -154,7 +232,7 @@ export function dropMiningContainersConstructed(room: Room): boolean {
     return allContainersConstructed;
 }
 
-export function calculatePhaseShiftMinimum(room: Room): number {
+function calculatePhaseShiftMinimum(room: Room): number {
     const WORK_COST = 100;
     const CARRY_COST = 50;
     const MOVE_COST = 50;
@@ -163,7 +241,8 @@ export function calculatePhaseShiftMinimum(room: Room): number {
 
     let transportCreepPartCost = CARRY_COST * 2 + MOVE_COST;
 
-    let transportCreepCost = Math.floor(room.energyCapacityAvailable / transportCreepPartCost) * transportCreepPartCost;
+    let transportCreepCost =
+        Math.min(Math.floor(room.energyCapacityAvailable / transportCreepPartCost), 10 * transportCreepPartCost) * transportCreepPartCost;
 
     return 2 * (2 * transportCreepCost + room.find(FIND_SOURCES).length * dropMinerCost);
 }
@@ -209,27 +288,6 @@ export function executePhaseShift(room: Room) {
     delete room.memory.containerPositions;
 
     room.memory.phase = 2;
-}
-
-function runPhaseTwo(room: Room) {
-    if (room.memory.repairSearchCooldown > 0) {
-        room.memory.repairSearchCooldown--;
-    }
-
-    if (Game.time % 500) {
-        room.memory.repairQueue = findRepairTargets(room);
-    }
-
-    if (Game.time % 8000 === 0 && !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.SCOUT).length) {
-        Memory.empire.spawnAssignments.push({
-            designee: room.name,
-            body: [MOVE],
-            memoryOptions: {
-                role: Role.SCOUT,
-                room: room.name,
-            },
-        });
-    }
 }
 
 export function findRepairTargets(room: Room): Id<Structure>[] {

@@ -23,7 +23,7 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
             return EnergyStatus.SURPLUS;
         } else if (this.storage.store[RESOURCE_ENERGY] >= 200000) {
             return EnergyStatus.STABLE;
-        } else if (this.storage.store[RESOURCE_ENERGY] >= this.energyCapacityAvailable * 10) {
+        } else if ((this.storage.store[RESOURCE_ENERGY] >= Math.min(this.energyCapacityAvailable * 10), 25000)) {
             return EnergyStatus.RECOVERING;
         } else {
             return EnergyStatus.CRITICAL;
@@ -32,3 +32,7 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
     enumerable: false,
     configurable: true,
 });
+
+Room.prototype.canSpawn = function (this: Room): boolean {
+    return this.find(FIND_MY_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_SPAWN).length > 0;
+};
