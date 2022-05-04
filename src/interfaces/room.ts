@@ -4,6 +4,7 @@ interface RoomMemory {
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: Map<string, AssignmentStatus>;
+    distributorAssignments: Map<string, AssignmentStatus>; // TODO: make this remoteAssignments so it can store distributors + claimers (move miners in here?)
     containerPositions?: string[];
     phaseShift?: PhaseShiftStatus;
     phase?: number;
@@ -11,7 +12,6 @@ interface RoomMemory {
     sourceAccessPointCount: number;
     roadsConstructed?: boolean;
     spawnAssignments: Role[];
-    remoteMining: string[]; //Sources by roomposition
     reservedEnergy?: number;
 }
 

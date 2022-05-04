@@ -7,6 +7,10 @@ export class TransportCreep extends WaveCreep {
             this.memory.targetId = this.findTarget();
             target = Game.getObjectById(this.memory.targetId);
         }
+        if (!target && this.memory.assignment && !Game.rooms[this.memory.assignment]) {
+            // TODO: remove later workaround for missing visibility in room
+            this.travelToRoom(this.memory.assignment, { range: 1 });
+        }
 
         if (target instanceof Resource) {
             this.runPickupJob(target);
@@ -63,9 +67,17 @@ export class TransportCreep extends WaveCreep {
         }
     }
 
-    protected findCollectionTarget(): Id<Resource> | Id<Structure> | Id<Tombstone> {
+    protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> | Id<Tombstone> {
+        let room = this.homeroom;
+        if (roomName) {
+            room = Game.rooms[roomName];
+        }
+        if (!room) {
+            return undefined;
+        }
+
         //@ts-ignore
-        let containers: StructureContainer[] = this.homeroom
+        let containers: StructureContainer[] = room
             .find(FIND_STRUCTURES)
             .filter((structure) => structure.structureType === STRUCTURE_CONTAINER && structure.store.getUsedCapacity());
         let fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
@@ -75,14 +87,14 @@ export class TransportCreep extends WaveCreep {
             ).id;
         }
 
-        let looseResources = this.homeroom.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
+        let looseResources = room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
         if (looseResources.length) {
             return looseResources.reduce((biggestResource, resourceToCompare) =>
                 biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
             ).id;
         }
 
-        let tombstonesWithResources = this.homeroom.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
+        let tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
         if (tombstonesWithResources.length) {
             return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
         }

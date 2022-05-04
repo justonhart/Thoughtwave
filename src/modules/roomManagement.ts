@@ -171,6 +171,27 @@ function runPhaseTwoSpawnLogic(room: Room) {
         spawn?.spawnMiner();
     }
 
+    if (PopulationManagement.needsRemoteDistributor(room)) {
+        // checks if a distributor exists for every room in miningAssignment that isnt homeRoom
+        let spawn = availableRoomSpawns.pop();
+        spawn?.spawnRemoteDistributor(); // Spawn distributor with a targetRoom where he collects energy and checks repair on currentPos if needed else move back to home room storage
+    }
+
+    if (
+        Game.time % 8000 === 0 &&
+        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.SCOUT && creep.designee === room.name).length &&
+        room.name === 'W19S58'
+    ) {
+        Memory.empire.spawnAssignments.push({
+            designee: room.name,
+            body: [MOVE],
+            memoryOptions: {
+                role: Role.SCOUT,
+                room: room.name,
+            },
+        });
+    }
+
     let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
     assigments.forEach((assignment) => {
         let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);

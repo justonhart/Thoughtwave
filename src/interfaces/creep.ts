@@ -28,6 +28,7 @@ interface PriorityQueue {
 
 interface ScoutMemory {
     path?: string[]; // Used for Pathfinding
+    spawn?: string; // Spawn Position
 }
 
 const enum Priority {
@@ -41,6 +42,7 @@ const enum Role {
     UPGRADER = 'Upgrader',
     MAINTAINTER = 'MAINTAINTER',
     DISTRIBUTOR = 'DISTRIBUTOR',
+    REMOTE_DISTRIBUTOR = 'REMOTE_DISTRIBUTOR',
     TRANSPORTER = 'TRANSPORTER',
     MINER = 'MINER',
     CLAIMER = 'CLAIMER',

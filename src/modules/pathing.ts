@@ -103,8 +103,8 @@ export class Pathing {
 
         const cpuBefore = Game.cpu.getUsed();
         if (creep.memory._m.path && creep.memory._m.stuckCount) {
-            // First try pushing the creep in front closer to their target
-            if (!Pathing.pushForward(creep) || creep.memory._m.stuckCount > 1) {
+            // First try pushing the creep in front closer to their target (stayOnPath will not recalculate new Path)
+            if ((!Pathing.pushForward(creep) || creep.memory._m.stuckCount > 1) && !opts.stayOnPath) {
                 opts.pathColor = 'blue';
                 opts.ignoreCreeps = false;
                 delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
@@ -250,6 +250,9 @@ export class Pathing {
         origin = Pathing.normalizePos(origin);
         destination = Pathing.normalizePos(destination);
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
+        if (options.preferRoadConstruction) {
+            efficiency = 0.5; // Make other tiles cost more to avoid multiple roads
+        }
         return PathFinder.search(
             origin,
             {
@@ -258,8 +261,8 @@ export class Pathing {
             },
             {
                 maxOps: options.maxOps,
-                plainCost: efficiency >= 2 ? 1 : 2,
-                swampCost: efficiency >= 2 ? Math.ceil(10 / efficiency) : 10,
+                plainCost: Math.ceil(2 / efficiency),
+                swampCost: Math.ceil(10 / efficiency),
                 roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options),
             }
         );
@@ -306,6 +309,13 @@ export class Pathing {
                         }
                     });
                 }
+
+                // All tiles will be set to one if there is a road construction
+                if (options.preferRoadConstruction) {
+                    room.find(FIND_MY_CONSTRUCTION_SITES, { filter: (struct) => struct.structureType === STRUCTURE_ROAD }).forEach((struct) =>
+                        matrix.set(struct.pos.x, struct.pos.y, 1)
+                    );
+                }
             }
 
             return matrix;
@@ -334,7 +344,7 @@ export class Pathing {
      * @returns new costmatrix
      */
     static getStructureMatrix(room: Room, options: TravelToOpts): CostMatrix {
-        const roadcost = 1; // Could be configurable later to avoid roads
+        let roadcost = 1; // Could be configurable later to avoid roads
         if (!Pathing.structureMatrixTick) {
             Pathing.structureMatrixTick = {};
         }
@@ -376,11 +386,11 @@ export class Pathing {
      * @returns changed costmatrix
      */
     static addStructuresToMatrix(room: Room, matrix: CostMatrix, roadCost: number): CostMatrix {
-        let impassibleStructures = [];
         for (let structure of room.find(FIND_STRUCTURES)) {
             if (structure.structureType === STRUCTURE_RAMPART) {
-                if (!structure.my && !structure.isPublic) {
-                    impassibleStructures.push(structure);
+                if (!structure.my) {
+                    // Even if isPublic to avoid maze trap
+                    matrix.set(structure.pos.x, structure.pos.y, 0xff);
                 }
             } else if (structure.structureType === STRUCTURE_ROAD) {
                 if (matrix.get(structure.pos.x, structure.pos.y) < 0xff) {
@@ -495,6 +505,12 @@ export class Pathing {
                 } else if (creep.memory.currentTaskPriority > obstacleCreep.memory.currentTaskPriority) {
                     // Swap places if creep has a higher priorty
                     obstacleCreep.addTaskToPriorityQueue(creep.memory.currentTaskPriority, () => {
+                        obstacleCreep.move(Pathing.inverseDirection(nextDirection));
+                    });
+                    return true;
+                } else if (creep.memory.role === Role.MINER && obstacleCreep.memory.role === Role.MINER) {
+                    // TODO: remove this --> just temporary workaround for remoteminers that block each other cause they stay on their path no matter what
+                    obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
                         obstacleCreep.move(Pathing.inverseDirection(nextDirection));
                     });
                     return true;

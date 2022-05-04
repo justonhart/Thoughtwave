@@ -35,6 +35,14 @@ interface TravelToOpts extends PathFinderOpts {
      * Change color of the serialized Path. Default is orange.
      */
     pathColor?: string;
+    /**
+     * Prefer roads and roadConstruction. This is useful for any creep that builds construction and wants to avoid multiple roads close to each other.
+     */
+    preferRoadConstruction?: boolean;
+    /**
+     * Will not recalculate path or get pushed on a seperate path. Useful if a creep should always use the same path.
+     */
+    stayOnPath?: boolean;
 }
 
 /**

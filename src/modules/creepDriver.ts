@@ -13,6 +13,7 @@ import { Builder } from '../roles/builder';
 import { EarlyBuilder } from '../roles/earlyBuilder';
 import { Scout } from '../roles/scout';
 import { Protector } from '../roles/protector';
+import { RemoteDistributor } from '../roles/remoteDistributor';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -47,6 +48,9 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.DISTRIBUTOR:
             waveCreep = new Distributor(creep.id);
+            break;
+        case Role.REMOTE_DISTRIBUTOR:
+            waveCreep = new RemoteDistributor(creep.id);
             break;
         case Role.TRANSPORTER:
             waveCreep = new Transporter(creep.id);

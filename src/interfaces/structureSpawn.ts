@@ -1,6 +1,7 @@
 interface StructureSpawn {
     spawnMiner(): ScreepsReturnCode;
     spawnDistributor(): ScreepsReturnCode;
+    spawnRemoteDistributor(): ScreepsReturnCode;
     spawnEarlyWorker(): ScreepsReturnCode;
     spawnPhaseTwoWorker(): ScreepsReturnCode;
     spawnAssignedCreep(assignment: SpawnAssignment): ScreepsReturnCode;

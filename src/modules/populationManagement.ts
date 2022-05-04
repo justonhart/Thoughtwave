@@ -1,3 +1,5 @@
+import { posFromMem } from './memoryManagement';
+
 export class PopulationManagement {
     // function to calculate how many creeps a room can support
     static calculateEarlyCreepCapacity(room: Room): number {
@@ -196,6 +198,39 @@ export class PopulationManagement {
             if (result === OK) {
                 spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
             }
+        }
+
+        return result;
+    }
+
+    static needsRemoteDistributor(room: Room): boolean {
+        if (!room.memory.distributorAssignments) {
+            room.memory.distributorAssignments = new Map();
+        }
+        return Object.entries(room.memory.distributorAssignments).some(
+            ([roomName, assignment]) => assignment === AssignmentStatus.UNASSIGNED && roomName !== room.name
+        );
+    }
+
+    static spawnRemoteDistributor(spawn: StructureSpawn): ScreepsReturnCode {
+        let assigmentKeys = Object.keys(spawn.room.memory.distributorAssignments);
+        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.distributorAssignments[roomName] === AssignmentStatus.UNASSIGNED);
+
+        let options: SpawnOptions = {
+            memory: {
+                assignment: assigment,
+                room: spawn.room.name,
+                role: Role.REMOTE_DISTRIBUTOR,
+            },
+        };
+
+        let tag = 'rd';
+
+        const PARTS = [CARRY, CARRY, MOVE]; // TODO: add work
+        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, 10);
+
+        if (result === ERR_NOT_ENOUGH_ENERGY) {
+            result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, 10);
         }
 
         return result;

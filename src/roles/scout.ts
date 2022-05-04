@@ -1,3 +1,4 @@
+import { posFromMem } from '../modules/memoryManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Scout extends WaveCreep {
@@ -6,17 +7,13 @@ export class Scout extends WaveCreep {
         if (!nextTarget) {
             // Set memory
             if (!this.memory.scout) {
-                this.memory.scout = { path: [this.room.name] };
+                this.memory.scout = { path: [this.room.name], spawn: this.pos.toMemSafe() };
             }
             if (!Memory.empire.scoutAssignments) {
                 Memory.empire.scoutAssignments = {};
             }
             if (!Memory.empire.scoutAssignments[this.memory.room]) {
                 Memory.empire.scoutAssignments[this.memory.room] = [];
-            }
-
-            if (!Memory.rooms[this.memory.room].remoteMining) {
-                Memory.rooms[this.memory.room].remoteMining = [];
             }
 
             nextTarget = this.findTarget();
@@ -33,10 +30,19 @@ export class Scout extends WaveCreep {
                     filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
                 }).length
             ) {
-                if (!Memory.rooms[this.memory.room].remoteMining) {
-                    Memory.rooms[this.memory.room].remoteMining = [];
-                }
-                this.room.find(FIND_SOURCES).forEach((source) => Memory.rooms[this.memory.room].remoteMining.push(source.pos.toMemSafe()));
+                this.room.find(FIND_SOURCES).forEach((source) => {
+                    const pathFinder = this.getPath(source.pos);
+                    if (
+                        !pathFinder.incomplete &&
+                        !Memory.rooms[this.memory.room].miningAssignments[pathFinder.path[pathFinder.path.length - 1].toMemSafe()]
+                    ) {
+                        Memory.rooms[this.memory.room].miningAssignments[pathFinder.path[pathFinder.path.length - 1].toMemSafe()] =
+                            AssignmentStatus.UNASSIGNED;
+                        if (!Memory.rooms[this.memory.room].distributorAssignments[this.room.name]) {
+                            Memory.rooms[this.memory.room].distributorAssignments[this.room.name] = AssignmentStatus.UNASSIGNED;
+                        }
+                    }
+                });
                 nextTarget = this.findTarget();
             } else {
                 nextTarget = this.findTarget(true);
@@ -60,7 +66,7 @@ export class Scout extends WaveCreep {
                     adjacentRoom !== undefined &&
                     !Game.rooms[adjacentRoom] &&
                     ![].concat(...Object.values(Memory.empire.scoutAssignments)).includes(adjacentRoom) &&
-                    this.isInDistance(adjacentRoom)
+                    Game.map.getRoomLinearDistance(this.memory.room, adjacentRoom) < 2
             );
 
             // Add rooms if scout hasn't been there yet
@@ -86,13 +92,10 @@ export class Scout extends WaveCreep {
 
     /**
      * Calculate path to target from homeBase. Set higher maxCost to let the scout go further from his base ==> costOutsideOfBase = maxCost - 25
+     * Swamp cost is set to 2 since roadCost is higher therefor it will not be as efficient
      * @returns
      */
-    private isInDistance(targetRoom: string): boolean {
-        return !PathFinder.search(
-            new RoomPosition(25, 25, this.memory.room),
-            { pos: new RoomPosition(25, 25, targetRoom), range: 23 },
-            { maxCost: 75 }
-        ).incomplete;
+    private getPath(target: RoomPosition): PathFinderPath {
+        return PathFinder.search(posFromMem(this.memory.scout.spawn), { pos: target, range: 1 }, { plainCost: 1, swampCost: 2, maxCost: 90 }); // TODO how far is still efficient?
     }
 }
