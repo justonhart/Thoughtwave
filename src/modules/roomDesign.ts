@@ -149,15 +149,14 @@ function canPlaceIndustryCenter(pos: RoomPosition): Direction {
     return undefined;
 }
 
-export function findStarLocation(room: Room): RoomPosition {
-    let starCenter = new RoomPosition(25, 25, room.name);
+export function findSquareLocation(room: Room): RoomPosition {
+    let poiAvg = findPoiAverage(room);
+    let starCenter = new RoomPosition(poiAvg.x - 1, poiAvg.y + 1, room.name);
 
     let valid = checkStarBoundary(starCenter);
 
-    let stop = false;
-
     if (!valid) {
-        for (let lookDistance = 1; lookDistance < 15 && !stop; lookDistance++) {
+        for (let lookDistance = 1; lookDistance < 50; lookDistance++) {
             let lookPos: RoomPosition;
             let x: number, y: number;
 
@@ -166,9 +165,12 @@ export function findStarLocation(room: Room): RoomPosition {
                     if (y > starCenter.y - lookDistance && y < starCenter.y + lookDistance && x > starCenter.x - lookDistance) {
                         x = starCenter.x + lookDistance;
                     }
-                    lookPos = new RoomPosition(x, y, starCenter.roomName);
 
-                    valid = checkStarBoundary(lookPos);
+                    if (x > 1 && x < 49 && y > 1 && y < 49) {
+                        lookPos = new RoomPosition(x, y, starCenter.roomName);
+
+                        valid = checkStarBoundary(lookPos);
+                    }
                     if (valid) {
                         starCenter = lookPos;
                         drawStar(starCenter);
@@ -291,6 +293,21 @@ export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, 
 
             return STRUCTURE_EXTENSION;
     }
+}
+
+export function findPoiAverage(room: Room) {
+    let pois = room.find(FIND_SOURCES).map((source) => source.pos);
+    pois.push(room.controller.pos);
+
+    let pointOfInterestSum = { x: 0, y: 0 };
+    pois.forEach((pos) => {
+        pointOfInterestSum.x += pos.x;
+        pointOfInterestSum.y += pos.y;
+    });
+
+    let pointOfInterestAverage = new RoomPosition(pointOfInterestSum.x / pois.length, pointOfInterestSum.y / pois.length, room.name);
+    room.visual.text('🌟', pointOfInterestAverage);
+    return pointOfInterestAverage;
 }
 
 const enum Direction {
