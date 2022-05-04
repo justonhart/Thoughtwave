@@ -38,8 +38,9 @@ export class Scout extends WaveCreep {
                     ) {
                         Memory.rooms[this.memory.room].miningAssignments[pathFinder.path[pathFinder.path.length - 1].toMemSafe()] =
                             AssignmentStatus.UNASSIGNED;
-                        if (!Memory.rooms[this.memory.room].distributorAssignments[this.room.name]) {
-                            Memory.rooms[this.memory.room].distributorAssignments[this.room.name] = AssignmentStatus.UNASSIGNED;
+                        if (!Memory.rooms[this.memory.room].remoteAssignments[this.room.name]) {
+                            Memory.rooms[this.memory.room].remoteAssignments[this.room.name].distributor = AssignmentStatus.UNASSIGNED;
+                            Memory.rooms[this.memory.room].remoteAssignments[this.room.name].reserver = AssignmentStatus.UNASSIGNED;
                         }
                     }
                 });

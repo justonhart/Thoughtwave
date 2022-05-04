@@ -177,6 +177,15 @@ function runPhaseTwoSpawnLogic(room: Room) {
         spawn?.spawnRemoteDistributor(); // Spawn distributor with a targetRoom where he collects energy and checks repair on currentPos if needed else move back to home room storage
     }
 
+    /*  if(PopulationManagement.needsRemoteClaimer(room)) {
+
+        let spawn = availableRoomSpawns.pop();
+        const numReservers = roomCreeps.filter((creep) => creep.memory.role === Role.RESERVER).length;
+        options.memory.destination = Object.keys(Memory.rooms[spawn.room.name].remoteMining)?.[numReservers];
+        options.memory.role = Role.RESERVER;
+        partBlockToUse = [MOVE, CLAIM];
+    } */
+
     if (
         Game.time % 8000 === 0 &&
         !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.SCOUT && creep.designee === room.name).length &&

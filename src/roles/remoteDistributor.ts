@@ -4,8 +4,12 @@ export class RemoteDistributor extends TransportCreep {
     public run() {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (!target) {
-            this.memory.targetId = this.findTarget();
-            target = Game.getObjectById(this.memory.targetId);
+            if (this.pos.roomName !== this.memory.assignment) {
+                return this.travelToRoom(this.memory.assignment); // travel to room before finding a target
+            } else {
+                this.memory.targetId = this.findTarget();
+                target = Game.getObjectById(this.memory.targetId);
+            }
         }
 
         if (target instanceof Resource) {
@@ -28,16 +32,11 @@ export class RemoteDistributor extends TransportCreep {
         }
     }
 
-    // TODO: add repair on currentPos if needed
-    // TODO: look in memory assignment for targetRoom
     protected findTarget() {
         let target: any;
 
         if (!target && this.store.getUsedCapacity() < this.store.getCapacity() / 2) {
             target = this.findCollectionTarget(this.memory.assignment);
-            if (!target) {
-                this.travelToRoom(this.memory.assignment);
-            }
         }
 
         if (!target) {

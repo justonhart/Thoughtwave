@@ -204,17 +204,18 @@ export class PopulationManagement {
     }
 
     static needsRemoteDistributor(room: Room): boolean {
-        if (!room.memory.distributorAssignments) {
-            room.memory.distributorAssignments = new Map();
+        if (!room.memory.remoteAssignments) {
+            room.memory.remoteAssignments = new Map();
         }
-        return Object.entries(room.memory.distributorAssignments).some(
-            ([roomName, assignment]) => assignment === AssignmentStatus.UNASSIGNED && roomName !== room.name
+
+        return Object.entries(room.memory.remoteAssignments).some(
+            ([roomName, assignment]) => assignment.distributor === AssignmentStatus.UNASSIGNED && roomName !== room.name
         );
     }
 
     static spawnRemoteDistributor(spawn: StructureSpawn): ScreepsReturnCode {
-        let assigmentKeys = Object.keys(spawn.room.memory.distributorAssignments);
-        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.distributorAssignments[roomName] === AssignmentStatus.UNASSIGNED);
+        let assigmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
+        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].distributor === AssignmentStatus.UNASSIGNED);
 
         let options: SpawnOptions = {
             memory: {
@@ -234,7 +235,7 @@ export class PopulationManagement {
         }
 
         if (result === OK) {
-            spawn.room.memory.distributorAssignments[assigment] = AssignmentStatus.ASSIGNED;
+            spawn.room.memory.remoteAssignments[assigment].distributor = AssignmentStatus.ASSIGNED;
         }
 
         return result;
