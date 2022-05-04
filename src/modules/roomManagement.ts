@@ -172,19 +172,14 @@ function runPhaseTwoSpawnLogic(room: Room) {
     }
 
     if (PopulationManagement.needsRemoteDistributor(room)) {
-        // checks if a distributor exists for every room in miningAssignment that isnt homeRoom
         let spawn = availableRoomSpawns.pop();
-        spawn?.spawnRemoteDistributor(); // Spawn distributor with a targetRoom where he collects energy and checks repair on currentPos if needed else move back to home room storage
+        spawn?.spawnRemoteDistributor();
     }
 
-    /*  if(PopulationManagement.needsRemoteClaimer(room)) {
-
+    if (PopulationManagement.needsReserver(room)) {
         let spawn = availableRoomSpawns.pop();
-        const numReservers = roomCreeps.filter((creep) => creep.memory.role === Role.RESERVER).length;
-        options.memory.destination = Object.keys(Memory.rooms[spawn.room.name].remoteMining)?.[numReservers];
-        options.memory.role = Role.RESERVER;
-        partBlockToUse = [MOVE, CLAIM];
-    } */
+        spawn?.spawnReserver();
+    }
 
     if (
         Game.time % 8000 === 0 &&

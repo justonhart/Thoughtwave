@@ -241,6 +241,46 @@ export class PopulationManagement {
         return result;
     }
 
+    static needsReserver(room: Room): boolean {
+        if (!room.memory.remoteAssignments) {
+            room.memory.remoteAssignments = new Map();
+        }
+
+        return Object.entries(room.memory.remoteAssignments).some(
+            ([roomName, assignment]) => assignment.reserver === AssignmentStatus.UNASSIGNED && roomName !== room.name
+        );
+    }
+
+    static spawnReserver(spawn: StructureSpawn): ScreepsReturnCode {
+        let assigmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
+        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].reserver === AssignmentStatus.UNASSIGNED);
+
+        //  options.memory.destination = Object.keys(Memory.rooms[spawn.room.name].remoteMining)?.[numReservers];
+
+        let options: SpawnOptions = {
+            memory: {
+                assignment: assigment,
+                room: spawn.room.name,
+                role: Role.RESERVER,
+            },
+        };
+
+        let tag = 'rs';
+
+        const PARTS = [CLAIM, MOVE];
+        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, 2);
+
+        if (result === ERR_NOT_ENOUGH_ENERGY) {
+            result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, 2);
+        }
+
+        if (result === OK) {
+            spawn.room.memory.remoteAssignments[assigment].reserver = AssignmentStatus.ASSIGNED;
+        }
+
+        return result;
+    }
+
     static createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailable: number, levelCap: number = 15): BodyPartConstant[] {
         let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
         let partsArray = [];

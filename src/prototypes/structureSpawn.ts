@@ -12,6 +12,10 @@ StructureSpawn.prototype.spawnRemoteDistributor = function () {
     return PopulationManagement.spawnRemoteDistributor(this);
 };
 
+StructureSpawn.prototype.spawnReserver = function () {
+    return PopulationManagement.spawnReserver(this);
+};
+
 StructureSpawn.prototype.spawnEarlyWorker = function () {
     return PopulationManagement.spawnEarlyWorker(this);
 };
