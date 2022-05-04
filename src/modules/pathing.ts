@@ -312,6 +312,7 @@ export class Pathing {
 
                 // All tiles will be set to one if there is a road construction
                 if (options.preferRoadConstruction) {
+                    matrix = matrix.clone();
                     room.find(FIND_MY_CONSTRUCTION_SITES, { filter: (struct) => struct.structureType === STRUCTURE_ROAD }).forEach((struct) =>
                         matrix.set(struct.pos.x, struct.pos.y, 1)
                     );

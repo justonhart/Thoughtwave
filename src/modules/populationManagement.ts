@@ -226,11 +226,15 @@ export class PopulationManagement {
 
         let tag = 'rd';
 
-        const PARTS = [CARRY, CARRY, MOVE]; // TODO: add work
+        const PARTS = [CARRY, CARRY, WORK, MOVE, MOVE];
         let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, 10);
 
         if (result === ERR_NOT_ENOUGH_ENERGY) {
             result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, 10);
+        }
+
+        if (result === OK) {
+            spawn.room.memory.distributorAssignments[assigment] = AssignmentStatus.ASSIGNED;
         }
 
         return result;

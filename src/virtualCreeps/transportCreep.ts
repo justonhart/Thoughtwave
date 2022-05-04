@@ -7,10 +7,6 @@ export class TransportCreep extends WaveCreep {
             this.memory.targetId = this.findTarget();
             target = Game.getObjectById(this.memory.targetId);
         }
-        if (!target && this.memory.assignment && !Game.rooms[this.memory.assignment]) {
-            // TODO: remove later workaround for missing visibility in room
-            this.travelToRoom(this.memory.assignment, { range: 1 });
-        }
 
         if (target instanceof Resource) {
             this.runPickupJob(target);

@@ -21,6 +21,8 @@ function handleDeadCreep(creepName: string) {
     }
     if (deadCreepMemory.role === Role.MINER) {
         Memory.rooms[deadCreepMemory.room].miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
+    }
+    if (deadCreepMemory.role === Role.REMOTE_DISTRIBUTOR) {
         Memory.rooms[deadCreepMemory.room].distributorAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
     }
 
