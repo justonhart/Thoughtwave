@@ -27,15 +27,6 @@ export function driveRoom(room: Room) {
             break;
     }
 
-    const targets = room.find(FIND_HOSTILE_CREEPS, {
-        filter: function (object) {
-            return object.owner.username === 'Tigga' && (object.getActiveBodyparts(ATTACK) > 0 || object.getActiveBodyparts(RANGED_ATTACK) > 0);
-        },
-    });
-    if (targets.length && room.canSpawn() && room.controller.level >= 4) {
-        room.controller.activateSafeMode();
-    }
-
     runTowers(room);
     runHomeSecurity(room);
 
