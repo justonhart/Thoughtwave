@@ -190,7 +190,7 @@ function checkStarBoundary(starCenter: RoomPosition) {
     return !areaLooks.some((look) => look.terrain === 'wall');
 }
 
-function drawStar(starCenter: RoomPosition) {
+export function drawStar(starCenter: RoomPosition) {
     let roomVis = Game.rooms[starCenter.roomName].visual;
 
     //draw roads
@@ -216,18 +216,12 @@ function drawStar(starCenter: RoomPosition) {
 
 export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, referencePos: RoomPosition): BuildableStructureConstant {
     switch (layout) {
-        case RoomLayout.STAR:
+        case RoomLayout.SQUARE:
             let xdif = targetPos.x - referencePos.x;
             let ydif = targetPos.y - referencePos.y;
 
-            console.log(xdif + ' ' + ydif);
-
-            if (targetPos === referencePos || Math.abs(xdif) > 7 || Math.abs(ydif) > 7) {
+            if (targetPos === referencePos || Math.abs(xdif) >= 7 || Math.abs(ydif) >= 7 || (Math.abs(xdif) === 6 && Math.abs(ydif) === 6)) {
                 return undefined;
-            }
-
-            if (Math.abs(xdif) === 7 || Math.abs(ydif) === 7) {
-                return STRUCTURE_ROAD;
             }
 
             if (xdif === 0) {
@@ -238,11 +232,14 @@ export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, 
                         return STRUCTURE_SPAWN;
                     case -2:
                     case 2:
+                    case -6:
+                    case 6:
                         return STRUCTURE_EXTENSION;
                     default:
                         return STRUCTURE_ROAD;
                 }
             }
+
             if (ydif === 0) {
                 switch (xdif) {
                     case -2:
@@ -258,6 +255,10 @@ export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, 
                 }
             }
 
+            if (Math.abs(xdif) === 6 || Math.abs(ydif) === 6) {
+                return STRUCTURE_ROAD;
+            }
+
             if (ydif === -1 && xdif === -1) {
                 return STRUCTURE_SPAWN;
             }
@@ -271,7 +272,7 @@ export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, 
                 return STRUCTURE_NUKER;
             }
 
-            if (Math.abs(ydif) === Math.abs(xdif) && Math.abs(ydif) <= 3) {
+            if (Math.abs(ydif) === Math.abs(xdif) && Math.abs(ydif) <= 5) {
                 return STRUCTURE_ROAD;
             }
             if ((ydif === -3 && xdif >= -1 && xdif <= 2) || (xdif === 3 && ydif >= -2 && ydif <= 1)) {
@@ -282,6 +283,10 @@ export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, 
             }
             if (ydif <= -3 && ydif >= -4 && (xdif === -2 || xdif === -5)) {
                 return STRUCTURE_LAB;
+            }
+
+            if ((Math.abs(ydif) === 2 && Math.abs(xdif) === 1) || (Math.abs(xdif) === 2 && Math.abs(ydif) === 1)) {
+                return STRUCTURE_ROAD;
             }
 
             return STRUCTURE_EXTENSION;

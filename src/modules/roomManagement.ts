@@ -8,13 +8,11 @@ export function driveRoom(room: Room) {
     }
 
     if (
+        Game.time % 20 === 0 &&
         room.memory.layout !== undefined &&
-        room.canSpawn() &&
-        Object.keys(Game.constructionSites).length < 75 &&
-        room.find(FIND_MY_CONSTRUCTION_SITES).length < 10 &&
-        Game.time % 20 === 0
+        Object.keys(Game.constructionSites).length < 100 &&
+        roomNeedsCoreStructures(room)
     ) {
-        //place construction site
         placeConstructionSites(room);
     }
 
@@ -105,7 +103,7 @@ function initRoom(room: Room) {
     let hqPos = findStarLocation(room);
 
     if (hqPos) {
-        room.memory.layout = RoomLayout.STAR;
+        room.memory.layout = RoomLayout.SQUARE;
         room.memory.hqPos = findStarLocation(room).toMemSafe();
         room.createConstructionSite(hqPos.x, hqPos.y - 1, STRUCTURE_SPAWN);
     }
@@ -379,5 +377,72 @@ export function placeConstructionSites(room: Room) {
                 }
             }
         }
+    }
+}
+
+// core structures are structures contained within auto-generated layouts: Spawns, storage, nuker, terminal, factory, extensions, labs, towers, observer
+export function roomNeedsCoreStructures(room: Room) {
+    //combine structures and construction sites into one array for simple math
+    //@ts-expect-error
+    let roomStructures = room.find(FIND_MY_STRUCTURES).concat(room.find(FIND_MY_CONSTRUCTION_SITES));
+    let spawnCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_SPAWN).length;
+    let extensionCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_EXTENSION).length;
+    let storage = roomStructures.filter((structure) => structure.structureType === STRUCTURE_STORAGE).length;
+    let nuker = roomStructures.filter((structure) => structure.structureType === STRUCTURE_NUKER).length;
+    let terminal = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TERMINAL).length;
+    let factory = roomStructures.filter((structure) => structure.structureType === STRUCTURE_FACTORY).length;
+    let labCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_LAB).length;
+    let towerCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER).length;
+    let linkAdjacentToHqPos =
+        posFromMem(room.memory.hqPos)
+            .findInRange(FIND_MY_STRUCTURES, 1)
+            .filter((s) => s.structureType === STRUCTURE_LINK).length +
+            posFromMem(room.memory.hqPos)
+                .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
+                .filter((s) => s.structureType === STRUCTURE_LINK).length >=
+        1;
+    let observer = roomStructures.filter((structure) => structure.structureType === STRUCTURE_OBSERVER).length;
+    let pSpawn = roomStructures.filter((structure) => structure.structureType === STRUCTURE_POWER_SPAWN).length;
+
+    switch (room.controller.level) {
+        case 1:
+            return spawnCount < 1;
+        case 2:
+            return spawnCount < 1 || extensionCount < 5;
+        case 3:
+            return spawnCount < 1 || extensionCount < 10 || towerCount < 1;
+        case 4:
+            return spawnCount < 1 || extensionCount < 20 || towerCount < 1 || storage < 1;
+        case 5:
+            return spawnCount < 1 || extensionCount < 30 || towerCount < 2 || storage < 1 || !linkAdjacentToHqPos;
+        case 6:
+            return spawnCount < 1 || extensionCount < 40 || towerCount < 2 || storage < 1 || !linkAdjacentToHqPos || labCount < 3 || terminal < 1;
+        case 7:
+            return (
+                spawnCount < 2 ||
+                extensionCount < 50 ||
+                towerCount < 3 ||
+                storage < 1 ||
+                !linkAdjacentToHqPos ||
+                labCount < 6 ||
+                terminal < 1 ||
+                factory < 1
+            );
+        case 8:
+            return (
+                spawnCount < 3 ||
+                extensionCount < 60 ||
+                towerCount < 6 ||
+                storage < 1 ||
+                !linkAdjacentToHqPos ||
+                labCount < 10 ||
+                terminal < 1 ||
+                factory < 1 ||
+                nuker < 1 ||
+                pSpawn < 1 ||
+                observer < 1
+            );
+        default:
+            return false;
     }
 }
