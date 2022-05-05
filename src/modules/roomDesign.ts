@@ -168,7 +168,8 @@ export function findSquareLocation(room: Room): RoomPosition {
                         x = starCenter.x + lookDistance;
                     }
 
-                    if (x > 1 && x < 49 && y > 1 && y < 49) {
+                    // since the square is 13 wide, the center must be at least 7 tiles away from edges (cant build on x/y = 0/49 or in front of exits)
+                    if (x > 8 && x < 42 && y > 8 && y < 42) {
                         lookPos = new RoomPosition(x, y, starCenter.roomName);
 
                         valid = checkStarBoundary(lookPos);
@@ -176,6 +177,7 @@ export function findSquareLocation(room: Room): RoomPosition {
                     if (valid) {
                         starCenter = lookPos;
                         drawStar(starCenter);
+                        drawRoads(room, starCenter);
                     }
                 }
             }
@@ -224,7 +226,7 @@ export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, 
             let xdif = targetPos.x - referencePos.x;
             let ydif = targetPos.y - referencePos.y;
 
-            if (targetPos === referencePos || Math.abs(xdif) >= 7 || Math.abs(ydif) >= 7 || (Math.abs(xdif) === 6 && Math.abs(ydif) === 6)) {
+            if (targetPos === referencePos || Math.abs(xdif) >= 7 || Math.abs(ydif) >= 7) {
                 return undefined;
             }
 
@@ -318,6 +320,32 @@ export function findPoiAverage(room: Room) {
     let pointOfInterestAverage = new RoomPosition(pointOfInterestSum.x / pois.length, pointOfInterestSum.y / pois.length, room.name);
     room.visual.text('🌟', pointOfInterestAverage);
     return pointOfInterestAverage;
+}
+
+export function drawRoads(room: Room, hqPos: RoomPosition) {
+    let pois = room.find(FIND_SOURCES).map((source) => source.pos);
+    pois.push(room.controller.pos);
+
+    pois.forEach((poi) => {
+        let path = poi.findPathTo(hqPos, { swampCost: 2, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 7 });
+
+        //@ts-ignore
+        room.visual.poly(path, { stroke: '#fff', strokeWidth: 0.15, opacity: 0.8, lineStyle: 'dotted' });
+    });
+}
+
+export function placeRoads(room: Room) {
+    let pois = room.find(FIND_SOURCES).map((source) => source.pos);
+    pois.push(room.controller.pos);
+
+    let hqPos = posFromMem(room.memory.hqPos);
+
+    pois.forEach((poi) => {
+        let path = poi.findPathTo(hqPos, { swampCost: 2, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 7 });
+
+        //@ts-ignore
+        path.forEach((step) => room.createConstructionSite(step.x, step.y, STRUCTURE_ROAD));
+    });
 }
 
 const enum Direction {
