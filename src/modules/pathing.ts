@@ -104,9 +104,9 @@ export class Pathing {
         const cpuBefore = Game.cpu.getUsed();
         if (creep.memory._m.path && creep.memory._m.stuckCount) {
             // First try pushing the creep in front closer to their target (stayOnPath will not recalculate new Path)
-            if ((!Pathing.pushForward(creep) || creep.memory._m.stuckCount > 1) && !opts.stayOnPath) {
+            if (!Pathing.pushForward(creep) || creep.memory._m.stuckCount > 1) {
                 opts.pathColor = 'blue';
-                opts.ignoreCreeps = false;
+                opts.ignoreCreeps = opts.stayOnPath;
                 delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
             } else {
                 new RoomVisual(creep.pos.roomName).circle(creep.pos, {
@@ -222,7 +222,7 @@ export class Pathing {
     }
 
     // add hostile rooms
-    static addHostileRoom(room: Room, destinationRoom: string): void {
+    static addHostileRoom(room: Room, destinationRoom: string, ignoreDestination?: boolean): void {
         if (!room) {
             return;
         }
@@ -231,7 +231,7 @@ export class Pathing {
         }
         // Find hostileRooms
         if (
-            room.name !== destinationRoom &&
+            (ignoreDestination || room.name !== destinationRoom) &&
             !Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === room.name) &&
             room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_TOWER })?.length
         ) {
@@ -278,7 +278,7 @@ export class Pathing {
     static getRoomCallback(originRoom: string, destination: RoomPosition, options: TravelToOpts) {
         return (roomName: string) => {
             const room = Game.rooms[roomName];
-            Pathing.addHostileRoom(room, destination.roomName);
+            Pathing.addHostileRoom(room, destination.roomName, options.checkForHostilesAtDestination);
             if (options.avoidHostileRooms && Pathing.checkAvoid(roomName) && roomName !== destination.roomName) {
                 return false;
             }
@@ -509,9 +509,9 @@ export class Pathing {
                         obstacleCreep.move(Pathing.inverseDirection(nextDirection));
                     });
                     return true;
-                } else if (creep.memory.role === Role.MINER && obstacleCreep.memory.role === Role.MINER) {
+                } else if (creep.memory.role === Role.REMOTE_MINER) {
                     // TODO: remove this --> just temporary workaround for remoteminers that block each other cause they stay on their path no matter what
-                    obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
+                    obstacleCreep.addTaskToPriorityQueue(3, () => {
                         obstacleCreep.move(Pathing.inverseDirection(nextDirection));
                     });
                     return true;

@@ -167,13 +167,29 @@ function runPhaseTwoSpawnLogic(room: Room) {
     }
 
     if (PopulationManagement.needsMiner(room)) {
+        // TODO remove remote miners since they should have lower priority than this
         let spawn = availableRoomSpawns.pop();
         spawn?.spawnMiner();
     }
 
-    if (PopulationManagement.needsRemoteDistributor(room)) {
+    let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
+    assigments.forEach((assignment) => {
+        let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
+        if (canSpawnAssignment) {
+            let spawn = availableRoomSpawns.pop();
+            spawn?.spawnAssignedCreep(assignment);
+        }
+        return;
+    });
+
+    if (PopulationManagement.needsRemoteMiner(room)) {
         let spawn = availableRoomSpawns.pop();
-        spawn?.spawnRemoteDistributor();
+        spawn?.spawnRemoteMiner();
+    }
+
+    if (PopulationManagement.needsGatherer(room)) {
+        let spawn = availableRoomSpawns.pop();
+        spawn?.spawnGatherer();
     }
 
     if (PopulationManagement.needsReserver(room)) {
@@ -181,6 +197,7 @@ function runPhaseTwoSpawnLogic(room: Room) {
         spawn?.spawnReserver();
     }
 
+    // TODO remove set room and put in function
     if (
         Game.time % 8000 === 0 &&
         !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.SCOUT && creep.designee === room.name).length &&
@@ -195,15 +212,6 @@ function runPhaseTwoSpawnLogic(room: Room) {
             },
         });
     }
-
-    let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
-    assigments.forEach((assignment) => {
-        let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
-        if (canSpawnAssignment) {
-            let spawn = availableRoomSpawns.pop();
-            spawn?.spawnAssignedCreep(assignment);
-        }
-    });
 
     availableRoomSpawns.forEach((spawn) => spawn.spawnPhaseTwoWorker());
 }
@@ -299,6 +307,7 @@ export function executePhaseShift(room: Room) {
 
     //create assignment tracker
     room.memory.miningAssignments = new Map();
+    room.memory.remoteAssignments = new Map();
     room.memory.containerPositions.forEach((position) => {
         room.memory.miningAssignments[position] = AssignmentStatus.UNASSIGNED;
     });

@@ -125,7 +125,7 @@ export class PopulationManagement {
         } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < maintainerLimit) {
             options.memory.role = Role.MAINTAINTER;
             creepLevelCap = creepLevelCap / 2;
-            tag = 'm';
+            tag = 'ma';
         }
 
         if (options.memory.role) {
@@ -203,29 +203,70 @@ export class PopulationManagement {
         return result;
     }
 
-    static needsRemoteDistributor(room: Room): boolean {
+    static needsRemoteMiner(room: Room): boolean {
+        // TODO: remove this (where does memory get reinitialized?)
         if (!room.memory.remoteAssignments) {
             room.memory.remoteAssignments = new Map();
         }
 
-        return Object.entries(room.memory.remoteAssignments).some(
-            ([roomName, assignment]) => assignment.distributor === AssignmentStatus.UNASSIGNED && roomName !== room.name
+        const assigmentKeys = Object.keys(room.memory.remoteAssignments);
+        return !!assigmentKeys.find((remoteRoom) =>
+            Object.values(room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
         );
     }
 
-    static spawnRemoteDistributor(spawn: StructureSpawn): ScreepsReturnCode {
+    static spawnRemoteMiner(spawn: StructureSpawn): ScreepsReturnCode {
+        const remoteRooms = Object.keys(spawn.room.memory.remoteAssignments);
+        const assigmentKey = remoteRooms.find((remoteRoom) =>
+            Object.values(spawn.room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
+        );
+        const assignment = Object.keys(spawn.room.memory.remoteAssignments[assigmentKey].miners).find(
+            (assignment) => spawn.room.memory.remoteAssignments[assigmentKey].miners[assignment] === AssignmentStatus.UNASSIGNED
+        );
+
+        let options: SpawnOptions = {
+            memory: {
+                assignment: assignment,
+                room: spawn.room.name,
+                role: Role.REMOTE_MINER,
+            },
+        };
+
+        let tag = 'rm';
+
+        let minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
+
+        let result = spawn.smartSpawn(minerBody, this.getCreepTag(tag, spawn.name), options);
+        if (result === OK) {
+            spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = AssignmentStatus.ASSIGNED;
+        } else if (result === ERR_NOT_ENOUGH_ENERGY && spawn.room.storage?.store[RESOURCE_ENERGY] < 1000) {
+            let emergencyMinerBody = [WORK, WORK, MOVE, MOVE];
+            result = spawn.smartSpawn(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
+            if (result === OK) {
+                spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = AssignmentStatus.ASSIGNED;
+            }
+        }
+
+        return result;
+    }
+
+    static needsGatherer(room: Room): boolean {
+        return Object.values(room.memory.remoteAssignments).some((assignment) => assignment.gatherer === AssignmentStatus.UNASSIGNED);
+    }
+
+    static spawnGatherer(spawn: StructureSpawn): ScreepsReturnCode {
         let assigmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
-        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].distributor === AssignmentStatus.UNASSIGNED);
+        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].gatherer === AssignmentStatus.UNASSIGNED);
 
         let options: SpawnOptions = {
             memory: {
                 assignment: assigment,
                 room: spawn.room.name,
-                role: Role.REMOTE_DISTRIBUTOR,
+                role: Role.GATHERER,
             },
         };
 
-        let tag = 'rd';
+        let tag = 'g';
 
         const PARTS = [CARRY, CARRY, CARRY, WORK, MOVE, MOVE];
         let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, 10);
@@ -235,20 +276,14 @@ export class PopulationManagement {
         }
 
         if (result === OK) {
-            spawn.room.memory.remoteAssignments[assigment].distributor = AssignmentStatus.ASSIGNED;
+            spawn.room.memory.remoteAssignments[assigment].gatherer = AssignmentStatus.ASSIGNED;
         }
 
         return result;
     }
 
     static needsReserver(room: Room): boolean {
-        if (!room.memory.remoteAssignments) {
-            room.memory.remoteAssignments = new Map();
-        }
-
-        return Object.entries(room.memory.remoteAssignments).some(
-            ([roomName, assignment]) => assignment.reserver === AssignmentStatus.UNASSIGNED && roomName !== room.name
-        );
+        return Object.values(room.memory.remoteAssignments).some((assignment) => assignment.reserver === AssignmentStatus.UNASSIGNED);
     }
 
     static spawnReserver(spawn: StructureSpawn): ScreepsReturnCode {

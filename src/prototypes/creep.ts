@@ -10,7 +10,7 @@ Creep.prototype.travelToRoom = function (roomName, opts) {
     if (this.room.name === roomName && !this.onEdge()) {
         return IN_ROOM;
     }
-    return this.travelTo(new RoomPosition(25, 25, roomName), { ...opts, range: 23, avoidHostiles: true, maxOps: 20000 });
+    return Pathing.travelTo(this, new RoomPosition(25, 25, roomName), { ...opts, range: 23, avoidHostiles: true, maxOps: 20000 });
 };
 
 Creep.prototype.onEdge = function () {

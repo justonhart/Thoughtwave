@@ -17,7 +17,8 @@ interface RoomMemory {
 
 interface RemoteAssignment {
     reserver: AssignmentStatus;
-    distributor: AssignmentStatus;
+    gatherer: AssignmentStatus;
+    miners: Map<string, AssignmentStatus>;
 }
 
 interface Room {

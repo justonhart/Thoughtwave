@@ -1,6 +1,6 @@
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
-export class RemoteDistributor extends TransportCreep {
+export class Gatherer extends TransportCreep {
     public run() {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (!target) {

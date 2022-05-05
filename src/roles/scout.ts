@@ -22,7 +22,7 @@ export class Scout extends WaveCreep {
         }
 
         // Go to the target room
-        if (this.travelToRoom(nextTarget) === IN_ROOM) {
+        if (this.travelToRoom(nextTarget, { checkForHostilesAtDestination: true }) === IN_ROOM) {
             // Set Room memory
             if (
                 !this.room.controller?.owner?.username &&
@@ -34,13 +34,24 @@ export class Scout extends WaveCreep {
                     const pathFinder = this.getPath(source.pos);
                     if (
                         !pathFinder.incomplete &&
-                        !Memory.rooms[this.memory.room].miningAssignments[pathFinder.path[pathFinder.path.length - 1].toMemSafe()]
+                        !Memory.rooms[this.memory.room].remoteAssignments[this.room.name]?.miners[
+                            pathFinder.path[pathFinder.path.length - 1].toMemSafe()
+                        ]
                     ) {
-                        Memory.rooms[this.memory.room].miningAssignments[pathFinder.path[pathFinder.path.length - 1].toMemSafe()] =
-                            AssignmentStatus.UNASSIGNED;
+                        // Set Miner/Gatherer/Reserver
                         if (!Memory.rooms[this.memory.room].remoteAssignments[this.room.name]) {
-                            Memory.rooms[this.memory.room].remoteAssignments[this.room.name].distributor = AssignmentStatus.UNASSIGNED;
-                            Memory.rooms[this.memory.room].remoteAssignments[this.room.name].reserver = AssignmentStatus.UNASSIGNED;
+                            Memory.rooms[this.memory.room].remoteAssignments[this.room.name] = {
+                                miners: new Map<string, AssignmentStatus>([
+                                    [pathFinder.path[pathFinder.path.length - 1].toMemSafe(), AssignmentStatus.UNASSIGNED],
+                                ]),
+                                gatherer: AssignmentStatus.UNASSIGNED,
+                                reserver: AssignmentStatus.UNASSIGNED,
+                            };
+                        } else {
+                            // Second source
+                            Memory.rooms[this.memory.room].remoteAssignments[this.room.name].miners[
+                                pathFinder.path[pathFinder.path.length - 1].toMemSafe()
+                            ] = AssignmentStatus.UNASSIGNED;
                         }
                     }
                 });

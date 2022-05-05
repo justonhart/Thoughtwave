@@ -43,6 +43,10 @@ interface TravelToOpts extends PathFinderOpts {
      * Will not recalculate path or get pushed on a seperate path. Useful if a creep should always use the same path.
      */
     stayOnPath?: boolean;
+    /**
+     * Add hostile Rooms even when it is the creeps intended target. Useful for scouts. By default it is set to "false" to avoid setting remoteMining/homeBase rooms as hostileRooms if there is an enemy creep inside.
+     */
+    checkForHostilesAtDestination?: boolean;
 }
 
 /**
