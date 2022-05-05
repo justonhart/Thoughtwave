@@ -30,7 +30,7 @@ function handleDeadCreep(creepName: string) {
             AssignmentStatus.UNASSIGNED;
     }
     if (deadCreepMemory.role === Role.GATHERER && Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment]) {
-        Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment].distributor = AssignmentStatus.UNASSIGNED;
+        Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment].gatherer = AssignmentStatus.UNASSIGNED;
     }
     if (deadCreepMemory.role === Role.RESERVER && Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment]) {
         Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;

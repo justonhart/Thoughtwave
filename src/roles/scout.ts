@@ -41,18 +41,14 @@ export class Scout extends WaveCreep {
                         // Set Miner/Gatherer/Reserver
                         if (!Memory.rooms[this.memory.room].remoteAssignments[this.room.name]) {
                             Memory.rooms[this.memory.room].remoteAssignments[this.room.name] = {
-                                miners: new Map<string, AssignmentStatus>([
-                                    [pathFinder.path[pathFinder.path.length - 1].toMemSafe(), AssignmentStatus.UNASSIGNED],
-                                ]),
+                                miners: new Map(),
                                 gatherer: AssignmentStatus.UNASSIGNED,
                                 reserver: AssignmentStatus.UNASSIGNED,
                             };
-                        } else {
-                            // Second source
-                            Memory.rooms[this.memory.room].remoteAssignments[this.room.name].miners[
-                                pathFinder.path[pathFinder.path.length - 1].toMemSafe()
-                            ] = AssignmentStatus.UNASSIGNED;
                         }
+                        Memory.rooms[this.memory.room].remoteAssignments[this.room.name].miners[
+                            pathFinder.path[pathFinder.path.length - 1].toMemSafe()
+                        ] = AssignmentStatus.UNASSIGNED;
                     }
                 });
                 nextTarget = this.findTarget();

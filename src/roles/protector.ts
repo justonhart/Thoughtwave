@@ -2,6 +2,10 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Protector extends WaveCreep {
     public run() {
+        if (this.memory.assignment !== this.room.name) {
+            this.travelToRoom(this.memory.assignment);
+            return; // First go to room that needs protection
+        }
         if (!this.memory.targetId) {
             this.memory.targetId = this.findTarget();
         }
@@ -15,11 +19,15 @@ export class Protector extends WaveCreep {
 
             return healers.length ? this.pos.findClosestByRange(healers).id : this.pos.findClosestByRange(hostileCreeps).id;
         }
+        const hostileStructures = this.room.find(FIND_HOSTILE_STRUCTURES);
+        if (hostileStructures.length) {
+            return hostileStructures[0].id;
+        }
     }
 
     private attackCreep() {
         const target = Game.getObjectById(this.memory.targetId);
-        if (target instanceof Creep) {
+        if (target instanceof Creep || target instanceof Structure) {
             const result = this.getActiveBodyparts(ATTACK) ? this.attack(target) : this.rangedAttack(target);
 
             switch (result) {

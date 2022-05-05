@@ -71,6 +71,7 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.PROTECTOR:
             waveCreep = new Protector(creep.id);
+            break;
         case Role.RESERVER:
             waveCreep = new Reserver(creep.id);
             break;
