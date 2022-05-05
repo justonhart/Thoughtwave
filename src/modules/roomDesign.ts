@@ -1,3 +1,5 @@
+import { posFromMem } from './memoryManagement';
+
 export function findIndustryCenterLocation(room: Room) {
     //this find a good position for storage
 
@@ -292,6 +294,14 @@ export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, 
             }
 
             return STRUCTURE_EXTENSION;
+    }
+}
+
+export function getSpawnPos(room: Room) {
+    switch (room.memory.layout) {
+        case RoomLayout.SQUARE:
+            let hqPos = posFromMem(room.memory.hqPos);
+            return new RoomPosition(hqPos.x, hqPos.y - 1, room.name);
     }
 }
 

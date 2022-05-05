@@ -1,4 +1,5 @@
 import { posFromMem } from '../modules/memoryManagement';
+import { getSpawnPos } from '../modules/roomDesign';
 import { EarlyCreep } from '../virtualCreeps/earlyCreep';
 
 export class Colonizer extends EarlyCreep {
@@ -46,6 +47,12 @@ export class Colonizer extends EarlyCreep {
         preexistingStructures.forEach((struct) => struct.destroy());
 
         let spawnPos = posFromMem(Memory.empire.colonizationOperations[opIndex].spawnPosition);
+        if (this.room.memory.layout) {
+            spawnPos = getSpawnPos(this.room);
+        } else {
+            spawnPos = posFromMem(Memory.empire.colonizationOperations[opIndex].spawnPosition);
+        }
+
         this.room.createConstructionSite(spawnPos.x, spawnPos.y, STRUCTURE_SPAWN);
     }
 
