@@ -48,4 +48,5 @@ const enum Role {
     BUILDER = 'BUILDER',
     SCOUT = 'SCOUT',
     PROTECTOR = 'PROTECTOR',
+    GO = 'GO',
 }
