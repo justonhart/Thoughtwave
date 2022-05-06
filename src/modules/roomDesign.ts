@@ -155,7 +155,7 @@ export function findSquareLocation(room: Room): RoomPosition {
     let poiAvg = findPoiAverage(room);
     let starCenter = new RoomPosition(poiAvg.x - 1, poiAvg.y + 1, room.name);
 
-    let valid = checkStarBoundary(starCenter);
+    let valid = checkBunkerBoundary(starCenter);
 
     if (!valid) {
         for (let lookDistance = 1; lookDistance < 50; lookDistance++) {
@@ -172,12 +172,12 @@ export function findSquareLocation(room: Room): RoomPosition {
                     if (x > 8 && x < 42 && y > 8 && y < 42) {
                         lookPos = new RoomPosition(x, y, starCenter.roomName);
 
-                        valid = checkStarBoundary(lookPos);
+                        valid = checkBunkerBoundary(lookPos);
                     }
                     if (valid) {
                         starCenter = lookPos;
-                        drawStar(starCenter);
-                        drawRoads(room, starCenter);
+                        drawBunker(starCenter);
+                        drawRoadsToBunker(room, starCenter);
                     }
                 }
             }
@@ -187,37 +187,37 @@ export function findSquareLocation(room: Room): RoomPosition {
     return valid ? starCenter : undefined;
 }
 
-function checkStarBoundary(starCenter: RoomPosition) {
-    let room = Game.rooms[starCenter.roomName];
+function checkBunkerBoundary(anchorPoint: RoomPosition) {
+    let room = Game.rooms[anchorPoint.roomName];
 
-    let areaLooks = room.lookForAtArea(LOOK_TERRAIN, starCenter.y - 6, starCenter.x - 6, starCenter.y + 6, starCenter.x + 6, true);
+    let areaLooks = room.lookForAtArea(LOOK_TERRAIN, anchorPoint.y - 6, anchorPoint.x - 6, anchorPoint.y + 6, anchorPoint.x + 6, true);
 
     //if there are any walls in the area
     return !areaLooks.some((look) => look.terrain === 'wall');
 }
 
-export function drawStar(starCenter: RoomPosition) {
-    let roomVis = Game.rooms[starCenter.roomName].visual;
+export function drawBunker(anchorPoint: RoomPosition) {
+    let roomVis = Game.rooms[anchorPoint.roomName].visual;
 
     //draw roads
     roomVis.poly([
-        [starCenter.x, starCenter.y - 3],
-        [starCenter.x + 3, starCenter.y],
-        [starCenter.x, starCenter.y + 3],
-        [starCenter.x - 3, starCenter.y],
-        [starCenter.x, starCenter.y - 3],
+        [anchorPoint.x, anchorPoint.y - 3],
+        [anchorPoint.x + 3, anchorPoint.y],
+        [anchorPoint.x, anchorPoint.y + 3],
+        [anchorPoint.x - 3, anchorPoint.y],
+        [anchorPoint.x, anchorPoint.y - 3],
     ]);
-    roomVis.line(starCenter.x, starCenter.y - 3, starCenter.x, starCenter.y - 6);
-    roomVis.line(starCenter.x + 3, starCenter.y, starCenter.x + 6, starCenter.y);
-    roomVis.line(starCenter.x, starCenter.y + 3, starCenter.x, starCenter.y + 6);
-    roomVis.line(starCenter.x - 3, starCenter.y, starCenter.x - 6, starCenter.y);
-    roomVis.line(starCenter.x - 2 + 0.5, starCenter.y - 2 + 0.5, starCenter.x - 4, starCenter.y - 4);
-    roomVis.line(starCenter.x + 2 - 0.5, starCenter.y - 2 + 0.5, starCenter.x + 4, starCenter.y - 4);
-    roomVis.line(starCenter.x + 2 - 0.5, starCenter.y + 2 - 0.5, starCenter.x + 4, starCenter.y + 4);
-    roomVis.line(starCenter.x - 2 + 0.5, starCenter.y + 2 - 0.5, starCenter.x - 4, starCenter.y + 4);
+    roomVis.line(anchorPoint.x, anchorPoint.y - 3, anchorPoint.x, anchorPoint.y - 6);
+    roomVis.line(anchorPoint.x + 3, anchorPoint.y, anchorPoint.x + 6, anchorPoint.y);
+    roomVis.line(anchorPoint.x, anchorPoint.y + 3, anchorPoint.x, anchorPoint.y + 6);
+    roomVis.line(anchorPoint.x - 3, anchorPoint.y, anchorPoint.x - 6, anchorPoint.y);
+    roomVis.line(anchorPoint.x - 2 + 0.5, anchorPoint.y - 2 + 0.5, anchorPoint.x - 4, anchorPoint.y - 4);
+    roomVis.line(anchorPoint.x + 2 - 0.5, anchorPoint.y - 2 + 0.5, anchorPoint.x + 4, anchorPoint.y - 4);
+    roomVis.line(anchorPoint.x + 2 - 0.5, anchorPoint.y + 2 - 0.5, anchorPoint.x + 4, anchorPoint.y + 4);
+    roomVis.line(anchorPoint.x - 2 + 0.5, anchorPoint.y + 2 - 0.5, anchorPoint.x - 4, anchorPoint.y + 4);
 
     //draw border
-    roomVis.rect(starCenter.x - 6 - 0.5, starCenter.y - 6 - 0.5, 13, 13, { fill: '#00E2FF', opacity: 0.1 });
+    roomVis.rect(anchorPoint.x - 6 - 0.5, anchorPoint.y - 6 - 0.5, 13, 13, { fill: '#00E2FF', opacity: 0.1 });
 }
 
 export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, referencePos: RoomPosition): BuildableStructureConstant {
@@ -322,30 +322,43 @@ export function findPoiAverage(room: Room) {
     return pointOfInterestAverage;
 }
 
-export function drawRoads(room: Room, hqPos: RoomPosition) {
+export function drawRoadsToBunker(room: Room, hqPos: RoomPosition) {
     let pois = room.find(FIND_SOURCES).map((source) => source.pos);
     pois.push(room.controller.pos);
 
     pois.forEach((poi) => {
-        let path = poi.findPathTo(hqPos, { swampCost: 2, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 7 });
+        let path = poi.findPathTo(hqPos, { swampCost: 2, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 6 });
 
         //@ts-ignore
         room.visual.poly(path, { stroke: '#fff', strokeWidth: 0.15, opacity: 0.8, lineStyle: 'dotted' });
     });
 }
 
-export function placeRoads(room: Room) {
+export function placeRoadsToBunker(room: Room) {
     let pois = room.find(FIND_SOURCES).map((source) => source.pos);
     pois.push(room.controller.pos);
 
     let hqPos = posFromMem(room.memory.hqPos);
 
     pois.forEach((poi) => {
-        let path = poi.findPathTo(hqPos, { swampCost: 2, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 7 });
+        let path = poi.findPathTo(hqPos, { swampCost: 2, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 6 });
 
         //@ts-ignore
         path.forEach((step) => room.createConstructionSite(step.x, step.y, STRUCTURE_ROAD));
     });
+}
+
+export function placeBunkerOuterRamparts(room: Room) {
+    let anchor = posFromMem(room.memory.hqPos);
+
+    let topLeft = new RoomPosition(anchor.x - 6, anchor.y - 6, room.name);
+    for (let xDif = 0; xDif < 13; xDif++) {
+        for (let yDif = 0; yDif < 13; yDif++) {
+            if (yDif === 0 || xDif === 0 || yDif === 12 || xDif === 12) {
+                room.createConstructionSite(topLeft.x + xDif, topLeft.y + yDif, STRUCTURE_RAMPART);
+            }
+        }
+    }
 }
 
 const enum Direction {
