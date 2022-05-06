@@ -77,6 +77,7 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
                 role: Role.PROTECTOR,
                 room: homeRoom.name,
                 assignment: targetRoom.name,
+                currentTaskPriority: Priority.MEDIUM,
             },
         });
     }

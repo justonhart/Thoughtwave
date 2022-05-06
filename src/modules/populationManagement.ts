@@ -229,6 +229,7 @@ export class PopulationManagement {
                 assignment: assignment,
                 room: spawn.room.name,
                 role: Role.REMOTE_MINER,
+                currentTaskPriority: Priority.HIGH,
             },
         };
 
@@ -303,7 +304,7 @@ export class PopulationManagement {
         let tag = 'rs';
 
         const PARTS = [CLAIM, MOVE];
-        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, 2);
+        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, 2); // change to 1 if in memory it has certain value (set it if lower than say 500 reserved then set it at 4500)
 
         if (result === ERR_NOT_ENOUGH_ENERGY) {
             result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, 2);

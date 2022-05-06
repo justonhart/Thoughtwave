@@ -472,7 +472,8 @@ export class Pathing {
             const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
             //check if creep is in nextPos
             const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
-            if (obstacleCreep?.memory?._m?.destination) {
+            if (obstacleCreep?.memory?._m?.destination && obstacleCreep?.memory?.role !== Role.REMOTE_MINER) {
+                // TODO: change this
                 // If obstacle creep is still moving it will move out of the way
                 if (obstacleCreep.memory._m?.path?.length > 1) {
                     return true;
