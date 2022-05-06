@@ -7,6 +7,9 @@ export function manageEmpire() {
             spawnAssignments: [],
             colonizationOperations: [],
             scoutAssignments: new Map(),
+            intershard: {
+                outgoingCreeps: new Map(),
+            },
         };
     }
 

@@ -70,4 +70,18 @@ export class WaveCreep extends Creep {
     public static getCreepsWithPriorityTask(): string[] {
         return Array.from(WaveCreep.priorityQueue.keys());
     }
+
+    public enterInterShardPortal(portal: StructurePortal) {
+        //@ts-expect-error
+        console.log(`${this.name} is going to ${portal.destination.shard}! Safe travels!`);
+
+        this.moveTo(portal);
+
+        //add creep memory to intershard outgoing creeps
+        let intershardMem: EmpireIntershard = JSON.parse(InterShardMemory.getLocal());
+        intershardMem.outgoingCreeps[this.name] = Memory.creeps[this.name];
+
+        //remove creep memory from shard memory
+        delete Memory.creeps[this.name];
+    }
 }
