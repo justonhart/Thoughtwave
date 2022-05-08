@@ -30,6 +30,15 @@ export class Maintainer extends WorkerCreep {
             return constructedDefenses.shift().id;
         }
 
+        let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
+            (structure) =>
+                //@ts-ignore
+                [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
+        );
+        if (defenses.length) {
+            return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare)).id;
+        }
+
         let repairTarget = this.homeroom.getRepairTarget();
         if (repairTarget) {
             return repairTarget;
@@ -43,15 +52,6 @@ export class Maintainer extends WorkerCreep {
                     ? mostProgressedSite
                     : siteToCheck
             ).id;
-        }
-
-        let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
-            (structure) =>
-                //@ts-ignore
-                [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
-        );
-        if (defenses.length) {
-            return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare)).id;
         }
 
         return this.homeroom.controller?.id;

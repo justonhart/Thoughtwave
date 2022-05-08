@@ -342,7 +342,7 @@ export function placeRoadsToBunker(room: Room) {
 
     pois.forEach((poi) => {
         let path = poi.findPathTo(hqPos, { swampCost: 2, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 6 });
-
+        path.shift(); //remove first road
         //@ts-ignore
         path.forEach((step) => room.createConstructionSite(step.x, step.y, STRUCTURE_ROAD));
     });
