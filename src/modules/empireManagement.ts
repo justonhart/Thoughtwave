@@ -7,13 +7,15 @@ export function manageEmpire() {
             spawnAssignments: [],
             colonizationOperations: [],
             scoutAssignments: new Map(),
-            intershard: {
-                outgoingCreeps: new Map(),
-            },
         };
     }
 
-    if (Memory.empire.colonizationOperations.length) {
+    let needToInitIntershard = !JSON.parse(InterShardMemory.getLocal())?.outboundCreeps;
+    if (needToInitIntershard) {
+        InterShardMemory.setLocal(JSON.stringify({ outboundCreeps: { shard0: {}, shard1: {}, shard2: {}, shard3: {} } }));
+    }
+
+    if (Memory.empire?.colonizationOperations?.length) {
         manageColonizationOperations();
     }
 

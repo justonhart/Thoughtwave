@@ -79,7 +79,14 @@ export class WaveCreep extends Creep {
 
         //add creep memory to intershard outgoing creeps
         let intershardMem: EmpireIntershard = JSON.parse(InterShardMemory.getLocal());
-        intershardMem.outgoingCreeps[this.name] = Memory.creeps[this.name];
+
+        //@ts-expect-error
+        intershardMem.outboundCreeps[portal.destination.shard][this.name] = {
+            memory: this.memory,
+            expirationTime: Game.time + 10,
+        };
+
+        InterShardMemory.setLocal(JSON.stringify(intershardMem));
 
         //remove creep memory from shard memory
         delete Memory.creeps[this.name];

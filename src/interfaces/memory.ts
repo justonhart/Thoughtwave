@@ -7,11 +7,22 @@ interface EmpireMemory {
     colonizationOperations?: ColonizationOperation[]; //room names
     hostileRooms?: HostileRoom[];
     scoutAssignments?: Map<string, string[]>; //Map<roomName, targetRoomNames>
-    intershard: EmpireIntershard;
 }
 
 interface EmpireIntershard {
-    outgoingCreeps: Map<string, CreepMemory>;
+    outboundCreeps: OutboundCreeps;
+}
+
+interface OutboundCreeps {
+    shard0: Map<string, OutboundCreepEntry>;
+    shard1: Map<string, OutboundCreepEntry>;
+    shard2: Map<string, OutboundCreepEntry>;
+    shard3: Map<string, OutboundCreepEntry>;
+}
+
+interface OutboundCreepEntry {
+    memory: CreepMemory;
+    expirationTime: number;
 }
 
 interface SpawnAssignment {
