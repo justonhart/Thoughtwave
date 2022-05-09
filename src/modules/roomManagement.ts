@@ -52,34 +52,87 @@ function runTowers(room: Room) {
 }
 
 function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
-    let numHostileCreeps = 1; // Set limit when PROTECTOR should spawn
+    const isRemoteRoom = !!targetRoom;
     if (!targetRoom) {
-        numHostileCreeps = 2; // Homefield advantage
         targetRoom = homeRoom;
     }
     const hostileCreeps = targetRoom.find(FIND_HOSTILE_CREEPS, {
         filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0, // Invader check to remove invader cores
     });
 
-    const hostileStuctures = targetRoom.find(FIND_HOSTILE_STRUCTURES); // Clear out left over enemy structures or invader cores
-
-    // can be optimized to spawn more protectors if more enemies are in room. In that case, add a "wait" function in the protector to wait for all protectors to spawn before attacking
-    if (
-        (hostileCreeps.length >= numHostileCreeps || hostileStuctures.length >= numHostileCreeps) &&
-        !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
-        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name).length &&
-        homeRoom.canSpawn()
-    ) {
-        Memory.empire.spawnAssignments.push({
-            designee: homeRoom.name,
-            body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable),
-            memoryOptions: {
-                role: Role.PROTECTOR,
-                room: homeRoom.name,
-                assignment: targetRoom.name,
-                currentTaskPriority: Priority.MEDIUM,
-            },
+    // Get rid of enemy claimers in remote mining rooms
+    if (isRemoteRoom) {
+        const hostileClaimerCreeps = targetRoom.find(FIND_HOSTILE_CREEPS, {
+            filter: (creep) => creep.getActiveBodyparts(CLAIM) > 0 && !creep.getActiveBodyparts(ATTACK) && !creep.getActiveBodyparts(RANGED_ATTACK), // Invader check to remove invader cores
         });
+        const hostileStuctures = targetRoom.find(FIND_HOSTILE_STRUCTURES); // Clear out left over enemy structures or invader cores
+        if (hostileClaimerCreeps.length || hostileStuctures.length) {
+            homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY_CLAIMER;
+
+            // TODO: Move this spawn mechanism
+            if (
+                !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
+                !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name)
+                    .length &&
+                homeRoom.canSpawn()
+            ) {
+                Memory.empire.spawnAssignments.push({
+                    designee: homeRoom.name,
+                    body: PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 4),
+                    memoryOptions: {
+                        role: Role.PROTECTOR,
+                        room: homeRoom.name,
+                        assignment: targetRoom.name,
+                        currentTaskPriority: Priority.MEDIUM,
+                    },
+                });
+            }
+        }
+        if (hostileCreeps.length) {
+            homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY;
+
+            // TODO: Move this spawn mechanism
+            if (
+                !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
+                !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name)
+                    .length &&
+                homeRoom.canSpawn()
+            ) {
+                Memory.empire.spawnAssignments.push({
+                    designee: homeRoom.name,
+                    body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable),
+                    memoryOptions: {
+                        role: Role.PROTECTOR,
+                        room: homeRoom.name,
+                        assignment: targetRoom.name,
+                        currentTaskPriority: Priority.MEDIUM,
+                    },
+                });
+            }
+        }
+        if (!hostileClaimerCreeps.length && !hostileStuctures.length && !hostileCreeps.length) {
+            homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.SAFE;
+        }
+    } else {
+        // can be optimized to spawn more protectors if more enemies are in room. In that case, add a "wait" function in the protector to wait for all protectors to spawn before attacking
+        if (
+            hostileCreeps.length >= 2 &&
+            !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
+            !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name)
+                .length &&
+            homeRoom.canSpawn()
+        ) {
+            Memory.empire.spawnAssignments.push({
+                designee: homeRoom.name,
+                body: PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable),
+                memoryOptions: {
+                    role: Role.PROTECTOR,
+                    room: homeRoom.name,
+                    assignment: homeRoom.name,
+                    currentTaskPriority: Priority.MEDIUM,
+                },
+            });
+        }
     }
 }
 

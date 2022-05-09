@@ -291,8 +291,6 @@ export class PopulationManagement {
         let assigmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
         let assigment = assigmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].reserver === AssignmentStatus.UNASSIGNED);
 
-        //  options.memory.destination = Object.keys(Memory.rooms[spawn.room.name].remoteMining)?.[numReservers];
-
         let options: SpawnOptions = {
             memory: {
                 assignment: assigment,
@@ -303,11 +301,16 @@ export class PopulationManagement {
 
         let tag = 'rs';
 
+        let maxSize = 2;
+        if (spawn.room.memory.remoteAssignments[assigment].controllerState === RemoteMiningRoomControllerState.STABLE) {
+            maxSize = 1;
+        }
+
         const PARTS = [CLAIM, MOVE];
-        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, 2); // change to 1 if in memory it has certain value (set it if lower than say 500 reserved then set it at 4500)
+        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, maxSize);
 
         if (result === ERR_NOT_ENOUGH_ENERGY) {
-            result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, 2);
+            result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, maxSize);
         }
 
         if (result === OK) {

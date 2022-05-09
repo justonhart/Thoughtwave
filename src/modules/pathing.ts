@@ -71,7 +71,7 @@ export class Pathing {
 
     static move(creep: Creep, destination: RoomPosition, opts: TravelToOpts): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
         if (!creep.memory._m) {
-            creep.memory._m = { stuckCount: 0 };
+            creep.memory._m = { stuckCount: 0, repath: 0 };
         }
 
         if (creep.fatigue > 0) {
@@ -87,6 +87,7 @@ export class Pathing {
         }
 
         if (destination.toMemSafe() !== creep.memory._m.destination) {
+            creep.memory._m.repath = 0;
             creep.memory._m.destination = destination.toMemSafe();
         }
 
@@ -105,8 +106,9 @@ export class Pathing {
         if (creep.memory._m.path && creep.memory._m.stuckCount) {
             // First try pushing the creep in front closer to their target (stayOnPath will not recalculate new Path)
             if (!Pathing.pushForward(creep) || creep.memory._m.stuckCount > 1) {
+                creep.memory._m.repath++;
                 opts.pathColor = 'blue';
-                opts.ignoreCreeps = opts.stayOnPath;
+                opts.ignoreCreeps = false;
                 delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
             } else {
                 new RoomVisual(creep.pos.roomName).circle(creep.pos, {
@@ -473,8 +475,7 @@ export class Pathing {
             //check if creep is in nextPos
             const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
             if (obstacleCreep?.memory?._m?.destination && obstacleCreep?.memory?.role !== Role.REMOTE_MINER) {
-                // TODO: change this
-                // If obstacle creep is still moving it will move out of the way
+                // If obstacle creep is still moving it will move out of the way ==> TODO: techincally need to check "lastMove" in cases the creep is just idling and then add a priorityTask for that creep (right now they will repath around it)
                 if (obstacleCreep.memory._m?.path?.length > 1) {
                     return true;
                 }
@@ -507,12 +508,6 @@ export class Pathing {
                 } else if (creep.memory.currentTaskPriority > obstacleCreep.memory.currentTaskPriority) {
                     // Swap places if creep has a higher priorty
                     obstacleCreep.addTaskToPriorityQueue(creep.memory.currentTaskPriority, () => {
-                        obstacleCreep.move(Pathing.inverseDirection(nextDirection));
-                    });
-                    return true;
-                } else if (creep.memory.role === Role.REMOTE_MINER) {
-                    // TODO: remove this --> just temporary workaround for remoteminers that block each other cause they stay on their path no matter what
-                    obstacleCreep.addTaskToPriorityQueue(3, () => {
                         obstacleCreep.move(Pathing.inverseDirection(nextDirection));
                     });
                     return true;

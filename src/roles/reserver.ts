@@ -11,6 +11,13 @@ export class Reserver extends WaveCreep {
                         break;
                 }
             } else {
+                // Set Controller reservation state for better spawning
+                if (!this.room.controller.reservation?.ticksToEnd || this.room.controller.reservation.ticksToEnd < 1000) {
+                    this.homeroom.memory.remoteAssignments[this.room.name].controllerState = RemoteMiningRoomControllerState.LOW;
+                } else if (this.room.controller.reservation.ticksToEnd > 4500) {
+                    this.homeroom.memory.remoteAssignments[this.room.name].controllerState = RemoteMiningRoomControllerState.STABLE;
+                }
+
                 // Reserve Controller in target room
                 switch (this.reserveController(this.room.controller)) {
                     case ERR_NOT_IN_RANGE:

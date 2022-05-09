@@ -28,6 +28,9 @@ export class Scout extends WaveCreep {
                 !this.room.controller?.owner?.username &&
                 !this.room.find(FIND_HOSTILE_CREEPS, {
                     filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
+                }).length &&
+                !this.room.find(FIND_HOSTILE_STRUCTURES, {
+                    filter: (struct) => struct.structureType === STRUCTURE_KEEPER_LAIR,
                 }).length
             ) {
                 this.room.find(FIND_SOURCES).forEach((source) => {
