@@ -30,7 +30,7 @@ export class Maintainer extends WorkerCreep {
             return constructedDefenses.shift().id;
         }
 
-        let decayingStructuresAtRisk = this.room.find(FIND_STRUCTURES).filter(
+        let decayingStructuresAtRisk = this.homeroom.find(FIND_STRUCTURES).filter(
             (structure) =>
                 //@ts-expect-error
                 structure.ticksToDecay !== undefined &&

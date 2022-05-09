@@ -21,7 +21,7 @@ export class Builder extends Maintainer {
             ).id;
         }
 
-        let decayingStructuresAtRisk = this.room.find(FIND_STRUCTURES).filter(
+        let decayingStructuresAtRisk = this.homeroom.find(FIND_STRUCTURES).filter(
             (structure) =>
                 //@ts-expect-error
                 structure.ticksToDecay !== undefined &&
