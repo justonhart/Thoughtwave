@@ -4,6 +4,13 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class RemoteMiner extends WaveCreep {
     public run() {
         let assignedPos = posFromMem(this.memory.assignment);
+
+        if (Memory.rooms[this.memory.room].remoteAssignments[assignedPos.roomName].state === RemoteMiningRoomState.ENEMY) {
+            this.travelToRoom(this.memory.room); // Travel back to home room
+            this.memory._m.repath = 1; // do not create roads
+            return;
+        }
+
         if (this.pos.isEqualTo(assignedPos)) {
             this.memory.currentTaskPriority = Priority.HIGH;
             if (!this.pos.look().filter((object) => object.type === LOOK_STRUCTURES || object.type === LOOK_CONSTRUCTION_SITES).length) {
@@ -16,7 +23,7 @@ export class RemoteMiner extends WaveCreep {
                     .reduce((biggestSource, sourceToCompare) => (biggestSource.energy > sourceToCompare.energy ? biggestSource : sourceToCompare))
             );
         } else {
-            this.travelTo(assignedPos, { preferRoadConstruction: true, avoidHostiles: false });
+            this.travelTo(assignedPos, { preferRoadConstruction: true });
             // Create roads to the source if not already present and the remote miner did not have to repath
             if (
                 !this.memory._m.repath &&

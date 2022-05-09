@@ -474,7 +474,7 @@ export class Pathing {
             const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
             //check if creep is in nextPos
             const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
-            if (obstacleCreep?.memory?._m?.destination && obstacleCreep?.memory?.role !== Role.REMOTE_MINER) {
+            if (obstacleCreep?.memory?._m?.destination) {
                 // If obstacle creep is still moving it will move out of the way ==> TODO: techincally need to check "lastMove" in cases the creep is just idling and then add a priorityTask for that creep (right now they will repath around it)
                 if (obstacleCreep.memory._m?.path?.length > 1) {
                     return true;

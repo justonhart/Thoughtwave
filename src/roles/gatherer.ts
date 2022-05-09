@@ -1,7 +1,13 @@
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
+// TODO: right now I just copied some of the worker functions over. Find a better way to reuse already existing methods
 export class Gatherer extends TransportCreep {
     public run() {
+        if (Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].state === RemoteMiningRoomState.ENEMY) {
+            this.travelToRoom(this.memory.room); // Travel back to home room
+            return;
+        }
+
         let target: any = Game.getObjectById(this.memory.targetId);
         if (!target) {
             if (this.pos.roomName !== this.memory.assignment) {
@@ -14,19 +20,19 @@ export class Gatherer extends TransportCreep {
 
         if (target instanceof Resource) {
             this.runPickupJob(target);
-        } else if (target instanceof Tombstone || target instanceof StructureContainer) {
+        } else if (target instanceof Tombstone) {
             this.runCollectionJob(target);
-        } else if (target instanceof StructureSpawn || target instanceof StructureExtension || target instanceof StructureTower) {
-            if (this.store.energy) {
-                this.runRefillJob(target);
+        } else if (target instanceof StructureContainer) {
+            // Repair vs Collect
+            let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);
+            if (this.usedAllRemainingEnergy(jobCost)) {
+                this.runCollectionJob(target);
             } else {
-                this.gatherEnergy();
+                this.runRepairJob(target);
             }
         } else if (target instanceof StructureStorage) {
             this.storeCargo();
-        } else if (target instanceof Structure) {
-            // WORKER CREEP
-            this.runRepairJob(target);
+            this.repairRoad();
         } else if (target instanceof ConstructionSite) {
             this.runBuildJob(target);
         }
@@ -35,13 +41,14 @@ export class Gatherer extends TransportCreep {
     protected findTarget() {
         let target: any;
 
+        // Gather
         if (!target && this.store.getUsedCapacity() < this.store.getCapacity() / 2) {
             target = this.findCollectionTarget(this.memory.assignment);
         }
 
+        // Build
         if (!target) {
-            // look for build jobs in assigned room
-            let constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
+            const constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
             if (constructionSites.length) {
                 const container = constructionSites.find((site) => site.structureType === STRUCTURE_CONTAINER);
                 if (container) {
@@ -56,6 +63,16 @@ export class Gatherer extends TransportCreep {
             }
         }
 
+        if (!target) {
+            const damagedContainer = this.room.find(FIND_STRUCTURES, {
+                filter: (struct) => struct.structureType === STRUCTURE_CONTAINER && struct.hits < struct.hitsMax / 1.25,
+            });
+            if (damagedContainer.length) {
+                return damagedContainer[0].id;
+            }
+        }
+
+        // Hauler
         if (!target) {
             target = this.homeroom.storage?.id;
         }
@@ -72,19 +89,26 @@ export class Gatherer extends TransportCreep {
                 this.travelTo(target, { range: 3 });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
-                this.memory.gathering = true;
             case ERR_INVALID_TARGET:
                 this.onTaskFinished();
                 break;
             case OK:
-                if (this.isBuildFinished(target)) {
-                    this.onTaskFinished();
-                }
-                if (this.usedAllRemainingEnergy(jobCost)) {
-                    this.memory.gathering = true;
+                if (this.isBuildFinished(target) || this.usedAllRemainingEnergy(jobCost)) {
                     this.onTaskFinished();
                 }
                 break;
+        }
+    }
+
+    /**
+     * Repair road on current creep position if necessary
+     */
+    protected repairRoad() {
+        const damagedRoad = this.pos
+            .lookFor(LOOK_STRUCTURES)
+            .filter((structure) => structure.structureType === STRUCTURE_ROAD && structure.hits < structure.hitsMax);
+        if (damagedRoad.length) {
+            this.repair(damagedRoad[0]);
         }
     }
 
@@ -98,7 +122,6 @@ export class Gatherer extends TransportCreep {
                     this.travelTo(target, { range: 3 });
                     break;
                 case ERR_NOT_ENOUGH_RESOURCES:
-                    this.memory.gathering = true;
                 case ERR_INVALID_TARGET:
                     this.onTaskFinished();
                     break;
@@ -107,7 +130,6 @@ export class Gatherer extends TransportCreep {
                         this.onTaskFinished();
                     }
                     if (this.usedAllRemainingEnergy(jobCost)) {
-                        this.memory.gathering = true;
                         this.onTaskFinished();
                     }
                     break;
