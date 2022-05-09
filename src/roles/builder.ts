@@ -21,11 +21,13 @@ export class Builder extends Maintainer {
             ).id;
         }
 
-        let decayingStructuresAtRisk = this.room.find(FIND_STRUCTURES).filter((structure) =>
-            //@ts-expect-error
-            structure.ticksToDecay !== undefined && structure.structureType === STRUCTURE_RAMPART
-                ? structure.hits <= this.getDefenseHitpointTarget() * 0.1
-                : structure.hits <= structure.hitsMax * 0.1
+        let decayingStructuresAtRisk = this.room.find(FIND_STRUCTURES).filter(
+            (structure) =>
+                //@ts-expect-error
+                structure.ticksToDecay !== undefined &&
+                (structure.structureType === STRUCTURE_RAMPART
+                    ? structure.hits <= this.getDefenseHitpointTarget() * 0.1
+                    : structure.hits <= structure.hitsMax * 0.1)
         );
         if (decayingStructuresAtRisk.length) {
             return this.pos.findClosestByPath(decayingStructuresAtRisk)?.id;
