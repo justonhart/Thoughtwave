@@ -21,6 +21,21 @@ export class Builder extends Maintainer {
             ).id;
         }
 
+        let decayingStructuresAtRisk = this.room.find(FIND_STRUCTURES).filter((structure) =>
+            //@ts-expect-error
+            structure.ticksToDecay !== undefined && structure.structureType === STRUCTURE_RAMPART
+                ? structure.hits <= this.getDefenseHitpointTarget() * 0.1
+                : structure.hits <= structure.hitsMax * 0.1
+        );
+        if (decayingStructuresAtRisk.length) {
+            return this.pos.findClosestByPath(decayingStructuresAtRisk)?.id;
+        }
+
+        let repairTarget = this.homeroom.getRepairTarget();
+        if (repairTarget) {
+            return repairTarget;
+        }
+
         let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
             (structure) =>
                 //@ts-ignore
@@ -28,11 +43,6 @@ export class Builder extends Maintainer {
         );
         if (defenses.length) {
             return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare)).id;
-        }
-
-        let repairTarget = this.homeroom.getRepairTarget();
-        if (repairTarget) {
-            return repairTarget;
         }
 
         return this.homeroom.controller?.id;

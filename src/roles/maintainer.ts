@@ -30,13 +30,14 @@ export class Maintainer extends WorkerCreep {
             return constructedDefenses.shift().id;
         }
 
-        let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
-            (structure) =>
-                //@ts-ignore
-                [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
+        let decayingStructuresAtRisk = this.room.find(FIND_STRUCTURES).filter((structure) =>
+            //@ts-expect-error
+            structure.ticksToDecay !== undefined && structure.structureType === STRUCTURE_RAMPART
+                ? structure.hits <= this.getDefenseHitpointTarget() * 0.1
+                : structure.hits <= structure.hitsMax * 0.1
         );
-        if (defenses.length) {
-            return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare)).id;
+        if (decayingStructuresAtRisk.length) {
+            return this.pos.findClosestByPath(decayingStructuresAtRisk)?.id;
         }
 
         let repairTarget = this.homeroom.getRepairTarget();
@@ -51,7 +52,16 @@ export class Maintainer extends WorkerCreep {
                 mostProgressedSite.progress / mostProgressedSite.progressTotal > siteToCheck.progress / siteToCheck.progressTotal
                     ? mostProgressedSite
                     : siteToCheck
-            ).id;
+            )?.id;
+        }
+
+        let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
+            (structure) =>
+                //@ts-ignore
+                [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
+        );
+        if (defenses.length) {
+            return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare))?.id;
         }
 
         return this.homeroom.controller?.id;
