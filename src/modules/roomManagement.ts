@@ -14,10 +14,9 @@ export function driveRoom(room: Room) {
         Object.keys(Game.constructionSites).length < 100 &&
         room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
     ) {
-        placeConstructionSites(room);
-
         if (room.controller.level >= 2) {
-            placeRoadsToBunker(room);
+            //placeRoadsToBunker(room);
+            placeConstructionSites(room);
         }
 
         if (room.memory.phase > 1) {
@@ -370,26 +369,26 @@ export function placeConstructionSites(room: Room) {
                 let structureType = getStructureForPos(room.memory.layout, new RoomPosition(x, y, room.name), referencePos);
                 let buildPosition = new RoomPosition(x, y, room.name);
 
-                if (structureType !== STRUCTURE_ROAD) {
-                    let addResult = room.createConstructionSite(buildPosition, structureType);
-                    if (addResult == OK) {
-                        placed++;
-                    }
-                } else {
-                    //only place roads adjacent to structures
-                    let adjacentStructures =
-                        buildPosition
-                            .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
-                            .filter((s) => s.structureType !== STRUCTURE_ROAD)
-                            //@ts-expect-error
-                            .concat(buildPosition.findInRange(FIND_MY_STRUCTURES, 1)).length > 0;
-                    if (adjacentStructures) {
-                        let addResult = room.createConstructionSite(buildPosition, structureType);
-                        if (addResult == OK) {
-                            placed++;
-                        }
-                    }
+                //if (structureType !== STRUCTURE_ROAD) {
+                let addResult = room.createConstructionSite(buildPosition, structureType);
+                if (addResult == OK) {
+                    placed++;
                 }
+                // } else {
+                //     //only place roads adjacent to structures
+                //     let adjacentStructures =
+                //         buildPosition
+                //             .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
+                //             .filter((s) => s.structureType !== STRUCTURE_ROAD)
+                //             //@ts-expect-error
+                //             .concat(buildPosition.findInRange(FIND_MY_STRUCTURES, 1)).length > 0;
+                //     if (adjacentStructures) {
+                //         let addResult = room.createConstructionSite(buildPosition, structureType);
+                //         if (addResult == OK) {
+                //             placed++;
+                //         }
+                //     }
+                // }
             }
         }
     }

@@ -322,30 +322,68 @@ export function findPoiAverage(room: Room) {
     return pointOfInterestAverage;
 }
 
-export function drawRoadsToBunker(room: Room, hqPos: RoomPosition) {
-    let pois = room.find(FIND_SOURCES).map((source) => source.pos);
-    pois.push(room.controller.pos);
+function getRoadsToBunker(hqPos: RoomPosition) {
+    let room = Game.rooms[hqPos.roomName];
+    let pois: (Source | StructureController | Mineral)[] = [];
 
-    pois.forEach((poi) => {
-        let path = poi.findPathTo(hqPos, { swampCost: 2, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 6 });
+    pois.push(...room.find(FIND_SOURCES));
+    pois.push(room.controller);
+    pois.push(...room.find(FIND_MINERALS));
 
+    let storagePos = new RoomPosition(hqPos.x + 1, hqPos.y - 1, hqPos.roomName);
+
+    let paths = pois.map((poi) => {
+        //if destination is a controller, range = 3 instead of 1
+
+        //@ts-ignore
+        let path = poi.my
+            ? storagePos.findPathTo(poi, { swampCost: 5, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 3 })
+            : storagePos.findPathTo(poi, { swampCost: 5, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 1 });
+
+        //remove last step from path
+        path.pop();
+
+        //remove steps inside the bunker borders
+        path = path.filter((step) => !posInsideBunker(new RoomPosition(step.x, step.y, room.name), hqPos));
+
+        return path;
+    });
+
+    return paths;
+}
+
+export function drawRoadsToBunker(room: Room, hqPos?: RoomPosition) {
+    if (!hqPos) {
+        hqPos = posFromMem(room.memory.hqPos);
+    }
+
+    let paths = getRoadsToBunker(hqPos);
+
+    paths.forEach((path) => {
         //@ts-ignore
         room.visual.poly(path, { stroke: '#fff', strokeWidth: 0.15, opacity: 0.8, lineStyle: 'dotted' });
     });
 }
 
-export function placeRoadsToBunker(room: Room) {
-    let pois = room.find(FIND_SOURCES).map((source) => source.pos);
-    pois.push(room.controller.pos);
+export function placeRoadsToBunker(room: Room, hqPos?: RoomPosition) {
+    if (!hqPos) {
+        hqPos = posFromMem(room.memory.hqPos);
+    }
 
-    let hqPos = posFromMem(room.memory.hqPos);
+    let paths = getRoadsToBunker(hqPos);
 
-    pois.forEach((poi) => {
-        let path = poi.findPathTo(hqPos, { swampCost: 2, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 6 });
-        path.shift(); //remove first road
+    paths.forEach((path) => {
         //@ts-ignore
         path.forEach((step) => room.createConstructionSite(step.x, step.y, STRUCTURE_ROAD));
     });
+}
+
+function posInsideBunker(pos: RoomPosition, hqPos?: RoomPosition) {
+    if (!hqPos) {
+        hqPos = posFromMem(Game.rooms[pos.roomName].memory.hqPos);
+    }
+
+    return pos.x <= hqPos.x + 6 && pos.x >= hqPos.x - 6 && pos.y <= hqPos.y + 6 && pos.y >= hqPos.y - 6;
 }
 
 export function placeBunkerOuterRamparts(room: Room) {
