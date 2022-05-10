@@ -89,6 +89,7 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
             }
         }
         if (hostileCreeps.length) {
+            console.log('hostile creep in ' + targetRoom.name);
             homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY;
 
             // TODO: Move this spawn mechanism
@@ -100,7 +101,7 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
             ) {
                 Memory.empire.spawnAssignments.push({
                     designee: homeRoom.name,
-                    body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable),
+                    body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10),
                     memoryOptions: {
                         role: Role.PROTECTOR,
                         room: homeRoom.name,
@@ -235,7 +236,6 @@ function runPhaseTwoSpawnLogic(room: Room) {
     }
 
     if (PopulationManagement.needsMiner(room)) {
-        // TODO remove remote miners since they should have lower priority than this
         let spawn = availableRoomSpawns.pop();
         spawn?.spawnMiner();
     }
@@ -268,8 +268,7 @@ function runPhaseTwoSpawnLogic(room: Room) {
     // TODO remove set room and put in function
     if (
         Game.time % 8000 === 0 &&
-        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.SCOUT && creep.designee === room.name).length &&
-        room.name === 'W23S55'
+        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.SCOUT && creep.designee === room.name).length
     ) {
         Memory.empire.spawnAssignments.push({
             designee: room.name,

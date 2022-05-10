@@ -4,7 +4,7 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 export class Gatherer extends TransportCreep {
     public run() {
         if (Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].state === RemoteMiningRoomState.ENEMY) {
-            this.travelToRoom(this.memory.room); // Travel back to home room
+            this.travelToRoom(this.memory.room, { range: 20 }); // Travel back to home room
             return;
         }
 
@@ -15,87 +15,67 @@ export class Gatherer extends TransportCreep {
             } else {
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
+                this.checkConstructionProgress();
+                this.checkEnergyState();
             }
         }
 
         if (target instanceof Resource) {
             this.runPickupJob(target);
-        } else if (target instanceof Tombstone) {
+        } else if (target instanceof Tombstone || target instanceof StructureContainer) {
             this.runCollectionJob(target);
-        } else if (target instanceof StructureContainer) {
-            // Repair vs Collect
-            let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);
-            if (this.usedAllRemainingEnergy(jobCost)) {
-                this.runCollectionJob(target);
-            } else {
-                this.runRepairJob(target);
-            }
         } else if (target instanceof StructureStorage) {
             this.storeCargo();
-            this.repairRoad();
-        } else if (target instanceof ConstructionSite) {
-            this.runBuildJob(target);
+            this.maintainRoad();
+        }
+    }
+
+    private checkConstructionProgress() {
+        const constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
+        if (constructionSites.length > 4) {
+            Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].needsConstruction = true;
+        } else {
+            Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].needsConstruction = false;
+        }
+    }
+
+    private checkEnergyState() {
+        let looseResources = this.room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
+        if (looseResources.length && !Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer) {
+            const amount = looseResources.reduce((total, resource) => total + resource.amount, 0);
+            if (amount > 3000) {
+                Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer = false;
+            } else {
+                delete Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer;
+            }
         }
     }
 
     protected findTarget() {
-        let target: any;
-
         // Gather
-        if (!target && this.store.getUsedCapacity() < this.store.getCapacity() / 2) {
-            target = this.findCollectionTarget(this.memory.assignment);
-        }
-
-        // Build
-        if (!target) {
-            const constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
-            if (constructionSites.length) {
-                const container = constructionSites.find((site) => site.structureType === STRUCTURE_CONTAINER);
-                if (container) {
-                    target = container.id;
-                } else {
-                    return constructionSites.reduce((mostProgressedSite, siteToCheck) =>
-                        mostProgressedSite.progress / mostProgressedSite.progressTotal > siteToCheck.progress / siteToCheck.progressTotal
-                            ? mostProgressedSite
-                            : siteToCheck
-                    ).id;
-                }
-            }
-        }
-
-        if (!target) {
-            const damagedContainer = this.room.find(FIND_STRUCTURES, {
-                filter: (struct) => struct.structureType === STRUCTURE_CONTAINER && struct.hits < struct.hitsMax / 1.25,
-            });
-            if (damagedContainer.length) {
-                return damagedContainer[0].id;
-            }
+        if (this.store.getUsedCapacity() < this.store.getCapacity() / 2) {
+            return this.findCollectionTarget(this.memory.assignment);
         }
 
         // Hauler
-        if (!target) {
-            target = this.homeroom.storage?.id;
-        }
-
-        return target;
+        return this.homeroom.storage?.id;
     }
 
-    protected runBuildJob(target: ConstructionSite) {
+    protected storeCargo() {
         this.memory.currentTaskPriority = Priority.MEDIUM;
-        let jobCost = BUILD_POWER * this.getActiveBodyparts(WORK);
-        let buildSuccess = this.build(target);
-        switch (buildSuccess) {
+        let resourceToStore: any = Object.keys(this.store).shift();
+        let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
+        switch (storeResult) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { range: 3 });
+                this.travelTo(this.homeroom.storage, { ignoreCreeps: true, range: 1, preferRoadConstruction: true });
                 break;
-            case ERR_NOT_ENOUGH_RESOURCES:
-            case ERR_INVALID_TARGET:
-                this.onTaskFinished();
-                break;
-            case OK:
-                if (this.isBuildFinished(target) || this.usedAllRemainingEnergy(jobCost)) {
+            case 0:
+                if (this.store[resourceToStore] === this.store.getUsedCapacity()) {
                     this.onTaskFinished();
                 }
+                break;
+            default:
+                this.onTaskFinished();
                 break;
         }
     }
@@ -103,53 +83,19 @@ export class Gatherer extends TransportCreep {
     /**
      * Repair road on current creep position if necessary
      */
-    protected repairRoad() {
-        const damagedRoad = this.pos
-            .lookFor(LOOK_STRUCTURES)
-            .filter((structure) => structure.structureType === STRUCTURE_ROAD && structure.hits < structure.hitsMax);
-        if (damagedRoad.length) {
-            this.repair(damagedRoad[0]);
-        }
-    }
-
-    protected runRepairJob(target: Structure) {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
-        if (target.hits < target.hitsMax) {
-            let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);
-            let repairSuccess = this.repair(target);
-            switch (repairSuccess) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { range: 3 });
-                    break;
-                case ERR_NOT_ENOUGH_RESOURCES:
-                case ERR_INVALID_TARGET:
-                    this.onTaskFinished();
-                    break;
-                case OK:
-                    if (this.isRepairFinished(target)) {
-                        this.onTaskFinished();
-                    }
-                    if (this.usedAllRemainingEnergy(jobCost)) {
-                        this.onTaskFinished();
-                    }
-                    break;
+    protected maintainRoad() {
+        const site = this.pos
+            .look()
+            .filter(
+                (object) =>
+                    (object.type === LOOK_STRUCTURES && object.structure.hits < object.structure.hitsMax) || object.type === LOOK_CONSTRUCTION_SITES
+            );
+        if (site.length) {
+            if (site[0].type === LOOK_CONSTRUCTION_SITES) {
+                this.build(site[0].constructionSite);
+            } else if (site[0].type === LOOK_STRUCTURES && site[0].structure.hits < site[0].structure.hitsMax) {
+                this.repair(site[0].structure);
             }
-        } else {
-            this.onTaskFinished();
         }
-    }
-
-    protected isRepairFinished(target: Structure): boolean {
-        let workValue = this.getActiveBodyparts(WORK) * REPAIR_POWER;
-        return target.hits >= target.hitsMax - workValue;
-    }
-
-    protected isBuildFinished(target: ConstructionSite): boolean {
-        let workValue = this.getActiveBodyparts(WORK) * BUILD_POWER;
-        return target.progress >= target.progressTotal - workValue;
-    }
-
-    protected usedAllRemainingEnergy(energyUsedPerWork: number) {
-        return this.store[RESOURCE_ENERGY] <= energyUsedPerWork;
     }
 }

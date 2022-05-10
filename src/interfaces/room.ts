@@ -16,10 +16,12 @@ interface RoomMemory {
 }
 
 interface RemoteAssignment {
+    needsConstruction: boolean;
     state: RemoteMiningRoomState;
     controllerState: RemoteMiningRoomControllerState;
     reserver: AssignmentStatus;
     gatherer: AssignmentStatus;
+    surplusGatherer: boolean;
     miners: Map<string, AssignmentStatus>;
 }
 

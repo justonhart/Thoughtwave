@@ -47,6 +47,7 @@ export class Scout extends WaveCreep {
                                 miners: new Map(),
                                 gatherer: AssignmentStatus.UNASSIGNED,
                                 reserver: AssignmentStatus.UNASSIGNED,
+                                needsConstruction: true,
                             };
                         }
                         Memory.rooms[this.memory.room].remoteAssignments[this.room.name].miners[
@@ -82,12 +83,12 @@ export class Scout extends WaveCreep {
 
             // Add rooms if scout hasn't been there yet
             if (adjacentRooms.length) {
-                Memory.empire.scoutAssignments[this.memory.room].unshift(...adjacentRooms);
+                Memory.empire.scoutAssignments[this.memory.room].push(...adjacentRooms);
             }
         }
 
         // check empire memory against scout travelHistory to see if any rooms are left.
-        let nextRoom: string = Memory.empire.scoutAssignments[this.memory.room].find(
+        const nextRoom: string = Memory.empire.scoutAssignments[this.memory.room].find(
             (roomToScout: string) => !this.memory.scout.path.includes(roomToScout)
         );
 

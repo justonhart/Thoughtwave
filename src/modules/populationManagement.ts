@@ -235,7 +235,7 @@ export class PopulationManagement {
 
         let tag = 'rm';
 
-        let minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
+        let minerBody = [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
 
         let result = spawn.smartSpawn(minerBody, this.getCreepTag(tag, spawn.name), options);
         if (result === OK) {
@@ -252,16 +252,21 @@ export class PopulationManagement {
     }
 
     static needsGatherer(room: Room): boolean {
-        return Object.values(room.memory.remoteAssignments).some((assignment) => assignment.gatherer === AssignmentStatus.UNASSIGNED);
+        return Object.values(room.memory.remoteAssignments).some(
+            (assignment) => assignment.gatherer === AssignmentStatus.UNASSIGNED || assignment.surplusGatherer === false
+        );
     }
 
     static spawnGatherer(spawn: StructureSpawn): ScreepsReturnCode {
-        let assigmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
-        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].gatherer === AssignmentStatus.UNASSIGNED);
+        let assignmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
+        let assignment = assignmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].gatherer === AssignmentStatus.UNASSIGNED);
+        if (!assignment) {
+            var surplusAssigment = assignmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].surplusGatherer === false);
+        }
 
         let options: SpawnOptions = {
             memory: {
-                assignment: assigment,
+                assignment: assignment ?? surplusAssigment,
                 room: spawn.room.name,
                 role: Role.GATHERER,
             },
@@ -269,15 +274,24 @@ export class PopulationManagement {
 
         let tag = 'g';
 
-        const PARTS = [CARRY, CARRY, CARRY, WORK, MOVE, MOVE];
-        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, 10);
+        let maxLevel = 10;
+        let PARTS = PopulationManagement.createPartsArray([CARRY, WORK, MOVE, MOVE], spawn.room.energyCapacityAvailable, maxLevel);
+        if (!Memory.rooms[spawn.room.name].remoteAssignments[assignment ?? surplusAssigment].needsConstruction) {
+            PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 150, maxLevel);
+            PARTS.push(CARRY, WORK, MOVE); // One WORK so creep can repair
+        }
+        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, maxLevel);
 
         if (result === ERR_NOT_ENOUGH_ENERGY) {
-            result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, 10);
+            result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, maxLevel);
         }
 
         if (result === OK) {
-            spawn.room.memory.remoteAssignments[assigment].gatherer = AssignmentStatus.ASSIGNED;
+            if (surplusAssigment) {
+                spawn.room.memory.remoteAssignments[surplusAssigment].surplusGatherer = true;
+            } else {
+                spawn.room.memory.remoteAssignments[assignment].gatherer = AssignmentStatus.ASSIGNED;
+            }
         }
 
         return result;
