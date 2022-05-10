@@ -89,7 +89,6 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
             }
         }
         if (hostileCreeps.length) {
-            console.log('hostile creep in ' + targetRoom.name);
             homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY;
 
             // TODO: Move this spawn mechanism
