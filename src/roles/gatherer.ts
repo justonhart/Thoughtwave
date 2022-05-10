@@ -41,14 +41,14 @@ export class Gatherer extends TransportCreep {
 
     private checkEnergyState() {
         let looseResources = this.room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
-        if (looseResources.length && !Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer) {
+        if (looseResources.length) {
             const amount = looseResources.reduce((total, resource) => total + resource.amount, 0);
-            if (amount > 3000) {
+            if (amount > 3000 && !Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer) {
                 Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer = false;
-            } else {
-                delete Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer;
+                return;
             }
         }
+        delete Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer;
     }
 
     protected findTarget() {

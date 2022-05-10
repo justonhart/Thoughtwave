@@ -2,7 +2,7 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Protector extends WaveCreep {
     public run() {
-        if (this.travelToRoom(this.memory.assignment) == IN_ROOM) {
+        if (this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) == IN_ROOM) {
             if (!this.memory.targetId) {
                 this.memory.targetId = this.findTarget();
             }
