@@ -1,83 +1,5 @@
 import { posFromMem } from './memoryManagement';
 
-export function findIndustryCenterLocation(room: Room) {
-    //this find a good position for storage
-
-    let pois = room.find(FIND_SOURCES).map((source) => source.pos);
-    pois.push(room.controller.pos);
-
-    let pointOfInterestSum = { x: 0, y: 0 };
-    pois.forEach((pos) => {
-        pointOfInterestSum.x += pos.x;
-        pointOfInterestSum.y += pos.y;
-    });
-
-    let pointOfInterestAverage = new RoomPosition(pointOfInterestSum.x / pois.length, pointOfInterestSum.y / pois.length, room.name);
-
-    let industryCenter = findClosestSuitablePosition(pointOfInterestAverage);
-
-    room.visual.text('🌟', industryCenter[0].x, industryCenter[0].y);
-    switch (industryCenter[1]) {
-        case 0:
-            //@ts-ignore
-            room.visual.poly([
-                industryCenter[0],
-                [industryCenter[0].x + 1, industryCenter[0].y + 1],
-                [industryCenter[0].x + 1, industryCenter[0].y + 2],
-                [industryCenter[0].x, industryCenter[0].y + 2],
-                [industryCenter[0].x - 1, industryCenter[0].y + 2],
-                [industryCenter[0].x - 1, industryCenter[0].y + 1],
-                industryCenter[0],
-            ]);
-            break;
-        case 1:
-            //@ts-ignore
-            room.visual.poly([
-                industryCenter[0],
-                [industryCenter[0].x - 1, industryCenter[0].y + 1],
-                [industryCenter[0].x - 2, industryCenter[0].y + 1],
-                [industryCenter[0].x - 2, industryCenter[0].y],
-                [industryCenter[0].x - 2, industryCenter[0].y - 1],
-                [industryCenter[0].x - 1, industryCenter[0].y - 1],
-                industryCenter[0],
-            ]);
-            break;
-        case 2:
-            //@ts-ignore
-            room.visual.poly([
-                industryCenter[0],
-                [industryCenter[0].x - 1, industryCenter[0].y - 1],
-                [industryCenter[0].x - 1, industryCenter[0].y - 2],
-                [industryCenter[0].x, industryCenter[0].y - 2],
-                [industryCenter[0].x + 1, industryCenter[0].y - 2],
-                [industryCenter[0].x + 1, industryCenter[0].y - 1],
-                industryCenter[0],
-            ]);
-            break;
-        case 3:
-            //@ts-ignore
-            room.visual.poly([
-                industryCenter[0],
-                [industryCenter[0].x + 1, industryCenter[0].y + 1],
-                [industryCenter[0].x + 2, industryCenter[0].y + 1],
-                [industryCenter[0].x + 2, industryCenter[0].y],
-                [industryCenter[0].x + 2, industryCenter[0].y - 1],
-                [industryCenter[0].x + 1, industryCenter[0].y - 1],
-                industryCenter[0],
-            ]);
-            break;
-    }
-
-    while (pois.length) {
-        let path = industryCenter[0].findPathTo(pois.pop(), { swampCost: 1, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 1 });
-
-        //@ts-ignore
-        room.visual.poly(path, { stroke: '#fff', strokeWidth: 0.15, opacity: 0.8, lineStyle: 'dotted' });
-    }
-
-    return industryCenter[1];
-}
-
 export function calculateRoomSpace(room: Room) {
     let totalWorkableSpace = 46 * 46;
     let walls = 0;
@@ -94,64 +16,7 @@ export function calculateRoomSpace(room: Room) {
     console.log(`Wall ratio: ${walls / totalWorkableSpace}`);
 }
 
-function findClosestSuitablePosition(startPos: RoomPosition): [RoomPosition, Direction] {
-    let endPos: RoomPosition;
-    let dir: Direction;
-    let stop = false;
-
-    let baseCheck = canPlaceIndustryCenter(startPos);
-    if (baseCheck !== undefined) {
-        return [startPos, baseCheck];
-    }
-
-    for (let lookDistance = 1; lookDistance < 10 && !stop; lookDistance++) {
-        let lookPos: RoomPosition;
-        let x: number, y: number;
-
-        for (y = startPos.y - lookDistance; y <= startPos.y + lookDistance && !stop; y++) {
-            for (x = startPos.x - lookDistance; x <= startPos.x + lookDistance && !stop; x++) {
-                if (y > startPos.y - lookDistance && y < startPos.y + lookDistance && x > startPos.x - lookDistance) {
-                    x = startPos.x + lookDistance;
-                }
-                lookPos = new RoomPosition(x, y, startPos.roomName);
-
-                let check = canPlaceIndustryCenter(lookPos);
-                if (check !== undefined) {
-                    endPos = lookPos;
-                    dir = check;
-                    stop = true;
-                }
-            }
-        }
-    }
-
-    return [endPos, dir];
-}
-
-function canPlaceIndustryCenter(pos: RoomPosition): Direction {
-    let room = Game.rooms[pos.roomName];
-
-    //NORTH
-    if (room.lookForAtArea(LOOK_TERRAIN, pos.y - 1, pos.x - 1, pos.y + 2, pos.x + 1, true).every((look) => look.terrain !== 'wall')) {
-        return Direction.NORTH;
-    }
-    //EAST
-    if (room.lookForAtArea(LOOK_TERRAIN, pos.y - 1, pos.x - 2, pos.y + 1, pos.x + 1, true).every((look) => look.terrain !== 'wall')) {
-        return Direction.EAST;
-    }
-    //SOUTH
-    if (room.lookForAtArea(LOOK_TERRAIN, pos.y - 2, pos.x - 1, pos.y + 1, pos.x + 1, true).every((look) => look.terrain !== 'wall')) {
-        return Direction.SOUTH;
-    }
-    //WEST
-    if (room.lookForAtArea(LOOK_TERRAIN, pos.y - 1, pos.x - 1, pos.y + 1, pos.x + 2, true).every((look) => look.terrain !== 'wall')) {
-        return Direction.WEST;
-    }
-
-    return undefined;
-}
-
-export function findSquareLocation(room: Room): RoomPosition {
+export function findBunkerLocation(room: Room): RoomPosition {
     let poiAvg = findPoiAverage(room);
     let starCenter = new RoomPosition(poiAvg.x - 1, poiAvg.y + 1, room.name);
 
@@ -177,7 +42,7 @@ export function findSquareLocation(room: Room): RoomPosition {
                     if (valid) {
                         starCenter = lookPos;
                         drawBunker(starCenter);
-                        drawRoadsToBunker(room, starCenter);
+                        drawRoadsToPOIs(room, starCenter);
                     }
                 }
             }
@@ -220,13 +85,13 @@ export function drawBunker(anchorPoint: RoomPosition) {
     roomVis.rect(anchorPoint.x - 6 - 0.5, anchorPoint.y - 6 - 0.5, 13, 13, { fill: '#00E2FF', opacity: 0.1 });
 }
 
-export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, referencePos: RoomPosition): BuildableStructureConstant {
+export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, anchorPoint: RoomPosition): BuildableStructureConstant {
     switch (layout) {
-        case RoomLayout.SQUARE:
-            let xdif = targetPos.x - referencePos.x;
-            let ydif = targetPos.y - referencePos.y;
+        case RoomLayout.BUNKER:
+            let xdif = targetPos.x - anchorPoint.x;
+            let ydif = targetPos.y - anchorPoint.y;
 
-            if (targetPos === referencePos || Math.abs(xdif) >= 7 || Math.abs(ydif) >= 7) {
+            if (targetPos === anchorPoint || Math.abs(xdif) >= 7 || Math.abs(ydif) >= 7) {
                 return undefined;
             }
 
@@ -301,7 +166,7 @@ export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, 
 
 export function getSpawnPos(room: Room) {
     switch (room.memory.layout) {
-        case RoomLayout.SQUARE:
+        case RoomLayout.BUNKER:
             let hqPos = posFromMem(room.memory.hqPos);
             return new RoomPosition(hqPos.x, hqPos.y - 1, room.name);
     }
@@ -322,7 +187,7 @@ export function findPoiAverage(room: Room) {
     return pointOfInterestAverage;
 }
 
-function getRoadsToBunker(hqPos: RoomPosition) {
+function getRoadsToPOIs(hqPos: RoomPosition) {
     let room = Game.rooms[hqPos.roomName];
     let pois: (Source | StructureController | Mineral)[] = [];
 
@@ -352,12 +217,12 @@ function getRoadsToBunker(hqPos: RoomPosition) {
     return paths;
 }
 
-export function drawRoadsToBunker(room: Room, hqPos?: RoomPosition) {
+export function drawRoadsToPOIs(room: Room, hqPos?: RoomPosition) {
     if (!hqPos) {
         hqPos = posFromMem(room.memory.hqPos);
     }
 
-    let paths = getRoadsToBunker(hqPos);
+    let paths = getRoadsToPOIs(hqPos);
 
     paths.forEach((path) => {
         //@ts-ignore
@@ -365,12 +230,12 @@ export function drawRoadsToBunker(room: Room, hqPos?: RoomPosition) {
     });
 }
 
-export function placeRoadsToBunker(room: Room, hqPos?: RoomPosition) {
-    if (!hqPos) {
-        hqPos = posFromMem(room.memory.hqPos);
+export function placeRoadsToPOIs(room: Room, anchorPoint?: RoomPosition) {
+    if (!anchorPoint) {
+        anchorPoint = posFromMem(room.memory.hqPos);
     }
 
-    let paths = getRoadsToBunker(hqPos);
+    let paths = getRoadsToPOIs(anchorPoint);
 
     paths.forEach((path) => {
         //@ts-ignore
@@ -378,12 +243,12 @@ export function placeRoadsToBunker(room: Room, hqPos?: RoomPosition) {
     });
 }
 
-function posInsideBunker(pos: RoomPosition, hqPos?: RoomPosition) {
-    if (!hqPos) {
-        hqPos = posFromMem(Game.rooms[pos.roomName].memory.hqPos);
+function posInsideBunker(pos: RoomPosition, anchorPoint?: RoomPosition) {
+    if (!anchorPoint) {
+        anchorPoint = posFromMem(Game.rooms[pos.roomName].memory.hqPos);
     }
 
-    return pos.x <= hqPos.x + 6 && pos.x >= hqPos.x - 6 && pos.y <= hqPos.y + 6 && pos.y >= hqPos.y - 6;
+    return pos.x <= anchorPoint.x + 6 && pos.x >= anchorPoint.x - 6 && pos.y <= anchorPoint.y + 6 && pos.y >= anchorPoint.y - 6;
 }
 
 export function placeBunkerOuterRamparts(room: Room) {
@@ -397,11 +262,4 @@ export function placeBunkerOuterRamparts(room: Room) {
             }
         }
     }
-}
-
-const enum Direction {
-    NORTH,
-    EAST,
-    SOUTH,
-    WEST,
 }

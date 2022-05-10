@@ -1,6 +1,6 @@
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
-import { findSquareLocation, getStructureForPos, placeBunkerOuterRamparts, placeRoadsToBunker } from './roomDesign';
+import { findBunkerLocation, getStructureForPos, placeBunkerOuterRamparts, placeRoadsToPOIs } from './roomDesign';
 
 export function driveRoom(room: Room) {
     if (room.memory?.phase == undefined) {
@@ -99,10 +99,10 @@ function initRoom(room: Room) {
     room.memory.gates = [];
 
     //calculate room layout here
-    let hqPos = findSquareLocation(room);
+    let hqPos = findBunkerLocation(room);
 
     if (hqPos) {
-        room.memory.layout = RoomLayout.SQUARE;
+        room.memory.layout = RoomLayout.BUNKER;
         room.memory.hqPos = hqPos.toMemSafe();
         room.createConstructionSite(hqPos.x, hqPos.y - 1, STRUCTURE_SPAWN);
     }
@@ -369,26 +369,26 @@ export function placeConstructionSites(room: Room) {
                 let structureType = getStructureForPos(room.memory.layout, new RoomPosition(x, y, room.name), referencePos);
                 let buildPosition = new RoomPosition(x, y, room.name);
 
-                //if (structureType !== STRUCTURE_ROAD) {
-                let addResult = room.createConstructionSite(buildPosition, structureType);
-                if (addResult == OK) {
-                    placed++;
+                if (structureType !== STRUCTURE_ROAD) {
+                    let addResult = room.createConstructionSite(buildPosition, structureType);
+                    if (addResult == OK) {
+                        placed++;
+                    }
+                } else {
+                    //only place roads adjacent to structures
+                    let adjacentStructures =
+                        buildPosition
+                            .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
+                            .filter((s) => s.structureType !== STRUCTURE_ROAD)
+                            //@ts-expect-error
+                            .concat(buildPosition.findInRange(FIND_MY_STRUCTURES, 1)).length > 0;
+                    if (adjacentStructures) {
+                        let addResult = room.createConstructionSite(buildPosition, structureType);
+                        if (addResult == OK) {
+                            placed++;
+                        }
+                    }
                 }
-                // } else {
-                //     //only place roads adjacent to structures
-                //     let adjacentStructures =
-                //         buildPosition
-                //             .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
-                //             .filter((s) => s.structureType !== STRUCTURE_ROAD)
-                //             //@ts-expect-error
-                //             .concat(buildPosition.findInRange(FIND_MY_STRUCTURES, 1)).length > 0;
-                //     if (adjacentStructures) {
-                //         let addResult = room.createConstructionSite(buildPosition, structureType);
-                //         if (addResult == OK) {
-                //             placed++;
-                //         }
-                //     }
-                // }
             }
         }
     }

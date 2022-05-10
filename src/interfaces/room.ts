@@ -49,5 +49,5 @@ interface Gate {
 }
 
 const enum RoomLayout {
-    SQUARE,
+    BUNKER,
 }
