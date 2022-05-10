@@ -196,15 +196,42 @@ function getRoadsToPOIs(hqPos: RoomPosition) {
     pois.push(...room.find(FIND_MINERALS));
 
     let storagePos = new RoomPosition(hqPos.x + 1, hqPos.y - 1, hqPos.roomName);
+    let roadPositions = [];
 
     let paths = pois.map((poi) => {
         //if destination is a controller, range = 3 instead of 1
 
         //@ts-ignore
         let path = poi.my
-            ? storagePos.findPathTo(poi, { swampCost: 5, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 3 })
-            : storagePos.findPathTo(poi, { swampCost: 5, ignoreDestructibleStructures: true, ignoreCreeps: true, range: 1 });
+            ? storagePos.findPathTo(poi, {
+                  plainCost: 3,
+                  swampCost: 5,
+                  ignoreDestructibleStructures: true,
+                  ignoreCreeps: true,
+                  range: 3,
+                  costCallback: function (roomName, costMatrix) {
+                      let matrix = costMatrix.clone();
+                      roadPositions.forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 1));
+                      return matrix;
+                  },
+              })
+            : storagePos.findPathTo(poi, {
+                  plainCost: 3,
+                  swampCost: 5,
+                  ignoreDestructibleStructures: true,
+                  ignoreCreeps: true,
+                  range: 1,
+                  costCallback: function (roomName, costMatrix) {
+                      let matrix = costMatrix.clone();
+                      roadPositions.forEach((roadPos) => {
+                          matrix.set(roadPos.x, roadPos.y, 1);
+                      });
+                      return matrix;
+                  },
+              });
 
+        //add unique road positions for next cost_matrix
+        roadPositions = roadPositions.concat(path.filter((step) => roadPositions.indexOf(step) === -1));
         //remove last step from path
         path.pop();
 
