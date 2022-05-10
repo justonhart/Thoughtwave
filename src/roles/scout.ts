@@ -108,6 +108,6 @@ export class Scout extends WaveCreep {
      * @returns
      */
     private getPath(target: RoomPosition): PathFinderPath {
-        return PathFinder.search(posFromMem(this.memory.scout.spawn), { pos: target, range: 1 }, { plainCost: 1, swampCost: 2, maxCost: 90 }); // TODO how far is still efficient?
+        return PathFinder.search(posFromMem(this.memory.scout.spawn), { pos: target, range: 1 }, { plainCost: 1, swampCost: 2, maxCost: 80 }); // TODO how far is still efficient?
     }
 }

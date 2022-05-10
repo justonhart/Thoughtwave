@@ -9,7 +9,7 @@ export class Reserver extends WaveCreep {
 
         // Go to the target room
         if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
-            if (!this.room.controller.my && this.room.controller?.owner?.username === 'Invader') {
+            if (!this.room.controller.my && this.room.controller?.owner?.username) {
                 switch (this.attackController(this.room.controller)) {
                     case ERR_NOT_IN_RANGE:
                         this.travelTo(this.room.controller, { range: 1 });

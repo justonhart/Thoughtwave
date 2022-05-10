@@ -86,6 +86,8 @@ export class Pathing {
             return ERR_TIRED;
         }
 
+        creep.memory._m.lastMove = Game.time;
+
         if (destination.toMemSafe() !== creep.memory._m.destination) {
             creep.memory._m.repath = 0;
             delete creep.memory._m.path;
@@ -476,8 +478,15 @@ export class Pathing {
             //check if creep is in nextPos
             const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
             if (obstacleCreep?.memory?._m?.destination) {
-                // If obstacle creep is still moving it will move out of the way ==> TODO: techincally need to check "lastMove" in cases the creep is just idling and then add a priorityTask for that creep (right now they will repath around it)
                 if (obstacleCreep.memory._m?.path?.length > 1) {
+                    if (!obstacleCreep.fatigue && obstacleCreep.memory._m?.lastMove < Game.time - 2) {
+                        // idle creep
+                        obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
+                            obstacleCreep.move(parseInt(obstacleCreep.memory._m.path[0], 10) as DirectionConstant);
+                        });
+                        obstacleCreep.memory._m.path = obstacleCreep.memory._m.path.slice(1);
+                        return true;
+                    }
                     return true;
                 }
 
