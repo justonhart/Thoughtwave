@@ -29,7 +29,13 @@ function handleDeadCreep(creepName: string) {
         Memory.rooms[deadCreepMemory.room].remoteAssignments[posFromMem(deadCreepMemory.assignment).roomName].miners[deadCreepMemory.assignment] =
             AssignmentStatus.UNASSIGNED;
     }
-    if (deadCreepMemory.role === Role.GATHERER && Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment]) {
+    if (
+        deadCreepMemory.role === Role.GATHERER &&
+        Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment] &&
+        Object.values(Memory.creeps).filter(
+            (creep) => creep.room === deadCreepMemory.room && creep.role === Role.GATHERER && creep.assignment === deadCreepMemory.assignment
+        ).length === 1
+    ) {
         Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment].gatherer = AssignmentStatus.UNASSIGNED;
     }
     if (deadCreepMemory.role === Role.RESERVER && Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment]) {

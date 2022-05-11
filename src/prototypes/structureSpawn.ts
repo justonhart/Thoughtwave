@@ -50,7 +50,7 @@ StructureSpawn.prototype.smartSpawn = function (this: StructureSpawn, body: Body
     let result = this.spawnCreep(body, name, opts);
 
     if (result !== OK) {
-        console.log(`Unexpected result from smartSpawn in spawn ${this.name}: ${result} - body: ${body} - opts: ${opts}`);
+        console.log(`Unexpected result from smartSpawn in spawn ${this.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
     }
 
     return result;

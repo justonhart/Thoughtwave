@@ -258,7 +258,7 @@ export class Pathing {
         destination = Pathing.normalizePos(destination);
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
         if (options.preferRoadConstruction) {
-            efficiency = 0.5; // Make other tiles cost more to avoid multiple roads
+            efficiency = 0.8; // Make other tiles cost more to avoid multiple roads
         }
         return PathFinder.search(
             origin,

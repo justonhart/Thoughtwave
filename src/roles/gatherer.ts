@@ -16,7 +16,7 @@ export class Gatherer extends TransportCreep {
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
                 this.checkConstructionProgress();
-                this.checkEnergyState();
+                this.checkEnergyStatus();
             }
         }
 
@@ -39,16 +39,16 @@ export class Gatherer extends TransportCreep {
         }
     }
 
-    private checkEnergyState() {
+    private checkEnergyStatus() {
         let looseResources = this.room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
         if (looseResources.length) {
             const amount = looseResources.reduce((total, resource) => total + resource.amount, 0);
-            if (amount > 3000 && !Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer) {
-                Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer = false;
+            if (amount > 3000) {
+                Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].energyStatus = EnergyStatus.SURPLUS;
                 return;
             }
         }
-        delete Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].surplusGatherer;
+        Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].energyStatus = EnergyStatus.STABLE;
     }
 
     protected findTarget() {

@@ -4,7 +4,7 @@ interface RoomMemory {
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: Map<string, AssignmentStatus>;
-    remoteAssignments: Map<string, RemoteAssignment>;
+    remoteAssignments: { [roomName: string]: RemoteAssignment };
     containerPositions?: string[];
     phaseShift?: PhaseShiftStatus;
     phase?: number;
@@ -17,11 +17,11 @@ interface RoomMemory {
 
 interface RemoteAssignment {
     needsConstruction: boolean;
+    energyStatus: EnergyStatus;
     state: RemoteMiningRoomState;
     controllerState: RemoteMiningRoomControllerState;
     reserver: AssignmentStatus;
     gatherer: AssignmentStatus;
-    surplusGatherer: boolean;
     miners: Map<string, AssignmentStatus>;
 }
 

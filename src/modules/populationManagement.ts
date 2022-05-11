@@ -206,7 +206,7 @@ export class PopulationManagement {
     static needsRemoteMiner(room: Room): boolean {
         // TODO: remove this (where does memory get reinitialized?)
         if (!room.memory.remoteAssignments) {
-            room.memory.remoteAssignments = new Map();
+            room.memory.remoteAssignments = {};
         }
 
         const assigmentKeys = Object.keys(room.memory.remoteAssignments);
@@ -252,21 +252,30 @@ export class PopulationManagement {
     }
 
     static needsGatherer(room: Room): boolean {
-        return Object.values(room.memory.remoteAssignments).some(
-            (assignment) => assignment.gatherer === AssignmentStatus.UNASSIGNED || assignment.surplusGatherer === false
+        return Object.entries(room.memory.remoteAssignments).some(
+            ([roomName, assignment]) =>
+                assignment.gatherer === AssignmentStatus.UNASSIGNED ||
+                (assignment.energyStatus === EnergyStatus.SURPLUS &&
+                    Object.values(Memory.creeps).filter(
+                        (creep) => creep.room === room.name && creep.role === Role.GATHERER && creep.assignment === roomName
+                    ).length === 1)
         );
     }
 
     static spawnGatherer(spawn: StructureSpawn): ScreepsReturnCode {
         let assignmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
-        let assignment = assignmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].gatherer === AssignmentStatus.UNASSIGNED);
-        if (!assignment) {
-            var surplusAssigment = assignmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].surplusGatherer === false);
-        }
+        let assignment = assignmentKeys.find(
+            (roomName) =>
+                spawn.room.memory.remoteAssignments[roomName].gatherer === AssignmentStatus.UNASSIGNED ||
+                (spawn.room.memory.remoteAssignments[roomName].energyStatus === EnergyStatus.SURPLUS &&
+                    Object.values(Memory.creeps).filter(
+                        (creep) => creep.room === spawn.room.name && creep.role === Role.GATHERER && creep.assignment === roomName
+                    ).length === 1)
+        );
 
         let options: SpawnOptions = {
             memory: {
-                assignment: assignment ?? surplusAssigment,
+                assignment: assignment,
                 room: spawn.room.name,
                 role: Role.GATHERER,
             },
@@ -276,7 +285,7 @@ export class PopulationManagement {
 
         let maxLevel = 10;
         let PARTS = PopulationManagement.createPartsArray([CARRY, WORK, MOVE, MOVE], spawn.room.energyCapacityAvailable, maxLevel);
-        if (!Memory.rooms[spawn.room.name].remoteAssignments[assignment ?? surplusAssigment].needsConstruction) {
+        if (!Memory.rooms[spawn.room.name].remoteAssignments[assignment].needsConstruction) {
             PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 150, maxLevel);
             PARTS.push(CARRY, WORK, MOVE); // One WORK so creep can repair
         }
@@ -287,11 +296,7 @@ export class PopulationManagement {
         }
 
         if (result === OK) {
-            if (surplusAssigment) {
-                spawn.room.memory.remoteAssignments[surplusAssigment].surplusGatherer = true;
-            } else {
-                spawn.room.memory.remoteAssignments[assignment].gatherer = AssignmentStatus.ASSIGNED;
-            }
+            spawn.room.memory.remoteAssignments[assignment].gatherer = AssignmentStatus.ASSIGNED;
         }
 
         return result;
@@ -322,10 +327,6 @@ export class PopulationManagement {
 
         const PARTS = [CLAIM, MOVE];
         let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, maxSize);
-
-        if (result === ERR_NOT_ENOUGH_ENERGY) {
-            result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, maxSize);
-        }
 
         if (result === OK) {
             spawn.room.memory.remoteAssignments[assigment].reserver = AssignmentStatus.ASSIGNED;

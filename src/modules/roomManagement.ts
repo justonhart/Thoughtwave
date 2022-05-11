@@ -373,7 +373,7 @@ export function executePhaseShift(room: Room) {
 
     //create assignment tracker
     room.memory.miningAssignments = new Map();
-    room.memory.remoteAssignments = new Map();
+    room.memory.remoteAssignments = {};
     room.memory.containerPositions.forEach((position) => {
         room.memory.miningAssignments[position] = AssignmentStatus.UNASSIGNED;
     });
