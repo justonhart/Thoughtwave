@@ -23,8 +23,10 @@ export class Scout extends WaveCreep {
 
         // Go to the target room
         if (this.travelToRoom(nextTarget, { checkForHostilesAtDestination: true }) === IN_ROOM) {
+            const maxRemoteMiningRooms = this.homeroom.controller.level < 7 ? 3 : 6;
             // Set Room memory
             if (
+                Object.keys(this.homeroom.memory.remoteAssignments).length < maxRemoteMiningRooms &&
                 !this.room.controller?.owner?.username &&
                 !this.room.find(FIND_HOSTILE_CREEPS, {
                     filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
@@ -111,6 +113,10 @@ export class Scout extends WaveCreep {
      * @returns
      */
     private getPath(target: RoomPosition): PathFinderPath {
-        return PathFinder.search(posFromMem(this.memory.scout.spawn), { pos: target, range: 1 }, { plainCost: 1, swampCost: 2, maxCost: 70 });
+        return PathFinder.search(
+            posFromMem(this.memory.scout.spawn),
+            { pos: target, range: 1 },
+            { plainCost: 1, swampCost: 2, maxCost: this.homeroom.controller.level < 7 ? 70 : 90 }
+        );
     }
 }
