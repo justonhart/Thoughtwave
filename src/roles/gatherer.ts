@@ -3,7 +3,7 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 // TODO: right now I just copied some of the worker functions over. Find a better way to reuse already existing methods
 export class Gatherer extends TransportCreep {
     public run() {
-        if (Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].state === RemoteMiningRoomState.ENEMY) {
+        if (Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment]?.state === RemoteMiningRoomState.ENEMY) {
             this.travelToRoom(this.memory.room, { range: 20 }); // Travel back to home room
             return;
         }

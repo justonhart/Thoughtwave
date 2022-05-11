@@ -4,7 +4,7 @@ export class RemoteMiner extends WaveCreep {
     public run() {
         let assignedPos = posFromMem(this.memory.assignment);
 
-        if (Memory.rooms[this.memory.room].remoteAssignments[assignedPos.roomName].state === RemoteMiningRoomState.ENEMY) {
+        if (Memory.rooms[this.memory.room].remoteAssignments[assignedPos.roomName]?.state === RemoteMiningRoomState.ENEMY) {
             if (this.memory._m) {
                 this.memory._m.repath = 1; // do not create roads
             }

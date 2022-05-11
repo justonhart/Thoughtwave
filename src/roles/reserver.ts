@@ -2,7 +2,7 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Reserver extends WaveCreep {
     public run() {
-        if (Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].state === RemoteMiningRoomState.ENEMY) {
+        if (Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment]?.state === RemoteMiningRoomState.ENEMY) {
             this.travelToRoom(this.memory.room, { range: 20 }); // Travel back to home room
             return;
         }
