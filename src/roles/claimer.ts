@@ -43,12 +43,10 @@ export class Claimer extends WaveCreep {
                         Memory.empire.colonizationOperations[opIndex].stage = this.room.canSpawn() ? ColonizeStage.COMPLETE : ColonizeStage.BUILD;
                     }
 
-                    let preexistingStructures = this.room
-                        .find(FIND_STRUCTURES)
+                    let preexistingStructures = this.room.find(FIND_STRUCTURES).filter(
                         //@ts-ignore
-                        .filter(
-                            (structure) => ![STRUCTURE_WALL, STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(structure.structureType) && !structure.my
-                        );
+                        (structure) => ![STRUCTURE_WALL, STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(structure.structureType) && !structure.my
+                    );
 
                     preexistingStructures.forEach((struct) => struct.destroy());
 
