@@ -283,9 +283,12 @@ export class PopulationManagement {
 
         let tag = 'g';
 
-        let maxLevel = 10;
+        let maxLevel = 12;
         let PARTS = PopulationManagement.createPartsArray([CARRY, WORK, MOVE, MOVE], spawn.room.energyCapacityAvailable, maxLevel);
         if (!Memory.rooms[spawn.room.name].remoteAssignments[assignment].needsConstruction) {
+            if (Object.keys(Memory.rooms[spawn.room.name].remoteAssignments[assignment].miners).length == 1) {
+                maxLevel = 8; // Rooms with only one source
+            }
             PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 150, maxLevel);
             PARTS.push(CARRY, WORK, MOVE); // One WORK so creep can repair
         }

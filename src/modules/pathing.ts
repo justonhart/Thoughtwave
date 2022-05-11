@@ -302,7 +302,7 @@ export class Pathing {
                     matrix = Pathing.getCreepMatrix(room);
                 }
 
-                if (options.avoidHostiles && roomName === originRoom) {
+                if (options.avoidHostiles) {
                     matrix = matrix.clone();
                     room.find(FIND_HOSTILE_CREEPS, {
                         filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
