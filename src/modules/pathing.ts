@@ -208,6 +208,9 @@ export class Pathing {
     static checkAvoid(roomName: string): boolean {
         if (Memory.empire.hostileRooms) {
             const hostileRoom = Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName);
+            if (Object.values(Memory.rooms).find((room) => room.remoteAssignments[roomName]?.state === RemoteMiningRoomState.ENEMY)) {
+                return true; // avoid homeBases mining rooms with enemies in them
+            }
             if (hostileRoom) {
                 if (hostileRoom.expireAt > Game.time) {
                     return true;
