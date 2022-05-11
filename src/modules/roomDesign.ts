@@ -72,14 +72,27 @@ export function drawBunker(anchorPoint: RoomPosition) {
         [anchorPoint.x - 3, anchorPoint.y],
         [anchorPoint.x, anchorPoint.y - 3],
     ]);
-    roomVis.line(anchorPoint.x, anchorPoint.y - 3, anchorPoint.x, anchorPoint.y - 6);
-    roomVis.line(anchorPoint.x + 3, anchorPoint.y, anchorPoint.x + 6, anchorPoint.y);
-    roomVis.line(anchorPoint.x, anchorPoint.y + 3, anchorPoint.x, anchorPoint.y + 6);
-    roomVis.line(anchorPoint.x - 3, anchorPoint.y, anchorPoint.x - 6, anchorPoint.y);
-    roomVis.line(anchorPoint.x - 2 + 0.5, anchorPoint.y - 2 + 0.5, anchorPoint.x - 4, anchorPoint.y - 4);
-    roomVis.line(anchorPoint.x + 2 - 0.5, anchorPoint.y - 2 + 0.5, anchorPoint.x + 4, anchorPoint.y - 4);
-    roomVis.line(anchorPoint.x + 2 - 0.5, anchorPoint.y + 2 - 0.5, anchorPoint.x + 4, anchorPoint.y + 4);
-    roomVis.line(anchorPoint.x - 2 + 0.5, anchorPoint.y + 2 - 0.5, anchorPoint.x - 4, anchorPoint.y + 4);
+    roomVis.line(anchorPoint.x, anchorPoint.y - 3, anchorPoint.x, anchorPoint.y - 5);
+    roomVis.line(anchorPoint.x, anchorPoint.y - 5, anchorPoint.x - 1, anchorPoint.y - 6);
+    roomVis.line(anchorPoint.x, anchorPoint.y - 5, anchorPoint.x + 1, anchorPoint.y - 6);
+    roomVis.line(anchorPoint.x, anchorPoint.y + 3, anchorPoint.x, anchorPoint.y + 5);
+    roomVis.line(anchorPoint.x, anchorPoint.y + 5, anchorPoint.x - 1, anchorPoint.y + 6);
+    roomVis.line(anchorPoint.x, anchorPoint.y + 5, anchorPoint.x + 1, anchorPoint.y + 6);
+    roomVis.line(anchorPoint.x + 3, anchorPoint.y, anchorPoint.x + 5, anchorPoint.y);
+    roomVis.line(anchorPoint.x + 5, anchorPoint.y, anchorPoint.x + 6, anchorPoint.y - 1);
+    roomVis.line(anchorPoint.x + 5, anchorPoint.y, anchorPoint.x + 6, anchorPoint.y + 1);
+    roomVis.line(anchorPoint.x - 3, anchorPoint.y, anchorPoint.x - 5, anchorPoint.y);
+    roomVis.line(anchorPoint.x - 5, anchorPoint.y, anchorPoint.x - 6, anchorPoint.y - 1);
+    roomVis.line(anchorPoint.x - 5, anchorPoint.y, anchorPoint.x - 6, anchorPoint.y + 1);
+    roomVis.line(anchorPoint.x - 2 + 0.5, anchorPoint.y - 2 + 0.5, anchorPoint.x - 6, anchorPoint.y - 6);
+    roomVis.line(anchorPoint.x + 2 - 0.5, anchorPoint.y - 2 + 0.5, anchorPoint.x + 6, anchorPoint.y - 6);
+    roomVis.line(anchorPoint.x + 2 - 0.5, anchorPoint.y + 2 - 0.5, anchorPoint.x + 6, anchorPoint.y + 6);
+    roomVis.line(anchorPoint.x - 2 + 0.5, anchorPoint.y + 2 - 0.5, anchorPoint.x - 6, anchorPoint.y + 6);
+
+    roomVis.line(anchorPoint.x - 6, anchorPoint.y + 6, anchorPoint.x + 6, anchorPoint.y + 6);
+    roomVis.line(anchorPoint.x + 6, anchorPoint.y - 6, anchorPoint.x - 6, anchorPoint.y - 6);
+    roomVis.line(anchorPoint.x - 6, anchorPoint.y - 6, anchorPoint.x - 6, anchorPoint.y + 6);
+    roomVis.line(anchorPoint.x + 6, anchorPoint.y - 6, anchorPoint.x + 6, anchorPoint.y + 6);
 
     //draw border
     roomVis.rect(anchorPoint.x - 6 - 0.5, anchorPoint.y - 6 - 0.5, 13, 13, { fill: '#00E2FF', opacity: 0.1 });
@@ -187,16 +200,30 @@ export function findPoiAverage(room: Room) {
     return pointOfInterestAverage;
 }
 
-function getRoadsToPOIs(hqPos: RoomPosition) {
-    let room = Game.rooms[hqPos.roomName];
+function getRoadsToPOIs(anchorPos: RoomPosition) {
+    let room = Game.rooms[anchorPos.roomName];
     let pois: (Source | StructureController | Mineral)[] = [];
 
     pois.push(...room.find(FIND_SOURCES));
     pois.push(room.controller);
     pois.push(...room.find(FIND_MINERALS));
 
-    let storagePos = new RoomPosition(hqPos.x + 1, hqPos.y - 1, hqPos.roomName);
+    let storagePos = new RoomPosition(anchorPos.x + 1, anchorPos.y - 1, anchorPos.roomName);
     let roadPositions = [];
+    let blockedPositions = [];
+
+    //prepopulate roadpositions w/ predetermined layout roads
+    let topLeft = new RoomPosition(anchorPos.x - 6, anchorPos.y - 6, room.name);
+    for (let xDif = 0; xDif < 13; xDif++) {
+        for (let yDif = 0; yDif < 13; yDif++) {
+            let lookPos = new RoomPosition(topLeft.x + xDif, topLeft.y + yDif, room.name);
+            if (getStructureForPos(0, lookPos, anchorPos) === STRUCTURE_ROAD) {
+                roadPositions.push(lookPos);
+            } else {
+                blockedPositions.push(lookPos);
+            }
+        }
+    }
 
     let paths = pois.map((poi) => {
         //if destination is a controller, range = 3 instead of 1
@@ -212,6 +239,7 @@ function getRoadsToPOIs(hqPos: RoomPosition) {
                   costCallback: function (roomName, costMatrix) {
                       let matrix = costMatrix.clone();
                       roadPositions.forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 1));
+                      blockedPositions.forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 5));
                       return matrix;
                   },
               })
@@ -223,20 +251,17 @@ function getRoadsToPOIs(hqPos: RoomPosition) {
                   range: 1,
                   costCallback: function (roomName, costMatrix) {
                       let matrix = costMatrix.clone();
-                      roadPositions.forEach((roadPos) => {
-                          matrix.set(roadPos.x, roadPos.y, 1);
-                      });
+                      roadPositions.forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 1));
+                      blockedPositions.forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 5));
                       return matrix;
                   },
               });
 
         //add unique road positions for next cost_matrix
         roadPositions = roadPositions.concat(path.filter((step) => roadPositions.indexOf(step) === -1));
+
         //remove last step from path
         path.pop();
-
-        //remove steps inside the bunker borders
-        path = path.filter((step) => !posInsideBunker(new RoomPosition(step.x, step.y, room.name), hqPos));
 
         return path;
     });
@@ -244,12 +269,12 @@ function getRoadsToPOIs(hqPos: RoomPosition) {
     return paths;
 }
 
-export function drawRoadsToPOIs(room: Room, hqPos?: RoomPosition) {
-    if (!hqPos) {
-        hqPos = posFromMem(room.memory.hqPos);
+export function drawRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
+    if (!anchorPos) {
+        anchorPos = posFromMem(room.memory.hqPos);
     }
 
-    let paths = getRoadsToPOIs(hqPos);
+    let paths = getRoadsToPOIs(anchorPos);
 
     paths.forEach((path) => {
         //@ts-ignore
@@ -257,12 +282,12 @@ export function drawRoadsToPOIs(room: Room, hqPos?: RoomPosition) {
     });
 }
 
-export function placeRoadsToPOIs(room: Room, anchorPoint?: RoomPosition) {
-    if (!anchorPoint) {
-        anchorPoint = posFromMem(room.memory.hqPos);
+export function placeRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
+    if (!anchorPos) {
+        anchorPos = posFromMem(room.memory.hqPos);
     }
 
-    let paths = getRoadsToPOIs(anchorPoint);
+    let paths = getRoadsToPOIs(anchorPos);
 
     paths.forEach((path) => {
         //@ts-ignore
@@ -270,12 +295,12 @@ export function placeRoadsToPOIs(room: Room, anchorPoint?: RoomPosition) {
     });
 }
 
-function posInsideBunker(pos: RoomPosition, anchorPoint?: RoomPosition) {
-    if (!anchorPoint) {
-        anchorPoint = posFromMem(Game.rooms[pos.roomName].memory.hqPos);
+function posInsideBunker(pos: RoomPosition, anchorPos?: RoomPosition) {
+    if (!anchorPos) {
+        anchorPos = posFromMem(Game.rooms[pos.roomName].memory.hqPos);
     }
 
-    return pos.x <= anchorPoint.x + 6 && pos.x >= anchorPoint.x - 6 && pos.y <= anchorPoint.y + 6 && pos.y >= anchorPoint.y - 6;
+    return pos.x <= anchorPos.x + 6 && pos.x >= anchorPos.x - 6 && pos.y <= anchorPos.y + 6 && pos.y >= anchorPos.y - 6;
 }
 
 export function placeBunkerOuterRamparts(room: Room) {
