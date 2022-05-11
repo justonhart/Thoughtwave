@@ -15,6 +15,10 @@ Room.prototype.getRepairTarget = function (this: Room): Id<Structure> {
     return this.memory.repairQueue.shift();
 };
 
+Room.prototype.removeFromRepairQueue = function (this: Room, idToRemove: string): void {
+    this.memory.repairQueue = this.memory.repairQueue.filter((id) => id !== idToRemove);
+};
+
 Object.defineProperty(Room.prototype, 'energyStatus', {
     get: function (this: Room) {
         if (!this.storage || !this.storage.my) {

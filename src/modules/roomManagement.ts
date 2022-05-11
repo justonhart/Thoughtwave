@@ -15,7 +15,7 @@ export function driveRoom(room: Room) {
         room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
     ) {
         if (room.controller.level >= 2) {
-            //placeRoadsToBunker(room);
+            placeRoadsToPOIs(room);
             placeConstructionSites(room);
         }
 
@@ -138,7 +138,7 @@ function runPhaseTwo(room: Room) {
         room.memory.repairSearchCooldown--;
     }
 
-    if (Game.time % 500) {
+    if (Game.time % 500 === 0) {
         room.memory.repairQueue = findRepairTargets(room);
     }
 

@@ -17,6 +17,7 @@ interface RoomMemory {
 }
 
 interface Room {
+    removeFromRepairQueue(id: string): void;
     energyStatus: EnergyStatus;
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;

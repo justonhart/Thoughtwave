@@ -39,13 +39,14 @@ export class Maintainer extends WorkerCreep {
                     : structure.hits <= structure.hitsMax * 0.1)
         );
         if (decayingStructuresAtRisk.length) {
-            this.say('d');
             return this.pos.findClosestByPath(decayingStructuresAtRisk)?.id;
         }
 
-        let repairTarget = this.homeroom.getRepairTarget();
-        if (repairTarget) {
-            return repairTarget;
+        let repairQueue = this.homeroom.memory.repairQueue;
+        if (repairQueue.length) {
+            let closest = this.pos.findClosestByPath(repairQueue.map((id) => Game.getObjectById(id)))?.id;
+            this.homeroom.removeFromRepairQueue(closest);
+            return closest;
         }
 
         let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
