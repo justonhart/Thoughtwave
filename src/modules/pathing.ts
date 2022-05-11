@@ -89,7 +89,6 @@ export class Pathing {
         creep.memory._m.lastMove = Game.time;
 
         if (destination.toMemSafe() !== creep.memory._m.destination) {
-            creep.memory._m.repath = 0;
             delete creep.memory._m.path;
             creep.memory._m.destination = destination.toMemSafe();
         }
