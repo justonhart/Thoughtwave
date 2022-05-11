@@ -2,9 +2,12 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Protector extends WaveCreep {
     public run() {
-        if (this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) == IN_ROOM) {
+        if (this.memory.assignment && this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) == IN_ROOM) {
             if (!this.memory.targetId) {
                 this.memory.targetId = this.findTarget();
+            }
+            if (!this.memory.targetId) {
+                delete this.memory.assignment;
             }
             this.attackCreep();
         }
@@ -38,6 +41,8 @@ export class Protector extends WaveCreep {
                     this.memory.targetId = this.findTarget();
                     break;
             }
+        } else {
+            delete this.memory.targetId;
         }
     }
 }

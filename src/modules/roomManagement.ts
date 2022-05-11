@@ -69,13 +69,14 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
         if (hostileClaimerCreeps.length || hostileStuctures.length) {
             homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY_CLAIMER;
 
-            // TODO: Move this spawn mechanism
+            reassignIdleProtector(homeRoom.name, targetRoom.name);
             if (
                 !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
                 !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name)
                     .length &&
                 homeRoom.canSpawn()
             ) {
+                // TODO: move this spawning mechanism
                 Memory.empire.spawnAssignments.push({
                     designee: homeRoom.name,
                     body: PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 4),
@@ -91,13 +92,14 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
         if (hostileCreeps.length) {
             homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY;
 
-            // TODO: Move this spawn mechanism
+            reassignIdleProtector(homeRoom.name, targetRoom.name);
             if (
                 !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
                 !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name)
                     .length &&
                 homeRoom.canSpawn()
             ) {
+                // TODO: Move this spawn mechanism
                 Memory.empire.spawnAssignments.push({
                     designee: homeRoom.name,
                     body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10),
@@ -113,10 +115,10 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
         if (!hostileClaimerCreeps.length && !hostileStuctures.length && !hostileCreeps.length) {
             homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.SAFE;
         }
-    } else {
+    } else if (hostileCreeps.length >= 2) {
+        reassignIdleProtector(homeRoom.name, homeRoom.name);
         // can be optimized to spawn more protectors if more enemies are in room. In that case, add a "wait" function in the protector to wait for all protectors to spawn before attacking
         if (
-            hostileCreeps.length >= 2 &&
             !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
             !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name)
                 .length &&
@@ -133,6 +135,15 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
                 },
             });
         }
+    }
+}
+
+function reassignIdleProtector(homeRoomName: string, targetRoomName: string) {
+    const idleProtector = Object.values(Memory.creeps).find(
+        (creep) => creep.room === homeRoomName && creep.role === Role.PROTECTOR && !creep.assignment
+    );
+    if (idleProtector) {
+        idleProtector.assignment = targetRoomName;
     }
 }
 
