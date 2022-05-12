@@ -4,6 +4,7 @@ interface RoomMemory {
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: Map<string, AssignmentStatus>;
+    remoteAssignments: { [roomName: string]: RemoteAssignment };
     containerPositions?: string[];
     phaseShift?: PhaseShiftStatus;
     phase?: number;
@@ -11,9 +12,18 @@ interface RoomMemory {
     sourceAccessPointCount: number;
     roadsConstructed?: boolean;
     spawnAssignments: Role[];
-    remoteMining: Map<string, string[]>; // Map<room, sourceIds>
     reservedEnergy?: number;
     layout: RoomLayout;
+}
+
+interface RemoteAssignment {
+    needsConstruction: boolean;
+    energyStatus: EnergyStatus;
+    state: RemoteMiningRoomState;
+    controllerState: RemoteMiningRoomControllerState;
+    reserver: AssignmentStatus;
+    gatherer: AssignmentStatus;
+    miners: Map<string, AssignmentStatus>;
 }
 
 interface Room {
@@ -35,6 +45,29 @@ const enum PhaseShiftStatus {
 const enum AssignmentStatus {
     UNASSIGNED = 'unassigned',
     ASSIGNED = 'assigned',
+}
+
+const enum RemoteMiningRoomState {
+    SAFE,
+    /**
+     * Enemy attack creep in room.
+     */
+    ENEMY,
+    /**
+     * Enemy claimer (player/invader core) in room.
+     */
+    ENEMY_CLAIMER,
+}
+
+const enum RemoteMiningRoomControllerState {
+    /**
+     * Controller reserve above 4500.
+     */
+    STABLE,
+    /**
+     * Controller reserve under 1000.
+     */
+    LOW,
 }
 
 const enum EnergyStatus {

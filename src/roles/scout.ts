@@ -1,20 +1,19 @@
+import { posFromMem } from '../modules/memoryManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
-// TODO: if scout goes into first room and instantly gets killed (for example cause invader) then another will spawn and do the same thing over and over. Add avoidRooms to RoomMemory with gameTick so creeps will avoid it and other scouted rooms until timer is up
-// TODO: right now it wont assign any room with hostileStructures or enemyCreeps (can be improved later to where enemy creeps might not be a deciding factor) ==> could also add this room to avoidRooms globally but might wanna keep check on enemy
 export class Scout extends WaveCreep {
     public run() {
         let nextTarget = this.memory.scout?.path[this.memory.scout.path.length - 1];
         if (!nextTarget) {
             // Set memory
             if (!this.memory.scout) {
-                this.memory.scout = { path: [this.room.name] };
+                this.memory.scout = { path: [this.room.name], spawn: this.pos.toMemSafe() };
+            }
+            if (!Memory.empire.scoutAssignments) {
+                Memory.empire.scoutAssignments = {};
             }
             if (!Memory.empire.scoutAssignments[this.memory.room]) {
                 Memory.empire.scoutAssignments[this.memory.room] = [];
-            }
-            if (!Memory.rooms[this.memory.room].remoteMining) {
-                Memory.rooms[this.memory.room].remoteMining = new Map();
             }
 
             nextTarget = this.findTarget();
@@ -23,16 +22,44 @@ export class Scout extends WaveCreep {
         }
 
         // Go to the target room
-        if (this.travelToRoom(nextTarget) === IN_ROOM) {
+        if (this.travelToRoom(nextTarget, { checkForHostilesAtDestination: true }) === IN_ROOM) {
+            const maxRemoteMiningRooms = this.homeroom.controller.level < 7 ? 3 : 6;
             // Set Room memory
-            if (!this.room.find(FIND_HOSTILE_STRUCTURES).length && !this.room.find(FIND_HOSTILE_CREEPS).length) {
-                if (!Memory.rooms[this.memory.room].remoteMining) {
-                    Memory.rooms[this.memory.room].remoteMining = new Map();
-                }
-                const sourceIds = this.room.find(FIND_SOURCES).map((source) => source.id);
-                if (sourceIds.length) {
-                    Memory.rooms[this.memory.room].remoteMining[nextTarget] = sourceIds;
-                }
+            if (
+                Object.keys(this.homeroom.memory.remoteAssignments).length < maxRemoteMiningRooms &&
+                !this.room.controller?.owner?.username &&
+                !this.room.find(FIND_HOSTILE_CREEPS, {
+                    filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
+                }).length &&
+                !this.room.find(FIND_HOSTILE_STRUCTURES, {
+                    filter: (struct) => struct.structureType === STRUCTURE_KEEPER_LAIR,
+                }).length
+            ) {
+                this.room.find(FIND_SOURCES).forEach((source) => {
+                    const pathFinder = this.getPath(source.pos);
+                    if (
+                        !pathFinder.incomplete &&
+                        !Memory.rooms[this.memory.room].remoteAssignments[this.room.name]?.miners[
+                            pathFinder.path[pathFinder.path.length - 1].toMemSafe()
+                        ]
+                    ) {
+                        // Set Miner/Gatherer/Reserver
+                        if (!Memory.rooms[this.memory.room].remoteAssignments[this.room.name]) {
+                            Memory.rooms[this.memory.room].remoteAssignments[this.room.name] = {
+                                miners: new Map(),
+                                gatherer: AssignmentStatus.UNASSIGNED,
+                                reserver: AssignmentStatus.UNASSIGNED,
+                                needsConstruction: true,
+                                energyStatus: EnergyStatus.STABLE,
+                                state: RemoteMiningRoomState.SAFE,
+                                controllerState: RemoteMiningRoomControllerState.LOW,
+                            };
+                        }
+                        Memory.rooms[this.memory.room].remoteAssignments[this.room.name].miners[
+                            pathFinder.path[pathFinder.path.length - 1].toMemSafe()
+                        ] = AssignmentStatus.UNASSIGNED;
+                    }
+                });
                 nextTarget = this.findTarget();
             } else {
                 nextTarget = this.findTarget(true);
@@ -56,17 +83,17 @@ export class Scout extends WaveCreep {
                     adjacentRoom !== undefined &&
                     !Game.rooms[adjacentRoom] &&
                     ![].concat(...Object.values(Memory.empire.scoutAssignments)).includes(adjacentRoom) &&
-                    this.isInDistance(adjacentRoom)
+                    Game.map.getRoomLinearDistance(this.memory.room, adjacentRoom) < 2
             );
 
             // Add rooms if scout hasn't been there yet
             if (adjacentRooms.length) {
-                Memory.empire.scoutAssignments[this.memory.room].unshift(...adjacentRooms);
+                Memory.empire.scoutAssignments[this.memory.room].push(...adjacentRooms);
             }
         }
 
         // check empire memory against scout travelHistory to see if any rooms are left.
-        let nextRoom: string = Memory.empire.scoutAssignments[this.memory.room].find(
+        const nextRoom: string = Memory.empire.scoutAssignments[this.memory.room].find(
             (roomToScout: string) => !this.memory.scout.path.includes(roomToScout)
         );
 
@@ -82,13 +109,14 @@ export class Scout extends WaveCreep {
 
     /**
      * Calculate path to target from homeBase. Set higher maxCost to let the scout go further from his base ==> costOutsideOfBase = maxCost - 25
+     * Swamp cost is set to 2 since roadCost is higher therefor it will not be as efficient
      * @returns
      */
-    private isInDistance(targetRoom: string): boolean {
-        return !PathFinder.search(
-            new RoomPosition(25, 25, this.memory.room),
-            { pos: new RoomPosition(25, 25, targetRoom), range: 23 },
-            { maxCost: 75 }
-        ).incomplete;
+    private getPath(target: RoomPosition): PathFinderPath {
+        return PathFinder.search(
+            posFromMem(this.memory.scout.spawn),
+            { pos: target, range: 1 },
+            { plainCost: 1, swampCost: 2, maxCost: this.homeroom.controller.level < 7 ? 70 : 90 }
+        );
     }
 }
