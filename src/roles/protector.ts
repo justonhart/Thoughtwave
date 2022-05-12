@@ -29,17 +29,20 @@ export class Protector extends WaveCreep {
     private attackCreep() {
         const target = Game.getObjectById(this.memory.targetId);
         if (target instanceof Creep || target instanceof Structure) {
-            const result = this.getActiveBodyparts(ATTACK) ? this.attack(target) : this.rangedAttack(target);
-
-            switch (result) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { ignoreCreeps: false, reusePath: 0 });
-                    break;
-                case OK:
-                    break;
-                default: // aquire new target
-                    this.memory.targetId = this.findTarget();
-                    break;
+            let result: CreepActionReturnCode;
+            if (this.getActiveBodyparts(ATTACK)) {
+                this.travelTo(target, { ignoreCreeps: false, reusePath: 0 });
+                result = this.attack(target);
+            } else {
+                let shouldFlee = true;
+                if (this.pos.getRangeTo(target) > 3) {
+                    shouldFlee = false;
+                }
+                this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: 3, flee: shouldFlee, exitCost: 10 }); // TODO: avoidExits when fleeing (later it can be changed depending on HEAL and current health to recover)
+                result = this.rangedAttack(target);
+            }
+            if (result !== OK && result !== ERR_NOT_IN_RANGE) {
+                delete this.memory.targetId;
             }
         } else {
             delete this.memory.targetId;

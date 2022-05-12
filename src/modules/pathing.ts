@@ -273,6 +273,8 @@ export class Pathing {
                 plainCost: Math.ceil(2 / efficiency),
                 swampCost: Math.ceil(10 / efficiency),
                 roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options),
+                flee: options.flee,
+                maxRooms: options.maxRooms,
             }
         );
     }
@@ -288,7 +290,7 @@ export class Pathing {
         return (roomName: string) => {
             const room = Game.rooms[roomName];
             Pathing.addHostileRoom(room, destination.roomName, options.checkForHostilesAtDestination);
-            if (options.avoidHostileRooms && Pathing.checkAvoid(roomName) && roomName !== destination.roomName) {
+            if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination.roomName && Pathing.checkAvoid(roomName)) {
                 return false;
             }
 
@@ -317,6 +319,26 @@ export class Pathing {
                             }
                         }
                     });
+                }
+
+                if (options.exitCost) {
+                    matrix = matrix.clone();
+                    for (let x = 0; x < 49; x++) {
+                        if (!Game.map.getRoomTerrain(roomName).get(x, 0)) {
+                            matrix.set(x, 0, options.exitCost);
+                        }
+                        if (Game.map.getRoomTerrain(roomName).get(x, 49)) {
+                            matrix.set(x, 49, options.exitCost);
+                        }
+                    }
+                    for (let y = 0; y < 49; y++) {
+                        if (!Game.map.getRoomTerrain(roomName).get(0, y)) {
+                            matrix.set(0, y, options.exitCost);
+                        }
+                        if (Game.map.getRoomTerrain(roomName).get(49, y)) {
+                            matrix.set(49, y, options.exitCost);
+                        }
+                    }
                 }
 
                 // All tiles will be set to one if there is a road construction so that it counts as a finished road

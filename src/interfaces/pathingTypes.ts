@@ -43,6 +43,10 @@ interface TravelToOpts extends PathFinderOpts {
      * Add hostile Rooms even when it is the creeps intended target. Useful for scouts. By default it is set to "false" to avoid setting remoteMining/homeBase rooms as hostileRooms if there is an enemy creep inside.
      */
     checkForHostilesAtDestination?: boolean;
+    /**
+     * Cost for moving through room exit.
+     */
+    exitCost?: number;
 }
 
 /**

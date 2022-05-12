@@ -283,7 +283,7 @@ export class PopulationManagement {
 
         let tag = 'g';
 
-        let maxLevel = 12;
+        let maxLevel = 15;
         let PARTS = PopulationManagement.createPartsArray([CARRY, WORK, MOVE, MOVE], spawn.room.energyCapacityAvailable, maxLevel);
         if (!Memory.rooms[spawn.room.name].remoteAssignments[assignment].needsConstruction) {
             if (Object.keys(Memory.rooms[spawn.room.name].remoteAssignments[assignment].miners).length == 1) {
