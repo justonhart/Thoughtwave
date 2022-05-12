@@ -71,7 +71,7 @@ export class Pathing {
 
     static move(creep: Creep, destination: RoomPosition, opts: TravelToOpts): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
         if (!creep.memory._m) {
-            creep.memory._m = { stuckCount: 0 };
+            creep.memory._m = { stuckCount: 0, repath: 0 };
         }
 
         if (creep.fatigue > 0) {
@@ -86,7 +86,10 @@ export class Pathing {
             return ERR_TIRED;
         }
 
+        creep.memory._m.lastMove = Game.time;
+
         if (destination.toMemSafe() !== creep.memory._m.destination) {
+            delete creep.memory._m.path;
             creep.memory._m.destination = destination.toMemSafe();
         }
 
@@ -103,8 +106,9 @@ export class Pathing {
 
         const cpuBefore = Game.cpu.getUsed();
         if (creep.memory._m.path && creep.memory._m.stuckCount) {
-            // First try pushing the creep in front closer to their target
+            // First try pushing the creep in front closer to their target (stayOnPath will not recalculate new Path)
             if (!Pathing.pushForward(creep) || creep.memory._m.stuckCount > 1) {
+                creep.memory._m.repath++;
                 opts.pathColor = 'blue';
                 opts.ignoreCreeps = false;
                 delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
@@ -119,8 +123,7 @@ export class Pathing {
             }
         }
 
-        // Recalculate path in each new room as well if the creep should avoid hostiles in each room
-        if (!creep.memory._m.path || (opts.avoidHostiles && Pathing.isExit(creep.pos))) {
+        if (!creep.memory._m.path) {
             //console.log(`${creep.name} in ${creep.pos.toMemSafe} is looking for new path.`);
             let pathFinder = Pathing.findTravelPath(creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), opts);
             if (pathFinder.incomplete) {
@@ -164,6 +167,9 @@ export class Pathing {
             );
         }
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
+        if (opts.avoidHostiles && Pathing.isExit(creep.pos)) {
+            delete creep.memory._m.path; // Recalculate path in each new room as well if the creep should avoid hostiles in each room
+        }
         return creep.move(nextDirection);
     }
 
@@ -202,6 +208,9 @@ export class Pathing {
     static checkAvoid(roomName: string): boolean {
         if (Memory.empire.hostileRooms) {
             const hostileRoom = Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName);
+            if (Object.values(Memory.rooms).find((room) => room.remoteAssignments[roomName]?.state === RemoteMiningRoomState.ENEMY)) {
+                return true; // avoid homeBases mining rooms with enemies in them
+            }
             if (hostileRoom) {
                 if (hostileRoom.expireAt > Game.time) {
                     return true;
@@ -222,7 +231,7 @@ export class Pathing {
     }
 
     // add hostile rooms
-    static addHostileRoom(room: Room, destinationRoom: string): void {
+    static addHostileRoom(room: Room, destinationRoom: string, ignoreDestination?: boolean): void {
         if (!room) {
             return;
         }
@@ -231,7 +240,7 @@ export class Pathing {
         }
         // Find hostileRooms
         if (
-            room.name !== destinationRoom &&
+            (ignoreDestination || room.name !== destinationRoom) &&
             !Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === room.name) &&
             room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_TOWER })?.length
         ) {
@@ -250,6 +259,9 @@ export class Pathing {
         origin = Pathing.normalizePos(origin);
         destination = Pathing.normalizePos(destination);
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
+        if (options.preferRoadConstruction) {
+            efficiency = 0.8; // Make other tiles cost more to avoid multiple roads
+        }
         return PathFinder.search(
             origin,
             {
@@ -258,9 +270,11 @@ export class Pathing {
             },
             {
                 maxOps: options.maxOps,
-                plainCost: efficiency >= 2 ? 1 : 2,
-                swampCost: efficiency >= 2 ? Math.ceil(10 / efficiency) : 10,
+                plainCost: Math.ceil(2 / efficiency),
+                swampCost: Math.ceil(10 / efficiency),
                 roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options),
+                flee: options.flee,
+                maxRooms: options.maxRooms,
             }
         );
     }
@@ -275,8 +289,8 @@ export class Pathing {
     static getRoomCallback(originRoom: string, destination: RoomPosition, options: TravelToOpts) {
         return (roomName: string) => {
             const room = Game.rooms[roomName];
-            Pathing.addHostileRoom(room, destination.roomName);
-            if (options.avoidHostileRooms && Pathing.checkAvoid(roomName) && roomName !== destination.roomName) {
+            Pathing.addHostileRoom(room, destination.roomName, options.checkForHostilesAtDestination);
+            if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination.roomName && Pathing.checkAvoid(roomName)) {
                 return false;
             }
 
@@ -293,7 +307,7 @@ export class Pathing {
                     matrix = Pathing.getCreepMatrix(room);
                 }
 
-                if (options.avoidHostiles && roomName === originRoom) {
+                if (options.avoidHostiles) {
                     matrix = matrix.clone();
                     room.find(FIND_HOSTILE_CREEPS, {
                         filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
@@ -305,6 +319,34 @@ export class Pathing {
                             }
                         }
                     });
+                }
+
+                if (options.exitCost) {
+                    matrix = matrix.clone();
+                    for (let x = 0; x < 49; x++) {
+                        if (!Game.map.getRoomTerrain(roomName).get(x, 0)) {
+                            matrix.set(x, 0, options.exitCost);
+                        }
+                        if (Game.map.getRoomTerrain(roomName).get(x, 49)) {
+                            matrix.set(x, 49, options.exitCost);
+                        }
+                    }
+                    for (let y = 0; y < 49; y++) {
+                        if (!Game.map.getRoomTerrain(roomName).get(0, y)) {
+                            matrix.set(0, y, options.exitCost);
+                        }
+                        if (Game.map.getRoomTerrain(roomName).get(49, y)) {
+                            matrix.set(49, y, options.exitCost);
+                        }
+                    }
+                }
+
+                // All tiles will be set to one if there is a road construction so that it counts as a finished road
+                if (options.preferRoadConstruction) {
+                    matrix = matrix.clone();
+                    room.find(FIND_MY_CONSTRUCTION_SITES, { filter: (struct) => struct.structureType === STRUCTURE_ROAD }).forEach((struct) =>
+                        matrix.set(struct.pos.x, struct.pos.y, 1)
+                    );
                 }
             }
 
@@ -334,7 +376,7 @@ export class Pathing {
      * @returns new costmatrix
      */
     static getStructureMatrix(room: Room, options: TravelToOpts): CostMatrix {
-        const roadcost = 1; // Could be configurable later to avoid roads
+        let roadcost = 1; // Could be configurable later to avoid roads
         if (!Pathing.structureMatrixTick) {
             Pathing.structureMatrixTick = {};
         }
@@ -376,11 +418,11 @@ export class Pathing {
      * @returns changed costmatrix
      */
     static addStructuresToMatrix(room: Room, matrix: CostMatrix, roadCost: number): CostMatrix {
-        let impassibleStructures = [];
         for (let structure of room.find(FIND_STRUCTURES)) {
             if (structure.structureType === STRUCTURE_RAMPART) {
-                if (!structure.my && !structure.isPublic) {
-                    impassibleStructures.push(structure);
+                if (!structure.my) {
+                    // Even if isPublic to avoid maze trap
+                    matrix.set(structure.pos.x, structure.pos.y, 0xff);
                 }
             } else if (structure.structureType === STRUCTURE_ROAD) {
                 if (matrix.get(structure.pos.x, structure.pos.y) < 0xff) {
@@ -462,8 +504,15 @@ export class Pathing {
             //check if creep is in nextPos
             const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
             if (obstacleCreep?.memory?._m?.destination) {
-                // If obstacle creep is still moving it will move out of the way
                 if (obstacleCreep.memory._m?.path?.length > 1) {
+                    if (!obstacleCreep.fatigue && obstacleCreep.memory._m?.lastMove < Game.time - 2) {
+                        // idle creep
+                        obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
+                            obstacleCreep.move(parseInt(obstacleCreep.memory._m.path[0], 10) as DirectionConstant);
+                        });
+                        obstacleCreep.memory._m.path = obstacleCreep.memory._m.path.slice(1);
+                        return true;
+                    }
                     return true;
                 }
 

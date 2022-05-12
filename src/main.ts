@@ -8,6 +8,12 @@ require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
     try {
+        manageMemory();
+    } catch (e) {
+        console.log(`Error caught in memory management: \n${e}`);
+    }
+
+    try {
         manageFlags();
     } catch (e) {
         console.log(`Error caught in flag management: \n${e}`);
@@ -43,12 +49,6 @@ module.exports.loop = function () {
     WaveCreep.getCreepsWithPriorityTask().forEach((creepName) => {
         Game.creeps[creepName].runPriorityQueueTask();
     });
-
-    try {
-        manageMemory();
-    } catch (e) {
-        console.log(`Error caught in memory management: \n${e}`);
-    }
 
     if (Game.cpu.bucket === 10000) {
         Game.cpu.generatePixel();

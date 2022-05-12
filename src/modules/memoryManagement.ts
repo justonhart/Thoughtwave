@@ -22,6 +22,25 @@ function handleDeadCreep(creepName: string) {
     if (deadCreepMemory.role === Role.MINER) {
         Memory.rooms[deadCreepMemory.room].miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
     }
+    if (
+        deadCreepMemory.role === Role.REMOTE_MINER &&
+        Memory.rooms[deadCreepMemory.room].remoteAssignments[posFromMem(deadCreepMemory.assignment).roomName]
+    ) {
+        Memory.rooms[deadCreepMemory.room].remoteAssignments[posFromMem(deadCreepMemory.assignment).roomName].miners[deadCreepMemory.assignment] =
+            AssignmentStatus.UNASSIGNED;
+    }
+    if (
+        deadCreepMemory.role === Role.GATHERER &&
+        Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment] &&
+        Object.values(Memory.creeps).filter(
+            (creep) => creep.room === deadCreepMemory.room && creep.role === Role.GATHERER && creep.assignment === deadCreepMemory.assignment
+        ).length === 1
+    ) {
+        Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment].gatherer = AssignmentStatus.UNASSIGNED;
+    }
+    if (deadCreepMemory.role === Role.RESERVER && Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment]) {
+        Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;
+    }
 
     delete Memory.creeps[creepName];
 }

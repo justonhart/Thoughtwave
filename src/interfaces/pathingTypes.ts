@@ -35,6 +35,18 @@ interface TravelToOpts extends PathFinderOpts {
      * Change color of the serialized Path. Default is orange.
      */
     pathColor?: string;
+    /**
+     * Prefer roads and roadConstruction. This is useful for any creep that builds construction and wants to avoid multiple roads close to each other.
+     */
+    preferRoadConstruction?: boolean;
+    /**
+     * Add hostile Rooms even when it is the creeps intended target. Useful for scouts. By default it is set to "false" to avoid setting remoteMining/homeBase rooms as hostileRooms if there is an enemy creep inside.
+     */
+    checkForHostilesAtDestination?: boolean;
+    /**
+     * Cost for moving through room exit.
+     */
+    exitCost?: number;
 }
 
 /**
@@ -45,6 +57,8 @@ interface TravelState {
     destination?: string;
     path?: string;
     stuckCount?: number;
+    repath?: number;
+    lastMove?: number;
 }
 
 interface Destination {

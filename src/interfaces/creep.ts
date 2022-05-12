@@ -1,7 +1,7 @@
 interface CreepMemory {
     destination?: string;
     assignment?: string;
-    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep>;
+    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone>;
     miningPos?: string;
     gathering?: boolean;
     room?: string;
@@ -28,6 +28,7 @@ interface PriorityQueue {
 
 interface ScoutMemory {
     path?: string[]; // Used for Pathfinding
+    spawn?: string; // Spawn Position
 }
 
 const enum Priority {
@@ -41,6 +42,8 @@ const enum Role {
     UPGRADER = 'Upgrader',
     MAINTAINTER = 'MAINTAINTER',
     DISTRIBUTOR = 'DISTRIBUTOR',
+    REMOTE_MINER = 'REMOTE_MINER',
+    GATHERER = 'GATHERER',
     TRANSPORTER = 'TRANSPORTER',
     MINER = 'MINER',
     CLAIMER = 'CLAIMER',
@@ -48,4 +51,5 @@ const enum Role {
     BUILDER = 'BUILDER',
     SCOUT = 'SCOUT',
     PROTECTOR = 'PROTECTOR',
+    RESERVER = 'RESERVER',
 }

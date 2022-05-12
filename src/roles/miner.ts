@@ -5,6 +5,7 @@ export class Miner extends WaveCreep {
     public run() {
         let assignedPos = posFromMem(this.memory.assignment);
         if (this.pos.isEqualTo(assignedPos)) {
+            this.memory.currentTaskPriority = Priority.HIGH;
             this.harvest(
                 this.pos
                     .findInRange(FIND_SOURCES, 1)
