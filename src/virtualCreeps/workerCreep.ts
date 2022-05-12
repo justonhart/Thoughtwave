@@ -157,4 +157,24 @@ export class WorkerCreep extends WaveCreep {
     protected getDefenseHitpointTarget() {
         return this.room.controller.level * 50000;
     }
+
+    protected findConstructionSite(): Id<ConstructionSite> {
+        let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
+        if (constructionSites.length) {
+            //@ts-expect-error
+            let containsPrioritySites = constructionSites.some((site) => ![STRUCTURE_ROAD, STRUCTURE_RAMPART].includes(site.structureType));
+
+            if (containsPrioritySites) {
+                //@ts-expect-error
+                constructionSites = constructionSites.filter((site) => ![STRUCTURE_ROAD, STRUCTURE_RAMPART].includes(site.structureType));
+            }
+
+            //return the most-progressed construction site, proportionally
+            return constructionSites.reduce((mostProgressedSite, siteToCheck) =>
+                mostProgressedSite.progress / mostProgressedSite.progressTotal > siteToCheck.progress / siteToCheck.progressTotal
+                    ? mostProgressedSite
+                    : siteToCheck
+            ).id;
+        }
+    }
 }

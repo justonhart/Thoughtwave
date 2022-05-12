@@ -46,15 +46,9 @@ export class EarlyMaintainer extends EarlyCreep {
             return this.pos.findClosestByPath(mostDamagedStructures, { range: 3, ignoreCreeps: true }).id;
         }
 
-        let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
-
-        if (constructionSites.length) {
-            //return the most-progressed construction site, proportionally
-            return constructionSites.reduce((mostProgressedSite, thisSite) =>
-                mostProgressedSite.progress / mostProgressedSite.progressTotal > thisSite.progress / thisSite.progressTotal
-                    ? mostProgressedSite
-                    : thisSite
-            ).id;
+        let constructionSite = this.findConstructionSite();
+        if (constructionSite) {
+            return constructionSite;
         }
 
         let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
