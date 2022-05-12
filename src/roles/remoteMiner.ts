@@ -5,7 +5,7 @@ export class RemoteMiner extends WaveCreep {
         let assignedPos = posFromMem(this.memory.assignment);
 
         if (Memory.rooms[this.memory.room].remoteAssignments[assignedPos.roomName]?.state === RemoteMiningRoomState.ENEMY) {
-            this.travelToRoom(this.memory.room, { range: 20 }); // Travel back to home room
+            this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             if (this.memory._m) {
                 this.memory._m.repath = 1; // do not create roads
             }

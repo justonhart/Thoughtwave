@@ -4,7 +4,7 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 export class Gatherer extends TransportCreep {
     public run() {
         if (Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment]?.state === RemoteMiningRoomState.ENEMY) {
-            this.travelToRoom(this.memory.room, { range: 20 }); // Travel back to home room
+            this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
         }
 
