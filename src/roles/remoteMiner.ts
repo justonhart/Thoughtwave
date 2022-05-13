@@ -1,4 +1,5 @@
 import { posFromMem } from '../modules/memoryManagement';
+import { posInsideBunker } from '../modules/roomDesign';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class RemoteMiner extends WaveCreep {
     public run() {
@@ -41,6 +42,7 @@ export class RemoteMiner extends WaveCreep {
             // Create roads to the source if not already present and the remote miner did not have to repath
             if (
                 !this.memory._m?.repath &&
+                (this.room !== this.homeroom || !posInsideBunker(this.pos)) &&
                 !this.pos
                     .look()
                     .filter(

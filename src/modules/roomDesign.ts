@@ -295,7 +295,7 @@ export function placeRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
     });
 }
 
-function posInsideBunker(pos: RoomPosition, anchorPos?: RoomPosition) {
+export function posInsideBunker(pos: RoomPosition, anchorPos?: RoomPosition) {
     if (!anchorPos) {
         anchorPos = posFromMem(Game.rooms[pos.roomName].memory.hqPos);
     }
