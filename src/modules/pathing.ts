@@ -125,7 +125,7 @@ export class Pathing {
 
         if (!creep.memory._m.path) {
             //console.log(`${creep.name} in ${creep.pos.toMemSafe} is looking for new path.`);
-            let pathFinder = Pathing.findTravelPath(creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), opts);
+            let pathFinder = Pathing.findTravelPath(creep.name, creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), opts);
             if (pathFinder.incomplete) {
                 // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
                 new RoomVisual(creep.pos.roomName).circle(creep.pos, {
@@ -137,7 +137,7 @@ export class Pathing {
                 });
                 if (!pathFinder.path) {
                     // Not even a partial path was found (for example close to the target but blocked by creeps)
-                    pathFinder = Pathing.findTravelPath(creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), {
+                    pathFinder = Pathing.findTravelPath(creep.name, creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), {
                         ...Pathing.defaultOpts,
                         range: opts.range,
                     }); // Try to find path with default options (for example creeps could be blocking the target so this should at least find a path closer to the target)
@@ -167,7 +167,13 @@ export class Pathing {
             );
         }
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
-        if (opts.avoidHostiles && Pathing.isExit(posFromMem(creep.memory._m.lastCoord)) && Pathing.isExit(creep.pos)) {
+        if (
+            opts.avoidHostiles &&
+            creep.memory._m.lastCoord &&
+            Pathing.isExit(posFromMem(creep.memory._m.lastCoord)) &&
+            Pathing.isExit(creep.pos) &&
+            !creep.memory._m.visibleRooms.includes(creep.pos.roomName)
+        ) {
             delete creep.memory._m.path; // Recalculate path in each new room as well if the creep should avoid hostiles in each room
         }
         return creep.move(nextDirection);
@@ -255,7 +261,13 @@ export class Pathing {
      * @param options -
      * @returns -
      */
-    static findTravelPath(origin: HasPos | RoomPosition, destination: RoomPosition, efficiency: number, options: TravelToOpts = {}) {
+    static findTravelPath(
+        creepName: string,
+        origin: HasPos | RoomPosition,
+        destination: RoomPosition,
+        efficiency: number,
+        options: TravelToOpts = {}
+    ) {
         origin = Pathing.normalizePos(origin);
         destination = Pathing.normalizePos(destination);
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
@@ -272,7 +284,7 @@ export class Pathing {
                 maxOps: options.maxOps,
                 plainCost: Math.ceil(2 / efficiency),
                 swampCost: Math.ceil(10 / efficiency),
-                roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options),
+                roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options, creepName),
                 flee: options.flee,
                 maxRooms: options.maxRooms,
             }
@@ -286,7 +298,7 @@ export class Pathing {
      * @param options -
      * @returns -
      */
-    static getRoomCallback(originRoom: string, destination: RoomPosition, options: TravelToOpts) {
+    static getRoomCallback(originRoom: string, destination: RoomPosition, options: TravelToOpts, creepName: string) {
         return (roomName: string) => {
             const room = Game.rooms[roomName];
             Pathing.addHostileRoom(room, destination.roomName, options.checkForHostilesAtDestination);
@@ -296,6 +308,10 @@ export class Pathing {
 
             let matrix: CostMatrix;
             if (room) {
+                if (!Memory.creeps[creepName]._m.visibleRooms) {
+                    Memory.creeps[creepName]._m.visibleRooms = [];
+                }
+                Memory.creeps[creepName]._m.visibleRooms.push(room.name);
                 if (options.ignoreStructures) {
                     matrix = new PathFinder.CostMatrix();
                     if (!options.ignoreCreeps) {
@@ -527,6 +543,7 @@ export class Pathing {
 
                 // Find Path closer to target
                 const obstaclePathFinder = Pathing.findTravelPath(
+                    obstacleCreep.name,
                     obstacleCreep.pos,
                     obstacleCreepDestination,
                     Pathing.getCreepMoveEfficiency(obstacleCreep),
