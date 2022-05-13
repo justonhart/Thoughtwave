@@ -59,6 +59,7 @@ interface TravelState {
     stuckCount?: number;
     repath?: number;
     lastMove?: number;
+    visibleRooms?: string[];
 }
 
 interface Destination {
