@@ -300,7 +300,7 @@ export function posInsideBunker(pos: RoomPosition, anchorPos?: RoomPosition) {
         anchorPos = posFromMem(Game.rooms[pos.roomName].memory.hqPos);
     }
 
-    return pos.x <= anchorPos.x + 6 && pos.x >= anchorPos.x - 6 && pos.y <= anchorPos.y + 6 && pos.y >= anchorPos.y - 6;
+    return !!anchorPos ? pos.x <= anchorPos.x + 6 && pos.x >= anchorPos.x - 6 && pos.y <= anchorPos.y + 6 && pos.y >= anchorPos.y - 6 : false;
 }
 
 export function placeBunkerOuterRamparts(room: Room) {
