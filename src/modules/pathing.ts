@@ -167,7 +167,7 @@ export class Pathing {
             );
         }
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
-        if (opts.avoidHostiles && Pathing.isExit(creep.pos)) {
+        if (opts.avoidHostiles && Pathing.isExit(posFromMem(creep.memory._m.lastCoord)) && Pathing.isExit(creep.pos)) {
             delete creep.memory._m.path; // Recalculate path in each new room as well if the creep should avoid hostiles in each room
         }
         return creep.move(nextDirection);
