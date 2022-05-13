@@ -31,7 +31,7 @@ export class Protector extends WaveCreep {
         if (target instanceof Creep || target instanceof Structure) {
             let result: CreepActionReturnCode;
             if (this.getActiveBodyparts(ATTACK)) {
-                this.travelTo(target, { ignoreCreeps: false, reusePath: 0 });
+                this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: 1 });
                 result = this.attack(target);
             } else {
                 let shouldFlee = true;

@@ -311,7 +311,9 @@ export class Pathing {
                 if (!Memory.creeps[creepName]._m.visibleRooms) {
                     Memory.creeps[creepName]._m.visibleRooms = [];
                 }
-                Memory.creeps[creepName]._m.visibleRooms.push(room.name);
+                if (!Memory.creeps[creepName]._m.visibleRooms.includes(room.name)) {
+                    Memory.creeps[creepName]._m.visibleRooms.push(room.name);
+                }
                 if (options.ignoreStructures) {
                     matrix = new PathFinder.CostMatrix();
                     if (!options.ignoreCreeps) {
