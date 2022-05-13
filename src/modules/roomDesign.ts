@@ -180,8 +180,8 @@ export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, 
 export function getSpawnPos(room: Room) {
     switch (room.memory.layout) {
         case RoomLayout.BUNKER:
-            let hqPos = posFromMem(room.memory.hqPos);
-            return new RoomPosition(hqPos.x, hqPos.y - 1, room.name);
+            let anchorPoint = posFromMem(room.memory.anchorPoint);
+            return new RoomPosition(anchorPoint.x, anchorPoint.y - 1, room.name);
     }
 }
 
@@ -271,7 +271,7 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
 
 export function drawRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
     if (!anchorPos) {
-        anchorPos = posFromMem(room.memory.hqPos);
+        anchorPos = posFromMem(room.memory.anchorPoint);
     }
 
     let paths = getBunkerRoadsToPOIs(anchorPos);
@@ -284,7 +284,7 @@ export function drawRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
 
 export function placeRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
     if (!anchorPos) {
-        anchorPos = posFromMem(room.memory.hqPos);
+        anchorPos = posFromMem(room.memory.anchorPoint);
     }
 
     let paths = getBunkerRoadsToPOIs(anchorPos);
@@ -297,14 +297,14 @@ export function placeRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
 
 export function posInsideBunker(pos: RoomPosition, anchorPos?: RoomPosition) {
     if (!anchorPos) {
-        anchorPos = posFromMem(Game.rooms[pos.roomName].memory.hqPos);
+        anchorPos = posFromMem(Game.rooms[pos.roomName].memory.anchorPoint);
     }
 
     return !!anchorPos ? pos.x <= anchorPos.x + 6 && pos.x >= anchorPos.x - 6 && pos.y <= anchorPos.y + 6 && pos.y >= anchorPos.y - 6 : false;
 }
 
 export function placeBunkerOuterRamparts(room: Room) {
-    let anchor = posFromMem(room.memory.hqPos);
+    let anchor = posFromMem(room.memory.anchorPoint);
 
     let topLeft = new RoomPosition(anchor.x - 6, anchor.y - 6, room.name);
     for (let xDif = 0; xDif < 13; xDif++) {

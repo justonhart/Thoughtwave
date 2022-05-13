@@ -178,12 +178,12 @@ function initRoom(room: Room) {
     room.memory.gates = [];
 
     //calculate room layout here
-    let hqPos = findBunkerLocation(room);
+    let anchorPoint = findBunkerLocation(room);
 
-    if (hqPos) {
+    if (anchorPoint) {
         room.memory.layout = RoomLayout.BUNKER;
-        room.memory.hqPos = hqPos.toMemSafe();
-        room.createConstructionSite(hqPos.x, hqPos.y - 1, STRUCTURE_SPAWN);
+        room.memory.anchorPoint = anchorPoint.toMemSafe();
+        room.createConstructionSite(anchorPoint.x, anchorPoint.y - 1, STRUCTURE_SPAWN);
     }
 }
 
@@ -465,7 +465,7 @@ function runGates(room: Room): void {
 }
 
 export function placeConstructionSites(room: Room) {
-    let referencePos = posFromMem(room.memory.hqPos);
+    let referencePos = posFromMem(room.memory.anchorPoint);
 
     let placed = 0;
     for (let lookDistance = 1; lookDistance < 7 && placed < 5; lookDistance++) {
@@ -518,11 +518,11 @@ export function roomNeedsCoreStructures(room: Room) {
     let factory = roomStructures.filter((structure) => structure.structureType === STRUCTURE_FACTORY).length;
     let labCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_LAB).length;
     let towerCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER).length;
-    let linkAdjacentToHqPos =
-        posFromMem(room.memory.hqPos)
+    let managerLink =
+        posFromMem(room.memory.anchorPoint)
             .findInRange(FIND_MY_STRUCTURES, 1)
             .filter((s) => s.structureType === STRUCTURE_LINK).length +
-            posFromMem(room.memory.hqPos)
+            posFromMem(room.memory.anchorPoint)
                 .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
                 .filter((s) => s.structureType === STRUCTURE_LINK).length >=
         1;
@@ -539,19 +539,12 @@ export function roomNeedsCoreStructures(room: Room) {
         case 4:
             return spawnCount < 1 || extensionCount < 20 || towerCount < 1 || storage < 1;
         case 5:
-            return spawnCount < 1 || extensionCount < 30 || towerCount < 2 || storage < 1 || !linkAdjacentToHqPos;
+            return spawnCount < 1 || extensionCount < 30 || towerCount < 2 || storage < 1 || !managerLink;
         case 6:
-            return spawnCount < 1 || extensionCount < 40 || towerCount < 2 || storage < 1 || !linkAdjacentToHqPos || labCount < 3 || terminal < 1;
+            return spawnCount < 1 || extensionCount < 40 || towerCount < 2 || storage < 1 || !managerLink || labCount < 3 || terminal < 1;
         case 7:
             return (
-                spawnCount < 2 ||
-                extensionCount < 50 ||
-                towerCount < 3 ||
-                storage < 1 ||
-                !linkAdjacentToHqPos ||
-                labCount < 6 ||
-                terminal < 1 ||
-                factory < 1
+                spawnCount < 2 || extensionCount < 50 || towerCount < 3 || storage < 1 || !managerLink || labCount < 6 || terminal < 1 || factory < 1
             );
         case 8:
             return (
@@ -559,7 +552,7 @@ export function roomNeedsCoreStructures(room: Room) {
                 extensionCount < 60 ||
                 towerCount < 6 ||
                 storage < 1 ||
-                !linkAdjacentToHqPos ||
+                !managerLink ||
                 labCount < 10 ||
                 terminal < 1 ||
                 factory < 1 ||

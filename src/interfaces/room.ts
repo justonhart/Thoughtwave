@@ -1,5 +1,5 @@
 interface RoomMemory {
-    hqPos: string;
+    anchorPoint: string;
     gates: Gate[];
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
