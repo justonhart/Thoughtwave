@@ -18,38 +18,38 @@ export function calculateRoomSpace(room: Room) {
 
 export function findBunkerLocation(room: Room): RoomPosition {
     let poiAvg = findPoiAverage(room);
-    let starCenter = new RoomPosition(poiAvg.x - 1, poiAvg.y + 1, room.name);
+    let anchorPoint = new RoomPosition(poiAvg.x - 1, poiAvg.y + 1, room.name);
 
-    let valid = checkBunkerBoundary(starCenter);
+    let valid = checkBunkerBoundary(anchorPoint);
 
     if (!valid) {
         for (let lookDistance = 1; lookDistance < 50; lookDistance++) {
             let lookPos: RoomPosition;
             let x: number, y: number;
 
-            for (y = starCenter.y - lookDistance; y <= starCenter.y + lookDistance && !valid; y++) {
-                for (x = starCenter.x - lookDistance; x <= starCenter.x + lookDistance && !valid; x++) {
-                    if (y > starCenter.y - lookDistance && y < starCenter.y + lookDistance && x > starCenter.x - lookDistance) {
-                        x = starCenter.x + lookDistance;
+            for (y = anchorPoint.y - lookDistance; y <= anchorPoint.y + lookDistance && !valid; y++) {
+                for (x = anchorPoint.x - lookDistance; x <= anchorPoint.x + lookDistance && !valid; x++) {
+                    if (y > anchorPoint.y - lookDistance && y < anchorPoint.y + lookDistance && x > anchorPoint.x - lookDistance) {
+                        x = anchorPoint.x + lookDistance;
                     }
 
                     // since the square is 13 wide, the center must be at least 7 tiles away from edges (cant build on x/y = 0/49 or in front of exits)
                     if (x > 8 && x < 42 && y > 8 && y < 42) {
-                        lookPos = new RoomPosition(x, y, starCenter.roomName);
+                        lookPos = new RoomPosition(x, y, anchorPoint.roomName);
 
                         valid = checkBunkerBoundary(lookPos);
                     }
                     if (valid) {
-                        starCenter = lookPos;
-                        drawBunker(starCenter);
-                        drawRoadsToPOIs(room, starCenter);
+                        anchorPoint = lookPos;
+                        drawBunker(anchorPoint);
+                        drawRoadsToPOIs(room, anchorPoint);
                     }
                 }
             }
         }
     }
 
-    return valid ? starCenter : undefined;
+    return valid ? anchorPoint : undefined;
 }
 
 function checkBunkerBoundary(anchorPoint: RoomPosition) {
@@ -200,7 +200,7 @@ export function findPoiAverage(room: Room) {
     return pointOfInterestAverage;
 }
 
-function getRoadsToPOIs(anchorPos: RoomPosition) {
+function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
     let room = Game.rooms[anchorPos.roomName];
     let pois: (Source | StructureController | Mineral)[] = [];
 
@@ -217,7 +217,7 @@ function getRoadsToPOIs(anchorPos: RoomPosition) {
     for (let xDif = 0; xDif < 13; xDif++) {
         for (let yDif = 0; yDif < 13; yDif++) {
             let lookPos = new RoomPosition(topLeft.x + xDif, topLeft.y + yDif, room.name);
-            if (getStructureForPos(0, lookPos, anchorPos) === STRUCTURE_ROAD) {
+            if (getStructureForPos(RoomLayout.BUNKER, lookPos, anchorPos) === STRUCTURE_ROAD) {
                 roadPositions.push(lookPos);
             } else {
                 blockedPositions.push(lookPos);
@@ -274,7 +274,7 @@ export function drawRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
         anchorPos = posFromMem(room.memory.hqPos);
     }
 
-    let paths = getRoadsToPOIs(anchorPos);
+    let paths = getBunkerRoadsToPOIs(anchorPos);
 
     paths.forEach((path) => {
         //@ts-ignore
@@ -287,7 +287,7 @@ export function placeRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
         anchorPos = posFromMem(room.memory.hqPos);
     }
 
-    let paths = getRoadsToPOIs(anchorPos);
+    let paths = getBunkerRoadsToPOIs(anchorPos);
 
     paths.forEach((path) => {
         //@ts-ignore
