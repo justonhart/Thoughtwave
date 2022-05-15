@@ -490,9 +490,10 @@ export function placeConstructionSites(room: Room) {
                     let adjacentStructures =
                         buildPosition
                             .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
-                            .filter((s) => s.structureType !== STRUCTURE_ROAD)
+                            .filter((s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_RAMPART)
                             //@ts-expect-error
-                            .concat(buildPosition.findInRange(FIND_MY_STRUCTURES, 1)).length > 0;
+                            .concat(buildPosition.findInRange(FIND_MY_STRUCTURES, 1))
+                            .filter((structure) => structure.structureType !== STRUCTURE_RAMPART).length > 0;
                     if (adjacentStructures) {
                         let addResult = room.createConstructionSite(buildPosition, structureType);
                         if (addResult == OK) {
