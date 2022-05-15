@@ -20,6 +20,10 @@ export class Protector extends WaveCreep {
 
             return healers.length ? this.pos.findClosestByRange(healers).id : this.pos.findClosestByRange(hostileCreeps).id;
         }
+        const hostileRamparts = this.room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_RAMPART });
+        if (hostileRamparts.length) {
+            return hostileRamparts[0].id;
+        }
         const hostileStructures = this.room.find(FIND_HOSTILE_STRUCTURES);
         if (hostileStructures.length) {
             return hostileStructures[0].id;
