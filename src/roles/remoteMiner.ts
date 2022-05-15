@@ -15,7 +15,12 @@ export class RemoteMiner extends WaveCreep {
 
         if (this.pos.isEqualTo(assignedPos)) {
             this.memory.currentTaskPriority = Priority.HIGH;
-            const site = this.pos.look().filter((object) => object.type === LOOK_STRUCTURES || object.type === LOOK_CONSTRUCTION_SITES);
+            const site = this.pos
+                .look()
+                .filter(
+                    (object) =>
+                        object.structure?.structureType === STRUCTURE_CONTAINER || object.constructionSite?.structureType === STRUCTURE_CONTAINER
+                );
             if (!site.length) {
                 // possible optimization: add "hasPerformedAction" array for each creep so that after the first check it will only have to look into memory
                 this.pos.createConstructionSite(STRUCTURE_CONTAINER);
