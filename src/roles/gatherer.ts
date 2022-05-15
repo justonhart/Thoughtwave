@@ -22,7 +22,13 @@ export class Gatherer extends TransportCreep {
         if (target instanceof Resource) {
             this.runPickupJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer) {
-            this.runCollectionJob(target);
+            // Workaround for not leaving constructionsite close to target
+            if (this.pos.getRangeTo(target) === 2) {
+                delete this.memory._m.path;
+                this.travelTo(target, { range: 1, preferRoadConstruction: true });
+            } else {
+                this.runCollectionJob(target);
+            }
         } else if (target instanceof StructureStorage) {
             this.storeCargo();
             this.maintainRoad();
