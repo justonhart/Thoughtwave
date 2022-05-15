@@ -1,4 +1,5 @@
-import { addColonizationOperation, addHostileRoom, unclaimRoom } from './empireManagement';
+import { addColonizationOperation, addHostileRoom, findBestColonyOrigin, unclaimRoom } from './empireManagement';
+import { PopulationManagement } from './populationManagement';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
@@ -14,5 +15,45 @@ export default function manageFlags() {
     if (Game.flags.hostile) {
         addHostileRoom(Game.flags.hostile.pos.roomName);
         Game.flags.hostile.remove();
+    }
+
+    if (Game.flags.intershardLaunch) {
+        let origin = findBestColonyOrigin(Game.flags.intershardLaunch.pos);
+
+        console.log(`Launching intershard colony from ${origin}`);
+
+        Memory.empire.spawnAssignments.push({
+            designee: origin,
+            body: [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM],
+            memoryOptions: {
+                role: Role.CLAIMER,
+            },
+        });
+
+        Memory.empire.spawnAssignments.push({
+            designee: origin,
+            body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[origin].energyCapacityAvailable),
+            memoryOptions: {
+                role: Role.COLONIZER,
+            },
+        });
+
+        Memory.empire.spawnAssignments.push({
+            designee: origin,
+            body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[origin].energyCapacityAvailable),
+            memoryOptions: {
+                role: Role.COLONIZER,
+            },
+        });
+
+        Memory.empire.spawnAssignments.push({
+            designee: origin,
+            body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[origin].energyCapacityAvailable),
+            memoryOptions: {
+                role: Role.COLONIZER,
+            },
+        });
+
+        Game.flags.intershardLaunch.remove();
     }
 }

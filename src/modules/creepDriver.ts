@@ -13,12 +13,17 @@ import { Builder } from '../roles/builder';
 import { EarlyBuilder } from '../roles/earlyBuilder';
 import { Scout } from '../roles/scout';
 import { Protector } from '../roles/protector';
+import { GoCreep } from '../roles/goCreep';
 import { Gatherer } from '../roles/gatherer';
 import { Reserver } from '../roles/reserver';
 import { RemoteMiner } from '../roles/remoteMiner';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
+
+    if (!creep.memory.role) {
+        handleIncomingCreep(creep);
+    }
 
     switch (creep.memory.role) {
         case Role.WORKER:
@@ -72,6 +77,9 @@ export default function driveCreep(creep: Creep) {
         case Role.PROTECTOR:
             waveCreep = new Protector(creep.id);
             break;
+        case Role.GO:
+            waveCreep = new GoCreep(creep.id);
+            break;
         case Role.RESERVER:
             waveCreep = new Reserver(creep.id);
             break;
@@ -80,4 +88,51 @@ export default function driveCreep(creep: Creep) {
     }
 
     waveCreep.run();
+}
+
+function handleIncomingCreep(creep: Creep) {
+    let incomingCreepEntries: OutboundCreepEntry[] = [];
+
+    switch (Game.shard.name) {
+        case 'shard0': {
+            let shard1Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard1'))?.outboundCreeps.shard0;
+            let shard2Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard2'))?.outboundCreeps.shard0;
+            let shard3Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard3'))?.outboundCreeps.shard0;
+
+            !shard1Creeps?.[creep.name] || incomingCreepEntries.push(shard1Creeps[creep.name]);
+            !shard2Creeps?.[creep.name] || incomingCreepEntries.push(shard2Creeps[creep.name]);
+            !shard3Creeps?.[creep.name] || incomingCreepEntries.push(shard3Creeps[creep.name]);
+        }
+        case 'shard1': {
+            let shard0Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard0'))?.outboundCreeps.shard1;
+            let shard2Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard2'))?.outboundCreeps.shard1;
+            let shard3Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard3'))?.outboundCreeps.shard1;
+
+            !shard0Creeps?.[creep.name] || incomingCreepEntries.push(shard0Creeps[creep.name]);
+            !shard2Creeps?.[creep.name] || incomingCreepEntries.push(shard2Creeps[creep.name]);
+            !shard3Creeps?.[creep.name] || incomingCreepEntries.push(shard3Creeps[creep.name]);
+        }
+        case 'shard2': {
+            let shard0Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard0'))?.outboundCreeps.shard2;
+            let shard1Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard1'))?.outboundCreeps.shard2;
+            let shard3Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard3'))?.outboundCreeps.shard2;
+
+            !shard0Creeps?.[creep.name] || incomingCreepEntries.push(shard0Creeps[creep.name]);
+            !shard1Creeps?.[creep.name] || incomingCreepEntries.push(shard1Creeps[creep.name]);
+            !shard3Creeps?.[creep.name] || incomingCreepEntries.push(shard3Creeps[creep.name]);
+        }
+        case 'shard3': {
+            let shard0Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard0'))?.outboundCreeps.shard3;
+            let shard1Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard1'))?.outboundCreeps.shard3;
+            let shard2Creeps: Map<string, OutboundCreepEntry> = JSON.parse(InterShardMemory.getRemote('shard2'))?.outboundCreeps.shard3;
+
+            !shard0Creeps?.[creep.name] || incomingCreepEntries.push(shard0Creeps[creep.name]);
+            !shard1Creeps?.[creep.name] || incomingCreepEntries.push(shard1Creeps[creep.name]);
+            !shard2Creeps?.[creep.name] || incomingCreepEntries.push(shard2Creeps[creep.name]);
+        }
+    }
+
+    if (incomingCreepEntries.length) {
+        creep.memory = incomingCreepEntries.pop().memory;
+    }
 }

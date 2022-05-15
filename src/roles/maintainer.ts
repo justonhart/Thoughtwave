@@ -30,19 +30,28 @@ export class Maintainer extends WorkerCreep {
             return constructedDefenses.shift().id;
         }
 
-        let repairTarget = this.homeroom.getRepairTarget();
-        if (repairTarget) {
-            return repairTarget;
+        let decayingStructuresAtRisk = this.homeroom.find(FIND_STRUCTURES).filter(
+            (structure) =>
+                //@ts-expect-error
+                structure.ticksToDecay !== undefined &&
+                (structure.structureType === STRUCTURE_RAMPART
+                    ? structure.hits <= this.getDefenseHitpointTarget() * 0.1
+                    : structure.hits <= structure.hitsMax * 0.1)
+        );
+        if (decayingStructuresAtRisk.length) {
+            return this.pos.findClosestByPath(decayingStructuresAtRisk)?.id;
         }
 
-        let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
-        if (constructionSites.length) {
-            //return the most-progressed construction site, proportionally
-            return constructionSites.reduce((mostProgressedSite, siteToCheck) =>
-                mostProgressedSite.progress / mostProgressedSite.progressTotal > siteToCheck.progress / siteToCheck.progressTotal
-                    ? mostProgressedSite
-                    : siteToCheck
-            ).id;
+        let repairQueue = this.homeroom.memory.repairQueue;
+        if (repairQueue.length) {
+            let closest = this.pos.findClosestByPath(repairQueue.map((id) => Game.getObjectById(id)))?.id;
+            this.homeroom.removeFromRepairQueue(closest);
+            return closest;
+        }
+
+        let constructionSite = this.findConstructionSite();
+        if (constructionSite) {
+            return constructionSite;
         }
 
         let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
@@ -51,7 +60,7 @@ export class Maintainer extends WorkerCreep {
                 [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
         );
         if (defenses.length) {
-            return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare)).id;
+            return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare))?.id;
         }
 
         return this.homeroom.controller?.id;

@@ -9,6 +9,22 @@ interface EmpireMemory {
     scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>
 }
 
+interface EmpireIntershard {
+    outboundCreeps: OutboundCreeps;
+}
+
+interface OutboundCreeps {
+    shard0: Map<string, OutboundCreepEntry>;
+    shard1: Map<string, OutboundCreepEntry>;
+    shard2: Map<string, OutboundCreepEntry>;
+    shard3: Map<string, OutboundCreepEntry>;
+}
+
+interface OutboundCreepEntry {
+    memory: CreepMemory;
+    expirationTime: number;
+}
+
 interface SpawnAssignment {
     designee: string; //room name
     memoryOptions: CreepMemory;

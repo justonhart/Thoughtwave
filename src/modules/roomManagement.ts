@@ -1,9 +1,27 @@
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
+import { findBunkerLocation, getStructureForPos, placeBunkerOuterRamparts, placeRoadsToPOIs } from './roomDesign';
 
 export function driveRoom(room: Room) {
     if (room.memory?.phase == undefined) {
-        initRoomMemory(room);
+        initRoom(room);
+    }
+
+    if (
+        Game.time % 20 === 0 &&
+        room.memory.layout !== undefined &&
+        room.canSpawn() &&
+        Object.keys(Game.constructionSites).length < 100 &&
+        room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
+    ) {
+        if (room.controller.level >= 2) {
+            placeRoadsToPOIs(room);
+            placeConstructionSites(room);
+        }
+
+        if (room.memory.phase > 1) {
+            placeBunkerOuterRamparts(room);
+        }
     }
 
     room.memory.reservedEnergy = 0;
@@ -21,14 +39,6 @@ export function driveRoom(room: Room) {
     runHomeSecurity(room);
     if (room.memory.remoteAssignments) {
         Object.keys(room.memory.remoteAssignments).forEach((remoteRoom) => runHomeSecurity(room, Game.rooms[remoteRoom])); // Protect Remote Mining
-    }
-
-    if (room.memory.traps?.length) {
-        room.memory.gates = [];
-        room.memory.traps.forEach((trap) => {
-            room.memory.gates.push(...trap.gates);
-        });
-        delete room.memory.traps;
     }
 
     if (room.memory.gates?.length) {
@@ -147,7 +157,7 @@ function reassignIdleProtector(homeRoomName: string, targetRoomName: string) {
     }
 }
 
-function initRoomMemory(room: Room) {
+function initRoom(room: Room) {
     room.memory.availableSourceAccessPoints = Array.from(
         new Set(
             [].concat(
@@ -166,6 +176,15 @@ function initRoomMemory(room: Room) {
     room.memory.sourceAccessPointCount = room.memory.availableSourceAccessPoints.length;
     room.memory.phase = 1;
     room.memory.gates = [];
+
+    //calculate room layout here
+    let anchorPoint = findBunkerLocation(room);
+
+    if (anchorPoint) {
+        room.memory.layout = RoomLayout.BUNKER;
+        room.memory.anchorPoint = anchorPoint.toMemSafe();
+        room.createConstructionSite(anchorPoint.x, anchorPoint.y - 1, STRUCTURE_SPAWN);
+    }
 }
 
 function runPhaseOne(room: Room) {
@@ -198,7 +217,7 @@ function runPhaseTwo(room: Room) {
         room.memory.repairSearchCooldown--;
     }
 
-    if (Game.time % 500) {
+    if (Game.time % 500 === 0) {
         room.memory.repairQueue = findRepairTargets(room);
     }
 
@@ -443,4 +462,105 @@ function runGates(room: Room): void {
     });
 
     room.memory.gates = gates;
+}
+
+export function placeConstructionSites(room: Room) {
+    let referencePos = posFromMem(room.memory.anchorPoint);
+
+    let placed = 0;
+    for (let lookDistance = 1; lookDistance < 7 && placed < 5; lookDistance++) {
+        let x: number, y: number;
+
+        for (y = referencePos.y - lookDistance; y <= referencePos.y + lookDistance && placed < 5; y++) {
+            for (x = referencePos.x - lookDistance; x <= referencePos.x + lookDistance && placed < 5; x++) {
+                if (y > referencePos.y - lookDistance && y < referencePos.y + lookDistance && x > referencePos.x - lookDistance) {
+                    x = referencePos.x + lookDistance;
+                }
+
+                let structureType = getStructureForPos(room.memory.layout, new RoomPosition(x, y, room.name), referencePos);
+                let buildPosition = new RoomPosition(x, y, room.name);
+
+                if (structureType !== STRUCTURE_ROAD) {
+                    let addResult = room.createConstructionSite(buildPosition, structureType);
+                    if (addResult == OK) {
+                        placed++;
+                    }
+                } else {
+                    //only place roads adjacent to structures
+                    let adjacentStructures =
+                        buildPosition
+                            .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
+                            .filter((s) => s.structureType !== STRUCTURE_ROAD)
+                            //@ts-expect-error
+                            .concat(buildPosition.findInRange(FIND_MY_STRUCTURES, 1)).length > 0;
+                    if (adjacentStructures) {
+                        let addResult = room.createConstructionSite(buildPosition, structureType);
+                        if (addResult == OK) {
+                            placed++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// core structures are structures contained within auto-generated layouts: Spawns, storage, nuker, terminal, factory, extensions, labs, towers, observer
+export function roomNeedsCoreStructures(room: Room) {
+    //combine structures and construction sites into one array for simple math
+    //@ts-expect-error
+    let roomStructures = room.find(FIND_MY_STRUCTURES).concat(room.find(FIND_MY_CONSTRUCTION_SITES));
+    let spawnCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_SPAWN).length;
+    let extensionCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_EXTENSION).length;
+    let storage = roomStructures.filter((structure) => structure.structureType === STRUCTURE_STORAGE).length;
+    let nuker = roomStructures.filter((structure) => structure.structureType === STRUCTURE_NUKER).length;
+    let terminal = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TERMINAL).length;
+    let factory = roomStructures.filter((structure) => structure.structureType === STRUCTURE_FACTORY).length;
+    let labCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_LAB).length;
+    let towerCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER).length;
+    let managerLink =
+        posFromMem(room.memory.anchorPoint)
+            .findInRange(FIND_MY_STRUCTURES, 1)
+            .filter((s) => s.structureType === STRUCTURE_LINK).length +
+            posFromMem(room.memory.anchorPoint)
+                .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
+                .filter((s) => s.structureType === STRUCTURE_LINK).length >=
+        1;
+    let observer = roomStructures.filter((structure) => structure.structureType === STRUCTURE_OBSERVER).length;
+    let pSpawn = roomStructures.filter((structure) => structure.structureType === STRUCTURE_POWER_SPAWN).length;
+
+    switch (room.controller.level) {
+        case 1:
+            return spawnCount < 1;
+        case 2:
+            return spawnCount < 1 || extensionCount < 5;
+        case 3:
+            return spawnCount < 1 || extensionCount < 10 || towerCount < 1;
+        case 4:
+            return spawnCount < 1 || extensionCount < 20 || towerCount < 1 || storage < 1;
+        case 5:
+            return spawnCount < 1 || extensionCount < 30 || towerCount < 2 || storage < 1 || !managerLink;
+        case 6:
+            return spawnCount < 1 || extensionCount < 40 || towerCount < 2 || storage < 1 || !managerLink || labCount < 3 || terminal < 1;
+        case 7:
+            return (
+                spawnCount < 2 || extensionCount < 50 || towerCount < 3 || storage < 1 || !managerLink || labCount < 6 || terminal < 1 || factory < 1
+            );
+        case 8:
+            return (
+                spawnCount < 3 ||
+                extensionCount < 60 ||
+                towerCount < 6 ||
+                storage < 1 ||
+                !managerLink ||
+                labCount < 10 ||
+                terminal < 1 ||
+                factory < 1 ||
+                nuker < 1 ||
+                pSpawn < 1 ||
+                observer < 1
+            );
+        default:
+            return false;
+    }
 }

@@ -1,6 +1,6 @@
 interface RoomMemory {
+    anchorPoint: string;
     gates: Gate[];
-    traps: CreepTrap[];
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: Map<string, AssignmentStatus>;
@@ -13,6 +13,7 @@ interface RoomMemory {
     roadsConstructed?: boolean;
     spawnAssignments: Role[];
     reservedEnergy?: number;
+    layout: RoomLayout;
 }
 
 interface RemoteAssignment {
@@ -26,6 +27,7 @@ interface RemoteAssignment {
 }
 
 interface Room {
+    removeFromRepairQueue(id: string): void;
     energyStatus: EnergyStatus;
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
@@ -75,11 +77,11 @@ const enum EnergyStatus {
     SURPLUS,
 }
 
-interface CreepTrap {
-    gates: Gate[];
-}
-
 interface Gate {
     id: Id<StructureRampart>;
     lastToggled: number;
+}
+
+const enum RoomLayout {
+    BUNKER,
 }

@@ -51,15 +51,9 @@ export class EarlyWorker extends EarlyCreep {
             return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
         }
 
-        let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
-
-        if (constructionSites.length) {
-            //return the most-progressed construction site, proportionally
-            return constructionSites.reduce((mostProgressedSite, siteToCheck) =>
-                mostProgressedSite.progress / mostProgressedSite.progressTotal > siteToCheck.progress / siteToCheck.progressTotal
-                    ? mostProgressedSite
-                    : siteToCheck
-            ).id;
+        let constructionSite = this.findConstructionSite();
+        if (constructionSite) {
+            return constructionSite;
         }
 
         if (this.homeroom.storage?.my) {
