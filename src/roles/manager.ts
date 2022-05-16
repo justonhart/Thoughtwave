@@ -9,8 +9,8 @@ export class Manager extends WaveCreep {
             if (this.memory.targetId) {
                 let target = Game.getObjectById(this.memory.targetId);
 
-                //@ts-ignore
                 this.transfer(
+                    //@ts-ignore
                     target,
                     Object.keys(this.store).reduce((most, next) => (this.store[most] > this.store[next] ? most : next), undefined)
                 );
