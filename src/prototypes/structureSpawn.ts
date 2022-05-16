@@ -40,18 +40,10 @@ StructureSpawn.prototype.spawnMax = function (partsBlock: BodyPartConstant[], na
     return PopulationManagement.spawnMax(this, partsBlock, name, opts, levelCap);
 };
 
-StructureSpawn.prototype.smartSpawn = function (this: StructureSpawn, body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
-    let partsArrayCost = body.length ? body.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost) : 0;
+StructureSpawn.prototype.smartSpawn = function (body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
+    return PopulationManagement.smartSpawn(this, body, name, opts);
+};
 
-    if (partsArrayCost - (this.room.memory.reservedEnergy ?? 0) > this.room.energyAvailable) {
-        return ERR_NOT_ENOUGH_ENERGY;
-    }
-
-    let result = this.spawnCreep(body, name, opts);
-
-    if (result !== OK) {
-        console.log(`Unexpected result from smartSpawn in spawn ${this.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
-    }
-
-    return result;
+StructureSpawn.prototype.spawnManager = function () {
+    return PopulationManagement.spawnManager(this);
 };

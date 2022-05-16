@@ -1,3 +1,4 @@
+import { spawn } from 'child_process';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 import { findBunkerLocation, getStructureForPos, placeBunkerOuterRamparts, placeRoadsToPOIs } from './roomDesign';
@@ -252,6 +253,7 @@ function runPhaseTwoSpawnLogic(room: Room) {
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
+    let manager = roomCreeps.find((creep) => creep.memory.role === Role.MANAGER);
 
     if (distributor === undefined) {
         let spawn = availableRoomSpawns.pop();
@@ -267,6 +269,19 @@ function runPhaseTwoSpawnLogic(room: Room) {
     if (PopulationManagement.needsMiner(room)) {
         let spawn = availableRoomSpawns.pop();
         spawn?.spawnMiner();
+    }
+
+    if (PopulationManagement.needsManager(room)) {
+        if (room.memory.layout !== undefined) {
+            let suitableSpawn = availableRoomSpawns.find((spawn) => spawn.pos.isNearTo(posFromMem(room.memory.anchorPoint)));
+            if (suitableSpawn) {
+                suitableSpawn.spawnManager();
+                availableRoomSpawns = availableRoomSpawns.filter((spawn) => spawn !== suitableSpawn);
+            }
+        } else {
+            let spawn = availableRoomSpawns.pop();
+            spawn?.spawnManager();
+        }
     }
 
     let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);

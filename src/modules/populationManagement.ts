@@ -1,4 +1,5 @@
 import { posFromMem } from './memoryManagement';
+import { roomNeedsCoreStructures } from './roomManagement';
 
 export class PopulationManagement {
     // function to calculate how many creeps a room can support
@@ -446,5 +447,73 @@ export class PopulationManagement {
         }
 
         return spawn.smartSpawn(partsArray, name, opts);
+    }
+
+    static smartSpawn(spawn: StructureSpawn, body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
+        let partsArrayCost = body.length ? body.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost) : 0;
+
+        if (partsArrayCost - (spawn.room.memory.reservedEnergy ?? 0) > spawn.room.energyAvailable) {
+            return ERR_NOT_ENOUGH_ENERGY;
+        }
+
+        // find safe spawn direction in predefined layouts
+        if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
+            if (!opts.directions) {
+                let anchorPoint = posFromMem(spawn.room.memory.anchorPoint);
+
+                if (spawn.pos.x - anchorPoint.x === 0) {
+                    opts.directions = [TOP_LEFT, TOP_RIGHT];
+                } else if (spawn.pos.x - anchorPoint.x === -1) {
+                    opts.directions = [TOP_LEFT, TOP, LEFT];
+                } else if (spawn.pos.x - anchorPoint.x === 2) {
+                    opts.directions = [TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM];
+                }
+            }
+        }
+
+        let result = spawn.spawnCreep(body, name, opts);
+
+        if (result !== OK) {
+            console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
+        }
+
+        return result;
+    }
+
+    static spawnManager(spawn: StructureSpawn): ScreepsReturnCode {
+        let options: SpawnOptions = {
+            memory: {
+                room: spawn.room.name,
+                role: Role.MANAGER,
+            },
+        };
+
+        let immobile = false;
+
+        if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
+            let anchorPoint = posFromMem(spawn.room.memory.anchorPoint);
+
+            if (spawn.pos.x - anchorPoint.x === 0) {
+                options.directions = [BOTTOM];
+            } else if (spawn.pos.x - anchorPoint.x === -1) {
+                options.directions = [BOTTOM_RIGHT];
+            }
+
+            immobile = true;
+        }
+
+        let name = this.getCreepTag('mg', spawn.name);
+
+        if (immobile) {
+            return spawn.spawnMax([CARRY, CARRY], name, options, 8);
+        } else {
+            return spawn.spawnMax([CARRY, CARRY, MOVE], name, options, 8);
+        }
+    }
+
+    static needsManager(room: Room): boolean {
+        let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
+        let manager = roomCreeps.find((creep) => creep.memory.role === Role.MANAGER);
+        return room.controller?.level >= 5 && !manager;
     }
 }

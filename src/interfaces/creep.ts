@@ -53,4 +53,5 @@ const enum Role {
     PROTECTOR = 'PROTECTOR',
     GO = 'GO',
     RESERVER = 'RESERVER',
+    MANAGER = 'MANAGER',
 }
