@@ -79,13 +79,7 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
         if (hostileClaimerCreeps.length || hostileStuctures.length) {
             homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY_CLAIMER;
 
-            reassignIdleProtector(homeRoom.name, targetRoom.name);
-            if (
-                !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
-                !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name)
-                    .length &&
-                homeRoom.canSpawn()
-            ) {
+            if (needsProtector(homeRoom, targetRoom)) {
                 // TODO: move this spawning mechanism
                 Memory.empire.spawnAssignments.push({
                     designee: homeRoom.name,
@@ -102,13 +96,7 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
         if (hostileCreeps.length) {
             homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY;
 
-            reassignIdleProtector(homeRoom.name, targetRoom.name);
-            if (
-                !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
-                !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name)
-                    .length &&
-                homeRoom.canSpawn()
-            ) {
+            if (needsProtector(homeRoom, targetRoom)) {
                 // TODO: Move this spawn mechanism
                 Memory.empire.spawnAssignments.push({
                     designee: homeRoom.name,
@@ -126,14 +114,8 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
             homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.SAFE;
         }
     } else if (hostileCreeps.length >= 2) {
-        reassignIdleProtector(homeRoom.name, homeRoom.name);
         // can be optimized to spawn more protectors if more enemies are in room. In that case, add a "wait" function in the protector to wait for all protectors to spawn before attacking
-        if (
-            !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
-            !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name)
-                .length &&
-            homeRoom.canSpawn()
-        ) {
+        if (needsProtector(homeRoom, targetRoom)) {
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable),
@@ -148,13 +130,30 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
     }
 }
 
-function reassignIdleProtector(homeRoomName: string, targetRoomName: string) {
-    const idleProtector = Object.values(Memory.creeps).find(
-        (creep) => creep.room === homeRoomName && creep.role === Role.PROTECTOR && !creep.assignment
+function needsProtector(homeRoom: Room, targetRoom: Room): boolean {
+    return (
+        !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
+        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name).length &&
+        !reassignIdleProtector(homeRoom.name, targetRoom.name) &&
+        homeRoom.canSpawn()
     );
+}
+
+function reassignIdleProtector(homeRoomName: string, targetRoomName: string): boolean {
+    const protectors = Object.values(Memory.creeps).filter((creep) => creep.room === homeRoomName && creep.role === Role.PROTECTOR);
+
+    const idleProtector = protectors.find((creep) => !creep.assignment);
     if (idleProtector) {
         idleProtector.assignment = targetRoomName;
+        return true;
     }
+
+    const duplicateProtector = protectors.find((protector, i) => protectors.indexOf(protector) !== i);
+    if (duplicateProtector) {
+        duplicateProtector.assignment = targetRoomName;
+        return true;
+    }
+    return false;
 }
 
 function initRoom(room: Room) {
