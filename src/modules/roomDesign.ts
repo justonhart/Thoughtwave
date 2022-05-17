@@ -225,6 +225,8 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
         }
     }
 
+    roadPositions.push(...room.find(FIND_MY_CONSTRUCTION_SITES).filter((site) => site.structureType === STRUCTURE_ROAD));
+
     let paths = pois.map((poi) => {
         //if destination is a controller, range = 3 instead of 1
 
