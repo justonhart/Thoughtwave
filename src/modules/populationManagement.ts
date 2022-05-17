@@ -1,5 +1,4 @@
 import { posFromMem } from './memoryManagement';
-import { roomNeedsCoreStructures } from './roomManagement';
 
 export class PopulationManagement {
     // function to calculate how many creeps a room can support
