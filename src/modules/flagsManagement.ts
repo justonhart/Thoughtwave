@@ -56,4 +56,10 @@ export default function manageFlags() {
 
         Game.flags.intershardLaunch.remove();
     }
+
+    if (Game.flags.setManagerPos) {
+        let managerPos = Game.flags.setManagerPos.pos;
+        Memory.rooms[Game.flags.setManagerPos.room.name].managerPos = managerPos.toMemSafe();
+        Game.flags.setManagerPos.remove();
+    }
 }

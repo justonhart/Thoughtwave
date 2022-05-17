@@ -91,12 +91,12 @@ export class PopulationManagement {
                 builderLimit = 0;
                 break;
             case EnergyStatus.STABLE:
-                upgraderLimit = WORKER_CAPACITY - 1;
+                upgraderLimit = spawn.room.controller.level === 8 ? 1 : WORKER_CAPACITY - 1;
                 maintainerLimit = 2; //spawn two half-sized maintainers
                 builderLimit = WORKER_CAPACITY / 2; //consume an additional 50% energy
                 break;
             case EnergyStatus.SURPLUS:
-                upgraderLimit = WORKER_CAPACITY - 1 + this.getAdditionalUpgraderCount(spawn.room);
+                upgraderLimit = spawn.room.controller.level === 8 ? 1 : WORKER_CAPACITY - 1 + this.getAdditionalUpgraderCount(spawn.room);
                 maintainerLimit = 2; //spawn two half-sized maintainers
                 builderLimit = WORKER_CAPACITY / 2; //consume an additional 50% energy
                 break;
@@ -210,8 +210,10 @@ export class PopulationManagement {
         }
 
         const assigmentKeys = Object.keys(room.memory.remoteAssignments);
-        return !!assigmentKeys.find((remoteRoom) =>
-            Object.values(room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
+        return !!assigmentKeys.find(
+            (remoteRoom) =>
+                room.memory.remoteAssignments[remoteRoom].state === RemoteMiningRoomState.SAFE &&
+                Object.values(room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
         );
     }
 
@@ -254,11 +256,12 @@ export class PopulationManagement {
     static needsGatherer(room: Room): boolean {
         return Object.entries(room.memory.remoteAssignments).some(
             ([roomName, assignment]) =>
-                assignment.gatherer === AssignmentStatus.UNASSIGNED ||
-                (assignment.energyStatus === EnergyStatus.SURPLUS &&
-                    Object.values(Memory.creeps).filter(
-                        (creep) => creep.room === room.name && creep.role === Role.GATHERER && creep.assignment === roomName
-                    ).length === 1)
+                assignment.state === RemoteMiningRoomState.SAFE &&
+                (assignment.gatherer === AssignmentStatus.UNASSIGNED ||
+                    (assignment.energyStatus === EnergyStatus.SURPLUS &&
+                        Object.values(Memory.creeps).filter(
+                            (creep) => creep.room === room.name && creep.role === Role.GATHERER && creep.assignment === roomName
+                        ).length === 1))
         );
     }
 
@@ -306,7 +309,9 @@ export class PopulationManagement {
     }
 
     static needsReserver(room: Room): boolean {
-        return Object.values(room.memory.remoteAssignments).some((assignment) => assignment.reserver === AssignmentStatus.UNASSIGNED);
+        return Object.values(room.memory.remoteAssignments).some(
+            (assignment) => assignment.state === RemoteMiningRoomState.SAFE && assignment.reserver === AssignmentStatus.UNASSIGNED
+        );
     }
 
     static spawnReserver(spawn: StructureSpawn): ScreepsReturnCode {
@@ -446,5 +451,74 @@ export class PopulationManagement {
         }
 
         return spawn.smartSpawn(partsArray, name, opts);
+    }
+
+    static smartSpawn(spawn: StructureSpawn, body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
+        let partsArrayCost = body.length ? body.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost) : 0;
+
+        if (partsArrayCost - (spawn.room.memory.reservedEnergy ?? 0) > spawn.room.energyAvailable) {
+            return ERR_NOT_ENOUGH_ENERGY;
+        }
+
+        // find safe spawn direction in predefined layouts
+        if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
+            if (!opts.directions) {
+                let anchorPoint = posFromMem(spawn.room.memory.anchorPoint);
+
+                if (spawn.pos.x - anchorPoint.x === 0) {
+                    opts.directions = [TOP_LEFT, TOP_RIGHT];
+                } else if (spawn.pos.x - anchorPoint.x === -1) {
+                    opts.directions = [TOP_LEFT, TOP, LEFT];
+                } else if (spawn.pos.x - anchorPoint.x === 2) {
+                    opts.directions = [TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM];
+                }
+            }
+        }
+
+        let result = spawn.spawnCreep(body, name, opts);
+
+        if (result !== OK) {
+            console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
+        }
+
+        return result;
+    }
+
+    static spawnManager(spawn: StructureSpawn): ScreepsReturnCode {
+        let options: SpawnOptions = {
+            memory: {
+                room: spawn.room.name,
+                role: Role.MANAGER,
+            },
+        };
+
+        let immobile = false;
+
+        if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
+            let anchorPoint = posFromMem(spawn.room.memory.anchorPoint);
+
+            if (spawn.pos.x - anchorPoint.x === 0) {
+                options.directions = [BOTTOM];
+            } else if (spawn.pos.x - anchorPoint.x === -1) {
+                options.directions = [BOTTOM_RIGHT];
+            }
+
+            immobile = true;
+        }
+
+        let name = this.getCreepTag('mg', spawn.name);
+
+        if (immobile) {
+            return spawn.spawnMax([CARRY, CARRY], name, options, 8);
+        } else {
+            let body = this.createPartsArray([CARRY, CARRY], spawn.room.energyCapacityAvailable, 8).concat([MOVE]);
+            return spawn.smartSpawn(body, name, options);
+        }
+    }
+
+    static needsManager(room: Room): boolean {
+        let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
+        let manager = roomCreeps.find((creep) => creep.memory.role === Role.MANAGER);
+        return room.controller?.level >= 5 && (room.memory.layout !== undefined || !!room.memory.managerPos) && !manager;
     }
 }
