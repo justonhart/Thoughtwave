@@ -278,9 +278,8 @@ function runPhaseTwoSpawnLogic(room: Room) {
                 availableRoomSpawns = availableRoomSpawns.filter((spawn) => spawn !== suitableSpawn);
             }
         } else {
-            // don't spawn manager until they have working logic in non-bunker rooms
-            // let spawn = availableRoomSpawns.pop();
-            // spawn?.spawnManager();
+            let spawn = availableRoomSpawns.pop();
+            spawn?.spawnManager();
         }
     }
 

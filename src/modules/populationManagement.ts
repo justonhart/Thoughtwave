@@ -507,13 +507,14 @@ export class PopulationManagement {
         if (immobile) {
             return spawn.spawnMax([CARRY, CARRY], name, options, 8);
         } else {
-            return spawn.spawnMax([CARRY, CARRY, MOVE], name, options, 8);
+            let body = this.createPartsArray([CARRY, CARRY], spawn.room.energyCapacityAvailable, 8).concat([MOVE]);
+            return spawn.smartSpawn(body, name, options);
         }
     }
 
     static needsManager(room: Room): boolean {
         let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
         let manager = roomCreeps.find((creep) => creep.memory.role === Role.MANAGER);
-        return room.controller?.level >= 5 && !manager;
+        return room.controller?.level >= 5 && (room.memory.layout !== undefined || !!room.memory.managerPos) && !manager;
     }
 }

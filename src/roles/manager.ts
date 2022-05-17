@@ -1,10 +1,10 @@
+import { posFromMem } from '../modules/memoryManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Manager extends WaveCreep {
     public run() {
-        //move managers in dumb rooms to managerpos - TODO
-        if (!this.pos.isNearTo(this.room.storage)) {
-            this.travelTo(this.room.storage, { range: 1 });
+        if (posFromMem(this.room.memory?.managerPos)?.isEqualTo(this.pos) === false) {
+            this.travelTo(posFromMem(this.room.memory?.managerPos));
         } else {
             if (this.memory.targetId) {
                 let target = Game.getObjectById(this.memory.targetId);
@@ -12,7 +12,7 @@ export class Manager extends WaveCreep {
                 this.transfer(
                     //@ts-ignore
                     target,
-                    Object.keys(this.store).reduce((most, next) => (this.store[most] > this.store[next] ? most : next), undefined)
+                    Object.keys(this.store).pop()
                 );
                 delete this.memory.targetId;
             } else if (this.store.getUsedCapacity() > 0) {

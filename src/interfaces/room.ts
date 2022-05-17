@@ -1,4 +1,5 @@
 interface RoomMemory {
+    managerPos: string;
     anchorPoint: string;
     gates: Gate[];
     repairSearchCooldown: number;
