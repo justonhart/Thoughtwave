@@ -91,12 +91,12 @@ export class PopulationManagement {
                 builderLimit = 0;
                 break;
             case EnergyStatus.STABLE:
-                upgraderLimit = WORKER_CAPACITY - 1;
+                upgraderLimit = spawn.room.controller.level === 8 ? 1 : WORKER_CAPACITY - 1;
                 maintainerLimit = 2; //spawn two half-sized maintainers
                 builderLimit = WORKER_CAPACITY / 2; //consume an additional 50% energy
                 break;
             case EnergyStatus.SURPLUS:
-                upgraderLimit = WORKER_CAPACITY - 1 + this.getAdditionalUpgraderCount(spawn.room);
+                upgraderLimit = spawn.room.controller.level === 8 ? 1 : WORKER_CAPACITY - 1 + this.getAdditionalUpgraderCount(spawn.room);
                 maintainerLimit = 2; //spawn two half-sized maintainers
                 builderLimit = WORKER_CAPACITY / 2; //consume an additional 50% energy
                 break;
@@ -210,8 +210,10 @@ export class PopulationManagement {
         }
 
         const assigmentKeys = Object.keys(room.memory.remoteAssignments);
-        return !!assigmentKeys.find((remoteRoom) =>
-            Object.values(room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
+        return !!assigmentKeys.find(
+            (remoteRoom) =>
+                room.memory.remoteAssignments[remoteRoom].state === RemoteMiningRoomState.SAFE &&
+                Object.values(room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
         );
     }
 
@@ -254,11 +256,12 @@ export class PopulationManagement {
     static needsGatherer(room: Room): boolean {
         return Object.entries(room.memory.remoteAssignments).some(
             ([roomName, assignment]) =>
-                assignment.gatherer === AssignmentStatus.UNASSIGNED ||
-                (assignment.energyStatus === EnergyStatus.SURPLUS &&
-                    Object.values(Memory.creeps).filter(
-                        (creep) => creep.room === room.name && creep.role === Role.GATHERER && creep.assignment === roomName
-                    ).length === 1)
+                assignment.state === RemoteMiningRoomState.SAFE &&
+                (assignment.gatherer === AssignmentStatus.UNASSIGNED ||
+                    (assignment.energyStatus === EnergyStatus.SURPLUS &&
+                        Object.values(Memory.creeps).filter(
+                            (creep) => creep.room === room.name && creep.role === Role.GATHERER && creep.assignment === roomName
+                        ).length === 1))
         );
     }
 
@@ -306,7 +309,9 @@ export class PopulationManagement {
     }
 
     static needsReserver(room: Room): boolean {
-        return Object.values(room.memory.remoteAssignments).some((assignment) => assignment.reserver === AssignmentStatus.UNASSIGNED);
+        return Object.values(room.memory.remoteAssignments).some(
+            (assignment) => assignment.state === RemoteMiningRoomState.SAFE && assignment.reserver === AssignmentStatus.UNASSIGNED
+        );
     }
 
     static spawnReserver(spawn: StructureSpawn): ScreepsReturnCode {
