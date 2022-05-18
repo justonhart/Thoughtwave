@@ -83,7 +83,7 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
                 // TODO: move this spawning mechanism
                 Memory.empire.spawnAssignments.push({
                     designee: homeRoom.name,
-                    body: PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 4),
+                    body: PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 6),
                     memoryOptions: {
                         role: Role.PROTECTOR,
                         room: homeRoom.name,
