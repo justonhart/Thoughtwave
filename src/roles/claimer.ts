@@ -60,8 +60,11 @@ export class Claimer extends WaveCreep {
 
                     if (
                         invaderCore &&
-                        !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === this.room.name)
-                            .length &&
+                        !Object.values(Game.creeps).filter(
+                            (creep) =>
+                                creep.memory.role === Role.PROTECTOR &&
+                                (creep.pos.roomName === this.room.name || creep.memory.assignment === this.room.name)
+                        ).length &&
                         !Memory.empire.spawnAssignments.filter(
                             (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === this.homeroom.name
                         ).length &&

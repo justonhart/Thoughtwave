@@ -137,7 +137,9 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
 
 function needsProtector(homeRoom: Room, targetRoom: Room): boolean {
     return (
-        !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === targetRoom.name).length &&
+        !Object.values(Game.creeps).filter(
+            (creep) => creep.memory.role === Role.PROTECTOR && (creep.memory.assignment === targetRoom.name || creep.pos.roomName === targetRoom.name)
+        ).length &&
         !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === homeRoom.name).length &&
         !reassignIdleProtector(homeRoom.name, targetRoom.name) &&
         homeRoom.canSpawn()
