@@ -40,3 +40,11 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
 Room.prototype.canSpawn = function (this: Room): boolean {
     return this.find(FIND_MY_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_SPAWN).length > 0;
 };
+
+Object.defineProperty(Room.prototype, 'mineral', {
+    get: function (this: Room) {
+        return this.find(FIND_MINERALS).pop();
+    },
+    enumerable: false,
+    configurable: true,
+});

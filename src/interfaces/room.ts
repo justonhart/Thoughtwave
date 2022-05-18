@@ -31,6 +31,7 @@ interface RemoteAssignment {
 interface Room {
     removeFromRepairQueue(id: string): void;
     energyStatus: EnergyStatus;
+    mineral: Mineral;
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
 }
