@@ -1,4 +1,5 @@
 interface RoomMemory {
+    unclaim: boolean;
     managerPos: string;
     anchorPoint: string;
     gates: Gate[];

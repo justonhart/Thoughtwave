@@ -144,7 +144,14 @@ export function unclaimRoom(roomName: string) {
         (asssignment) => asssignment.designee !== roomName && asssignment.memoryOptions.destination !== roomName
     );
 
-    delete Memory.rooms[roomName];
+    let roomCreeps = Object.values(Game.creeps).filter((c) => c.memory.room === roomName);
+    roomCreeps.forEach((creep) => {
+        // delete creep memory to prevent automatic updates in memory management
+        delete Memory.creeps[creep.name];
+        creep.suicide();
+    });
+
+    Memory.rooms[roomName].unclaim = true;
 
     return 'done';
 }

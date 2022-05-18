@@ -3,6 +3,11 @@ import { PopulationManagement } from './populationManagement';
 import { findBunkerLocation, getStructureForPos, placeBunkerOuterRamparts, placeRoadsToPOIs } from './roomDesign';
 
 export function driveRoom(room: Room) {
+    if (room.memory?.unclaim) {
+        delete Memory.rooms[room.name];
+        return;
+    }
+
     if (room.memory?.phase == undefined) {
         initRoom(room);
     }
