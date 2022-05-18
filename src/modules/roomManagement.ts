@@ -67,13 +67,13 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
         targetRoom = homeRoom;
     }
     const hostileCreeps = targetRoom.find(FIND_HOSTILE_CREEPS, {
-        filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0, // Invader check to remove invader cores
+        filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
     });
 
     // Get rid of enemy claimers in remote mining rooms
     if (isRemoteRoom) {
         const hostileClaimerCreeps = targetRoom.find(FIND_HOSTILE_CREEPS, {
-            filter: (creep) => creep.getActiveBodyparts(CLAIM) > 0 && !creep.getActiveBodyparts(ATTACK) && !creep.getActiveBodyparts(RANGED_ATTACK), // Invader check to remove invader cores
+            filter: (creep) => creep.getActiveBodyparts(CLAIM) > 0 && !creep.getActiveBodyparts(ATTACK) && !creep.getActiveBodyparts(RANGED_ATTACK),
         });
         const hostileStuctures = targetRoom.find(FIND_HOSTILE_STRUCTURES); // Clear out left over enemy structures or invader cores
         if (hostileClaimerCreeps.length || hostileStuctures.length) {

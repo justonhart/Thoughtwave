@@ -1,3 +1,4 @@
+import { PopulationManagement } from '../modules/populationManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Claimer extends WaveCreep {
@@ -52,8 +53,38 @@ export class Claimer extends WaveCreep {
 
                     this.suicide();
                 } else {
+                    // If there is an invader claimer in the room send a cleanup creep
+                    const invaderCore = this.room.find(FIND_HOSTILE_STRUCTURES, {
+                        filter: (struct) => struct.structureType === STRUCTURE_INVADER_CORE,
+                    });
+
+                    if (
+                        invaderCore &&
+                        !Object.values(Memory.creeps).filter((creep) => creep.role === Role.PROTECTOR && creep.assignment === this.room.name)
+                            .length &&
+                        !Memory.empire.spawnAssignments.filter(
+                            (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === this.homeroom.name
+                        ).length &&
+                        this.homeroom.canSpawn()
+                    ) {
+                        Memory.empire.spawnAssignments.push({
+                            designee: this.homeroom.name,
+                            body: PopulationManagement.createPartsArray([ATTACK, MOVE], this.homeroom.energyCapacityAvailable, 8),
+                            memoryOptions: {
+                                role: Role.PROTECTOR,
+                                room: this.homeroom.name,
+                                assignment: this.room.name,
+                                currentTaskPriority: Priority.MEDIUM,
+                            },
+                        });
+                    }
+
+                    // Check if still claimed by enemy
+                    const action = this.room.controller?.reservation?.username
+                        ? this.attackController(this.room.controller)
+                        : this.claimController(this.room.controller);
                     // Claim Controller in target room
-                    switch (this.claimController(this.room.controller)) {
+                    switch (action) {
                         case ERR_NOT_IN_RANGE:
                             this.travelTo(this.room.controller, { range: 1, swampCost: 1 });
                             break;

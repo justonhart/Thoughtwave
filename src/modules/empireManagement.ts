@@ -45,6 +45,7 @@ export function manageColonizationOperations() {
                         body: [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM],
                         memoryOptions: {
                             role: Role.CLAIMER,
+                            room: colonizeOp.origin,
                             destination: colonizeOp.destination,
                         },
                     });
