@@ -11,6 +11,14 @@ export class Miner extends WaveCreep {
                     .findInRange(FIND_SOURCES, 1)
                     .reduce((biggestSource, sourceToCompare) => (biggestSource.energy > sourceToCompare.energy ? biggestSource : sourceToCompare))
             );
+
+            if (this.store.getCapacity() && this.store.getFreeCapacity() === 0) {
+                let link: StructureLink = Game.getObjectById(this.memory.link);
+                if (!link?.cooldown && link?.store.getFreeCapacity(RESOURCE_ENERGY) <= this.store.getCapacity()) {
+                    link.transferEnergy(this.room.managerLink);
+                }
+                this.transfer(link, RESOURCE_ENERGY);
+            }
         } else {
             this.travelTo(assignedPos);
         }

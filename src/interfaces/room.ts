@@ -32,6 +32,7 @@ interface Room {
     removeFromRepairQueue(id: string): void;
     energyStatus: EnergyStatus;
     mineral: Mineral;
+    managerLink: StructureLink;
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
 }

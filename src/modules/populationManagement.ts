@@ -186,8 +186,15 @@ export class PopulationManagement {
         };
 
         let tag = 'm';
+        let minerBody: ('work' | 'move' | 'carry')[] = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
 
-        let minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
+        let assigmentPos = posFromMem(assigment);
+        let link = assigmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((s) => s.structureType === STRUCTURE_LINK);
+        if (link) {
+            //@ts-expect-error
+            options.memory.link = link.id;
+            minerBody.unshift(CARRY);
+        }
 
         let result = spawn.smartSpawn(minerBody, this.getCreepTag(tag, spawn.name), options);
         if (result === OK) {
