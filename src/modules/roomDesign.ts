@@ -317,3 +317,21 @@ export function placeBunkerOuterRamparts(room: Room) {
         }
     }
 }
+
+export function placeMinerLinks(room: Room) {
+    Object.keys(room.memory.miningAssignments).forEach((assignmentString) => {
+        let assignmentPos = posFromMem(assignmentString);
+        if (!assignmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((structure) => structure.structureType === STRUCTURE_LINK)) {
+            let looks = room.lookAtArea(assignmentPos.y - 1, assignmentPos.x - 1, assignmentPos.y + 1, assignmentPos.x + 1, true);
+            let availableSpot = looks.find(
+                (look) =>
+                    look.terrain !== 'wall' &&
+                    !looks.some(
+                        (otherLook) => otherLook.x === look.x && otherLook.y === look.y && (otherLook.constructionSite || otherLook.structure)
+                    )
+            );
+
+            room.createConstructionSite(availableSpot.x, availableSpot.y, STRUCTURE_LINK);
+        }
+    });
+}
