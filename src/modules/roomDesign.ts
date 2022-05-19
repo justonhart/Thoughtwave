@@ -325,6 +325,7 @@ export function placeMinerLinks(room: Room) {
             let looks = room.lookAtArea(assignmentPos.y - 1, assignmentPos.x - 1, assignmentPos.y + 1, assignmentPos.x + 1, true);
             let availableSpot = looks.find(
                 (look) =>
+                    look.type === 'terrain' &&
                     look.terrain !== 'wall' &&
                     !looks.some(
                         (otherLook) => otherLook.x === look.x && otherLook.y === look.y && (otherLook.constructionSite || otherLook.structure)
