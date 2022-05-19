@@ -2,6 +2,9 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Protector extends WaveCreep {
     public run() {
+        if (this.hits < this.hitsMax && this.getActiveBodyparts(HEAL)) {
+            this.heal(this);
+        }
         if (this.memory.assignment && this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) == IN_ROOM) {
             if (!this.memory.targetId) {
                 this.memory.targetId = this.findTarget();
@@ -10,6 +13,12 @@ export class Protector extends WaveCreep {
                 delete this.memory.assignment;
             }
             this.attackCreep();
+        }
+        // Healing logic
+        if (!this.memory.combat.healing && this.hits < this.hitsMax / 3 && this.getActiveBodyparts(HEAL)) {
+            this.memory.combat.healing = true;
+        } else if (this.memory.combat.healing && this.hits / this.hitsMax > 0.8) {
+            this.memory.combat.healing = false;
         }
     }
 
@@ -24,7 +33,7 @@ export class Protector extends WaveCreep {
         if (hostileRamparts.length) {
             return hostileRamparts[0].id;
         }
-        const hostileStructures = this.room.find(FIND_HOSTILE_STRUCTURES);
+        const hostileStructures = this.room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.hits > 0 });
         if (hostileStructures.length) {
             return hostileStructures[0].id;
         }
@@ -38,14 +47,20 @@ export class Protector extends WaveCreep {
                 this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: 1 });
                 result = this.attack(target);
             } else {
+                let range = 3;
+                let exitCost = 10;
                 let shouldFlee = true;
-                if (this.pos.getRangeTo(target) > 3) {
+                if (this.pos.getRangeTo(target) > range) {
                     shouldFlee = false;
                 }
-                this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: 3, flee: shouldFlee, exitCost: 10 }); // TODO: avoidExits when fleeing (later it can be changed depending on HEAL and current health to recover)
+                if (this.memory.combat.healing) {
+                    range = 4;
+                    exitCost = 1;
+                }
+                this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: exitCost }); // TODO: avoidExits when fleeing (later it can be changed depending on HEAL and current health to recover)
                 result = this.rangedAttack(target);
             }
-            if (result !== OK && result !== ERR_NOT_IN_RANGE) {
+            if (!this.memory.combat.healing && result !== OK && result !== ERR_NOT_IN_RANGE) {
                 delete this.memory.targetId;
             }
         } else {

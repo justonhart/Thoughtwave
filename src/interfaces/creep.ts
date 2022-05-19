@@ -9,6 +9,7 @@ interface CreepMemory {
     currentTaskPriority?: Priority;
     _m?: TravelState;
     scout?: ScoutMemory;
+    combat?: CombatMemory;
 }
 
 interface Creep {
@@ -29,6 +30,10 @@ interface PriorityQueue {
 interface ScoutMemory {
     path?: string[]; // Used for Pathfinding
     spawn?: string; // Spawn Position
+}
+
+interface CombatMemory {
+    healing: boolean;
 }
 
 const enum Priority {

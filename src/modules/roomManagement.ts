@@ -94,6 +94,7 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
                         room: homeRoom.name,
                         assignment: targetRoom.name,
                         currentTaskPriority: Priority.MEDIUM,
+                        combat: { healing: false },
                     },
                 });
             }
@@ -103,14 +104,17 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
 
             if (needsProtector(homeRoom, targetRoom)) {
                 // TODO: Move this spawn mechanism
+                const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 250);
+                body.push(HEAL);
                 Memory.empire.spawnAssignments.push({
                     designee: homeRoom.name,
-                    body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10),
+                    body: body,
                     memoryOptions: {
                         role: Role.PROTECTOR,
                         room: homeRoom.name,
                         assignment: targetRoom.name,
                         currentTaskPriority: Priority.MEDIUM,
+                        combat: { healing: false },
                     },
                 });
             }
@@ -121,14 +125,17 @@ function runHomeSecurity(homeRoom: Room, targetRoom?: Room) {
     } else if (hostileCreeps.length >= 2) {
         // can be optimized to spawn more protectors if more enemies are in room. In that case, add a "wait" function in the protector to wait for all protectors to spawn before attacking
         if (needsProtector(homeRoom, targetRoom)) {
+            const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 250);
+            body.push(HEAL);
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
-                body: PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable),
+                body: body,
                 memoryOptions: {
                     role: Role.PROTECTOR,
                     room: homeRoom.name,
                     assignment: homeRoom.name,
                     currentTaskPriority: Priority.MEDIUM,
+                    combat: { healing: false },
                 },
             });
         }
