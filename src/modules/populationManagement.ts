@@ -496,6 +496,7 @@ export class PopulationManagement {
             memory: {
                 room: spawn.room.name,
                 role: Role.MANAGER,
+                currentTaskPriority: Priority.HIGH,
             },
         };
 
