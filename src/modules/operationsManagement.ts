@@ -25,8 +25,6 @@ function manageColonizationOperation(op: Operation) {
         op.originRoom = findBestColonyOrigin(posFromMem(op.targetPos));
     }
 
-    console.log('t');
-
     switch (op.stage) {
         case OperationStage.CLAIM:
             let claimerExistsOrAssigned: boolean =
