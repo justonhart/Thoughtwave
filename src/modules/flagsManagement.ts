@@ -1,4 +1,5 @@
-import { addColonizationOperation, addHostileRoom, findBestColonyOrigin, unclaimRoom } from './empireManagement';
+import { addHostileRoom, unclaimRoom } from './empireManagement';
+import { addColonizationOperation, findBestColonyOrigin } from './operationsManagement';
 import { PopulationManagement } from './populationManagement';
 
 export default function manageFlags() {

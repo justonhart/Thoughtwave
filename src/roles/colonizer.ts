@@ -43,9 +43,11 @@ export class Colonizer extends EarlyCreep {
                 } else {
                     let spawnCreated = this.room.find(FIND_MY_STRUCTURES).filter((struct) => struct.structureType === STRUCTURE_SPAWN).length > 0;
                     if (spawnCreated) {
-                        let opIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === this.room.name);
-                        if (Memory.empire.colonizationOperations[opIndex]) {
-                            Memory.empire.colonizationOperations[opIndex].stage = ColonizeStage.COMPLETE;
+                        let opIndex = Memory.empire.operations.findIndex(
+                            (op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name
+                        );
+                        if (Memory.empire.operations[opIndex]) {
+                            Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
                             console.log(`${this.room.name} spawn has been build!`);
                         }
                         this.convertToWorker();
@@ -64,13 +66,13 @@ export class Colonizer extends EarlyCreep {
     }
 
     private prepareRoom() {
-        let opIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === this.room.name);
+        let opIndex = Memory.empire.operations.findIndex((op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name);
 
-        let spawnPos = posFromMem(Memory.empire.colonizationOperations[opIndex].spawnPosition);
+        let spawnPos = posFromMem(Memory.empire.operations[opIndex].targetPos);
         if (this.room.memory.layout !== undefined) {
             spawnPos = getSpawnPos(this.room);
         } else {
-            spawnPos = posFromMem(Memory.empire.colonizationOperations[opIndex].spawnPosition);
+            spawnPos = posFromMem(Memory.empire.operations[opIndex].targetPos);
         }
 
         this.room.createConstructionSite(spawnPos.x, spawnPos.y, STRUCTURE_SPAWN);
