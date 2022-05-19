@@ -59,7 +59,7 @@ export class Claimer extends WaveCreep {
                     });
 
                     if (
-                        invaderCore &&
+                        invaderCore.length &&
                         !Object.values(Game.creeps).filter(
                             (creep) =>
                                 creep.memory.role === Role.PROTECTOR &&
