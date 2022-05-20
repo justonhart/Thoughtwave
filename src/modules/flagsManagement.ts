@@ -1,5 +1,5 @@
 import { addHostileRoom, unclaimRoom } from './empireManagement';
-import { addColonizationOperation, findBestColonyOrigin } from './operationsManagement';
+import { addColonizationOperation, addSterilizeOperation, findBestColonyOrigin, findOperationOrigin } from './operationsManagement';
 import { PopulationManagement } from './populationManagement';
 
 export default function manageFlags() {
@@ -62,5 +62,10 @@ export default function manageFlags() {
         let managerPos = Game.flags.setManagerPos.pos;
         Memory.rooms[Game.flags.setManagerPos.room.name].managerPos = managerPos.toMemSafe();
         Game.flags.setManagerPos.remove();
+    }
+
+    if (Game.flags.sterilize) {
+        addSterilizeOperation(Game.flags.sterilize.pos);
+        Game.flags.sterilize.remove();
     }
 }

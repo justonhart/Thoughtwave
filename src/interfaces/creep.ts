@@ -7,6 +7,7 @@ interface CreepMemory {
     gathering?: boolean;
     room?: string;
     role?: Role;
+    operation?: OperationType;
     currentTaskPriority?: Priority;
     _m?: TravelState;
     scout?: ScoutMemory;
@@ -55,4 +56,5 @@ const enum Role {
     GO = 'GO',
     RESERVER = 'RESERVER',
     MANAGER = 'MANAGER',
+    OPERATIVE = 'OPERATIVE',
 }

@@ -42,14 +42,18 @@ interface Operation {
     stage: OperationStage;
     targetPos?: string;
     type: OperationType;
+    operativeCount?: number;
 }
 
 const enum OperationType {
     COLONIZE = 1,
+    STERILIZE,
 }
 
 const enum OperationStage {
-    CLAIM = 'Claim',
-    BUILD = 'Build',
-    COMPLETE = 'Complete',
+    PREPARE = 1,
+    EXECUTE,
+    CLAIM,
+    BUILD,
+    COMPLETE,
 }

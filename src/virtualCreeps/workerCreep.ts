@@ -140,6 +140,30 @@ export class WorkerCreep extends WaveCreep {
         }
     }
 
+    // dismantle until done, ignoring resources
+    protected runHardDismantleJob(target: Structure) {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
+        if (target.pos.isNearTo(this)) {
+            this.dismantle(target);
+        } else {
+            this.travelTo(target);
+        }
+    }
+
+    // dismantle until full of energy
+    protected runDismantleJob(target: Structure) {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
+        if (this.store.getFreeCapacity()) {
+            if (target.pos.isNearTo(this)) {
+                this.dismantle(target);
+            } else {
+                this.travelTo(target);
+            }
+        } else {
+            this.onTaskFinished();
+        }
+    }
+
     protected isRepairFinished(target: Structure): boolean {
         let workValue = this.getActiveBodyparts(WORK) * REPAIR_POWER;
         return target.hits >= target.hitsMax - workValue;

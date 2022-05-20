@@ -18,6 +18,7 @@ import { Gatherer } from '../roles/gatherer';
 import { Reserver } from '../roles/reserver';
 import { RemoteMiner } from '../roles/remoteMiner';
 import { Manager } from '../roles/manager';
+import { Operative } from '../roles/operative';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -86,6 +87,9 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.MANAGER:
             waveCreep = new Manager(creep.id);
+            break;
+        case Role.OPERATIVE:
+            waveCreep = new Operative(creep.id);
             break;
         default:
             waveCreep = new WaveCreep(creep.id);
