@@ -4,9 +4,9 @@ interface Memory {
 
 interface EmpireMemory {
     spawnAssignments?: SpawnAssignment[];
-    colonizationOperations?: ColonizationOperation[]; //room names
     hostileRooms?: HostileRoom[];
     scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>
+    operations?: Operation[];
 }
 
 interface EmpireIntershard {
@@ -36,15 +36,40 @@ interface HostileRoom {
     expireAt: number; // Game Tick at which the room is no longer considered hostile
 }
 
-interface ColonizationOperation {
-    destination: string; //room name
-    origin: string; //room name
-    stage: ColonizeStage;
-    spawnPosition: string;
+interface Operation {
+    targetRoom: string;
+    originRoom: string;
+    stage: OperationStage;
+    type: OperationType;
+    operativeCount?: number;
+    targetPos?: string;
+    resource?: ResourceConstant;
 }
 
-const enum ColonizeStage {
-    CLAIM = 'Claim',
-    BUILD = 'Build',
-    COMPLETE = 'Complete',
+interface OperationOpts {
+    originRoom?: string;
+    operativeCount?: number;
+    originOpts?: OriginOpts;
+    targetPos?: string;
+    resource?: ResourceConstant;
+}
+
+interface OriginOpts {
+    earlyPhase: boolean;
+    minEnergyStatus: EnergyStatus;
+    maxLinearDistance: number;
+}
+
+const enum OperationType {
+    COLONIZE = 1,
+    STERILIZE,
+    COLLECTION,
+}
+
+const enum OperationStage {
+    PREPARE = 1,
+    ACTIVE,
+    CLAIM,
+    BUILD,
+    COMPLETE,
 }
