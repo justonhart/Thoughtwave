@@ -42,8 +42,8 @@ interface RoomPosition {
 }
 
 const enum PhaseShiftStatus {
-    PREPARE = 'Preparing',
-    EXECUTE = 'Execute',
+    PREPARE = 1,
+    EXECUTE,
 }
 
 const enum AssignmentStatus {

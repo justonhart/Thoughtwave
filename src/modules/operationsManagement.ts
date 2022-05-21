@@ -167,18 +167,30 @@ function manageSterilizeOperation(op: Operation) {
         op.originRoom = findOperationOrigin(posFromMem(op.targetPos));
     }
 
-    let operativesCount = Object.values(Game.creeps).filter(
-        (creep) => creep.memory.destination === op.targetRoom && creep.memory.operation === op.type
-    ).length;
-    if (op.originRoom && operativesCount < (op.operativeCount ?? 1)) {
-        Memory.empire.spawnAssignments.push({
-            designee: op.originRoom,
-            body: PopulationManagement.createPartsArray([WORK, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
-            memoryOptions: {
-                role: Role.OPERATIVE,
-                operation: OperationType.STERILIZE,
-                destination: op.targetRoom,
-            },
-        });
+    let assignedOperativesCount =
+        Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
+        Memory.empire.spawnAssignments.filter(
+            (creep) => creep.memoryOptions.destination === op.targetRoom && creep.memoryOptions.operation === op.type
+        ).length;
+    if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1)) {
+        let availableOperatives = Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.OPERATIVE && !creep.memory.operation);
+
+        if (availableOperatives.length) {
+            let reassignedOperative = availableOperatives.pop();
+            reassignedOperative.memory.destination = op.targetRoom;
+            reassignedOperative.memory.operation = op.type;
+
+            console.log(`Reassigned ${reassignedOperative.name} to operation targeting ${op.targetRoom}`);
+        } else {
+            Memory.empire.spawnAssignments.push({
+                designee: op.originRoom,
+                body: PopulationManagement.createPartsArray([WORK, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
+                memoryOptions: {
+                    role: Role.OPERATIVE,
+                    operation: OperationType.STERILIZE,
+                    destination: op.targetRoom,
+                },
+            });
+        }
     }
 }
