@@ -554,7 +554,7 @@ export class Pathing {
                     // Swap places if creep has a higher priorty
                     return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
                 }
-            } else {
+            } else if (obstacleCreep) {
                 return Pathing.moveObstacleCreep(obstacleCreep, nextDirection);
             }
         }
