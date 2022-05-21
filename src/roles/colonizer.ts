@@ -66,15 +66,7 @@ export class Colonizer extends EarlyCreep {
     }
 
     private prepareRoom() {
-        let opIndex = Memory.empire.operations.findIndex((op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name);
-
-        let spawnPos = posFromMem(Memory.empire.operations[opIndex].targetPos);
-        if (this.room.memory.layout !== undefined) {
-            spawnPos = getSpawnPos(this.room);
-        } else {
-            spawnPos = posFromMem(Memory.empire.operations[opIndex].targetPos);
-        }
-
+        let spawnPos = getSpawnPos(this.room);
         this.room.createConstructionSite(spawnPos.x, spawnPos.y, STRUCTURE_SPAWN);
     }
 

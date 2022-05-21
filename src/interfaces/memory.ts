@@ -40,19 +40,35 @@ interface Operation {
     targetRoom: string;
     originRoom: string;
     stage: OperationStage;
-    targetPos?: string;
     type: OperationType;
     operativeCount?: number;
+    targetPos?: string;
+    resource?: ResourceConstant;
+}
+
+interface OperationOpts {
+    originRoom?: string;
+    operativeCount?: number;
+    originOpts?: OriginOpts;
+    targetPos?: string;
+    resource?: ResourceConstant;
+}
+
+interface OriginOpts {
+    earlyPhase: boolean;
+    minEnergyStatus: EnergyStatus;
+    maxLinearDistance: number;
 }
 
 const enum OperationType {
     COLONIZE = 1,
     STERILIZE,
+    COLLECTION,
 }
 
 const enum OperationStage {
     PREPARE = 1,
-    EXECUTE,
+    ACTIVE,
     CLAIM,
     BUILD,
     COMPLETE,

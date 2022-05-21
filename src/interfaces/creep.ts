@@ -15,6 +15,7 @@ interface CreepMemory {
 
 interface Creep {
     homeroom: Room;
+    operation: Operation;
     travelTo(destination: HasPos | RoomPosition, opts?: TravelToOpts): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND;
     travelToRoom(roomName: string, opts?: TravelToOpts): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND | IN_ROOM;
     onEdge(position: HasPos | RoomPosition): boolean;

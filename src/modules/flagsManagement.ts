@@ -1,10 +1,10 @@
 import { addHostileRoom, unclaimRoom } from './empireManagement';
-import { addColonizationOperation, addSterilizeOperation, findBestColonyOrigin, findOperationOrigin } from './operationsManagement';
+import { addOperation, findOperationOrigin } from './operationsManagement';
 import { PopulationManagement } from './populationManagement';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
-        addColonizationOperation(Game.flags.colonize.pos);
+        addOperation(OperationType.COLONIZE, Game.flags.colonize.pos.roomName);
         Game.flags.colonize.remove();
     }
 
@@ -19,7 +19,7 @@ export default function manageFlags() {
     }
 
     if (Game.flags.intershardLaunch) {
-        let origin = findBestColonyOrigin(Game.flags.intershardLaunch.pos);
+        let origin = findOperationOrigin(Game.flags.intershardLaunch.pos.roomName);
 
         console.log(`Launching intershard colony from ${origin}`);
 
@@ -65,7 +65,12 @@ export default function manageFlags() {
     }
 
     if (Game.flags.sterilize) {
-        addSterilizeOperation(Game.flags.sterilize.pos);
+        addOperation(OperationType.STERILIZE, Game.flags.sterilize.pos.roomName);
         Game.flags.sterilize.remove();
+    }
+
+    if (Game.flags.collect) {
+        addOperation(OperationType.COLLECTION, Game.flags.collect.pos.roomName);
+        Game.flags.collect.remove();
     }
 }

@@ -33,3 +33,11 @@ Object.defineProperty(Creep.prototype, 'homeroom', {
     enumerable: false,
     configurable: true,
 });
+
+Object.defineProperty(Creep.prototype, 'operation', {
+    get: function (this: Creep) {
+        return Memory.empire.operations.find((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
+    },
+    enumerable: false,
+    configurable: true,
+});

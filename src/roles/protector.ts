@@ -24,7 +24,9 @@ export class Protector extends WaveCreep {
         if (hostileRamparts.length) {
             return hostileRamparts[0].id;
         }
-        const hostileStructures = this.room.find(FIND_HOSTILE_STRUCTURES);
+        const hostileStructures = this.room
+            .find(FIND_HOSTILE_STRUCTURES)
+            .filter((struct) => !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity()));
         if (hostileStructures.length) {
             return hostileStructures[0].id;
         }
