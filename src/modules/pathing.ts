@@ -125,6 +125,7 @@ export class Pathing {
 
         if (!creep.memory._m.path) {
             //console.log(`${creep.name} in ${creep.pos.toMemSafe} is looking for new path.`);
+            creep.memory._m.visibleRooms = []; // Reset
             let pathFinder = Pathing.findTravelPath(creep.name, creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), opts);
             if (pathFinder.incomplete) {
                 // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
@@ -308,9 +309,6 @@ export class Pathing {
 
             let matrix: CostMatrix;
             if (room) {
-                if (!Memory.creeps[creepName]._m.visibleRooms) {
-                    Memory.creeps[creepName]._m.visibleRooms = [];
-                }
                 if (!Memory.creeps[creepName]._m.visibleRooms.includes(room.name)) {
                     Memory.creeps[creepName]._m.visibleRooms.push(room.name);
                 }
