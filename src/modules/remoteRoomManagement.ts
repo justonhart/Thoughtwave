@@ -50,7 +50,9 @@ function runSecurity(homeRoom: Room, targetRoom: Room) {
         return;
     }
 
-    const hostileStuctures = targetRoom.find(FIND_HOSTILE_STRUCTURES);
+    const hostileStuctures = targetRoom
+        .find(FIND_HOSTILE_STRUCTURES)
+        .filter((struct) => !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity()));
     if (hostileStuctures.length) {
         homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY_STRUCTS;
 
