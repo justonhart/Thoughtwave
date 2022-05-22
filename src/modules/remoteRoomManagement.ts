@@ -2,7 +2,16 @@ import { PopulationManagement } from './populationManagement';
 
 export function driveRemoteRoom(room: Room) {
     if (room.memory.remoteAssignments) {
-        Object.keys(room.memory.remoteAssignments).forEach((remoteRoom) => runSecurity(room, Game.rooms[remoteRoom])); // Protect Remote Mining
+        try {
+            Object.keys(room.memory.remoteAssignments).forEach((remoteRoomName) => {
+                const remoteRoom = Game.rooms[remoteRoomName];
+                if (remoteRoom) {
+                    runSecurity(room, remoteRoom);
+                }
+            });
+        } catch (e) {
+            console.log(`Error caught in remote room management: \n${e}`);
+        }
     }
 }
 
