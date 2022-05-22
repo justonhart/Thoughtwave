@@ -521,4 +521,15 @@ export class PopulationManagement {
         let manager = roomCreeps.find((creep) => creep.memory.role === Role.MANAGER);
         return room.controller?.level >= 5 && (room.memory.layout !== undefined || !!room.memory.managerPos) && !manager;
     }
+
+    static needsProtector(room: Room): boolean {
+        return (
+            !Object.values(Game.creeps).filter(
+                (creep) => creep.memory.role === Role.PROTECTOR && (creep.memory.assignment === room.name || creep.pos.roomName === room.name)
+            ).length &&
+            !Memory.empire.spawnAssignments.filter(
+                (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.memoryOptions.assignment === room.name
+            ).length
+        );
+    }
 }
