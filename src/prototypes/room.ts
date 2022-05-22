@@ -28,7 +28,7 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
             return EnergyStatus.SURPLUS;
         } else if (this.storage.store[RESOURCE_ENERGY] >= 200000) {
             return EnergyStatus.STABLE;
-        } else if ((this.storage.store[RESOURCE_ENERGY] >= Math.min(this.energyCapacityAvailable * 10), 25000)) {
+        } else if (this.storage.store[RESOURCE_ENERGY] >= Math.min(this.energyCapacityAvailable * 10, 25000)) {
             return EnergyStatus.RECOVERING;
         } else {
             return EnergyStatus.CRITICAL;
