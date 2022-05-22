@@ -51,16 +51,23 @@ const enum AssignmentStatus {
     ASSIGNED = 'assigned',
 }
 
+/**
+ * The enums on the top overwrite the lower ones (for example if an attack unit is in the room and a structure it will set ENEMY_ATTACK_CREEPS)
+ */
 const enum RemoteMiningRoomState {
+    /**
+     * Enemy Creeps with attack body parts.
+     */
+    ENEMY_ATTTACK_CREEPS,
+    /**
+     * Enemy Creeps with other body parts.
+     */
+    ENEMY_NON_COMBAT_CREEPS,
+    /**
+     * Enemy structures (includes invader cores).
+     */
+    ENEMY_STRUCTS,
     SAFE,
-    /**
-     * Enemy attack creep in room.
-     */
-    ENEMY,
-    /**
-     * Enemy claimer (player/invader core) in room.
-     */
-    ENEMY_CLAIMER,
 }
 
 const enum RemoteMiningRoomControllerState {
