@@ -54,7 +54,7 @@ function runSecurity(homeRoom: Room, targetRoom: Room) {
     if (hostileStuctures.length) {
         homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY_STRUCTS;
 
-        if (PopulationManagement.needsProtector(homeRoom) && !reassignIdleProtector(homeRoom.name, targetRoom.name)) {
+        if (PopulationManagement.needsProtector(targetRoom) && !reassignIdleProtector(homeRoom.name, targetRoom.name)) {
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 6),
