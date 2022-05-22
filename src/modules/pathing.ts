@@ -125,6 +125,7 @@ export class Pathing {
 
         if (!creep.memory._m.path) {
             //console.log(`${creep.name} in ${creep.pos.toMemSafe} is looking for new path.`);
+            creep.memory._m.visibleRooms = []; // Reset
             let pathFinder = Pathing.findTravelPath(creep.name, creep.pos, destination, Pathing.getCreepMoveEfficiency(creep), opts);
             if (pathFinder.incomplete) {
                 // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
@@ -310,9 +311,6 @@ export class Pathing {
 
             let matrix: CostMatrix;
             if (room) {
-                if (!Memory.creeps[creepName]._m.visibleRooms) {
-                    Memory.creeps[creepName]._m.visibleRooms = [];
-                }
                 if (!Memory.creeps[creepName]._m.visibleRooms.includes(room.name)) {
                     Memory.creeps[creepName]._m.visibleRooms.push(room.name);
                 }
@@ -527,11 +525,9 @@ export class Pathing {
                 if (obstacleCreep.memory._m?.path?.length > 1) {
                     if (!obstacleCreep.fatigue && obstacleCreep.memory._m?.lastMove < Game.time - 2) {
                         // idle creep
-                        obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
-                            obstacleCreep.move(parseInt(obstacleCreep.memory._m.path[0], 10) as DirectionConstant);
-                        });
+                        const nextDirection = parseInt(obstacleCreep.memory._m.path[0], 10);
                         obstacleCreep.memory._m.path = obstacleCreep.memory._m.path.slice(1);
-                        return true;
+                        return Pathing.moveObstacleCreep(obstacleCreep, nextDirection as DirectionConstant);
                     }
                     return true;
                 }
@@ -539,10 +535,7 @@ export class Pathing {
                 const obstacleCreepDestination = posFromMem(obstacleCreep.memory._m.destination);
                 // Swap places if creep is closer to the destination than the obstacleCreep
                 if (obstacleCreep.pos.getRangeTo(obstacleCreepDestination) >= creep.pos.getRangeTo(obstacleCreepDestination)) {
-                    obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
-                        obstacleCreep.move(Pathing.inverseDirection(nextDirection));
-                    });
-                    return true;
+                    return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
                 }
 
                 // Find Path closer to target
@@ -558,20 +551,23 @@ export class Pathing {
                     obstaclePathFinder?.path?.length > 0 &&
                     obstacleCreep.pos.getRangeTo(obstacleCreepDestination) >= obstaclePathFinder.path[0].getRangeTo(obstacleCreepDestination)
                 ) {
-                    obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
-                        obstacleCreep.move(obstacleCreep.pos.getDirectionTo(obstaclePathFinder.path[0]));
-                    });
-                    return true;
+                    return Pathing.moveObstacleCreep(obstacleCreep, obstacleCreep.pos.getDirectionTo(obstaclePathFinder.path[0]));
                 } else if (creep.memory.currentTaskPriority > obstacleCreep.memory.currentTaskPriority) {
                     // Swap places if creep has a higher priorty
-                    obstacleCreep.addTaskToPriorityQueue(creep.memory.currentTaskPriority, () => {
-                        obstacleCreep.move(Pathing.inverseDirection(nextDirection));
-                    });
-                    return true;
+                    return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
                 }
+            } else if (obstacleCreep) {
+                return Pathing.moveObstacleCreep(obstacleCreep, nextDirection);
             }
         }
         return false;
+    }
+
+    static moveObstacleCreep(obstacleCreep: Creep, direction: DirectionConstant) {
+        obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
+            obstacleCreep.move(direction);
+        });
+        return true;
     }
 
     /**

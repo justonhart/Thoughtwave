@@ -32,6 +32,7 @@ interface Room {
     removeFromRepairQueue(id: string): void;
     energyStatus: EnergyStatus;
     mineral: Mineral;
+    managerLink: StructureLink;
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
 }
@@ -41,8 +42,8 @@ interface RoomPosition {
 }
 
 const enum PhaseShiftStatus {
-    PREPARE = 'Preparing',
-    EXECUTE = 'Execute',
+    PREPARE = 1,
+    EXECUTE,
 }
 
 const enum AssignmentStatus {

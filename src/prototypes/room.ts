@@ -1,3 +1,4 @@
+import { posFromMem } from '../modules/memoryManagement';
 import { findRepairTargets } from '../modules/roomManagement';
 
 RoomPosition.prototype.toMemSafe = function (this: RoomPosition): string {
@@ -27,7 +28,7 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
             return EnergyStatus.SURPLUS;
         } else if (this.storage.store[RESOURCE_ENERGY] >= 200000) {
             return EnergyStatus.STABLE;
-        } else if ((this.storage.store[RESOURCE_ENERGY] >= Math.min(this.energyCapacityAvailable * 10), 25000)) {
+        } else if (this.storage.store[RESOURCE_ENERGY] >= Math.min(this.energyCapacityAvailable * 10, 25000)) {
             return EnergyStatus.RECOVERING;
         } else {
             return EnergyStatus.CRITICAL;
@@ -44,6 +45,19 @@ Room.prototype.canSpawn = function (this: Room): boolean {
 Object.defineProperty(Room.prototype, 'mineral', {
     get: function (this: Room) {
         return this.find(FIND_MINERALS).pop();
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'managerLink', {
+    get: function (this: Room) {
+        let posToCheck = posFromMem(this.memory.anchorPoint || this.memory.managerPos);
+        let link = posToCheck
+            ?.findInRange(FIND_MY_STRUCTURES, 1)
+            .filter((structure) => structure.structureType === STRUCTURE_LINK)
+            .pop();
+        return link;
     },
     enumerable: false,
     configurable: true,

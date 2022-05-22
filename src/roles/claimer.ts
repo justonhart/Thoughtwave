@@ -39,9 +39,9 @@ export class Claimer extends WaveCreep {
             if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
                 if (this.room.controller.my) {
                     console.log(`${this.room.name} has been claimed!`);
-                    let opIndex = Memory.empire.colonizationOperations.findIndex((op) => op.destination === this.room.name);
+                    let opIndex = Memory.empire.operations.findIndex((op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name);
                     if (opIndex > -1) {
-                        Memory.empire.colonizationOperations[opIndex].stage = this.room.canSpawn() ? ColonizeStage.COMPLETE : ColonizeStage.BUILD;
+                        Memory.empire.operations[opIndex].stage = this.room.canSpawn() ? OperationStage.COMPLETE : OperationStage.BUILD;
                     }
 
                     let preexistingStructures = this.room.find(FIND_STRUCTURES).filter(
@@ -59,7 +59,7 @@ export class Claimer extends WaveCreep {
                     });
 
                     if (
-                        invaderCore &&
+                        invaderCore.length &&
                         !Object.values(Game.creeps).filter(
                             (creep) =>
                                 creep.memory.role === Role.PROTECTOR &&

@@ -1,7 +1,7 @@
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 import { driveRemoteRoom } from './remoteRoomManagement';
-import { findBunkerLocation, getStructureForPos, placeBunkerOuterRamparts, placeRoadsToPOIs } from './roomDesign';
+import { findBunkerLocation, getStructureForPos, placeBunkerOuterRamparts, placeMinerLinks, placeRoadsToPOIs } from './roomDesign';
 
 export function driveRoom(room: Room) {
     if (room.memory?.unclaim) {
@@ -14,19 +14,24 @@ export function driveRoom(room: Room) {
     }
 
     if (
-        Game.time % 20 === 0 &&
-        room.memory.layout !== undefined &&
+        Game.time % 100 === 0 &&
         room.canSpawn() &&
         Object.keys(Game.constructionSites).length < 100 &&
         room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
     ) {
-        if (room.controller.level >= 2) {
-            placeRoadsToPOIs(room);
-            placeConstructionSites(room);
+        if (room.memory.layout !== undefined) {
+            if (room.controller.level >= 2) {
+                placeRoadsToPOIs(room);
+                placeConstructionSites(room);
+            }
+
+            if (room.memory.phase > 1) {
+                placeBunkerOuterRamparts(room);
+            }
         }
 
-        if (room.memory.phase > 1) {
-            placeBunkerOuterRamparts(room);
+        if (room.controller.level >= 5 && room.managerLink) {
+            placeMinerLinks(room);
         }
     }
 
