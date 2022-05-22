@@ -25,7 +25,11 @@ function runSecurity(homeRoom: Room, targetRoom: Room) {
     });
 
     if (hostileAttackCreeps.length || hostileOtherCreeps.length) {
-        homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS;
+        if (hostileOtherCreeps.length) {
+            homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY_NON_COMBAT_CREEPS;
+        } else {
+            homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS;
+        }
 
         if (PopulationManagement.needsProtector(targetRoom) && !reassignIdleProtector(homeRoom.name, targetRoom.name)) {
             const maxSize = hostileAttackCreeps.length ? getMaxSize(hostileAttackCreeps) : 6;
@@ -48,7 +52,7 @@ function runSecurity(homeRoom: Room, targetRoom: Room) {
 
     const hostileStuctures = targetRoom.find(FIND_HOSTILE_STRUCTURES);
     if (hostileStuctures.length) {
-        homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY_NON_COMBAT_CREEPS;
+        homeRoom.memory.remoteAssignments[targetRoom.name].state = RemoteMiningRoomState.ENEMY_STRUCTS;
 
         if (PopulationManagement.needsProtector(homeRoom) && !reassignIdleProtector(homeRoom.name, targetRoom.name)) {
             Memory.empire.spawnAssignments.push({
