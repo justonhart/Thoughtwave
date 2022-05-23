@@ -171,8 +171,7 @@ export class Pathing {
         if (
             opts.avoidHostiles &&
             creep.memory._m.lastCoord &&
-            Pathing.isExit(posFromMem(creep.memory._m.lastCoord)) &&
-            Pathing.isExit(creep.pos) &&
+            posFromMem(creep.memory._m.lastCoord).roomName !== creep.pos.roomName &&
             !creep.memory._m.visibleRooms.includes(creep.pos.roomName)
         ) {
             delete creep.memory._m.path; // Recalculate path in each new room as well if the creep should avoid hostiles in each room
