@@ -36,6 +36,10 @@ export class Colonizer extends EarlyCreep {
 
                 if (!this.memory.targetId || !target) {
                     this.memory.targetId = this.findTarget();
+                    if (!this.memory.targetId) {
+                        this.travelTo(new RoomPosition(25, 25, this.memory.destination), { range: 15 });
+                        return; // wait for claimer (can happen if claimer died on the way)
+                    }
                     target = Game.getObjectById(this.memory.targetId);
                 }
                 if (target instanceof ConstructionSite) {
