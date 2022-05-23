@@ -359,6 +359,11 @@ export class Pathing {
                     }
                 }
 
+                if (room.memory.anchorPoint || room.memory.managerPos) {
+                    let managerPos = posFromMem(room.memory.anchorPoint || room.memory.managerPos);
+                    matrix.set(managerPos.x, managerPos.y, 10);
+                }
+
                 // All tiles will be set to one if there is a road construction so that it counts as a finished road
                 if (options.preferRoadConstruction) {
                     matrix = matrix.clone();
