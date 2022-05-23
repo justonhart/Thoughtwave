@@ -530,13 +530,13 @@ export class PopulationManagement {
         return room.controller?.level >= 5 && (room.memory.layout !== undefined || !!room.memory.managerPos) && !manager;
     }
 
-    static needsProtector(room: Room): boolean {
+    static needsProtector(roomName: string): boolean {
         return (
             !Object.values(Game.creeps).filter(
-                (creep) => creep.memory.role === Role.PROTECTOR && (creep.memory.assignment === room.name || creep.pos.roomName === room.name)
+                (creep) => creep.memory.role === Role.PROTECTOR && (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
             ).length &&
             !Memory.empire.spawnAssignments.filter(
-                (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.memoryOptions.assignment === room.name
+                (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.memoryOptions.assignment === roomName
             ).length
         );
     }
