@@ -5,12 +5,12 @@ export class Protector extends WaveCreep {
         if (this.hits < this.hitsMax && this.getActiveBodyparts(HEAL)) {
             this.heal(this);
         }
-        if (this.memory.assignment && this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) == IN_ROOM) {
+        if (this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) === IN_ROOM) {
             if (!this.memory.targetId) {
                 this.memory.targetId = this.findTarget();
             }
             if (!this.memory.targetId) {
-                delete this.memory.assignment;
+                return;
             }
             this.attackCreep();
         }

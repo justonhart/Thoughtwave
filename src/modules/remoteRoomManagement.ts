@@ -23,8 +23,9 @@ function runSecurity(homeRoom: Room, remoteRoomName: string) {
     if (
         hostileAttackCreeps?.length ||
         hostileOtherCreeps?.length ||
-        homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS ||
-        homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_NON_COMBAT_CREEPS
+        (!targetRoom &&
+            (homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS ||
+                homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_NON_COMBAT_CREEPS))
     ) {
         if (hostileOtherCreeps?.length) {
             homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.ENEMY_NON_COMBAT_CREEPS;
@@ -54,7 +55,12 @@ function runSecurity(homeRoom: Room, remoteRoomName: string) {
     const hostileStuctures = targetRoom
         ?.find(FIND_HOSTILE_STRUCTURES)
         .filter((struct) => !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity()));
-    if (hostileStuctures?.length) {
+    if (
+        hostileStuctures?.length ||
+        (!targetRoom &&
+            homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_STRUCTS &&
+            !reassignIdleProtector(homeRoom.name, remoteRoomName))
+    ) {
         homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.ENEMY_STRUCTS;
 
         if (PopulationManagement.needsProtector(remoteRoomName)) {
@@ -96,17 +102,21 @@ function getMaxSize(hostileCreeps: Creep[]) {
  * @returns Boolean to check if a reassignment was possible
  */
 function reassignIdleProtector(homeRoomName: string, targetRoomName: string): boolean {
-    const protectors = Object.values(Memory.creeps).filter((creep) => creep.room === homeRoomName && creep.role === Role.PROTECTOR);
+    const protectors = Object.values(Game.creeps).filter(
+        (creep) => creep.memory.room === homeRoomName && creep.memory.role === Role.PROTECTOR && creep.ticksToLive > 200
+    );
 
-    const idleProtector = protectors.find((creep) => !creep.assignment);
+    const idleProtector = protectors.find(
+        (creep) => Memory.rooms[homeRoomName].remoteAssignments[creep.memory.assignment].state !== RemoteMiningRoomState.SAFE
+    );
     if (idleProtector) {
-        idleProtector.assignment = targetRoomName;
+        idleProtector.memory.assignment = targetRoomName;
         return true;
     }
 
     const duplicateProtector = protectors.find((protector, i) => protectors.indexOf(protector) !== i);
     if (duplicateProtector) {
-        duplicateProtector.assignment = targetRoomName;
+        duplicateProtector.memory.assignment = targetRoomName;
         return true;
     }
     return false;
