@@ -13,6 +13,7 @@ export class Reserver extends WaveCreep {
                 this.room.controller?.reservation?.username &&
                 this.room.controller?.reservation?.username !== this.homeroom.controller.owner.username
             ) {
+                this.homeroom.memory.remoteAssignments[this.room.name].controllerState = RemoteMiningRoomControllerState.ENEMY;
                 switch (this.attackController(this.room.controller)) {
                     case ERR_NOT_IN_RANGE:
                         this.travelTo(this.room.controller, { range: 1 });

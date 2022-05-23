@@ -79,6 +79,10 @@ const enum RemoteMiningRoomControllerState {
      * Controller reserve under 1000.
      */
     LOW,
+    /**
+     * Currently controlled by enemy.
+     */
+    ENEMY,
 }
 
 const enum EnergyStatus {

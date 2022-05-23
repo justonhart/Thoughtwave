@@ -219,7 +219,8 @@ export class PopulationManagement {
         const assigmentKeys = Object.keys(room.memory.remoteAssignments);
         return !!assigmentKeys.find(
             (remoteRoom) =>
-                room.memory.remoteAssignments[remoteRoom].state === RemoteMiningRoomState.SAFE &&
+                room.memory.remoteAssignments[remoteRoom].state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS &&
+                room.memory.remoteAssignments[remoteRoom].controllerState !== RemoteMiningRoomControllerState.ENEMY &&
                 Object.values(room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
         );
     }
@@ -263,7 +264,8 @@ export class PopulationManagement {
     static needsGatherer(room: Room): boolean {
         return Object.entries(room.memory.remoteAssignments).some(
             ([roomName, assignment]) =>
-                assignment.state === RemoteMiningRoomState.SAFE &&
+                assignment.state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS &&
+                assignment.controllerState !== RemoteMiningRoomControllerState.ENEMY &&
                 (assignment.gatherer === AssignmentStatus.UNASSIGNED ||
                     (assignment.energyStatus === EnergyStatus.SURPLUS &&
                         Object.values(Memory.creeps).filter(
@@ -317,7 +319,7 @@ export class PopulationManagement {
 
     static needsReserver(room: Room): boolean {
         return Object.values(room.memory.remoteAssignments).some(
-            (assignment) => assignment.state === RemoteMiningRoomState.SAFE && assignment.reserver === AssignmentStatus.UNASSIGNED
+            (assignment) => assignment.state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS && assignment.reserver === AssignmentStatus.UNASSIGNED
         );
     }
 

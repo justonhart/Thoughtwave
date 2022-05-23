@@ -12,46 +12,47 @@ export function driveRemoteRoom(room: Room) {
 
 function runSecurity(homeRoom: Room, remoteRoomName: string) {
     const targetRoom = Game.rooms[remoteRoomName];
+
+    // --- ATTACK CREEPS
     const hostileAttackCreeps = targetRoom?.find(FIND_HOSTILE_CREEPS, {
         filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
     });
 
-    const hostileOtherCreeps = targetRoom?.find(FIND_HOSTILE_CREEPS, {
-        filter: (creep) => creep.getActiveBodyparts(ATTACK) === 0 && creep.getActiveBodyparts(RANGED_ATTACK) === 0,
-    });
-
     if (
         hostileAttackCreeps?.length ||
-        hostileOtherCreeps?.length ||
-        (!targetRoom &&
-            (homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS ||
-                homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_NON_COMBAT_CREEPS))
+        (!targetRoom && homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS)
     ) {
-        if (hostileOtherCreeps?.length) {
-            homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.ENEMY_NON_COMBAT_CREEPS;
-        } else {
-            homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS;
-        }
+        homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS;
 
         if (PopulationManagement.needsProtector(remoteRoomName) && !reassignIdleProtector(homeRoom.name, remoteRoomName)) {
-            const maxSize = hostileAttackCreeps.length ? getMaxSize(hostileAttackCreeps) : 6;
+            const maxSize = getMaxSize(hostileAttackCreeps);
             const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 300, maxSize);
             body.push(HEAL, MOVE);
-            Memory.empire.spawnAssignments.push({
-                designee: homeRoom.name,
-                body: body,
-                memoryOptions: {
-                    role: Role.PROTECTOR,
-                    room: homeRoom.name,
-                    assignment: remoteRoomName,
-                    currentTaskPriority: Priority.MEDIUM,
-                    combat: { healing: false },
-                },
-            });
+            spawnProtector(homeRoom.name, remoteRoomName, body);
         }
         return;
     }
 
+    // --- OTHER CREEPS
+    const hostileOtherCreeps = targetRoom?.find(FIND_HOSTILE_CREEPS, {
+        filter: (creep) => creep.getActiveBodyparts(ATTACK) === 0 && creep.getActiveBodyparts(RANGED_ATTACK) === 0,
+    });
+    if (
+        hostileOtherCreeps?.length ||
+        (!targetRoom && homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_NON_COMBAT_CREEPS)
+    ) {
+        homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.ENEMY_NON_COMBAT_CREEPS;
+
+        if (PopulationManagement.needsProtector(remoteRoomName) && !reassignIdleProtector(homeRoom.name, remoteRoomName)) {
+            const maxSize = 6;
+            const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 300, maxSize);
+            body.push(HEAL, MOVE);
+            spawnProtector(homeRoom.name, remoteRoomName, body);
+        }
+        return;
+    }
+
+    // --- STRUCTURES
     const hostileStuctures = targetRoom
         ?.find(FIND_HOSTILE_STRUCTURES)
         .filter((struct) => !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity()));
@@ -64,22 +65,26 @@ function runSecurity(homeRoom: Room, remoteRoomName: string) {
         homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.ENEMY_STRUCTS;
 
         if (PopulationManagement.needsProtector(remoteRoomName)) {
-            Memory.empire.spawnAssignments.push({
-                designee: homeRoom.name,
-                body: PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 6),
-                memoryOptions: {
-                    role: Role.PROTECTOR,
-                    room: homeRoom.name,
-                    assignment: remoteRoomName,
-                    currentTaskPriority: Priority.MEDIUM,
-                    combat: { healing: false },
-                },
-            });
+            spawnProtector(homeRoom.name, remoteRoomName, PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 6));
         }
         return;
     }
 
     homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.SAFE;
+}
+
+function spawnProtector(homeRoomName: string, remoteRoomName: string, body: BodyPartConstant[]) {
+    Memory.empire.spawnAssignments.push({
+        designee: homeRoomName,
+        body: body,
+        memoryOptions: {
+            role: Role.PROTECTOR,
+            room: homeRoomName,
+            assignment: remoteRoomName,
+            currentTaskPriority: Priority.MEDIUM,
+            combat: { healing: false },
+        },
+    });
 }
 
 /**
