@@ -5,6 +5,9 @@ export class Protector extends WaveCreep {
         if (this.hits < this.hitsMax && this.getActiveBodyparts(HEAL)) {
             this.heal(this);
         }
+        if (this.memory.combat.healing && this.pos.roomName !== this.memory.assignment) {
+            return; // Creep retreated to previous room to heal
+        }
         if (this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) === IN_ROOM) {
             if (!this.memory.targetId) {
                 this.memory.targetId = this.findTarget();
@@ -60,7 +63,7 @@ export class Protector extends WaveCreep {
                     range = 4;
                     exitCost = 1;
                 }
-                this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: exitCost }); // TODO: avoidExits when fleeing (later it can be changed depending on HEAL and current health to recover)
+                this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: exitCost });
                 result = this.rangedAttack(target);
             }
             if (!this.memory.combat.healing && result !== OK && result !== ERR_NOT_IN_RANGE) {
