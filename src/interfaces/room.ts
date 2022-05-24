@@ -1,21 +1,21 @@
 interface RoomMemory {
-    unclaim: boolean;
-    managerPos: string;
-    anchorPoint: string;
-    gates: Gate[];
-    repairSearchCooldown: number;
-    repairQueue: Id<Structure<StructureConstant>>[];
-    miningAssignments: Map<string, AssignmentStatus>;
-    remoteAssignments: { [roomName: string]: RemoteAssignment };
+    unclaim?: boolean;
+    managerPos?: string;
+    anchorPoint?: string;
+    gates?: Gate[];
+    repairSearchCooldown?: number;
+    repairQueue?: Id<Structure<StructureConstant>>[];
+    miningAssignments?: Map<string, AssignmentStatus>;
+    remoteAssignments?: { [roomName: string]: RemoteAssignment };
     containerPositions?: string[];
     phaseShift?: PhaseShiftStatus;
     phase?: number;
-    availableSourceAccessPoints: string[];
-    sourceAccessPointCount: number;
+    availableSourceAccessPoints?: string[];
+    sourceAccessPointCount?: number;
     roadsConstructed?: boolean;
-    spawnAssignments: Role[];
+    spawnAssignments?: Role[];
     reservedEnergy?: number;
-    layout: RoomLayout;
+    layout?: RoomLayout;
 }
 
 interface RemoteAssignment {
@@ -43,7 +43,6 @@ interface RoomPosition {
 
 const enum PhaseShiftStatus {
     PREPARE = 1,
-    EXECUTE,
 }
 
 const enum AssignmentStatus {

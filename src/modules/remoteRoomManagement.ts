@@ -112,7 +112,7 @@ function reassignIdleProtector(homeRoomName: string, targetRoomName: string): bo
     );
 
     const idleProtector = protectors.find(
-        (creep) => Memory.rooms[homeRoomName].remoteAssignments[creep.memory.assignment].state !== RemoteMiningRoomState.SAFE
+        (creep) => Memory.rooms[homeRoomName].remoteAssignments?.[creep.memory.assignment]?.state !== RemoteMiningRoomState.SAFE
     );
     if (idleProtector) {
         idleProtector.memory.assignment = targetRoomName;

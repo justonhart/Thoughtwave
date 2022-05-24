@@ -341,3 +341,146 @@ export function placeMinerLinks(room: Room) {
         }
     });
 }
+
+// core structures are structures contained within auto-generated layouts: Spawns, storage, nuker, terminal, factory, extensions, labs, towers, observer
+export function roomNeedsCoreStructures(room: Room) {
+    //combine structures and construction sites into one array for simple math
+    //@ts-expect-error
+    let roomStructures = room.find(FIND_MY_STRUCTURES).concat(room.find(FIND_MY_CONSTRUCTION_SITES));
+    let spawnCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_SPAWN).length;
+    let extensionCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_EXTENSION).length;
+    let storage = roomStructures.filter((structure) => structure.structureType === STRUCTURE_STORAGE).length;
+    let nuker = roomStructures.filter((structure) => structure.structureType === STRUCTURE_NUKER).length;
+    let terminal = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TERMINAL).length;
+    let factory = roomStructures.filter((structure) => structure.structureType === STRUCTURE_FACTORY).length;
+    let labCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_LAB).length;
+    let towerCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER).length;
+    let managerLink =
+        posFromMem(room.memory.anchorPoint)
+            .findInRange(FIND_MY_STRUCTURES, 1)
+            .filter((s) => s.structureType === STRUCTURE_LINK).length +
+            posFromMem(room.memory.anchorPoint)
+                .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
+                .filter((s) => s.structureType === STRUCTURE_LINK).length >=
+        1;
+    let observer = roomStructures.filter((structure) => structure.structureType === STRUCTURE_OBSERVER).length;
+    let pSpawn = roomStructures.filter((structure) => structure.structureType === STRUCTURE_POWER_SPAWN).length;
+
+    switch (room.controller.level) {
+        case 1:
+            return spawnCount < 1;
+        case 2:
+            return spawnCount < 1 || extensionCount < 5;
+        case 3:
+            return spawnCount < 1 || extensionCount < 10 || towerCount < 1;
+        case 4:
+            return spawnCount < 1 || extensionCount < 20 || towerCount < 1 || storage < 1;
+        case 5:
+            return spawnCount < 1 || extensionCount < 30 || towerCount < 2 || storage < 1 || !managerLink;
+        case 6:
+            return spawnCount < 1 || extensionCount < 40 || towerCount < 2 || storage < 1 || !managerLink || labCount < 3 || terminal < 1;
+        case 7:
+            return (
+                spawnCount < 2 || extensionCount < 50 || towerCount < 3 || storage < 1 || !managerLink || labCount < 6 || terminal < 1 || factory < 1
+            );
+        case 8:
+            return (
+                spawnCount < 3 ||
+                extensionCount < 60 ||
+                towerCount < 6 ||
+                storage < 1 ||
+                !managerLink ||
+                labCount < 10 ||
+                terminal < 1 ||
+                factory < 1 ||
+                nuker < 1 ||
+                pSpawn < 1 ||
+                observer < 1
+            );
+        default:
+            return false;
+    }
+}
+
+export function placeBunkerConstructionSites(room: Room) {
+    let referencePos = posFromMem(room.memory.anchorPoint);
+
+    let placed = 0;
+    for (let lookDistance = 1; lookDistance < 7 && placed < 5; lookDistance++) {
+        let x: number, y: number;
+
+        for (y = referencePos.y - lookDistance; y <= referencePos.y + lookDistance && placed < 5; y++) {
+            for (x = referencePos.x - lookDistance; x <= referencePos.x + lookDistance && placed < 5; x++) {
+                if (y > referencePos.y - lookDistance && y < referencePos.y + lookDistance && x > referencePos.x - lookDistance) {
+                    x = referencePos.x + lookDistance;
+                }
+
+                let structureType = getStructureForPos(room.memory.layout, new RoomPosition(x, y, room.name), referencePos);
+                let buildPosition = new RoomPosition(x, y, room.name);
+
+                if (structureType !== STRUCTURE_ROAD) {
+                    let addResult = room.createConstructionSite(buildPosition, structureType);
+                    if (addResult == OK) {
+                        placed++;
+                    }
+                } else {
+                    //only place roads adjacent to structures
+                    let adjacentStructures =
+                        buildPosition
+                            .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
+                            .filter((s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_RAMPART)
+                            //@ts-expect-error
+                            .concat(buildPosition.findInRange(FIND_MY_STRUCTURES, 1))
+                            .filter((structure) => structure.structureType !== STRUCTURE_RAMPART).length > 0;
+                    if (adjacentStructures) {
+                        let addResult = room.createConstructionSite(buildPosition, structureType);
+                        if (addResult == OK) {
+                            placed++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
+    let sources: Source[] = room.find(FIND_SOURCES);
+
+    let containerPositions = new Set<RoomPosition>();
+    sources.forEach((source) => {
+        let possiblePositions = room
+            .lookForAtArea(LOOK_TERRAIN, source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true)
+            .filter((terrain) => terrain.terrain != 'wall')
+            .map((terrain) => new RoomPosition(terrain.x, terrain.y, source.room.name));
+
+        //check to see if containers already exist
+        let positionsWithContainers = possiblePositions.filter(
+            (pos) => pos.lookFor(LOOK_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_CONTAINER).length
+        );
+        if (positionsWithContainers.length) {
+            possiblePositions = positionsWithContainers;
+        }
+
+        //set closest position to storage as container position
+        let candidate = room.storage.pos.findClosestByPath(possiblePositions, { ignoreCreeps: true });
+        if (candidate) {
+            containerPositions.add(candidate);
+        }
+    });
+
+    if (containerPositions.size === sources.length) {
+        room.memory.containerPositions = [];
+        let results = Object.values(containerPositions).map((pos) => {
+            room.memory.containerPositions.push(pos.toMemSafe());
+            if (!pos.lookFor(LOOK_STRUCTURES).some((structure) => structure.structureType === STRUCTURE_CONTAINER)) {
+                return room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
+            } else {
+                return OK;
+            }
+        });
+        return results.every((res) => res === OK) ? OK : ERR_NOT_FOUND;
+    }
+
+    return ERR_NOT_FOUND;
+}

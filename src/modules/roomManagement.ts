@@ -1,7 +1,17 @@
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 import { driveRemoteRoom } from './remoteRoomManagement';
-import { findBunkerLocation, getStructureForPos, placeBunkerOuterRamparts, placeMinerLinks, placeRoadsToPOIs } from './roomDesign';
+import {
+    createDropMiningSites,
+    findBunkerLocation,
+    placeBunkerOuterRamparts,
+    placeBunkerConstructionSites,
+    placeMinerLinks,
+    placeRoadsToPOIs,
+} from './roomDesign';
+
+const BUILD_CHECK_PERIOD = 100;
+const REPAIR_QUEUE_REFRESH_PERIOD = 500;
 
 export function driveRoom(room: Room) {
     if (room.memory?.unclaim) {
@@ -9,52 +19,37 @@ export function driveRoom(room: Room) {
         return;
     }
 
-    if (room.memory?.phase == undefined) {
+    // if room doesn't have memory, init room memory at appropriate stage
+    if (room.memory?.phase === undefined) {
         initRoom(room);
     }
 
-    if (
-        Game.time % 100 === 0 &&
-        room.canSpawn() &&
-        Object.keys(Game.constructionSites).length < 100 &&
-        room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
-    ) {
-        if (room.memory.layout !== undefined) {
-            if (room.controller.level >= 2) {
-                placeRoadsToPOIs(room);
-                placeConstructionSites(room);
-            }
+    if (!room.canSpawn()) {
+        // fail state - if a room has unexpectedly lost all spawns
+        if (!Memory.empire.operations.find((op) => op.targetRoom === room.name && op.type === OperationType.COLONIZE)) {
+        }
+    } else {
+        room.memory.reservedEnergy = 0;
 
-            if (room.memory.phase > 1) {
-                placeBunkerOuterRamparts(room);
-            }
+        switch (room.memory.phase) {
+            case 1:
+                runPhaseOne(room);
+                break;
+            case 2:
+                runPhaseTwo(room);
+                break;
         }
 
-        if (room.controller.level >= 5 && room.managerLink) {
-            placeMinerLinks(room);
+        runTowers(room);
+        runHomeSecurity(room);
+        driveRemoteRoom(room);
+
+        if (room.memory.gates?.length) {
+            runGates(room);
         }
+
+        delete room.memory.reservedEnergy;
     }
-
-    room.memory.reservedEnergy = 0;
-
-    switch (room.memory.phase) {
-        case 1:
-            runPhaseOne(room);
-            break;
-        case 2:
-            runPhaseTwo(room);
-            break;
-    }
-
-    runTowers(room);
-    runHomeSecurity(room);
-    driveRemoteRoom(room);
-
-    if (room.memory.gates?.length) {
-        runGates(room);
-    }
-
-    delete room.memory.reservedEnergy;
 }
 
 function runTowers(room: Room) {
@@ -124,41 +119,70 @@ function initRoom(room: Room) {
 }
 
 function runPhaseOne(room: Room) {
-    if (room.canSpawn()) {
-        runPhaseOneSpawnLogic(room);
-    }
+    runPhaseOneSpawnLogic(room);
 
-    switch (room.memory.phaseShift) {
-        case PhaseShiftStatus.PREPARE:
-            if (dropMiningContainersConstructed(room) && room.storage?.store[RESOURCE_ENERGY] >= calculatePhaseShiftMinimum(room)) {
-                room.memory.phaseShift = PhaseShiftStatus.EXECUTE;
+    if (
+        Game.time % BUILD_CHECK_PERIOD === 0 &&
+        Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
+        room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
+    ) {
+        if (room.memory.layout !== undefined) {
+            if (room.controller.level >= 2) {
+                placeRoadsToPOIs(room);
+                placeBunkerConstructionSites(room);
             }
-            break;
-        case PhaseShiftStatus.EXECUTE:
-            executePhaseShift(room);
-            break;
-        default:
-            if (room.storage?.my) {
-                let creationResult = createDropMiningSites(room);
-                if (creationResult === OK) {
-                    room.memory.phaseShift = PhaseShiftStatus.PREPARE;
+        }
+
+        switch (room.memory.phaseShift) {
+            case PhaseShiftStatus.PREPARE:
+                if (dropMiningContainersConstructed(room) && room.storage?.store[RESOURCE_ENERGY] >= calculatePhaseShiftMinimum(room)) {
+                    executePhaseShift(room);
+                } else if (!dropMiningContainersInProgress(room)) {
+                    createDropMiningSites(room);
                 }
-            }
-            break;
+                break;
+            default:
+                if (room.storage?.my) {
+                    let creationResult = createDropMiningSites(room);
+                    if (creationResult === OK) {
+                        room.memory.phaseShift = PhaseShiftStatus.PREPARE;
+                    }
+                }
+                break;
+        }
     }
 }
 
 function runPhaseTwo(room: Room) {
+    if (room.controller.level < 4) {
+        downgradeRoomPhase(room);
+        return;
+    }
+
     if (room.memory.repairSearchCooldown > 0) {
         room.memory.repairSearchCooldown--;
     }
 
-    if (Game.time % 500 === 0) {
+    if (Game.time % REPAIR_QUEUE_REFRESH_PERIOD === 0) {
         room.memory.repairQueue = findRepairTargets(room);
     }
 
-    if (room.canSpawn()) {
-        runPhaseTwoSpawnLogic(room);
+    runPhaseTwoSpawnLogic(room);
+
+    if (
+        Game.time % BUILD_CHECK_PERIOD === 0 &&
+        Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
+        room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
+    ) {
+        if (room.memory.layout !== undefined) {
+            placeRoadsToPOIs(room);
+            placeBunkerConstructionSites(room);
+            placeBunkerOuterRamparts(room);
+        }
+
+        if (room.managerLink) {
+            placeMinerLinks(room);
+        }
     }
 }
 
@@ -262,55 +286,6 @@ function runPhaseTwoSpawnLogic(room: Room) {
     availableRoomSpawns.forEach((spawn) => spawn.spawnPhaseTwoWorker());
 }
 
-export function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
-    let sources: Source[] = room.find(FIND_SOURCES);
-
-    let containerPositions = new Set<RoomPosition>();
-    sources.forEach((source) => {
-        let possiblePositions = room
-            .lookForAtArea(LOOK_TERRAIN, source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true)
-            .filter((terrain) => terrain.terrain != 'wall')
-            .map((terrain) => new RoomPosition(terrain.x, terrain.y, source.room.name));
-
-        //check to see if containers already exist
-        let positionsWithContainers = possiblePositions.filter(
-            (pos) => pos.lookFor(LOOK_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_CONTAINER).length
-        );
-        if (positionsWithContainers.length) {
-            possiblePositions = positionsWithContainers;
-        }
-
-        //set closest position to storage as container position
-        let candidate = room.storage.pos.findClosestByPath(possiblePositions, { ignoreCreeps: true });
-        if (candidate) {
-            containerPositions.add(candidate);
-        }
-    });
-
-    if (containerPositions.size === sources.length) {
-        room.memory.containerPositions = [];
-        containerPositions.forEach((pos) => {
-            room.memory.containerPositions.push(pos.toMemSafe());
-            if (!pos.lookFor(LOOK_STRUCTURES).some((structure) => structure.structureType === STRUCTURE_CONTAINER)) {
-                room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
-            }
-        });
-        return OK;
-    }
-
-    return ERR_NOT_FOUND;
-}
-
-export function dropMiningContainersConstructed(room: Room): boolean {
-    let positionsToCheck = room.memory.containerPositions.map((posString) => posFromMem(posString));
-
-    let allContainersConstructed = positionsToCheck.every(
-        (pos) => pos.lookFor(LOOK_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_CONTAINER).length === 1
-    );
-
-    return allContainersConstructed;
-}
-
 function calculatePhaseShiftMinimum(room: Room): number {
     const WORK_COST = 100;
     const CARRY_COST = 50;
@@ -326,7 +301,7 @@ function calculatePhaseShiftMinimum(room: Room): number {
     return 2 * (2 * transportCreepCost + room.find(FIND_SOURCES).length * dropMinerCost);
 }
 
-export function executePhaseShift(room: Room) {
+function executePhaseShift(room: Room) {
     console.log(`Executing phase shift in ${room.name}`);
 
     //wipe creep memory in room to stop gathering
@@ -340,14 +315,7 @@ export function executePhaseShift(room: Room) {
 
         //reassign EarlyWorkers to other roles
         if (creep.memory.role === Role.WORKER) {
-            let upgraderCount = Object.values(Game.creeps).filter(
-                (creep) => creep.memory.room === room.name && creep.memory.role === Role.UPGRADER
-            ).length;
-            let maintainerCount = Object.values(Game.creeps).filter(
-                (creep) => creep.memory.room === room.name && creep.memory.role === Role.MAINTAINTER
-            ).length;
-
-            creep.memory.role = upgraderCount <= maintainerCount ? Role.UPGRADER : Role.MAINTAINTER;
+            creep.memory.role = Role.MAINTAINTER;
         }
     });
 
@@ -414,104 +382,29 @@ function runGates(room: Room): void {
     room.memory.gates = gates;
 }
 
-export function placeConstructionSites(room: Room) {
-    let referencePos = posFromMem(room.memory.anchorPoint);
-
-    let placed = 0;
-    for (let lookDistance = 1; lookDistance < 7 && placed < 5; lookDistance++) {
-        let x: number, y: number;
-
-        for (y = referencePos.y - lookDistance; y <= referencePos.y + lookDistance && placed < 5; y++) {
-            for (x = referencePos.x - lookDistance; x <= referencePos.x + lookDistance && placed < 5; x++) {
-                if (y > referencePos.y - lookDistance && y < referencePos.y + lookDistance && x > referencePos.x - lookDistance) {
-                    x = referencePos.x + lookDistance;
-                }
-
-                let structureType = getStructureForPos(room.memory.layout, new RoomPosition(x, y, room.name), referencePos);
-                let buildPosition = new RoomPosition(x, y, room.name);
-
-                if (structureType !== STRUCTURE_ROAD) {
-                    let addResult = room.createConstructionSite(buildPosition, structureType);
-                    if (addResult == OK) {
-                        placed++;
-                    }
-                } else {
-                    //only place roads adjacent to structures
-                    let adjacentStructures =
-                        buildPosition
-                            .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
-                            .filter((s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_RAMPART)
-                            //@ts-expect-error
-                            .concat(buildPosition.findInRange(FIND_MY_STRUCTURES, 1))
-                            .filter((structure) => structure.structureType !== STRUCTURE_RAMPART).length > 0;
-                    if (adjacentStructures) {
-                        let addResult = room.createConstructionSite(buildPosition, structureType);
-                        if (addResult == OK) {
-                            placed++;
-                        }
-                    }
-                }
-            }
-        }
-    }
+function downgradeRoomPhase(room: Room) {
+    Memory.rooms[room.name] = {};
+    initRoom(room);
 }
 
-// core structures are structures contained within auto-generated layouts: Spawns, storage, nuker, terminal, factory, extensions, labs, towers, observer
-export function roomNeedsCoreStructures(room: Room) {
-    //combine structures and construction sites into one array for simple math
-    //@ts-expect-error
-    let roomStructures = room.find(FIND_MY_STRUCTURES).concat(room.find(FIND_MY_CONSTRUCTION_SITES));
-    let spawnCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_SPAWN).length;
-    let extensionCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_EXTENSION).length;
-    let storage = roomStructures.filter((structure) => structure.structureType === STRUCTURE_STORAGE).length;
-    let nuker = roomStructures.filter((structure) => structure.structureType === STRUCTURE_NUKER).length;
-    let terminal = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TERMINAL).length;
-    let factory = roomStructures.filter((structure) => structure.structureType === STRUCTURE_FACTORY).length;
-    let labCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_LAB).length;
-    let towerCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER).length;
-    let managerLink =
-        posFromMem(room.memory.anchorPoint)
-            .findInRange(FIND_MY_STRUCTURES, 1)
-            .filter((s) => s.structureType === STRUCTURE_LINK).length +
-            posFromMem(room.memory.anchorPoint)
-                .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
-                .filter((s) => s.structureType === STRUCTURE_LINK).length >=
-        1;
-    let observer = roomStructures.filter((structure) => structure.structureType === STRUCTURE_OBSERVER).length;
-    let pSpawn = roomStructures.filter((structure) => structure.structureType === STRUCTURE_POWER_SPAWN).length;
+function dropMiningContainersInProgress(room: Room): boolean {
+    let positionsToCheck = room.memory.containerPositions.map((posString) => posFromMem(posString));
 
-    switch (room.controller.level) {
-        case 1:
-            return spawnCount < 1;
-        case 2:
-            return spawnCount < 1 || extensionCount < 5;
-        case 3:
-            return spawnCount < 1 || extensionCount < 10 || towerCount < 1;
-        case 4:
-            return spawnCount < 1 || extensionCount < 20 || towerCount < 1 || storage < 1;
-        case 5:
-            return spawnCount < 1 || extensionCount < 30 || towerCount < 2 || storage < 1 || !managerLink;
-        case 6:
-            return spawnCount < 1 || extensionCount < 40 || towerCount < 2 || storage < 1 || !managerLink || labCount < 3 || terminal < 1;
-        case 7:
-            return (
-                spawnCount < 2 || extensionCount < 50 || towerCount < 3 || storage < 1 || !managerLink || labCount < 6 || terminal < 1 || factory < 1
-            );
-        case 8:
-            return (
-                spawnCount < 3 ||
-                extensionCount < 60 ||
-                towerCount < 6 ||
-                storage < 1 ||
-                !managerLink ||
-                labCount < 10 ||
-                terminal < 1 ||
-                factory < 1 ||
-                nuker < 1 ||
-                pSpawn < 1 ||
-                observer < 1
-            );
-        default:
-            return false;
-    }
+    let allSitesInProgress = positionsToCheck.every(
+        (pos) =>
+            pos.lookFor(LOOK_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_CONTAINER).length === 1 ||
+            pos.lookFor(LOOK_CONSTRUCTION_SITES).filter((site) => site.structureType === STRUCTURE_CONTAINER).length === 1
+    );
+
+    return allSitesInProgress;
+}
+
+export function dropMiningContainersConstructed(room: Room): boolean {
+    let positionsToCheck = room.memory.containerPositions.map((posString) => posFromMem(posString));
+
+    let allContainersConstructed = positionsToCheck.every(
+        (pos) => pos.lookFor(LOOK_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_CONTAINER).length === 1
+    );
+
+    return allContainersConstructed;
 }
