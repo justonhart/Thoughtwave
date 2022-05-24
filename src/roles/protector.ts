@@ -5,7 +5,14 @@ export class Protector extends WaveCreep {
         if (this.hits < this.hitsMax && this.getActiveBodyparts(HEAL)) {
             this.heal(this);
         }
+         // Healing logic
+         if (!this.memory.combat.healing && (this.hits / this.hitsMax) < 0.35 && this.getActiveBodyparts(HEAL)) {
+            this.memory.combat.healing = true;
+        } else if (this.memory.combat.healing && (this.hits / this.hitsMax) > 0.8) {
+            this.memory.combat.healing = false;
+        }
         if (this.memory.combat.healing && this.pos.roomName !== this.memory.assignment) {
+            this.moveOffExit();
             return; // Creep retreated to previous room to heal
         }
         if (this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) === IN_ROOM) {
@@ -16,12 +23,6 @@ export class Protector extends WaveCreep {
                 return;
             }
             this.attackCreep();
-        }
-        // Healing logic
-        if (!this.memory.combat.healing && this.hits < this.hitsMax / 3 && this.getActiveBodyparts(HEAL)) {
-            this.memory.combat.healing = true;
-        } else if (this.memory.combat.healing && this.hits / this.hitsMax > 0.8) {
-            this.memory.combat.healing = false;
         }
     }
 
@@ -54,17 +55,29 @@ export class Protector extends WaveCreep {
                 result = this.attack(target);
             } else {
                 let range = 3;
-                let exitCost = 10;
+                let exitCost = 50;
                 let shouldFlee = true;
-                if (this.pos.getRangeTo(target) > range) {
+
+                const hostileCreeps = this.room.find(FIND_HOSTILE_CREEPS);
+                const hostilesInSquadRange = hostileCreeps.filter(creep => this.pos.getRangeTo(creep.pos) < 7); // 7 because our creep distance is 3 and then a healer can be 3 away from the enemy creep
+                const hostilesInRange = hostilesInSquadRange.filter(creep => this.pos.getRangeTo(creep.pos) < 4); // RangedAttack has a max Distance of 3
+
+                if (this.pos.getRangeTo(target) > range || hostilesInSquadRange.length > 1) { // If no in range or enemy squad then go for healer while using massAttack
+                    range = 1;
                     shouldFlee = false;
                 }
+                // TODO: flee to an exit instead of away from target
                 if (this.memory.combat.healing) {
-                    range = 4;
-                    exitCost = 1;
+                    const closestExit = this.pos.findClosestByPath(FIND_EXIT);
+                    this.travelTo(closestExit, { ignoreCreeps: false, reusePath: 0 });
+                } else {
+                    this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: exitCost });
                 }
-                this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: exitCost });
-                result = this.rangedAttack(target);
+                if(hostilesInRange.length > 1) {
+                    result = this.rangedMassAttack();
+                } else {
+                    result = this.rangedAttack(target);
+                }
             }
             if (!this.memory.combat.healing && result !== OK && result !== ERR_NOT_IN_RANGE) {
                 delete this.memory.targetId;

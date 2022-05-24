@@ -13,6 +13,12 @@ Creep.prototype.travelToRoom = function (roomName, opts) {
     return Pathing.travelTo(this, new RoomPosition(25, 25, roomName), { range: 23, avoidHostiles: true, maxOps: 20000, ...opts });
 };
 
+Creep.prototype.moveOffExit = function() {
+    if(this.onEdge()) {
+        this.move(this.pos.getDirectionTo(25, 25));
+    }
+}
+
 Creep.prototype.onEdge = function () {
     const { x, y } = Pathing.normalizePos(this.pos);
     return x <= 0 || y <= 0 || x >= 49 || y >= 49;
