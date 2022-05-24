@@ -4,10 +4,18 @@ export class CombatCreep extends WaveCreep {
     protected attackTarget() {
         const target = Game.getObjectById(this.memory.targetId);
 
+        let creepActionReturnCode: CreepActionReturnCode;
         if (target instanceof Creep) {
-            this.attackCreep(target);
+            creepActionReturnCode = this.attackCreep(target);
         } else if (target instanceof Structure) {
-            this.attackStructure(target);
+            creepActionReturnCode = this.attackStructure(target);
+        } else {
+            delete this.memory.targetId;
+        }
+
+        // Enable retargeting on same tick
+        if (!this.memory.combat.flee && creepActionReturnCode !== OK && creepActionReturnCode !== ERR_NOT_IN_RANGE) {
+            delete this.memory.targetId;
         }
     }
 
