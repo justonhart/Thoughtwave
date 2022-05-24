@@ -86,7 +86,7 @@ function runHomeSecurity(homeRoom: Room) {
                     room: homeRoom.name,
                     assignment: homeRoom.name,
                     currentTaskPriority: Priority.MEDIUM,
-                    combat: { healing: false },
+                    combat: { flee: false },
                 },
             });
         }

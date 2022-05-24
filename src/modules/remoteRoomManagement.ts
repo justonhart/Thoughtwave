@@ -18,8 +18,12 @@ function runSecurity(homeRoom: Room, remoteRoomName: string) {
         filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
     });
 
+    // Excludes attack creeps and creeps with only move (scouts)
     const hostileOtherCreeps = targetRoom?.find(FIND_HOSTILE_CREEPS, {
-        filter: (creep) => creep.getActiveBodyparts(ATTACK) === 0 && creep.getActiveBodyparts(RANGED_ATTACK) === 0,
+        filter: (creep) =>
+            creep.getActiveBodyparts(ATTACK) === 0 &&
+            creep.getActiveBodyparts(RANGED_ATTACK) === 0 &&
+            (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(CARRY) || creep.getActiveBodyparts(HEAL) || creep.getActiveBodyparts(TOUGH)),
     });
 
     if (
@@ -86,7 +90,7 @@ function spawnProtector(homeRoomName: string, remoteRoomName: string, body: Body
             room: homeRoomName,
             assignment: remoteRoomName,
             currentTaskPriority: Priority.MEDIUM,
-            combat: { healing: false },
+            combat: { flee: false },
         },
     });
 }
