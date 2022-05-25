@@ -9,6 +9,9 @@ export class CombatCreep extends WaveCreep {
             creepActionReturnCode = this.attackCreep(target);
         } else if (target instanceof Structure) {
             creepActionReturnCode = this.attackStructure(target);
+            if (creepActionReturnCode === ERR_NOT_IN_RANGE) {
+                this.travelTo(target, { range: 1 });
+            }
         } else {
             delete this.memory.targetId;
         }
@@ -25,12 +28,12 @@ export class CombatCreep extends WaveCreep {
             return this.attack(target);
         } else if (this.getActiveBodyparts(RANGED_ATTACK)) {
             let range = 3;
-            let exitCost = 50;
+            let exitCost = 10;
             let shouldFlee = true;
 
             const hostileCreeps = this.room.find(FIND_HOSTILE_CREEPS);
-            const hostilesInSquadRange = hostileCreeps.filter((creep) => this.pos.getRangeTo(creep.pos) < 7); // 7 because our creep distance is 3 and then a healer can be 3 away from the enemy creep
-            const hostilesInRange = hostilesInSquadRange.filter((creep) => this.pos.getRangeTo(creep.pos) < 4); // RangedAttack has a max Distance of 3
+            const hostilesInSquadRange = hostileCreeps.filter((creep) => target.pos.getRangeTo(creep.pos) < 4); // check around target for proper massAttack pathing
+            const hostilesInRange = hostileCreeps.filter((creep) => this.pos.getRangeTo(creep.pos) < 4); // check around our creep for massAttack
 
             // If not in range or it is an enemy squad then go closer to enable massAttack
             if (this.pos.getRangeTo(target) > range || hostilesInSquadRange.length > 1) {
@@ -39,8 +42,8 @@ export class CombatCreep extends WaveCreep {
             }
 
             if (this.memory.combat.flee) {
-                const closestExit = this.pos.findClosestByPath(FIND_EXIT);
-                this.travelTo(closestExit, { ignoreCreeps: false });
+                // Go back to the exit toward creeps homeroom while avoiding the creep in combat
+                this.travelToRoom(this.homeroom.name, { ignoreCreeps: false, avoidHostiles: true });
             } else {
                 this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: exitCost });
             }
@@ -54,7 +57,6 @@ export class CombatCreep extends WaveCreep {
     }
 
     protected attackStructure(target: Structure): CreepActionReturnCode {
-        this.travelTo(target, { range: 1 });
         if (this.getActiveBodyparts(ATTACK)) {
             return this.attack(target);
         } else if (this.getActiveBodyparts(RANGED_ATTACK)) {
@@ -69,7 +71,7 @@ export class CombatCreep extends WaveCreep {
      * @returns boolean, to see if creep has arrived in new room
      */
     public fledToNewRoom(): boolean {
-        if (!this.memory.combat.flee && this.hits / this.hitsMax < 0.35 && this.getActiveBodyparts(HEAL)) {
+        if (!this.memory.combat.flee && this.hits / this.hitsMax < 0.4 && this.getActiveBodyparts(HEAL)) {
             this.memory.combat.flee = true;
         } else if (this.memory.combat.flee && this.hits / this.hitsMax > 0.8) {
             this.memory.combat.flee = false;

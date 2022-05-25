@@ -84,7 +84,11 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts) {
     let rooms = possibleSpawnRooms.map((room) => {
         return {
             name: room.name,
-            path: PathFinder.search(room.controller?.pos, { pos: new RoomPosition(25, 25, targetRoom), range: 23 }, { swampCost: 1, maxOps: 10000 }),
+            path: PathFinder.search(
+                room.controller?.pos,
+                { pos: new RoomPosition(25, 25, targetRoom), range: 23 },
+                { maxRooms: 25, swampCost: 1, maxOps: 10000 }
+            ),
         };
     });
     rooms = rooms.filter((room) => !room.path.incomplete);

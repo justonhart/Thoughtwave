@@ -56,7 +56,7 @@ export class WaveCreep extends Creep {
      * @return                -
      */
     public static addToPriorityQueue(creep: Creep, priority: Priority, actionCallback: (creep: Creep) => void) {
-        const currentTaskPriority = creep.memory.currentTaskPriority;
+        const currentTaskPriority = creep.memory.currentTaskPriority ?? Priority.LOW;
         if (priority > currentTaskPriority) {
             WaveCreep.priorityQueue.set(creep.name, actionCallback);
         }
