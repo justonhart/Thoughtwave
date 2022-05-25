@@ -5,6 +5,7 @@ interface CreepMemory {
     targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone>;
     miningPos?: string;
     gathering?: boolean;
+    energySource?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
     room?: string;
     role?: Role;
     operation?: OperationType;

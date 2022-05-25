@@ -15,6 +15,58 @@ export class WorkerCreep extends WaveCreep {
 
     protected gatherEnergy() {
         this.memory.currentTaskPriority = Priority.MEDIUM;
+
+        let target = Game.getObjectById(this.memory.energySource);
+        if (!target) {
+            this.memory.energySource = this.findEnergySource();
+            target = Game.getObjectById(this.memory.energySource);
+        }
+
+        if (target instanceof StructureStorage) {
+            switch (this.withdraw(this.homeroom.storage, RESOURCE_ENERGY)) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(this.homeroom.storage);
+                    break;
+                case 0:
+                    this.stopGathering();
+                    break;
+            }
+
+            return;
+        }
+
+        if (target instanceof Ruin) {
+            switch (this.withdraw(target, RESOURCE_ENERGY)) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(target, { ignoreCreeps: true, range: 1 });
+                    break;
+                case 0:
+                    this.stopGathering();
+                    break;
+            }
+
+            return;
+        }
+
+        if (target instanceof Resource) {
+            switch (this.pickup(target)) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(target, { ignoreCreeps: true, range: 1 });
+                    break;
+                case 0:
+                    this.stopGathering();
+                    break;
+            }
+
+            return;
+        }
+    }
+
+    findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
+        if (this.room.storage?.store[RESOURCE_ENERGY]) {
+            return this.room.storage.id;
+        }
+
         let ruins = this.room.find(FIND_RUINS, {
             filter: (r) => {
                 return r.store[RESOURCE_ENERGY];
@@ -22,42 +74,14 @@ export class WorkerCreep extends WaveCreep {
         });
         if (ruins.length) {
             let target = this.pos.findClosestByPath(ruins, { ignoreCreeps: true, range: 1 });
-            switch (this.withdraw(target, RESOURCE_ENERGY)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { ignoreCreeps: true, range: 1 });
-                    break;
-                case 0:
-                    this.memory.gathering = false;
-                    break;
-            }
-
-            return;
+            return target?.id;
         }
 
-        if (this.homeroom.storage?.my === true && this.homeroom.storage.store[RESOURCE_ENERGY]) {
-            switch (this.withdraw(this.homeroom.storage, RESOURCE_ENERGY)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(this.homeroom.storage);
-                    break;
-                case 0:
-                    this.memory.gathering = false;
-                    break;
-            }
-
-            return;
-        }
-
-        if (this.homeroom.terminal && this.homeroom.terminal.store[RESOURCE_ENERGY]) {
-            switch (this.withdraw(this.homeroom.terminal, RESOURCE_ENERGY)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(this.homeroom.terminal, { ignoreCreeps: true, range: 1 });
-                    break;
-                case 0:
-                    this.memory.gathering = false;
-                    break;
-            }
-
-            return;
+        let looseEnergyStacks = this.room
+            .find(FIND_DROPPED_RESOURCES)
+            .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
+        if (looseEnergyStacks.length) {
+            return this.pos.findClosestByRange(looseEnergyStacks).id;
         }
     }
 
@@ -200,5 +224,10 @@ export class WorkerCreep extends WaveCreep {
                     : siteToCheck
             ).id;
         }
+    }
+
+    protected stopGathering() {
+        this.memory.gathering = false;
+        delete this.memory.energySource;
     }
 }

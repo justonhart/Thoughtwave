@@ -202,9 +202,9 @@ export function findPoiAverage(room: Room) {
 
 function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
     let room = Game.rooms[anchorPos.roomName];
-    let pois: (Source | StructureController | Mineral)[] = [];
+    let pois: (RoomPosition | StructureController | Mineral)[] = [];
 
-    pois.push(...room.find(FIND_SOURCES));
+    pois.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
     pois.push(room.controller);
     pois.push(...room.find(FIND_MINERALS));
 
@@ -261,9 +261,6 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
 
         //add unique road positions for next cost_matrix
         roadPositions = roadPositions.concat(path.filter((step) => roadPositions.indexOf(step) === -1));
-
-        //remove last step from path
-        path.pop();
 
         return path;
     });
@@ -442,45 +439,4 @@ export function placeBunkerConstructionSites(room: Room) {
             }
         }
     }
-}
-
-export function createDropMiningSites(room: Room): OK | ERR_NOT_FOUND {
-    let sources: Source[] = room.find(FIND_SOURCES);
-
-    let containerPositions = new Set<RoomPosition>();
-    sources.forEach((source) => {
-        let possiblePositions = room
-            .lookForAtArea(LOOK_TERRAIN, source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true)
-            .filter((terrain) => terrain.terrain != 'wall')
-            .map((terrain) => new RoomPosition(terrain.x, terrain.y, source.room.name));
-
-        //check to see if containers already exist
-        let positionsWithContainers = possiblePositions.filter(
-            (pos) => pos.lookFor(LOOK_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_CONTAINER).length
-        );
-        if (positionsWithContainers.length) {
-            possiblePositions = positionsWithContainers;
-        }
-
-        //set closest position to storage as container position
-        let candidate = room.storage.pos.findClosestByPath(possiblePositions, { ignoreCreeps: true });
-        if (candidate) {
-            containerPositions.add(candidate);
-        }
-    });
-
-    if (containerPositions.size === sources.length) {
-        room.memory.containerPositions = [];
-        let results = Object.values(containerPositions).map((pos) => {
-            room.memory.containerPositions.push(pos.toMemSafe());
-            if (!pos.lookFor(LOOK_STRUCTURES).some((structure) => structure.structureType === STRUCTURE_CONTAINER)) {
-                return room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
-            } else {
-                return OK;
-            }
-        });
-        return results.every((res) => res === OK) ? OK : ERR_NOT_FOUND;
-    }
-
-    return ERR_NOT_FOUND;
 }

@@ -83,8 +83,8 @@ export class TransportCreep extends WaveCreep {
             ).id;
         }
 
-        let looseResources = room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
-        if (looseResources.length) {
+        let looseResources = room.find(FIND_DROPPED_RESOURCES);
+        if (looseResources.filter((r) => r.amount > 100).length) {
             return looseResources.reduce((biggestResource, resourceToCompare) =>
                 biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
             ).id;
@@ -99,6 +99,10 @@ export class TransportCreep extends WaveCreep {
             return containers.reduce((fullestContainer, nextContainer) =>
                 fullestContainer.store.getUsedCapacity() > nextContainer.store.getUsedCapacity() ? fullestContainer : nextContainer
             ).id;
+        }
+
+        if (looseResources.length) {
+            return looseResources.reduce((most, next) => (most.amount > next.amount ? most : next)).id;
         }
     }
 
@@ -127,7 +131,7 @@ export class TransportCreep extends WaveCreep {
         this.memory.currentTaskPriority = Priority.MEDIUM;
         switch (this.pickup(resource)) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(resource, { range: 1 });
+                this.travelTo(resource);
                 break;
             case 0:
             case ERR_FULL:

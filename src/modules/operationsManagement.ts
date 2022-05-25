@@ -74,7 +74,6 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts) {
         (room) =>
             room.controller?.my &&
             room.canSpawn() &&
-            room.memory.phase >= (opts?.earlyPhase ?? 2) &&
             room.energyStatus >= (opts?.minEnergyStatus ?? EnergyStatus.RECOVERING) &&
             Game.map.getRoomLinearDistance(room.name, targetRoom) <= (opts?.maxLinearDistance ?? 10)
     );

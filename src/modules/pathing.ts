@@ -359,6 +359,7 @@ export class Pathing {
                     }
                 }
                 if (Memory.rooms[room.name]?.anchorPoint || Memory.rooms[room.name]?.managerPos) {
+                    matrix = matrix.clone();
                     let managerPos = posFromMem(room.memory.anchorPoint || room.memory.managerPos);
                     matrix.set(managerPos.x, managerPos.y, 10);
                 }
