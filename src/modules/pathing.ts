@@ -341,25 +341,24 @@ export class Pathing {
 
                 if (options.exitCost) {
                     matrix = matrix.clone();
-                    for (let x = 0; x < 49; x++) {
+                    for (let x = 0; x < 50; x++) {
                         if (!Game.map.getRoomTerrain(roomName).get(x, 0)) {
                             matrix.set(x, 0, options.exitCost);
                         }
-                        if (Game.map.getRoomTerrain(roomName).get(x, 49)) {
+                        if (!Game.map.getRoomTerrain(roomName).get(x, 49)) {
                             matrix.set(x, 49, options.exitCost);
                         }
                     }
-                    for (let y = 0; y < 49; y++) {
+                    for (let y = 0; y < 50; y++) {
                         if (!Game.map.getRoomTerrain(roomName).get(0, y)) {
                             matrix.set(0, y, options.exitCost);
                         }
-                        if (Game.map.getRoomTerrain(roomName).get(49, y)) {
+                        if (!Game.map.getRoomTerrain(roomName).get(49, y)) {
                             matrix.set(49, y, options.exitCost);
                         }
                     }
                 }
-
-                if (room.memory.anchorPoint || room.memory.managerPos) {
+                if (Memory.rooms[room.name]?.anchorPoint || Memory.rooms[room.name]?.managerPos) {
                     let managerPos = posFromMem(room.memory.anchorPoint || room.memory.managerPos);
                     matrix.set(managerPos.x, managerPos.y, 10);
                 }
@@ -569,7 +568,7 @@ export class Pathing {
     }
 
     static moveObstacleCreep(obstacleCreep: Creep, direction: DirectionConstant) {
-        obstacleCreep.addTaskToPriorityQueue(obstacleCreep.memory.currentTaskPriority + 1, () => {
+        obstacleCreep.addTaskToPriorityQueue(Priority.HIGH, () => {
             obstacleCreep.move(direction);
         });
         return true;

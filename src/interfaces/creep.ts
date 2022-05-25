@@ -15,6 +15,7 @@ interface CreepMemory {
 }
 
 interface Creep {
+    moveOffExit: () => void;
     homeroom: Room;
     operation: Operation;
     travelTo(destination: HasPos | RoomPosition, opts?: TravelToOpts): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND;
@@ -36,7 +37,7 @@ interface ScoutMemory {
 }
 
 interface CombatMemory {
-    healing: boolean;
+    flee: boolean;
 }
 
 const enum Priority {
