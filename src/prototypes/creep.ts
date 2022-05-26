@@ -10,14 +10,14 @@ Creep.prototype.travelToRoom = function (roomName, opts) {
     if (this.room.name === roomName && !this.onEdge()) {
         return IN_ROOM;
     }
-    return Pathing.travelTo(this, new RoomPosition(25, 25, roomName), { range: 23, avoidHostiles: true, maxOps: 20000, ...opts });
+    return Pathing.travelTo(this, new RoomPosition(25, 25, roomName), { range: 23, avoidHostiles: true, maxRooms: 30, maxOps: 20000, ...opts });
 };
 
-Creep.prototype.moveOffExit = function() {
-    if(this.onEdge()) {
+Creep.prototype.moveOffExit = function () {
+    if (this.onEdge()) {
         this.move(this.pos.getDirectionTo(25, 25));
     }
-}
+};
 
 Creep.prototype.onEdge = function () {
     const { x, y } = Pathing.normalizePos(this.pos);
