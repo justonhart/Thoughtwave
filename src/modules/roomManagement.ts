@@ -76,8 +76,8 @@ function runHomeSecurity(homeRoom: Room) {
     if (hostileCreeps.length >= 2) {
         // TODO: add rampart defenders instead if ramparts are present in homeroom
         if (PopulationManagement.needsProtector(homeRoom.name)) {
-            const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 250);
-            body.push(HEAL);
+            const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 300, 24);
+            body.push(MOVE, HEAL);
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: body,
