@@ -5,7 +5,6 @@ interface StructureSpawn {
     spawnGatherer(): ScreepsReturnCode;
     spawnReserver(): ScreepsReturnCode;
     spawnManager(): ScreepsReturnCode;
-    spawnEarlyWorker(): ScreepsReturnCode;
     spawnWorker(): ScreepsReturnCode;
     spawnAssignedCreep(assignment: SpawnAssignment): ScreepsReturnCode;
     spawnFirst(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;
