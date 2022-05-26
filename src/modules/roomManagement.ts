@@ -74,6 +74,12 @@ function runHomeSecurity(homeRoom: Room) {
     const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS);
 
     if (hostileCreeps.length >= 2) {
+        // if placeBunkerOuterRamparts() === false ==> ramparts are all present
+        // ==> spawnRampartDefender instead of protector
+        // RampartDefender ==> Melee/RangedMassAttack?
+        // ==> findTarget: find closestEnemy ==> closestEnemy.pos findClosestRampart ==> go to closestRampart
+        // Pathing: preferRamparts ==> good for defenders to move while on ramparts
+
         // TODO: add rampart defenders instead if ramparts are present in homeroom
         if (PopulationManagement.needsProtector(homeRoom.name)) {
             const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 300, 24);

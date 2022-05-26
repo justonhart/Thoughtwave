@@ -35,8 +35,9 @@ export class CombatCreep extends WaveCreep {
             const hostilesInSquadRange = hostileCreeps.filter((creep) => target.pos.getRangeTo(creep.pos) < 4); // check around target for proper massAttack pathing
             const hostilesInRange = hostileCreeps.filter((creep) => this.pos.getRangeTo(creep.pos) < 4); // check around our creep for massAttack
 
+            const rangeToTarget = this.pos.getRangeTo(target);
             // If not in range or it is an enemy squad then go closer to enable massAttack
-            if (this.pos.getRangeTo(target) > range || hostilesInSquadRange.length > 1) {
+            if (rangeToTarget > range || hostilesInSquadRange.length > 1) {
                 range = 1;
                 shouldFlee = false;
             }
@@ -47,7 +48,7 @@ export class CombatCreep extends WaveCreep {
             } else {
                 this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: exitCost });
             }
-            if (hostilesInRange.length > 1) {
+            if (hostilesInRange.length > 1 || rangeToTarget === 1) {
                 return this.rangedMassAttack();
             } else {
                 return this.rangedAttack(target);
