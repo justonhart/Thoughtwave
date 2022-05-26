@@ -25,7 +25,20 @@ export class WorkerCreep extends WaveCreep {
         if (target instanceof StructureStorage) {
             switch (this.withdraw(this.homeroom.storage, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(this.homeroom.storage);
+                    this.travelTo(this.homeroom.storage, { range: 1 });
+                    break;
+                case 0:
+                    this.stopGathering();
+                    break;
+            }
+
+            return;
+        }
+
+        if (target instanceof StructureContainer) {
+            switch (this.withdraw(target, RESOURCE_ENERGY)) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(target, { range: 1 });
                     break;
                 case 0:
                     this.stopGathering();
@@ -75,6 +88,13 @@ export class WorkerCreep extends WaveCreep {
         if (ruins.length) {
             let target = this.pos.findClosestByPath(ruins, { ignoreCreeps: true, range: 1 });
             return target?.id;
+        }
+
+        let containers = this.room
+            .find(FIND_STRUCTURES)
+            .filter((str) => str.structureType === STRUCTURE_CONTAINER && str.store.energy >= this.store.getCapacity());
+        if (containers.length) {
+            return this.pos.findClosestByPath(containers).id;
         }
 
         let looseEnergyStacks = this.room
