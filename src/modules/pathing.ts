@@ -364,6 +364,14 @@ export class Pathing {
                     matrix.set(managerPos.x, managerPos.y, 10);
                 }
 
+                if (Memory.rooms[room.name]?.miningAssignments) {
+                    Object.keys(room.memory.miningAssignments)
+                        .map((pos) => posFromMem(pos))
+                        .forEach((pos) => {
+                            matrix.set(pos.x, pos.y, 10);
+                        });
+                }
+
                 // All tiles will be set to one if there is a road construction so that it counts as a finished road
                 if (options.preferRoadConstruction) {
                     matrix = matrix.clone();
