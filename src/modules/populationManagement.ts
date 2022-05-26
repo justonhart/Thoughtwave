@@ -78,7 +78,7 @@ export class PopulationManagement {
 
         let energyExpenditurePerCyclePerCreep = creepSpawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
-        let creepCapacity = Math.min(totalIncomePerCycle / energyExpenditurePerCyclePerCreep, sourceCount * (energyCapacity >= 550 ? 6 : 2));
+        let creepCapacity = Math.min(1.5 * (totalIncomePerCycle / energyExpenditurePerCyclePerCreep), sourceCount * (energyCapacity >= 550 ? 6 : 2));
 
         return Math.ceil(creepCapacity);
     }
