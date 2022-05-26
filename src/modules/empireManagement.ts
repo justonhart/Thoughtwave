@@ -8,10 +8,10 @@ export function manageEmpire() {
         };
     }
 
-    // let needToInitIntershard = !JSON.parse(InterShardMemory.getLocal())?.outboundCreeps;
-    // if (needToInitIntershard) {
-    //     InterShardMemory.setLocal(JSON.stringify({ outboundCreeps: { shard0: {}, shard1: {}, shard2: {}, shard3: {} } }));
-    // }
+    let needToInitIntershard = !JSON.parse(InterShardMemory.getLocal())?.outboundCreeps;
+    if (needToInitIntershard) {
+        InterShardMemory.setLocal(JSON.stringify({ outboundCreeps: { shard0: {}, shard1: {}, shard2: {}, shard3: {} } }));
+    }
 
     manageOperations();
     cleanSpawnAssignments();
