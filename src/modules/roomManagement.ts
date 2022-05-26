@@ -47,6 +47,7 @@ export function driveRoom(room: Room) {
                 case 4:
                     placeBunkerOuterRamparts(room);
                 case 3:
+                    placeMiningPositionContainers(room);
                 case 2:
                     placeBunkerConstructionSites(room);
                     placeRoadsToPOIs(room);
@@ -104,7 +105,7 @@ function runHomeSecurity(homeRoom: Room) {
     }
 }
 
-function initRoom(room: Room) {
+export function initRoom(room: Room) {
     let miningPostitions = findMiningPostitions(room);
 
     if (!miningPostitions) {
@@ -206,7 +207,7 @@ function runSpawning(room: Room) {
         }
     });
 
-    if (Object.keys(room.memory.remoteAssignments).length) {
+    if (room.energyStatus >= EnergyStatus.RECOVERING && Object.keys(room.memory.remoteAssignments).length) {
         if (PopulationManagement.needsRemoteMiner(room)) {
             let spawn = availableRoomSpawns.pop();
             spawn?.spawnRemoteMiner();
@@ -283,4 +284,10 @@ function runGates(room: Room): void {
     });
 
     room.memory.gates = gates;
+}
+function placeMiningPositionContainers(room: Room) {
+    let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos));
+    miningPositions.forEach((pos) => {
+        room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
+    });
 }
