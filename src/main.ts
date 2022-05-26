@@ -7,41 +7,41 @@ import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
-    //try {
-    manageMemory();
-    //} catch (e) {
-    //    console.log(`Error caught in memory management: \n${e}`);
-    //}
+    try {
+        manageMemory();
+    } catch (e) {
+        console.log(`Error caught in memory management: \n${e}`);
+    }
 
-    //try {
-    manageFlags();
-    //} catch (e) {
-    //    console.log(`Error caught in flag management: \n${e}`);
-    //}
+    try {
+        manageFlags();
+    } catch (e) {
+        console.log(`Error caught in flag management: \n${e}`);
+    }
 
-    //try {
-    manageEmpire();
-    //} catch (e) {
-    //    console.log(`Error caught in empire management: \n${e}`);
-    //}
-    //
+    try {
+        manageEmpire();
+    } catch (e) {
+        console.log(`Error caught in empire management: \n${e}`);
+    }
+
     Object.values(Game.rooms)
         .filter((r) => r.controller?.my)
         .forEach((room) => {
-            //try {
-            driveRoom(room);
-            //} catch (e) {
-            //    console.log(`Error caught in ${room.name}: \n${e}`);
-            //}
+            try {
+                driveRoom(room);
+            } catch (e) {
+                console.log(`Error caught in ${room.name}: \n${e}`);
+            }
         });
 
     Object.values(Game.creeps).forEach((creep) => {
         if (!creep.spawning) {
-            //try {
-            driveCreep(creep);
-            //} catch (e) {
-            //    console.log(`Error caught in ${creep.name}: \n${e}`);
-            //}
+            try {
+                driveCreep(creep);
+            } catch (e) {
+                console.log(`Error caught in ${creep.name}: \n${e}`);
+            }
         }
     });
 

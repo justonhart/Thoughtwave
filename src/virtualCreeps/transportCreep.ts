@@ -131,7 +131,7 @@ export class TransportCreep extends WaveCreep {
         this.memory.currentTaskPriority = Priority.MEDIUM;
         switch (this.pickup(resource)) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(resource);
+                this.travelTo(resource, { range: 1 });
                 break;
             case 0:
             case ERR_FULL:

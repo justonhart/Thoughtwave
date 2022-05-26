@@ -78,20 +78,20 @@ export class PopulationManagement {
 
         let energyExpenditurePerCyclePerCreep = creepSpawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
-        let creepCapacity = Math.min(totalIncomePerCycle / energyExpenditurePerCyclePerCreep, sourceCount * 2);
+        let creepCapacity = Math.min(totalIncomePerCycle / energyExpenditurePerCyclePerCreep, sourceCount * (energyCapacity >= 550 ? 6 : 2));
 
         return Math.ceil(creepCapacity);
     }
 
     static needsMiner(room: Room): boolean {
-        let roomNeedsMiner = Object.values(room.memory.miningAssignments).some((assignment) => assignment === AssignmentStatus.UNASSIGNED);
+        let roomNeedsMiner = Object.values(room.memory.miningAssignments).some((assignment) => assignment !== AssignmentStatus.ASSIGNED);
 
         return roomNeedsMiner;
     }
 
     static spawnMiner(spawn: StructureSpawn): ScreepsReturnCode {
         let assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
-        let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
+        let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] !== AssignmentStatus.ASSIGNED);
 
         let options: SpawnOptions = {
             memory: {
@@ -127,7 +127,11 @@ export class PopulationManagement {
         let result = spawn.smartSpawn(minerBody, this.getCreepTag(tag, spawn.name), options);
         if (result === OK) {
             spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
-        } else if (result === ERR_NOT_ENOUGH_ENERGY && (!spawn.room.storage || spawn.room.storage?.store[RESOURCE_ENERGY] < 1000)) {
+        } else if (
+            result === ERR_NOT_ENOUGH_ENERGY &&
+            !spawn.room.find(FIND_MY_CREEPS).filter((creep) => creep.memory.role === Role.MINER).length &&
+            (!spawn.room.storage || spawn.room.storage?.store[RESOURCE_ENERGY] < 1000)
+        ) {
             let emergencyMinerBody = [WORK, WORK, MOVE];
             result = spawn.smartSpawn(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
             if (result === OK) {
@@ -144,17 +148,17 @@ export class PopulationManagement {
             (remoteRoom) =>
                 room.memory.remoteAssignments[remoteRoom].state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS &&
                 room.memory.remoteAssignments[remoteRoom].controllerState !== RemoteMiningRoomControllerState.ENEMY &&
-                Object.values(room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
+                Object.values(room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment !== AssignmentStatus.ASSIGNED)
         );
     }
 
     static spawnRemoteMiner(spawn: StructureSpawn): ScreepsReturnCode {
         const remoteRooms = Object.keys(spawn.room.memory.remoteAssignments);
         const assigmentKey = remoteRooms.find((remoteRoom) =>
-            Object.values(spawn.room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
+            Object.values(spawn.room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment !== AssignmentStatus.ASSIGNED)
         );
         const assignment = Object.keys(spawn.room.memory.remoteAssignments[assigmentKey].miners).find(
-            (assignment) => spawn.room.memory.remoteAssignments[assigmentKey].miners[assignment] === AssignmentStatus.UNASSIGNED
+            (assignment) => spawn.room.memory.remoteAssignments[assigmentKey].miners[assignment] !== AssignmentStatus.ASSIGNED
         );
 
         let options: SpawnOptions = {
@@ -189,7 +193,7 @@ export class PopulationManagement {
             ([roomName, assignment]) =>
                 assignment.state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS &&
                 assignment.controllerState !== RemoteMiningRoomControllerState.ENEMY &&
-                (assignment.gatherer === AssignmentStatus.UNASSIGNED ||
+                (assignment.gatherer !== AssignmentStatus.ASSIGNED ||
                     (assignment.energyStatus === EnergyStatus.SURPLUS &&
                         Object.values(Memory.creeps).filter(
                             (creep) => creep.room === room.name && creep.role === Role.GATHERER && creep.assignment === roomName
@@ -201,7 +205,7 @@ export class PopulationManagement {
         let assignmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
         let assignment = assignmentKeys.find(
             (roomName) =>
-                spawn.room.memory.remoteAssignments[roomName].gatherer === AssignmentStatus.UNASSIGNED ||
+                spawn.room.memory.remoteAssignments[roomName].gatherer !== AssignmentStatus.ASSIGNED ||
                 (spawn.room.memory.remoteAssignments[roomName].energyStatus === EnergyStatus.SURPLUS &&
                     Object.values(Memory.creeps).filter(
                         (creep) => creep.room === spawn.room.name && creep.role === Role.GATHERER && creep.assignment === roomName
@@ -242,13 +246,13 @@ export class PopulationManagement {
 
     static needsReserver(room: Room): boolean {
         return Object.values(room.memory.remoteAssignments).some(
-            (assignment) => assignment.state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS && assignment.reserver === AssignmentStatus.UNASSIGNED
+            (assignment) => assignment.state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS && assignment.reserver !== AssignmentStatus.ASSIGNED
         );
     }
 
     static spawnReserver(spawn: StructureSpawn): ScreepsReturnCode {
         let assigmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
-        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].reserver === AssignmentStatus.UNASSIGNED);
+        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].reserver !== AssignmentStatus.ASSIGNED);
 
         let options: SpawnOptions = {
             memory: {
