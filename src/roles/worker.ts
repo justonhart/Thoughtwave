@@ -1,6 +1,25 @@
-import { Maintainer } from './maintainer';
+import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
-export class Builder extends Maintainer {
+export class Worker extends WorkerCreep {
+    protected performDuties() {
+        let target = Game.getObjectById(this.memory.targetId);
+
+        if (!this.memory.targetId || !target) {
+            this.memory.targetId = this.findTarget();
+            target = Game.getObjectById(this.memory.targetId);
+        }
+
+        if (target instanceof StructureController) {
+            this.runUpgradeJob();
+        } else if (target instanceof Structure) {
+            this.runRepairJob(target);
+        } else if (target instanceof ConstructionSite) {
+            this.runBuildJob(target);
+        } else {
+            this.onTaskFinished();
+        }
+    }
+
     protected findTarget(): Id<Structure> | Id<ConstructionSite> {
         let constructedDefenses = this.pos
             .findInRange(FIND_STRUCTURES, 3)
@@ -9,11 +28,6 @@ export class Builder extends Maintainer {
             );
         if (constructedDefenses.length) {
             return constructedDefenses.shift().id;
-        }
-
-        let constructionSite = this.findConstructionSite();
-        if (constructionSite) {
-            return constructionSite;
         }
 
         let decayingStructuresAtRisk = this.homeroom.find(FIND_STRUCTURES).filter(
@@ -28,9 +42,16 @@ export class Builder extends Maintainer {
             return this.pos.findClosestByPath(decayingStructuresAtRisk)?.id;
         }
 
-        let repairTarget = this.homeroom.getRepairTarget();
-        if (repairTarget) {
-            return repairTarget;
+        let repairQueue = this.homeroom.memory.repairQueue;
+        if (repairQueue.length) {
+            let closest = this.pos.findClosestByPath(repairQueue.map((id) => Game.getObjectById(id)))?.id;
+            this.homeroom.removeFromRepairQueue(closest);
+            return closest;
+        }
+
+        let constructionSite = this.findConstructionSite();
+        if (constructionSite) {
+            return constructionSite;
         }
 
         let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
@@ -39,7 +60,7 @@ export class Builder extends Maintainer {
                 [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
         );
         if (defenses.length) {
-            return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare)).id;
+            return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare))?.id;
         }
 
         return this.homeroom.controller?.id;

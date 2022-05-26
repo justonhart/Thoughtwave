@@ -1,12 +1,10 @@
 import { WaveCreep } from '../virtualCreeps/waveCreep';
-import { Upgrader } from '../roles/upgrader';
-import { Maintainer } from '../roles/maintainer';
+import { Worker } from '../roles/worker';
 import { Miner } from '../roles/miner';
 import { Distributor } from '../roles/distributor';
 import { Transporter } from '../roles/transporter';
 import { Claimer } from '../roles/claimer';
 // import { Colonizer } from '../roles/colonizer';
-import { Builder } from '../roles/builder';
 import { Scout } from '../roles/scout';
 import { Protector } from '../roles/protector';
 import { GoCreep } from '../roles/goCreep';
@@ -25,7 +23,7 @@ export default function driveCreep(creep: Creep) {
 
     switch (creep.memory.role) {
         case Role.WORKER:
-            waveCreep = new Maintainer(creep.id);
+            waveCreep = new Worker(creep.id);
             break;
         case Role.MINER:
             waveCreep = new Miner(creep.id);
