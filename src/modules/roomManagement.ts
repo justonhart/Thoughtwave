@@ -46,6 +46,7 @@ export function driveRoom(room: Room) {
                     placeMinerLinks(room);
                 case 4:
                     placeBunkerOuterRamparts(room);
+                    placeMiningRamparts(room);
                 case 3:
                     placeMiningPositionContainers(room);
                 case 2:
@@ -289,5 +290,11 @@ function placeMiningPositionContainers(room: Room) {
     let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos));
     miningPositions.forEach((pos) => {
         room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
+    });
+}
+function placeMiningRamparts(room: Room) {
+    let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos));
+    miningPositions.forEach((pos) => {
+        room.createConstructionSite(pos.x, pos.y, STRUCTURE_RAMPART);
     });
 }
