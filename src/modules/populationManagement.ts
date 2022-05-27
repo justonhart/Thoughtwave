@@ -56,6 +56,9 @@ export class PopulationManagement {
         //a "cycle" is 300 ticks - the amount of time a source takes to recharge
         const CYCLE_LENGTH = 300;
 
+        // configurable value to modify the base return value
+        const CAPACITY_MODIFIER = 1.5;
+
         //potentially useful values
         let sourceCount = room.find(FIND_SOURCES).length;
         let energyCapacity = room.energyCapacityAvailable;
@@ -78,7 +81,10 @@ export class PopulationManagement {
 
         let energyExpenditurePerCyclePerCreep = creepSpawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
-        let creepCapacity = Math.min(1.5 * (totalIncomePerCycle / energyExpenditurePerCyclePerCreep), sourceCount * (energyCapacity >= 550 ? 6 : 2));
+        let creepCapacity = Math.min(
+            CAPACITY_MODIFIER * (totalIncomePerCycle / energyExpenditurePerCyclePerCreep),
+            sourceCount * (energyCapacity >= 550 ? 6 : 2)
+        );
 
         return Math.ceil(creepCapacity);
     }
@@ -468,5 +474,11 @@ export class PopulationManagement {
                 (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.memoryOptions.assignment === roomName
             ).length
         );
+    }
+
+    static needsTransporter(room: Room) {
+        let transporter = Object.values(Game.creeps).find((c) => c.memory.role === Role.TRANSPORTER && c.memory.room === room.name);
+        let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 1000);
+        return !transporter && !!room.storage && bigDroppedResources.length > 1;
     }
 }

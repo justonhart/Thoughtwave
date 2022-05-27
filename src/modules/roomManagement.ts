@@ -32,6 +32,13 @@ export function driveRoom(room: Room) {
             room.memory.repairQueue = findRepairTargets(room);
         }
 
+        if (room.memory.repairQueue.length) {
+            room.memory.repairQueue.forEach((job) => {
+                let pos = Game.getObjectById(job)?.pos;
+                room.visual.text('🛠', pos);
+            });
+        }
+
         if (
             Game.time % BUILD_CHECK_PERIOD === 0 &&
             (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
@@ -187,12 +194,23 @@ function runSpawning(room: Room) {
     if (distributor === undefined) {
         let spawn = availableSpawns.pop();
         spawn?.spawnDistributor();
-    } else if (distributor.ticksToLive < 50) {
+    } else if (distributor.ticksToLive < 100) {
         //reserve energy & spawn for distributor
         availableSpawns.pop();
         room.memory.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
             .map((part) => BODYPART_COST[part])
             .reduce((sum, next) => sum + next);
+    }
+
+    if (PopulationManagement.needsTransporter(room)) {
+        let options: SpawnOptions = {
+            memory: {
+                room: room.name,
+                role: Role.TRANSPORTER,
+            },
+        };
+        let spawn = availableSpawns.pop();
+        console.log(spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.getCreepTag('t', spawn.name), options, 10));
     }
 
     if (PopulationManagement.needsMiner(room)) {

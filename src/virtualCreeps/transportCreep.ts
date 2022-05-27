@@ -29,7 +29,7 @@ export class TransportCreep extends WaveCreep {
 
     //gather energy to distribute
     protected gatherEnergy(): void {
-        if (this.homeroom.storage) {
+        if (this.homeroom.storage?.store[RESOURCE_ENERGY]) {
             let result = this.withdraw(this.homeroom.storage, RESOURCE_ENERGY);
             switch (result) {
                 case ERR_NOT_IN_RANGE:
