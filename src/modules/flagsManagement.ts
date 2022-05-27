@@ -70,7 +70,10 @@ export default function manageFlags() {
     }
 
     if (Game.flags.collect) {
-        addOperation(OperationType.COLLECTION, Game.flags.collect.pos.roomName);
+        addOperation(OperationType.COLLECTION, Game.flags.collect.pos.roomName, {
+            originOpts: { minEnergyStatus: EnergyStatus.CRITICAL },
+            operativeCount: 2,
+        });
         Game.flags.collect.remove();
     }
 }
