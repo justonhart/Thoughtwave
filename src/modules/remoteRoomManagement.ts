@@ -35,7 +35,7 @@ function runSecurity(homeRoom: Room, remoteRoomName: string) {
         if (PopulationManagement.needsProtector(remoteRoomName) && !reassignIdleProtector(homeRoom.name, remoteRoomName)) {
             const maxSize = getMaxSize(
                 hostileAttackCreeps,
-                hostileOtherCreeps.filter((creep) => creep.getActiveBodyparts(HEAL) > 0)
+                hostileOtherCreeps?.filter((creep) => creep.getActiveBodyparts(HEAL) > 0)
             );
             const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 300, maxSize);
             body.push(HEAL, MOVE);
@@ -101,7 +101,7 @@ function spawnProtector(homeRoomName: string, remoteRoomName: string, body: Body
  * @returns
  */
 function getMaxSize(hostileCreeps: Creep[], healerCreeps: Creep[]) {
-    if (hostileCreeps.length === 1 && !healerCreeps.length) {
+    if (hostileCreeps?.length === 1 && !healerCreeps?.length) {
         return hostileCreeps[0].getActiveBodyparts(RANGED_ATTACK) + 2;
     }
     return 24; // Default max Body size (not 25 since all protectors have heal/move default parts)
