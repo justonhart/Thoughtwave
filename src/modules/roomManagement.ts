@@ -162,39 +162,53 @@ function findMiningPostitions(room: Room) {
 }
 
 function runSpawning(room: Room) {
-    //@ts-expect-error
-    let availableRoomSpawns: StructureSpawn[] = room
-        .find(FIND_MY_STRUCTURES)
-        .filter((structure) => structure.structureType === STRUCTURE_SPAWN && !structure.spawning);
+    let spawns = Object.values(Game.spawns).filter((spawn) => spawn.room === room);
+
+    let busySpawns = spawns.filter((spawn) => spawn.spawning);
+
+    busySpawns.forEach((spawn) => {
+        if (spawn.spawning.remainingTime <= 0) {
+            let blockingCreeps = spawn.pos
+                .findInRange(FIND_MY_CREEPS, 1)
+                .filter(
+                    (creep) => creep.memory.role !== Role.MANAGER && (!creep.memory.targetId || creep.memory.currentTaskPriority <= Priority.HIGH)
+                );
+            blockingCreeps.forEach((blocker) => {
+                blocker.travelTo(spawn, { flee: true, range: 2 });
+            });
+        }
+    });
+
+    let availableSpawns = spawns.filter((spawn) => !spawn.spawning);
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
 
     if (distributor === undefined) {
-        let spawn = availableRoomSpawns.pop();
+        let spawn = availableSpawns.pop();
         spawn?.spawnDistributor();
     } else if (distributor.ticksToLive < 50) {
         //reserve energy & spawn for distributor
-        availableRoomSpawns.pop();
+        availableSpawns.pop();
         room.memory.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
             .map((part) => BODYPART_COST[part])
             .reduce((sum, next) => sum + next);
     }
 
     if (PopulationManagement.needsMiner(room)) {
-        let spawn = availableRoomSpawns.pop();
+        let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
     }
 
     if (PopulationManagement.needsManager(room)) {
         if (room.memory.layout !== undefined) {
-            let suitableSpawn = availableRoomSpawns.find((spawn) => spawn.pos.isNearTo(posFromMem(room.memory.anchorPoint)));
+            let suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(posFromMem(room.memory.anchorPoint)));
             if (suitableSpawn) {
                 suitableSpawn.spawnManager();
-                availableRoomSpawns = availableRoomSpawns.filter((spawn) => spawn !== suitableSpawn);
+                availableSpawns = availableSpawns.filter((spawn) => spawn !== suitableSpawn);
             }
         } else {
-            let spawn = availableRoomSpawns.pop();
+            let spawn = availableSpawns.pop();
             spawn?.spawnManager();
         }
     }
@@ -203,24 +217,24 @@ function runSpawning(room: Room) {
     assigments.forEach((assignment) => {
         let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
         if (canSpawnAssignment) {
-            let spawn = availableRoomSpawns.pop();
+            let spawn = availableSpawns.pop();
             spawn?.spawnAssignedCreep(assignment);
         }
     });
 
     if (room.energyStatus >= EnergyStatus.RECOVERING && Object.keys(room.memory.remoteAssignments).length) {
         if (PopulationManagement.needsRemoteMiner(room)) {
-            let spawn = availableRoomSpawns.pop();
+            let spawn = availableSpawns.pop();
             spawn?.spawnRemoteMiner();
         }
 
         if (PopulationManagement.needsGatherer(room)) {
-            let spawn = availableRoomSpawns.pop();
+            let spawn = availableSpawns.pop();
             spawn?.spawnGatherer();
         }
 
         if (PopulationManagement.needsReserver(room)) {
-            let spawn = availableRoomSpawns.pop();
+            let spawn = availableSpawns.pop();
             spawn?.spawnReserver();
         }
     }
@@ -240,7 +254,7 @@ function runSpawning(room: Room) {
         });
     }
 
-    availableRoomSpawns.forEach((spawn) => spawn.spawnWorker());
+    availableSpawns.forEach((spawn) => spawn.spawnWorker());
 }
 
 export function findRepairTargets(room: Room): Id<Structure>[] {
@@ -254,7 +268,9 @@ export function findRepairTargets(room: Room): Id<Structure>[] {
         .find(FIND_STRUCTURES)
         .filter(
             (structure) =>
-                structure.structureType !== STRUCTURE_WALL && structure.structureType !== STRUCTURE_RAMPART && structure.hits < structure.hitsMax
+                structure.structureType !== STRUCTURE_WALL &&
+                structure.structureType !== STRUCTURE_RAMPART &&
+                structure.hits < (structure.structureType === STRUCTURE_ROAD ? structure.hitsMax * 0.9 : structure.hitsMax)
         );
 
     damagedRoomStructures.sort((structureA, structureB) => structureA.hits / structureA.hitsMax - structureB.hits / structureB.hitsMax);
