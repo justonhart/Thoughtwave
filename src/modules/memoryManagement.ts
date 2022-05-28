@@ -16,8 +16,6 @@ export function manageMemory() {
 }
 
 function handleDeadCreep(creepName: string) {
-    console.log(`May ${creepName} rest in peace`);
-
     let deadCreepMemory = Memory.creeps[creepName];
 
     if (Game.rooms[deadCreepMemory.room]?.controller?.my) {

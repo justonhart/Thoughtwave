@@ -1,4 +1,5 @@
 import { posFromMem } from '../modules/memoryManagement';
+import { PopulationManagement } from '../modules/populationManagement';
 import { findRepairTargets } from '../modules/roomManagement';
 
 RoomPosition.prototype.toMemSafe = function (this: RoomPosition): string {
@@ -58,6 +59,14 @@ Object.defineProperty(Room.prototype, 'managerLink', {
             .filter((structure) => structure.structureType === STRUCTURE_LINK)
             .pop();
         return link;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'workerCapacity', {
+    get: function (this: Room) {
+        return PopulationManagement.calculateWorkerCapacity(this);
     },
     enumerable: false,
     configurable: true,

@@ -1,4 +1,6 @@
 interface RoomMemory {
+    energyDistance?: number;
+    controllerDistance?: number;
     unclaim?: boolean;
     managerPos?: string;
     anchorPoint?: string;
@@ -28,6 +30,7 @@ interface Room {
     managerLink: StructureLink;
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
+    workerCapacity: number;
 }
 
 interface RoomPosition {

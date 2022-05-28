@@ -1,4 +1,5 @@
 import { posFromMem } from './memoryManagement';
+import { roomNeedsCoreStructures } from './roomDesign';
 
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
@@ -6,20 +7,24 @@ export class PopulationManagement {
 
         let limit: number;
 
-        switch (spawn.room.energyStatus) {
-            case EnergyStatus.CRITICAL:
-                limit = 0;
-                break;
-            case EnergyStatus.RECOVERING:
-                limit = 1;
-                break;
-            default:
-            case EnergyStatus.STABLE:
-                limit = WORKER_CAPACITY;
-                break;
-            case EnergyStatus.SURPLUS:
-                limit = WORKER_CAPACITY + 1;
-                break;
+        if (spawn.room.controller.level === 8) {
+            limit = 1;
+        } else {
+            switch (spawn.room.energyStatus) {
+                case EnergyStatus.CRITICAL:
+                    limit = 0;
+                    break;
+                case EnergyStatus.RECOVERING:
+                    limit = Math.ceil(WORKER_CAPACITY / 2);
+                    break;
+                default:
+                case EnergyStatus.STABLE:
+                    limit = WORKER_CAPACITY;
+                    break;
+                case EnergyStatus.SURPLUS:
+                    limit = WORKER_CAPACITY + 1;
+                    break;
+            }
         }
 
         let workers = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name && creep.memory.role === Role.WORKER);
@@ -56,12 +61,17 @@ export class PopulationManagement {
         //a "cycle" is 300 ticks - the amount of time a source takes to recharge
         const CYCLE_LENGTH = 300;
 
-        // configurable value to modify the base return value
-        const CAPACITY_MODIFIER = 1.5;
+        //base values
+        const sourceCount = room.find(FIND_SOURCES).length;
+        const energyCapacity = room.energyCapacityAvailable;
 
-        //potentially useful values
-        let sourceCount = room.find(FIND_SOURCES).length;
-        let energyCapacity = room.energyCapacityAvailable;
+        // avg distance from storagepos to sources
+        let energySourceDistance = room.memory.energyDistance ?? 25;
+
+        // distance from storagepos to controller
+        let controllerDistance = room.memory.controllerDistance ?? 25;
+
+        let travelDistance = room.storage ? controllerDistance : controllerDistance + energySourceDistance;
 
         let sourceIncomePerCycle = sourceCount * 3000;
         let remoteIncomePerCycle = 0; //define this once we get remote harvesting working
@@ -71,22 +81,24 @@ export class PopulationManagement {
         //cost to create [WORK, CARRY, MOVE] is 200 energy - the largest a creep can be is 50 parts - stop at 45
         let maxPartsBlockPerCreep = Math.min(Math.floor(energyCapacity / 200), 15);
 
+        let energyConsumedPerTrip = 50 * maxPartsBlockPerCreep;
+
+        // 50 carry : 1 work
+        let ticksTakenPerTrip = 50 + travelDistance;
+        let tripsPerCycle = CYCLE_LENGTH / ticksTakenPerTrip;
+
         //assuming there are no construction / maintenance jobs, all workers should be upgrading
-        let upgadeWorkCostPerCyclePerCreep = maxPartsBlockPerCreep * UPGRADE_CONTROLLER_POWER * CYCLE_LENGTH;
+        let upgadeWorkCostPerCyclePerCreep = energyConsumedPerTrip * tripsPerCycle;
 
         let spawnCost = maxPartsBlockPerCreep * 200;
 
         //creeps live for 1500 ticks -> 5 cycles
-        let creepSpawnCostPerCyclePerCreep = spawnCost / 5;
+        let spawnCostPerCyclePerCreep = spawnCost / 5;
+        let energyExpenditurePerCyclePerCreep = spawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
-        let energyExpenditurePerCyclePerCreep = creepSpawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
+        let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
 
-        let creepCapacity = Math.min(
-            CAPACITY_MODIFIER * (totalIncomePerCycle / energyExpenditurePerCyclePerCreep),
-            sourceCount * (energyCapacity >= 550 ? 6 : 2)
-        );
-
-        return Math.ceil(creepCapacity);
+        return Math.max(1, Math.floor(creepCapacity));
     }
 
     static needsMiner(room: Room): boolean {
