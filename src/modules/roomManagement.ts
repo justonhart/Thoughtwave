@@ -210,7 +210,7 @@ function runSpawning(room: Room) {
             },
         };
         let spawn = availableSpawns.pop();
-        console.log(spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.getCreepTag('t', spawn.name), options, 10));
+        spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.getCreepTag('t', spawn.name), options, 10);
     }
 
     if (PopulationManagement.needsMiner(room)) {
