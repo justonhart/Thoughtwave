@@ -11,7 +11,7 @@ export class Protector extends CombatCreep {
             return; // Wait while creep is healing
         }
         if (this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) === IN_ROOM) {
-            if (!this.memory.targetId || this.memory.assignment === this.homeroom.name) {
+            if (!this.memory.targetId || this.memory.assignment === this.homeroom.name || !Game.getObjectById(this.memory.targetId)) {
                 this.memory.targetId = this.findTarget();
             }
             if (!this.memory.targetId) {
@@ -25,11 +25,9 @@ export class Protector extends CombatCreep {
                 creepActionReturnCode = this.attackCreep(target);
             } else if (target instanceof Structure) {
                 creepActionReturnCode = this.attackStructure(target);
-                if (creepActionReturnCode === ERR_NOT_IN_RANGE) {
+                if (creepActionReturnCode === ERR_NOT_IN_RANGE || !this.pos.isNearTo(target.pos.x, target.pos.y)) {
                     this.travelTo(target, { range: 1 });
                 }
-            } else {
-                delete this.memory.targetId;
             }
 
             // Enable retargeting on same tick
@@ -88,10 +86,11 @@ export class Protector extends CombatCreep {
             const hostilesInSquadRange = this.pos.findInRange(FIND_HOSTILE_CREEPS, 3); // check around target for proper massAttack pathing
             const rangeToTarget = this.pos.getRangeTo(target);
 
-            // If not in range or it is an enemy squad with not only ATTACK Creeps then go closer to enable massAttack
+            // If not in range, an enemy squad with RANGED_ATTACK, or no dangerous creeps, then go closer to enable massAttack
             if (
                 rangeToTarget > range ||
-                (hostilesInSquadRange.length > 1 && hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(RANGED_ATTACK)))
+                (hostilesInSquadRange.length > 1 && hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(RANGED_ATTACK))) ||
+                !hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK))
             ) {
                 range = 1;
                 shouldFlee = false;
@@ -124,9 +123,9 @@ export class Protector extends CombatCreep {
 
             const closestDangerousHostile = this.pos.findClosestByRange(hostileCreeps, {
                 filter: (creep: Creep) => creep.body.some((bodyPart) => bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK),
-            }).id;
+            })?.id;
 
-            return closestDangerousHostile.length ? closestDangerousHostile : this.pos.findClosestByRange(hostileCreeps).id;
+            return closestDangerousHostile?.length ? closestDangerousHostile : this.pos.findClosestByRange(hostileCreeps).id;
         }
         const hostileRamparts = this.room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_RAMPART });
         if (hostileRamparts.length) {
@@ -135,7 +134,10 @@ export class Protector extends CombatCreep {
 
         const hostileStructures = this.room
             .find(FIND_HOSTILE_STRUCTURES)
-            .filter((struct) => !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity()));
+            .filter(
+                (struct) =>
+                    struct.structureType !== STRUCTURE_CONTROLLER && !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity())
+            );
         if (hostileStructures.length) {
             return hostileStructures[0].id;
         }
