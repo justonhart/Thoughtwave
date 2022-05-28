@@ -37,7 +37,7 @@ interface ScoutMemory {
 }
 
 interface CombatMemory {
-    flee: boolean;
+    flee?: boolean;
 }
 
 const enum Priority {

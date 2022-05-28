@@ -542,4 +542,18 @@ export class PopulationManagement {
             ).length
         );
     }
+
+    static needsMeleeProtector(roomName: string): boolean {
+        return (
+            !Object.values(Game.creeps).filter(
+                (creep) =>
+                    creep.memory.role === Role.PROTECTOR &&
+                    creep.getActiveBodyparts(ATTACK) &&
+                    (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
+            ).length &&
+            !Memory.empire.spawnAssignments.filter(
+                (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.body.includes(ATTACK) && creep.memoryOptions.assignment === roomName
+            ).length
+        );
+    }
 }

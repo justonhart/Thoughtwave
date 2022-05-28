@@ -102,7 +102,7 @@ function spawnProtector(homeRoomName: string, remoteRoomName: string, body: Body
  */
 function getMaxProtectorBodySize(hostileCreeps: Creep[], healerCreeps: Creep[]) {
     if (hostileCreeps.length === 1 && !healerCreeps.length) {
-        return hostileCreeps[0].getActiveBodyparts(RANGED_ATTACK) + 2;
+        return hostileCreeps[0].getActiveBodyparts(RANGED_ATTACK) + 3;
     }
     return 24; // Default max Body size (not 25 since all protectors have heal/move default parts)
 }
