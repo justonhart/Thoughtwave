@@ -1,5 +1,4 @@
 import { posFromMem } from './memoryManagement';
-import { roomNeedsCoreStructures } from './roomDesign';
 
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {

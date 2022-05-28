@@ -4,7 +4,6 @@ import { Miner } from '../roles/miner';
 import { Distributor } from '../roles/distributor';
 import { Transporter } from '../roles/transporter';
 import { Claimer } from '../roles/claimer';
-// import { Colonizer } from '../roles/colonizer';
 import { Scout } from '../roles/scout';
 import { Protector } from '../roles/protector';
 import { GoCreep } from '../roles/goCreep';
@@ -13,6 +12,7 @@ import { Reserver } from '../roles/reserver';
 import { RemoteMiner } from '../roles/remoteMiner';
 import { Manager } from '../roles/manager';
 import { Operative } from '../roles/operative';
+import { Colonizer } from '../roles/colonizer';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -44,7 +44,7 @@ export default function driveCreep(creep: Creep) {
             waveCreep = new Claimer(creep.id);
             break;
         case Role.COLONIZER:
-            // waveCreep = new Colonizer(creep.id);
+            waveCreep = new Colonizer(creep.id);
             break;
         case Role.SCOUT:
             waveCreep = new Scout(creep.id);

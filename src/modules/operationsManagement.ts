@@ -50,6 +50,27 @@ function manageColonizationOperation(op: Operation) {
             }
             break;
         case OperationStage.BUILD:
+            let miningAssignments = Object.keys(Memory.rooms[op.targetRoom]?.miningAssignments);
+            miningAssignments.forEach((key) => {
+                if (
+                    Memory.rooms[op.targetRoom]?.miningAssignments?.[key] === AssignmentStatus.UNASSIGNED &&
+                    !Memory.empire.spawnAssignments.filter(
+                        (creep) => creep.memoryOptions.room === op.targetRoom && creep.memoryOptions.assignment === key
+                    ).length
+                ) {
+                    Memory.rooms[op.targetRoom].miningAssignments[key] = AssignmentStatus.ASSIGNED;
+                    Memory.empire.spawnAssignments.push({
+                        designee: op.originRoom,
+                        body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
+                        memoryOptions: {
+                            role: Role.MINER,
+                            assignment: key,
+                            room: op.targetRoom,
+                        },
+                    });
+                }
+            });
+
             let numberOfColonizersFound =
                 Object.values(Memory.creeps).filter((creep) => creep.role === Role.COLONIZER && creep.destination === op.targetRoom).length +
                 Memory.empire.spawnAssignments.filter(
