@@ -1,6 +1,6 @@
 import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
-export class Maintainer extends WorkerCreep {
+export class Worker extends WorkerCreep {
     protected performDuties() {
         let target = Game.getObjectById(this.memory.targetId);
 
@@ -28,6 +28,10 @@ export class Maintainer extends WorkerCreep {
             );
         if (constructedDefenses.length) {
             return constructedDefenses.shift().id;
+        }
+
+        if (!this.room.controller.upgradeBlocked && this.room.controller.ticksToDowngrade <= 5000) {
+            return this.room.controller.id;
         }
 
         let decayingStructuresAtRisk = this.homeroom.find(FIND_STRUCTURES).filter(
@@ -63,6 +67,6 @@ export class Maintainer extends WorkerCreep {
             return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare))?.id;
         }
 
-        return this.homeroom.controller?.id;
+        return !this.room.controller.upgradeBlocked ? this.homeroom.controller?.id : undefined;
     }
 }

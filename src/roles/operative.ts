@@ -13,7 +13,7 @@ export class Operative extends WorkerCreep {
     }
 
     private runSterilize() {
-        if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
+        if (this.travelToRoom(this.memory.destination, { range: 20 }) === IN_ROOM) {
             //@ts-expect-error
             let target: Structure = Game.getObjectById(this.memory.targetId);
             if (!target) {
@@ -37,13 +37,11 @@ export class Operative extends WorkerCreep {
 
     private runCollect() {
         if (this.store.getUsedCapacity()) {
-            if (this.travelToRoom(Game.rooms[this.operation.originRoom].name) === IN_ROOM) {
-                let storage = Game.rooms[this.operation.originRoom].storage;
-                if (this.pos.isNearTo(storage)) {
-                    this.transfer(storage, Object.keys(this.store).pop() as ResourceConstant);
-                } else {
-                    this.travelTo(storage);
-                }
+            let storage = Game.rooms[this.operation.originRoom].storage;
+            if (this.pos.isNearTo(storage)) {
+                this.transfer(storage, Object.keys(this.store).pop() as ResourceConstant);
+            } else {
+                this.travelTo(storage);
             }
         } else if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
             //@ts-expect-error

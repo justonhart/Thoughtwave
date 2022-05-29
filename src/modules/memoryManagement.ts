@@ -16,14 +16,9 @@ export function manageMemory() {
 }
 
 function handleDeadCreep(creepName: string) {
-    console.log(`May ${creepName} rest in peace`);
-
     let deadCreepMemory = Memory.creeps[creepName];
 
     if (Game.rooms[deadCreepMemory.room]?.controller?.my) {
-        if (deadCreepMemory.miningPos) {
-            Memory.rooms[deadCreepMemory.room || deadCreepMemory.destination].availableSourceAccessPoints?.push(deadCreepMemory.miningPos);
-        }
         if (deadCreepMemory.role === Role.MINER) {
             Memory.rooms[deadCreepMemory.room].miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
         }

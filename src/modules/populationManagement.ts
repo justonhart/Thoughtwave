@@ -1,137 +1,57 @@
 import { posFromMem } from './memoryManagement';
 
 export class PopulationManagement {
-    // function to calculate how many creeps a room can support
-    static calculateEarlyCreepCapacity(room: Room): number {
-        //potentially useful values
-        let sourceCount = room.find(FIND_SOURCES).length;
-        let accessPointCount = room.memory.sourceAccessPointCount;
-        let maxEnergy = room.energyCapacityAvailable;
-
-        //sources have 3k energy per 300 ticks -> 10 energy per tick
-        //creeps harvest 2 energy per tick per WORK ==> 5 work blocks per source for 100% efficiency
-        //let us assume creeps will spend approximately half of their time working (not mining) => 10 work blocks per source
-        let workPartsPerSource = 10;
-
-        //cost to create [WORK, CARRY, MOVE] is 200 energy
-        let maxWorkPartsPerCreep = Math.floor(maxEnergy / 200);
-
-        let workPartsNeeded = sourceCount * workPartsPerSource;
-        let creepsNeeded = Math.ceil(workPartsNeeded / maxWorkPartsPerCreep);
-
-        //creepsNeeded is likely to be VERY HIGH in early rooms (higher than the access point count may be able to accommodate), so cap based on access point count
-        let restrictedCapacty = accessPointCount * 2;
-        let creepCapacity = restrictedCapacty < creepsNeeded ? restrictedCapacty : creepsNeeded;
-
-        return creepCapacity;
-    }
-
-    static spawnEarlyWorker(spawn: StructureSpawn): ScreepsReturnCode {
-        const SPAWN_LIMIT = this.calculateEarlyCreepCapacity(spawn.room);
-        const WORKER_LIMIT = SPAWN_LIMIT / 2;
-        const UPGRADER_LIMIT = Math.ceil(SPAWN_LIMIT / 4);
-        const MAINTAINTER_LIMIT = Math.ceil(SPAWN_LIMIT / 4);
-        const BUILDER_LIMIT = Math.ceil(SPAWN_LIMIT / 8);
-        let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
-
-        let options: SpawnOptions = {
-            memory: {
-                room: spawn.room.name,
-            },
-        };
-
-        let tag: string;
-        const PARTS = [WORK, CARRY, MOVE];
-
-        if (roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length < WORKER_LIMIT) {
-            options.memory.role = Role.WORKER;
-            tag = 'w';
-        } else if (
-            roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < UPGRADER_LIMIT &&
-            !spawn.room.controller.upgradeBlocked
-        ) {
-            options.memory.role = Role.UPGRADER;
-            tag = 'u';
-        } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < MAINTAINTER_LIMIT) {
-            options.memory.role = Role.MAINTAINTER;
-            tag = 'm';
-        } else if (
-            roomCreeps.filter((creep) => creep.memory.role === Role.BUILDER).length < BUILDER_LIMIT &&
-            spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length
-        ) {
-            options.memory.role = Role.BUILDER;
-            tag = 'b';
-        }
-
-        if (options.memory.role) {
-            let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options);
-
-            if (result === ERR_NOT_ENOUGH_ENERGY && !roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length) {
-                spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options);
-            }
-
-            return result;
-        }
-    }
-
-    static spawnPhaseTwoWorker(spawn: StructureSpawn): ScreepsReturnCode {
+    static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
         const WORKER_CAPACITY = this.calculateWorkerCapacity(spawn.room);
 
-        let upgraderLimit: number, maintainerLimit: number, builderLimit: number;
+        let limit: number;
 
-        switch (spawn.room.energyStatus) {
-            case EnergyStatus.CRITICAL:
-                upgraderLimit = 0;
-                maintainerLimit = 0;
-                builderLimit = 0;
-                break;
-            case EnergyStatus.RECOVERING:
-                upgraderLimit = spawn.room.controller.ticksToDowngrade < 10000 ? 1 : 0;
-                maintainerLimit = 1;
-                builderLimit = 0;
-                break;
-            case EnergyStatus.STABLE:
-                upgraderLimit = spawn.room.controller.level === 8 ? 1 : WORKER_CAPACITY - 1;
-                maintainerLimit = 2; //spawn two half-sized maintainers
-                builderLimit = WORKER_CAPACITY / 2; //consume an additional 50% energy
-                break;
-            case EnergyStatus.SURPLUS:
-                upgraderLimit = spawn.room.controller.level === 8 ? 1 : WORKER_CAPACITY - 1 + this.getAdditionalUpgraderCount(spawn.room);
-                maintainerLimit = 2; //spawn two half-sized maintainers
-                builderLimit = WORKER_CAPACITY / 2; //consume an additional 50% energy
-                break;
+        if (spawn.room.controller.level === 8) {
+            limit = 1;
+        } else {
+            switch (spawn.room.energyStatus) {
+                case EnergyStatus.CRITICAL:
+                    limit = 0;
+                    break;
+                case EnergyStatus.RECOVERING:
+                    limit = Math.ceil(WORKER_CAPACITY / 2);
+                    break;
+                default:
+                case EnergyStatus.STABLE:
+                    limit = WORKER_CAPACITY;
+                    break;
+                case EnergyStatus.SURPLUS:
+                    limit = WORKER_CAPACITY + 1;
+                    break;
+            }
         }
 
-        let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name);
+        let workers = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name && creep.memory.role === Role.WORKER);
 
         let options: SpawnOptions = {
             memory: {
                 room: spawn.room.name,
+                role: Role.WORKER,
             },
         };
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 15;
-        let tag: string;
-        if (
-            roomCreeps.filter((creep) => creep.memory.role === Role.BUILDER).length < builderLimit &&
-            spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length
-        ) {
-            options.memory.role = Role.BUILDER;
-            tag = 'b';
-        } else if (roomCreeps.filter((creep) => creep.memory.role === Role.UPGRADER).length < upgraderLimit) {
-            options.memory.role = Role.UPGRADER;
-            tag = 'u';
-        } else if (roomCreeps.filter((creep) => creep.memory.role === Role.MAINTAINTER).length < maintainerLimit) {
-            options.memory.role = Role.MAINTAINTER;
-            creepLevelCap = creepLevelCap / 2;
-            tag = 'ma';
-        }
-
-        if (options.memory.role) {
+        let tag = 'w';
+        if (workers.length < limit) {
             let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
-
             return result;
+        } else {
+            //check to see if there are any creeps to replace w/ stronger models
+            let maxSize = this.createPartsArray(WORKER_PART_BLOCK, spawn.room.energyCapacityAvailable, creepLevelCap).length;
+            let creepToReplace = workers.find((creep) => creep.getActiveBodyparts(WORK) < maxSize / 3);
+            if (creepToReplace) {
+                let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
+                if (result === OK) {
+                    creepToReplace.suicide();
+                }
+                return result;
+            }
         }
     }
 
@@ -140,9 +60,17 @@ export class PopulationManagement {
         //a "cycle" is 300 ticks - the amount of time a source takes to recharge
         const CYCLE_LENGTH = 300;
 
-        //potentially useful values
-        let sourceCount = room.find(FIND_SOURCES).length;
-        let energyCapacity = room.energyCapacityAvailable;
+        //base values
+        const sourceCount = room.find(FIND_SOURCES).length;
+        const energyCapacity = room.energyCapacityAvailable;
+
+        // avg distance from storagepos to sources
+        let energySourceDistance = room.memory.energyDistance ?? 25;
+
+        // distance from storagepos to controller
+        let controllerDistance = room.memory.controllerDistance ?? 25;
+
+        let travelDistance = room.storage ? controllerDistance : controllerDistance + energySourceDistance;
 
         let sourceIncomePerCycle = sourceCount * 3000;
         let remoteIncomePerCycle = 0; //define this once we get remote harvesting working
@@ -152,19 +80,24 @@ export class PopulationManagement {
         //cost to create [WORK, CARRY, MOVE] is 200 energy - the largest a creep can be is 50 parts - stop at 45
         let maxPartsBlockPerCreep = Math.min(Math.floor(energyCapacity / 200), 15);
 
+        let energyConsumedPerTrip = 50 * maxPartsBlockPerCreep;
+
+        // 50 carry : 1 work
+        let ticksTakenPerTrip = 50 + travelDistance;
+        let tripsPerCycle = CYCLE_LENGTH / ticksTakenPerTrip;
+
         //assuming there are no construction / maintenance jobs, all workers should be upgrading
-        let upgadeWorkCostPerCyclePerCreep = maxPartsBlockPerCreep * UPGRADE_CONTROLLER_POWER * CYCLE_LENGTH;
+        let upgadeWorkCostPerCyclePerCreep = energyConsumedPerTrip * tripsPerCycle;
 
         let spawnCost = maxPartsBlockPerCreep * 200;
 
         //creeps live for 1500 ticks -> 5 cycles
-        let creepSpawnCostPerCyclePerCreep = spawnCost / 5;
-
-        let energyExpenditurePerCyclePerCreep = creepSpawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
+        let spawnCostPerCyclePerCreep = spawnCost / 5;
+        let energyExpenditurePerCyclePerCreep = spawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
         let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
 
-        return Math.ceil(creepCapacity);
+        return Math.max(1, Math.floor(creepCapacity));
     }
 
     static needsMiner(room: Room): boolean {
@@ -186,7 +119,19 @@ export class PopulationManagement {
         };
 
         let tag = 'm';
-        let minerBody: ('work' | 'move' | 'carry')[] = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
+        let minerBody: ('work' | 'move' | 'carry')[];
+
+        if (spawn.room.energyCapacityAvailable >= 650) {
+            minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
+        } else if (spawn.room.energyCapacityAvailable >= 550) {
+            minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE];
+        } else if (spawn.room.energyCapacityAvailable >= 450) {
+            minerBody = [WORK, WORK, WORK, WORK, MOVE];
+        } else if (spawn.room.energyCapacityAvailable >= 350) {
+            minerBody = [WORK, WORK, WORK, MOVE];
+        } else {
+            minerBody = [WORK, WORK, MOVE];
+        }
 
         let assigmentPos = posFromMem(assigment);
         let link = assigmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((s) => s.structureType === STRUCTURE_LINK);
@@ -199,8 +144,12 @@ export class PopulationManagement {
         let result = spawn.smartSpawn(minerBody, this.getCreepTag(tag, spawn.name), options);
         if (result === OK) {
             spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
-        } else if (result === ERR_NOT_ENOUGH_ENERGY && spawn.room.storage?.store[RESOURCE_ENERGY] < 1000) {
-            let emergencyMinerBody = [WORK, WORK, MOVE, MOVE];
+        } else if (
+            result === ERR_NOT_ENOUGH_ENERGY &&
+            !spawn.room.find(FIND_MY_CREEPS).filter((creep) => creep.memory.role === Role.MINER).length &&
+            (!spawn.room.storage || spawn.room.storage?.store[RESOURCE_ENERGY] < 1000)
+        ) {
+            let emergencyMinerBody = [WORK, WORK, MOVE];
             result = spawn.smartSpawn(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
             if (result === OK) {
                 spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
@@ -211,11 +160,6 @@ export class PopulationManagement {
     }
 
     static needsRemoteMiner(room: Room): boolean {
-        // TODO: remove this (where does memory get reinitialized?)
-        if (!room.memory.remoteAssignments) {
-            room.memory.remoteAssignments = {};
-        }
-
         const assigmentKeys = Object.keys(room.memory.remoteAssignments);
         return !!assigmentKeys.find(
             (remoteRoom) =>
@@ -541,5 +485,11 @@ export class PopulationManagement {
                 (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.memoryOptions.assignment === roomName
             ).length
         );
+    }
+
+    static needsTransporter(room: Room) {
+        let transporter = Object.values(Game.creeps).find((c) => c.memory.role === Role.TRANSPORTER && c.memory.room === room.name);
+        let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 1000);
+        return !transporter && !!room.storage && bigDroppedResources.length > 1;
     }
 }

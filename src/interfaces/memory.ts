@@ -55,9 +55,8 @@ interface OperationOpts {
 }
 
 interface OriginOpts {
-    earlyPhase: boolean;
-    minEnergyStatus: EnergyStatus;
-    maxLinearDistance: number;
+    minEnergyStatus?: EnergyStatus;
+    maxLinearDistance?: number;
 }
 
 const enum OperationType {
