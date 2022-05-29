@@ -1,4 +1,5 @@
 import { posFromMem } from '../modules/memoryManagement';
+import { PopulationManagement } from '../modules/populationManagement';
 import { findRepairTargets } from '../modules/roomManagement';
 
 RoomPosition.prototype.toMemSafe = function (this: RoomPosition): string {
@@ -22,7 +23,7 @@ Room.prototype.removeFromRepairQueue = function (this: Room, idToRemove: string)
 
 Object.defineProperty(Room.prototype, 'energyStatus', {
     get: function (this: Room) {
-        if (!this.storage || !this.storage.my) {
+        if (!this.storage?.my) {
             return undefined;
         } else if (this.storage.store[RESOURCE_ENERGY] >= 400000) {
             return EnergyStatus.SURPLUS;
@@ -58,6 +59,14 @@ Object.defineProperty(Room.prototype, 'managerLink', {
             .filter((structure) => structure.structureType === STRUCTURE_LINK)
             .pop();
         return link;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'workerCapacity', {
+    get: function (this: Room) {
+        return PopulationManagement.calculateWorkerCapacity(this);
     },
     enumerable: false,
     configurable: true,

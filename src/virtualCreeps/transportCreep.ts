@@ -29,7 +29,7 @@ export class TransportCreep extends WaveCreep {
 
     //gather energy to distribute
     protected gatherEnergy(): void {
-        if (this.homeroom.storage) {
+        if (this.homeroom.storage?.store[RESOURCE_ENERGY]) {
             let result = this.withdraw(this.homeroom.storage, RESOURCE_ENERGY);
             switch (result) {
                 case ERR_NOT_IN_RANGE:
@@ -83,8 +83,8 @@ export class TransportCreep extends WaveCreep {
             ).id;
         }
 
-        let looseResources = room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
-        if (looseResources.length) {
+        let looseResources = room.find(FIND_DROPPED_RESOURCES);
+        if (looseResources.filter((r) => r.amount > 100).length) {
             return looseResources.reduce((biggestResource, resourceToCompare) =>
                 biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
             ).id;
@@ -99,6 +99,10 @@ export class TransportCreep extends WaveCreep {
             return containers.reduce((fullestContainer, nextContainer) =>
                 fullestContainer.store.getUsedCapacity() > nextContainer.store.getUsedCapacity() ? fullestContainer : nextContainer
             ).id;
+        }
+
+        if (looseResources.length) {
+            return looseResources.reduce((most, next) => (most.amount > next.amount ? most : next)).id;
         }
     }
 

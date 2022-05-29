@@ -35,7 +35,7 @@ function runSecurity(homeRoom: Room, remoteRoomName: string) {
         if (PopulationManagement.needsProtector(remoteRoomName) && !reassignIdleProtector(homeRoom.name, remoteRoomName)) {
             const maxBodySize = getMaxProtectorBodySize(
                 hostileAttackCreeps,
-                hostileOtherCreeps.filter((creep) => creep.getActiveBodyparts(HEAL) > 0)
+                hostileOtherCreeps?.filter((creep) => creep.getActiveBodyparts(HEAL) > 0)
             );
             const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 300, maxBodySize);
             body.push(HEAL, MOVE);
@@ -101,8 +101,8 @@ function spawnProtector(homeRoomName: string, remoteRoomName: string, body: Body
  * @returns
  */
 function getMaxProtectorBodySize(hostileCreeps: Creep[], healerCreeps: Creep[]) {
-    if (hostileCreeps.length === 1 && !healerCreeps.length) {
-        return hostileCreeps[0].getActiveBodyparts(RANGED_ATTACK) + 3;
+    if (hostileCreeps?.length === 1 && !healerCreeps?.length) {
+        return hostileCreeps[0].getActiveBodyparts(RANGED_ATTACK) + 2;
     }
     return 24; // Default max Body size (not 25 since all protectors have heal/move default parts)
 }
@@ -120,7 +120,7 @@ function reassignIdleProtector(homeRoomName: string, targetRoomName: string): bo
     );
 
     const idleProtector = protectors.find(
-        (creep) => Memory.rooms[homeRoomName].remoteAssignments[creep.memory.assignment].state !== RemoteMiningRoomState.SAFE
+        (creep) => Memory.rooms[homeRoomName].remoteAssignments?.[creep.memory.assignment]?.state !== RemoteMiningRoomState.SAFE
     );
     if (idleProtector) {
         idleProtector.memory.assignment = targetRoomName;

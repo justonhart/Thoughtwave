@@ -1,8 +1,7 @@
-import { posFromMem } from '../modules/memoryManagement';
 import { getSpawnPos } from '../modules/roomDesign';
-import { EarlyCreep } from '../virtualCreeps/earlyCreep';
+import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
-export class Colonizer extends EarlyCreep {
+export class Colonizer extends WorkerCreep {
     protected performDuties() {
         if (Game.flags.intershardColonize && !this.memory.destination) {
             this.memory.destination = Game.flags.intershardColonize.pos.roomName;
