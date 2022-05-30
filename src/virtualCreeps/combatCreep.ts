@@ -17,7 +17,7 @@ export class CombatCreep extends WaveCreep {
         }
 
         // Enable retargeting on same tick
-        if (!this.memory.combat.flee && creepActionReturnCode !== OK && creepActionReturnCode !== ERR_NOT_IN_RANGE) {
+        if (!this.memory.combat?.flee && creepActionReturnCode !== OK && creepActionReturnCode !== ERR_NOT_IN_RANGE) {
             delete this.memory.targetId;
         }
     }
@@ -41,7 +41,7 @@ export class CombatCreep extends WaveCreep {
                 shouldFlee = false;
             }
 
-            if (this.memory.combat.flee) {
+            if (this.memory.combat?.flee) {
                 // Go back to the exit toward creeps homeroom while avoiding the creep in combat
                 this.travelToRoom(this.homeroom.name, { ignoreCreeps: false, avoidHostiles: true });
             } else {
@@ -71,12 +71,12 @@ export class CombatCreep extends WaveCreep {
      * @returns boolean, to see if creep has arrived in new room
      */
     public fledToNewRoom(): boolean {
-        if (!this.memory.combat.flee && this.hits / this.hitsMax < 0.4 && this.getActiveBodyparts(HEAL)) {
+        if (!this.memory.combat?.flee && this.hits / this.hitsMax < 0.4 && this.getActiveBodyparts(HEAL)) {
             this.memory.combat.flee = true;
-        } else if (this.memory.combat.flee && this.hits / this.hitsMax > 0.8) {
+        } else if (this.memory.combat?.flee && this.hits / this.hitsMax > 0.8) {
             this.memory.combat.flee = false;
         }
-        if (this.memory.combat.flee && this.pos.roomName !== this.memory.assignment) {
+        if (this.memory.combat?.flee && this.pos.roomName !== this.memory.assignment) {
             this.moveOffExit(); // TODO: this could be an issue if exit is blocked
             return true; // Creep retreated to previous room to heal
         }
@@ -87,9 +87,15 @@ export class CombatCreep extends WaveCreep {
         const hostileCreeps = this.room.find(FIND_HOSTILE_CREEPS);
         if (hostileCreeps.length) {
             const healers = hostileCreeps.filter((creep) => creep.getActiveBodyparts(HEAL) > 0);
+            const opponents = hostileCreeps.filter((creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0);
 
-            return healers.length ? this.pos.findClosestByRange(healers).id : this.pos.findClosestByRange(hostileCreeps).id;
+            return healers.length
+                ? this.pos.findClosestByRange(healers).id
+                : opponents.length
+                ? this.pos.findClosestByRange(opponents).id
+                : this.pos.findClosestByRange(hostileCreeps).id;
         }
+
         const hostileRamparts = this.room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_RAMPART });
         if (hostileRamparts.length) {
             return hostileRamparts[0].id;
