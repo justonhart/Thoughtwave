@@ -37,6 +37,7 @@ export class WaveCreep extends Creep {
                     this.onTaskFinished();
                 }
                 break;
+            case ERR_FULL:
             default:
                 this.onTaskFinished();
                 break;
