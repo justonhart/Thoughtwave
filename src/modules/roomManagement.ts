@@ -190,6 +190,7 @@ function runSpawning(room: Room) {
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
+    let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length;
 
     if (distributor === undefined) {
         let spawn = availableSpawns.pop();
@@ -231,45 +232,47 @@ function runSpawning(room: Room) {
         }
     }
 
-    let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
-    assigments.forEach((assignment) => {
-        let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
-        if (canSpawnAssignment) {
-            let spawn = availableSpawns.pop();
-            spawn?.spawnAssignedCreep(assignment);
-        }
-    });
-
-    if (room.energyStatus >= EnergyStatus.RECOVERING && Object.keys(room.memory.remoteAssignments).length) {
-        if (PopulationManagement.needsRemoteMiner(room)) {
-            let spawn = availableSpawns.pop();
-            spawn?.spawnRemoteMiner();
-        }
-
-        if (PopulationManagement.needsGatherer(room)) {
-            let spawn = availableSpawns.pop();
-            spawn?.spawnGatherer();
-        }
-
-        if (PopulationManagement.needsReserver(room)) {
-            let spawn = availableSpawns.pop();
-            spawn?.spawnReserver();
-        }
-    }
-
-    // TODO remove set room and put in function
-    if (
-        Game.time % 8000 === 0 &&
-        !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.SCOUT && creep.designee === room.name).length
-    ) {
-        Memory.empire.spawnAssignments.push({
-            designee: room.name,
-            body: [MOVE],
-            memoryOptions: {
-                role: Role.SCOUT,
-                room: room.name,
-            },
+    if (workerCount) {
+        let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
+        assigments.forEach((assignment) => {
+            let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
+            if (canSpawnAssignment) {
+                let spawn = availableSpawns.pop();
+                spawn?.spawnAssignedCreep(assignment);
+            }
         });
+
+        if (room.energyStatus >= EnergyStatus.RECOVERING && Object.keys(room.memory.remoteAssignments).length) {
+            if (PopulationManagement.needsRemoteMiner(room)) {
+                let spawn = availableSpawns.pop();
+                spawn?.spawnRemoteMiner();
+            }
+
+            if (PopulationManagement.needsGatherer(room)) {
+                let spawn = availableSpawns.pop();
+                spawn?.spawnGatherer();
+            }
+
+            if (PopulationManagement.needsReserver(room)) {
+                let spawn = availableSpawns.pop();
+                spawn?.spawnReserver();
+            }
+        }
+
+        // TODO remove set room and put in function
+        if (
+            Game.time % 8000 === 0 &&
+            !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.SCOUT && creep.designee === room.name).length
+        ) {
+            Memory.empire.spawnAssignments.push({
+                designee: room.name,
+                body: [MOVE],
+                memoryOptions: {
+                    role: Role.SCOUT,
+                    room: room.name,
+                },
+            });
+        }
     }
 
     availableSpawns.forEach((spawn) => spawn.spawnWorker());
