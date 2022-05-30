@@ -1,11 +1,18 @@
 import { PopulationManagement } from './populationManagement';
 
+const OPERATION_STARTING_STAGE_MAP: Record<OperationType, OperationStage> = {
+    1: OperationStage.CLAIM,
+    2: OperationStage.ACTIVE,
+    3: OperationStage.ACTIVE,
+    4: OperationStage.ACTIVE,
+};
+
 export function manageOperations() {
     if (!Memory.empire.operations) {
         Memory.empire.operations = [];
     }
 
-    let ops = Memory.empire.operations.filter((op) => op.stage !== OperationStage.COMPLETE);
+    let ops = Memory.empire.operations.filter((op) => op.stage !== OperationStage.COMPLETE || op?.expireAt <= Game.time);
     if (ops.length) {
         ops.forEach((op) => {
             switch (op.type) {
@@ -17,6 +24,9 @@ export function manageOperations() {
                     break;
                 case OperationType.COLLECTION:
                     manageCollectionOperation(op);
+                    break;
+                case OperationType.SECURE:
+                    manageSecureRoomOperation(op);
                     break;
             }
         });
@@ -45,6 +55,7 @@ function manageColonizationOperation(op: Operation) {
                     memoryOptions: {
                         role: Role.CLAIMER,
                         destination: op.targetRoom,
+                        room: op.originRoom,
                     },
                 });
             }
@@ -214,8 +225,32 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
     }
 }
 
-const OPERATION_STARTING_STAGE_MAP: Record<OperationType, OperationStage> = {
-    1: OperationStage.CLAIM,
-    2: OperationStage.ACTIVE,
-    3: OperationStage.ACTIVE,
-};
+function manageSecureRoomOperation(op: Operation) {
+    if (!Game.rooms[op.originRoom]) {
+        op.originRoom = findOperationOrigin(op.targetRoom);
+    }
+
+    let origin = Game.rooms[op.originRoom];
+
+    let assignedProtectorCount =
+        Object.values(Memory.creeps).filter((creep) => creep.assignment === op.targetRoom && creep.role === Role.PROTECTOR).length +
+        Memory.empire.spawnAssignments.filter(
+            (creep) => creep.memoryOptions.assignment === op.targetRoom && creep.memoryOptions.role === Role.PROTECTOR
+        ).length;
+
+    if (Game.rooms[op.originRoom] && assignedProtectorCount < op.operativeCount) {
+        const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], origin.energyCapacityAvailable - 300);
+        body.push(HEAL, MOVE);
+        Memory.empire.spawnAssignments.push({
+            designee: op.originRoom,
+            body: body,
+            memoryOptions: {
+                role: Role.PROTECTOR,
+                room: op.originRoom,
+                assignment: op.targetRoom,
+                currentTaskPriority: Priority.MEDIUM,
+                combat: { flee: false },
+            },
+        });
+    }
+}
