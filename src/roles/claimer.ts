@@ -1,4 +1,6 @@
+import { posFromMem } from '../modules/memoryManagement';
 import { PopulationManagement } from '../modules/populationManagement';
+import { posInsideBunker } from '../modules/roomDesign';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Claimer extends WaveCreep {
@@ -35,24 +37,14 @@ export class Claimer extends WaveCreep {
                 }
             }
         } else {
-            // Go to the target room
-            if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
-                if (this.room.controller.my) {
-                    console.log(`${this.room.name} has been claimed!`);
-                    let opIndex = Memory.empire.operations.findIndex((op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name);
-                    if (opIndex > -1) {
-                        Memory.empire.operations[opIndex].stage = this.room.canSpawn() ? OperationStage.COMPLETE : OperationStage.BUILD;
-                    }
+            if (!this.memory.assignment) {
+                if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
+                    this.memory.assignment = this.room.controller.pos.toMemSafe();
+                }
+            } else {
+                let targetPos = posFromMem(this.memory.assignment);
 
-                    let preexistingStructures = this.room.find(FIND_STRUCTURES).filter(
-                        //@ts-ignore
-                        (structure) => ![STRUCTURE_WALL, STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(structure.structureType) && !structure.my
-                    );
-
-                    preexistingStructures.forEach((struct) => struct.destroy());
-
-                    this.suicide();
-                } else {
+                if (this.room.name === this.memory.destination) {
                     // If there is an invader claimer in the room send a cleanup creep
                     const invaderCore = this.room.find(FIND_HOSTILE_STRUCTURES, {
                         filter: (struct) => struct.structureType === STRUCTURE_INVADER_CORE,
@@ -81,19 +73,35 @@ export class Claimer extends WaveCreep {
                             },
                         });
                     }
+                }
 
-                    // Check if still claimed by enemy
-                    const action = this.room.controller?.reservation?.username
-                        ? this.attackController(this.room.controller)
-                        : this.claimController(this.room.controller);
-                    // Claim Controller in target room
-                    switch (action) {
-                        case ERR_NOT_IN_RANGE:
-                            this.travelTo(this.room.controller, { range: 1, swampCost: 1 });
-                            break;
-                        case ERR_INVALID_TARGET:
-                        case OK:
-                            break;
+                if (!this.pos.isNearTo(targetPos)) {
+                    this.travelTo(targetPos, { avoidHostiles: true, range: 1 });
+                } else {
+                    if (Game.rooms[this.memory.destination]?.controller?.my) {
+                        console.log(`${this.room.name} has been claimed!`);
+                        let opIndex = Memory.empire.operations.findIndex(
+                            (op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name
+                        );
+                        if (opIndex > -1) {
+                            Memory.empire.operations[opIndex].stage = this.room.canSpawn() ? OperationStage.COMPLETE : OperationStage.BUILD;
+                        }
+
+                        let preexistingStructures = this.room.find(FIND_STRUCTURES).filter(
+                            //@ts-ignore
+                            (structure) =>
+                                (![STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(structure.structureType) || posInsideBunker(structure.pos)) &&
+                                !structure.my
+                        );
+
+                        preexistingStructures.forEach((struct) => struct.destroy());
+
+                        this.suicide();
+                    } else {
+                        let result = this.claimController(this.room.controller);
+                        if (result === ERR_INVALID_TARGET) {
+                            this.attackController(this.room.controller);
+                        }
                     }
                 }
             }
