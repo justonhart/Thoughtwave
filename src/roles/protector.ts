@@ -55,16 +55,37 @@ export class Protector extends CombatCreep {
                 if (myRamparts.length) {
                     // Get closest rampart to the enemy that isn't already taken
                     let closestRampart = myRamparts.find((rampart) => Pathing.sameCoord(rampart.pos, this.pos))?.pos;
+                    // Avoid going towards the enemy when going to closer rampart
+                    let customMatrixCosts: CustomMatrixCost[] = [];
+                    if (closestRampart) {
+                        this.room
+                            .lookAtArea(this.pos.y - 1, this.pos.x - 1, this.pos.y + 1, this.pos.x + 1, true)
+                            .filter(
+                                (lookObject) =>
+                                    (lookObject.terrain === 'plain' || lookObject.terrain === 'swamp') &&
+                                    lookObject.structure?.structureType !== STRUCTURE_RAMPART &&
+                                    currentRange > target.pos.getRangeTo(lookObject.x, lookObject.y)
+                            )
+                            .forEach((avoidPosition) => {
+                                // Ensure that even if there is swamp on the inside that the creep should prefer staying "indoors"
+                                if (avoidPosition.terrain === 'plain') {
+                                    customMatrixCosts.push({ x: avoidPosition.x, y: avoidPosition.y, cost: 10 });
+                                } else {
+                                    customMatrixCosts.push({ x: avoidPosition.x, y: avoidPosition.y, cost: 50 });
+                                }
+                            });
+                    }
+
                     myRamparts
                         .filter((rampart) => !rampart.pos.lookFor(LOOK_CREEPS).some((creep) => creep.memory.role === Role.PROTECTOR))
                         .forEach((emptyRamparts) => {
-                            if (!closestRampart || emptyRamparts.pos.getRangeTo(target.pos) < currentRange) {
+                            if (!closestRampart || emptyRamparts.pos.getRangeTo(target.pos) < closestRampart.getRangeTo(target.pos)) {
                                 closestRampart = emptyRamparts.pos;
                             }
                         });
-                    console.log(closestRampart);
+
                     if (closestRampart) {
-                        return this.travelTo(closestRampart);
+                        return this.travelTo(closestRampart, { customMatrixCosts: customMatrixCosts });
                     }
                 }
             }

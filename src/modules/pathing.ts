@@ -359,7 +359,6 @@ export class Pathing {
                     }
                 }
                 if (Memory.rooms[room.name]?.anchorPoint || Memory.rooms[room.name]?.managerPos) {
-                    matrix = matrix.clone();
                     let managerPos = posFromMem(room.memory.anchorPoint || room.memory.managerPos);
                     matrix.set(managerPos.x, managerPos.y, 10);
                 }
@@ -378,6 +377,11 @@ export class Pathing {
                     room.find(FIND_MY_CONSTRUCTION_SITES, { filter: (struct) => struct.structureType === STRUCTURE_ROAD }).forEach((struct) =>
                         matrix.set(struct.pos.x, struct.pos.y, 1)
                     );
+                }
+
+                if (options.customMatrixCosts) {
+                    matrix = matrix.clone();
+                    options.customMatrixCosts.forEach((matrixCost) => matrix.set(matrixCost.x, matrixCost.y, matrixCost.cost));
                 }
             }
 

@@ -47,6 +47,16 @@ interface TravelToOpts extends PathFinderOpts {
      * Cost for moving through room exit.
      */
     exitCost?: number;
+    /**
+     * For adding costs to the matrix.
+     */
+    customMatrixCosts?: CustomMatrixCost[];
+}
+
+interface CustomMatrixCost {
+    x: number;
+    y: number;
+    cost: number;
 }
 
 /**
