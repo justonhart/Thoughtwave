@@ -239,7 +239,12 @@ function manageSecureRoomOperation(op: Operation) {
         ).length;
 
     if (Game.rooms[op.originRoom] && assignedProtectorCount < op.operativeCount) {
-        const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], origin.energyCapacityAvailable - 300);
+        let targetIsColonizeTarget = !!Memory.empire.operations.find(
+            (otherOperation) => op.targetRoom === otherOperation.targetRoom && otherOperation.type === OperationType.COLONIZE
+        );
+        let bodyParts = targetIsColonizeTarget ? [ATTACK, MOVE] : [RANGED_ATTACK, MOVE];
+
+        const body = PopulationManagement.createPartsArray(bodyParts, origin.energyCapacityAvailable - 300);
         body.push(HEAL, MOVE);
         Memory.empire.spawnAssignments.push({
             designee: op.originRoom,
