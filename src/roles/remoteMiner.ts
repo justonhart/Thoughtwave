@@ -52,7 +52,7 @@ export class RemoteMiner extends WaveCreep {
             if (
                 !this.memory._m?.repath &&
                 (this.room !== this.homeroom || !posInsideBunker(this.pos)) &&
-                !this.memory._m.visibleRooms.includes(this.room.name) &&
+                this.memory._m.visibleRooms.includes(this.room.name) &&
                 !this.pos
                     .look()
                     .filter(
