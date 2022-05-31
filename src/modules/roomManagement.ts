@@ -109,7 +109,7 @@ function runHomeSecurity(homeRoom: Room) {
                 },
             });
         } else if (hostileCreeps.length >= 4 && PopulationManagement.needsMeleeProtector(homeRoom.name)) {
-            console.log('Squad in room ' + homeRoom.name);
+            console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
             const body = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
             Memory.empire.spawnAssignments.push({
