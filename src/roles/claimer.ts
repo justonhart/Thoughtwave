@@ -82,10 +82,12 @@ export class Claimer extends WaveCreep {
                         });
                     }
 
-                    // Check if still claimed by enemy
-                    const action = this.room.controller?.reservation?.username
-                        ? this.attackController(this.room.controller)
-                        : this.claimController(this.room.controller);
+                    // Check if still claimed or reserved by enemy
+                    const action =
+                        (this.room.controller?.reservation?.username && this.room.controller?.reservation?.username !== this.owner.username) ||
+                        (this.room.controller?.owner && this.room.controller?.owner?.username !== this.owner.username)
+                            ? this.attackController(this.room.controller)
+                            : this.claimController(this.room.controller);
                     // Claim Controller in target room
                     switch (action) {
                         case ERR_NOT_IN_RANGE:

@@ -487,6 +487,20 @@ export class PopulationManagement {
         );
     }
 
+    static needsMeleeProtector(roomName: string): boolean {
+        return (
+            !Object.values(Game.creeps).filter(
+                (creep) =>
+                    creep.memory.role === Role.PROTECTOR &&
+                    creep.getActiveBodyparts(ATTACK) &&
+                    (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
+            ).length &&
+            !Memory.empire.spawnAssignments.filter(
+                (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.body.includes(ATTACK) && creep.memoryOptions.assignment === roomName
+            ).length
+        );
+    }
+
     static needsTransporter(room: Room) {
         let transporter = Object.values(Game.creeps).find((c) => c.memory.role === Role.TRANSPORTER && c.memory.room === room.name);
         let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 1000);

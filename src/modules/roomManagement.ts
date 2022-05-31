@@ -94,7 +94,6 @@ function runHomeSecurity(homeRoom: Room) {
     const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS);
 
     if (hostileCreeps.length >= 2) {
-        // TODO: add rampart defenders instead if ramparts are present in homeroom
         if (PopulationManagement.needsProtector(homeRoom.name)) {
             const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 300, 24);
             body.push(MOVE, HEAL);
@@ -106,6 +105,21 @@ function runHomeSecurity(homeRoom: Room) {
                     room: homeRoom.name,
                     assignment: homeRoom.name,
                     currentTaskPriority: Priority.MEDIUM,
+                    combat: { flee: false },
+                },
+            });
+        } else if (hostileCreeps.length >= 4 && PopulationManagement.needsMeleeProtector(homeRoom.name)) {
+            console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
+            // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
+            const body = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
+            Memory.empire.spawnAssignments.push({
+                designee: homeRoom.name,
+                body: body,
+                memoryOptions: {
+                    role: Role.PROTECTOR,
+                    room: homeRoom.name,
+                    assignment: homeRoom.name,
+                    currentTaskPriority: Priority.HIGH,
                     combat: { flee: false },
                 },
             });

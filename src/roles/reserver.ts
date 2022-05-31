@@ -10,8 +10,8 @@ export class Reserver extends WaveCreep {
         // Go to the target room
         if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
             if (
-                this.room.controller?.reservation?.username &&
-                this.room.controller?.reservation?.username !== this.homeroom.controller.owner.username
+                (this.room.controller?.reservation?.username && this.room.controller?.reservation?.username !== this.owner.username) ||
+                (this.room.controller?.owner && this.room.controller?.owner?.username !== this.owner.username)
             ) {
                 this.homeroom.memory.remoteAssignments[this.room.name].controllerState = RemoteMiningRoomControllerState.ENEMY;
                 switch (this.attackController(this.room.controller)) {
