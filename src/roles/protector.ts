@@ -9,7 +9,7 @@ export class Protector extends CombatCreep {
         if (this.fledToNewRoom()) {
             return; // Wait while creep is healing
         }
-        if (this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) === IN_ROOM) {
+        if (this.travelToRoom(this.memory.assignment, { avoidHostiles: true, maxOps: 10000, avoidHostileRooms: true }) === IN_ROOM) {
             if (!this.memory.targetId) {
                 this.memory.targetId = this.findTarget();
             }
