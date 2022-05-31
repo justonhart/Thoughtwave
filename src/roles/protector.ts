@@ -51,7 +51,13 @@ export class Protector extends CombatCreep {
                 })
             ) {
                 // TODO: how to check for breach? If breach then also do not do this
-                const myRamparts = this.room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_RAMPART);
+                const myRamparts = this.room
+                    .find(FIND_STRUCTURES)
+                    .filter(
+                        (structure) =>
+                            structure.structureType === STRUCTURE_RAMPART &&
+                            this.room.memory.miningAssignments[structure.pos.toMemSafe()] === undefined
+                    );
                 if (myRamparts.length) {
                     // Get closest rampart to the enemy that isn't already taken
                     let closestRampart = myRamparts.find((rampart) => Pathing.sameCoord(rampart.pos, this.pos))?.pos;
