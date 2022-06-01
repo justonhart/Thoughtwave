@@ -29,8 +29,8 @@ export class Pathing {
         avoidRoads: false,
         avoidHostileRooms: true,
         reusePath: 50,
-        avoidHostiles: false,
-        maxOps: 2000,
+        avoidHostiles: true,
+        maxOps: 10000,
         range: 0,
         pathColor: 'orange',
     };
