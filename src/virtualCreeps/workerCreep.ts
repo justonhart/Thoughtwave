@@ -220,7 +220,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected getDefenseHitpointTarget() {
-        return this.room.controller.level * 50000;
+        return this.room.controller.level * this.room.controller.level * 50000;
     }
 
     protected findConstructionSite(): Id<ConstructionSite> {
