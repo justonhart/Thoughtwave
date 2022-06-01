@@ -66,6 +66,7 @@ const enum OperationType {
     STERILIZE,
     COLLECTION,
     SECURE,
+    ROOM_RECOVERY,
 }
 
 const enum OperationStage {

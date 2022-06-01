@@ -30,8 +30,13 @@ export class Worker extends WorkerCreep {
             return constructedDefenses.shift().id;
         }
 
-        if (!this.room.controller.upgradeBlocked && this.room.controller.ticksToDowngrade <= 5000) {
-            return this.room.controller.id;
+        if (!this.homeroom.controller.upgradeBlocked && this.homeroom.controller.ticksToDowngrade <= 5000) {
+            return this.homeroom.controller.id;
+        }
+
+        let spawnSite = this.homeroom.find(FIND_CONSTRUCTION_SITES).find((site) => site.structureType === STRUCTURE_SPAWN);
+        if (spawnSite && !this.homeroom.canSpawn()) {
+            return spawnSite.id;
         }
 
         let decayingStructuresAtRisk = this.homeroom.find(FIND_STRUCTURES).filter(

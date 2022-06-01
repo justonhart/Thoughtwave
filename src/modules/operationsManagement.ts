@@ -1,10 +1,12 @@
 import { PopulationManagement } from './populationManagement';
+import { getSpawnPos, placeBunkerConstructionSites } from './roomDesign';
 
 const OPERATION_STARTING_STAGE_MAP: Record<OperationType, OperationStage> = {
     1: OperationStage.CLAIM,
     2: OperationStage.ACTIVE,
     3: OperationStage.ACTIVE,
     4: OperationStage.ACTIVE,
+    5: OperationStage.ACTIVE,
 };
 
 export function manageOperations() {
@@ -27,6 +29,9 @@ export function manageOperations() {
                     break;
                 case OperationType.SECURE:
                     manageSecureRoomOperation(op);
+                    break;
+                case OperationType.ROOM_RECOVERY:
+                    manageRoomRecoveryOperation(op);
                     break;
             }
         });
@@ -257,5 +262,55 @@ function manageSecureRoomOperation(op: Operation) {
                 combat: { flee: false },
             },
         });
+    }
+}
+function manageRoomRecoveryOperation(op: Operation) {
+    let targetRoom = Game.rooms[op.targetRoom];
+
+    if (!targetRoom.find(FIND_MY_CONSTRUCTION_SITES).find((site) => site.structureType === STRUCTURE_SPAWN)) {
+        let spawnPos = getSpawnPos(targetRoom);
+        targetRoom.createConstructionSite(spawnPos, STRUCTURE_SPAWN);
+    }
+
+    let miningAssignments = Object.keys(Memory.rooms[op.targetRoom]?.miningAssignments);
+    miningAssignments.forEach((key) => {
+        if (
+            Memory.rooms[op.targetRoom]?.miningAssignments?.[key] === AssignmentStatus.UNASSIGNED &&
+            !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.room === op.targetRoom && creep.memoryOptions.assignment === key)
+                .length
+        ) {
+            Memory.rooms[op.targetRoom].miningAssignments[key] = AssignmentStatus.ASSIGNED;
+            Memory.empire.spawnAssignments.push({
+                designee: op.originRoom,
+                body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
+                memoryOptions: {
+                    role: Role.MINER,
+                    assignment: key,
+                    room: op.targetRoom,
+                },
+            });
+        }
+    });
+
+    let numberOfRecoveryWorkers =
+        Object.values(Memory.creeps).filter((creep) => creep.role === Role.WORKER && creep.room === op.targetRoom).length +
+        Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.room === op.targetRoom && creep.memoryOptions.role === Role.WORKER)
+            .length;
+    if (op.originRoom && numberOfRecoveryWorkers < (op.operativeCount ?? miningAssignments.length)) {
+        Memory.empire.spawnAssignments.push({
+            designee: op.originRoom,
+            body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
+            memoryOptions: {
+                role: Role.WORKER,
+                room: op.targetRoom,
+            },
+        });
+    }
+
+    if (targetRoom.canSpawn()) {
+        let opIndex = Memory.empire.operations.findIndex((operation) => op === operation);
+        Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
+
+        placeBunkerConstructionSites(targetRoom);
     }
 }

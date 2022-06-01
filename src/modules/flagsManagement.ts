@@ -84,4 +84,9 @@ export default function manageFlags() {
         });
         Game.flags.secure.remove();
     }
+
+    if (Game.flags.recover) {
+        addOperation(OperationType.ROOM_RECOVERY, Game.flags.recover.pos.roomName);
+        Game.flags.recover.remove();
+    }
 }
