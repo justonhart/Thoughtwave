@@ -2,30 +2,6 @@ import { posFromMem } from './memoryManagement';
 
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
-        const WORKER_CAPACITY = this.calculateWorkerCapacity(spawn.room);
-
-        let limit: number;
-
-        if (spawn.room.controller.level === 8) {
-            limit = 1;
-        } else {
-            switch (spawn.room.energyStatus) {
-                case EnergyStatus.CRITICAL:
-                    limit = 0;
-                    break;
-                case EnergyStatus.RECOVERING:
-                    limit = Math.ceil(WORKER_CAPACITY / 2);
-                    break;
-                default:
-                case EnergyStatus.STABLE:
-                    limit = WORKER_CAPACITY;
-                    break;
-                case EnergyStatus.SURPLUS:
-                    limit = WORKER_CAPACITY + 1;
-                    break;
-            }
-        }
-
         let workers = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name && creep.memory.role === Role.WORKER);
 
         let options: SpawnOptions = {
@@ -38,7 +14,7 @@ export class PopulationManagement {
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 15;
         let tag = 'w';
-        if (workers.length < limit) {
+        if (workers.length < spawn.room.workerCapacity) {
             let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
             return result;
         } else {
@@ -96,6 +72,28 @@ export class PopulationManagement {
         let energyExpenditurePerCyclePerCreep = spawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
         let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
+
+        if (room.controller.level === 8) {
+            creepCapacity = 1;
+        } else {
+            switch (room.energyStatus) {
+                case EnergyStatus.CRITICAL:
+                    creepCapacity = 0;
+                    break;
+                case EnergyStatus.RECOVERING:
+                    creepCapacity = Math.ceil(creepCapacity / 2);
+                    break;
+                default:
+                case EnergyStatus.STABLE:
+                    break;
+                case EnergyStatus.SURPLUS:
+                    creepCapacity *= 2;
+                    break;
+                case EnergyStatus.OVERFLOW:
+                    creepCapacity *= 4;
+                    break;
+            }
+        }
 
         return Math.max(1, Math.floor(creepCapacity));
     }

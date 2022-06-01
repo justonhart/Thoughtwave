@@ -76,4 +76,17 @@ export default function manageFlags() {
         });
         Game.flags.collect.remove();
     }
+
+    if (Game.flags.secure) {
+        addOperation(OperationType.SECURE, Game.flags.secure.pos.roomName, {
+            operativeCount: 2,
+            expireAt: Game.time + 4500,
+        });
+        Game.flags.secure.remove();
+    }
+
+    if (Game.flags.recover) {
+        addOperation(OperationType.ROOM_RECOVERY, Game.flags.recover.pos.roomName);
+        Game.flags.recover.remove();
+    }
 }

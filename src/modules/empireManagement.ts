@@ -13,6 +13,12 @@ export function manageEmpire() {
         InterShardMemory.setLocal(JSON.stringify({ outboundCreeps: { shard0: {}, shard1: {}, shard2: {}, shard3: {} } }));
     }
 
+    if (Memory.empire.hostileRooms.length) {
+        Memory.empire.hostileRooms.forEach((hostileRoom) => {
+            Game.map.visual.rect(new RoomPosition(0, 0, hostileRoom.room), 50, 50, { fill: '#8b0000', stroke: '#8b0000', strokeWidth: 2 });
+        });
+    }
+
     manageOperations();
     cleanSpawnAssignments();
 }

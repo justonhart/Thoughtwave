@@ -353,9 +353,7 @@ export function placeMinerLinks(room: Room) {
 
 // core structures are structures contained within auto-generated layouts: Spawns, storage, nuker, terminal, factory, extensions, labs, towers, observer
 export function roomNeedsCoreStructures(room: Room) {
-    //combine structures and construction sites into one array for simple math
-    //@ts-expect-error
-    let roomStructures = room.find(FIND_MY_STRUCTURES).concat(room.find(FIND_MY_CONSTRUCTION_SITES));
+    let roomStructures = room.find(FIND_MY_STRUCTURES);
     let spawnCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_SPAWN).length;
     let extensionCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_EXTENSION).length;
     let storage = roomStructures.filter((structure) => structure.structureType === STRUCTURE_STORAGE).length;

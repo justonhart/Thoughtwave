@@ -44,6 +44,7 @@ interface Operation {
     operativeCount?: number;
     targetPos?: string;
     resource?: ResourceConstant;
+    expireAt?: number;
 }
 
 interface OperationOpts {
@@ -52,6 +53,7 @@ interface OperationOpts {
     originOpts?: OriginOpts;
     targetPos?: string;
     resource?: ResourceConstant;
+    expireAt?: number;
 }
 
 interface OriginOpts {
@@ -63,6 +65,8 @@ const enum OperationType {
     COLONIZE = 1,
     STERILIZE,
     COLLECTION,
+    SECURE,
+    ROOM_RECOVERY,
 }
 
 const enum OperationStage {

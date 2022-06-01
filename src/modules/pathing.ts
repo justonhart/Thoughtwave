@@ -29,8 +29,8 @@ export class Pathing {
         avoidRoads: false,
         avoidHostileRooms: true,
         reusePath: 50,
-        avoidHostiles: false,
-        maxOps: 2000,
+        avoidHostiles: true,
+        maxOps: 10000,
         range: 0,
         pathColor: 'orange',
     };
@@ -251,7 +251,8 @@ export class Pathing {
         if (
             (ignoreDestination || room.name !== destinationRoom) &&
             !Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === room.name) &&
-            room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_TOWER })?.length
+            room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_TOWER })?.length &&
+            room.controller?.owner
         ) {
             Memory.empire.hostileRooms.push({ room: room.name, expireAt: Game.time + 8000 }); // valid for 8000 Ticks right now (can be changed depending on room situation ==> invaders or players controller level)
         }

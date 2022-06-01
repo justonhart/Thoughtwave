@@ -4,7 +4,7 @@ export class Distributor extends TransportCreep {
     protected findTarget() {
         let target: any;
 
-        if (this.store.energy < this.store.getUsedCapacity()) {
+        if (this.store.energy < this.store.getUsedCapacity() && this.room.storage?.store.getFreeCapacity()) {
             target = this.homeroom.storage?.id;
         }
 
@@ -16,7 +16,7 @@ export class Distributor extends TransportCreep {
             target = this.findCollectionTarget();
         }
 
-        if (!target) {
+        if (!target && this.room.storage?.store.getFreeCapacity()) {
             target = this.homeroom.storage?.id;
         }
 

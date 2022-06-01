@@ -34,12 +34,12 @@ export class CombatCreep extends WaveCreep {
      * @returns boolean, to see if creep has arrived in new room
      */
     public fledToNewRoom(): boolean {
-        if (!this.memory.combat.flee && this.hits / this.hitsMax < 0.4 && this.getActiveBodyparts(HEAL)) {
+        if (!this.memory.combat?.flee && this.hits / this.hitsMax < 0.4 && this.getActiveBodyparts(HEAL)) {
             this.memory.combat.flee = true;
-        } else if (this.memory.combat.flee && this.hits / this.hitsMax > 0.8) {
+        } else if (this.memory.combat?.flee && this.hits / this.hitsMax > 0.8) {
             this.memory.combat.flee = false;
         }
-        if (this.memory.combat.flee && this.pos.roomName !== this.memory.assignment) {
+        if (this.memory.combat?.flee && this.pos.roomName !== this.memory.assignment) {
             this.moveOffExit(); // TODO: this could be an issue if exit is blocked
             return true; // Creep retreated to previous room to heal
         }

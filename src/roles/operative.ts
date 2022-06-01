@@ -2,6 +2,11 @@ import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
 export class Operative extends WorkerCreep {
     public run() {
+        if (!this.operation) {
+            delete this.memory.operation;
+            delete this.memory.destination;
+        }
+
         switch (this.memory.operation) {
             case OperationType.STERILIZE:
                 this.runSterilize();
