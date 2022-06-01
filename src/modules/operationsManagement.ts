@@ -1,5 +1,5 @@
 import { PopulationManagement } from './populationManagement';
-import { getSpawnPos, placeBunkerConstructionSites } from './roomDesign';
+import { getSpawnPos, placeBunkerConstructionSites, roomNeedsCoreStructures } from './roomDesign';
 
 const OPERATION_STARTING_STAGE_MAP: Record<OperationType, OperationStage> = {
     1: OperationStage.CLAIM,
@@ -256,7 +256,6 @@ function manageSecureRoomOperation(op: Operation) {
             body: body,
             memoryOptions: {
                 role: Role.PROTECTOR,
-                room: op.originRoom,
                 assignment: op.targetRoom,
                 currentTaskPriority: Priority.MEDIUM,
                 combat: { flee: false },
@@ -293,9 +292,12 @@ function manageRoomRecoveryOperation(op: Operation) {
     });
 
     let numberOfRecoveryWorkers =
-        Object.values(Memory.creeps).filter((creep) => creep.role === Role.WORKER && creep.room === op.targetRoom).length +
-        Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.room === op.targetRoom && creep.memoryOptions.role === Role.WORKER)
-            .length;
+        Object.values(Memory.creeps).filter((creep) => creep.role === Role.WORKER && creep.room === op.targetRoom && creep.operation === op.type)
+            .length +
+        Memory.empire.spawnAssignments.filter(
+            (creep) =>
+                creep.memoryOptions.room === op.targetRoom && creep.memoryOptions.role === Role.WORKER && creep.memoryOptions.operation === op.type
+        ).length;
     if (op.originRoom && numberOfRecoveryWorkers < (op.operativeCount ?? miningAssignments.length)) {
         Memory.empire.spawnAssignments.push({
             designee: op.originRoom,
@@ -303,11 +305,12 @@ function manageRoomRecoveryOperation(op: Operation) {
             memoryOptions: {
                 role: Role.WORKER,
                 room: op.targetRoom,
+                operation: op.type,
             },
         });
     }
 
-    if (targetRoom.canSpawn()) {
+    if (!roomNeedsCoreStructures(targetRoom)) {
         let opIndex = Memory.empire.operations.findIndex((operation) => op === operation);
         Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
 
