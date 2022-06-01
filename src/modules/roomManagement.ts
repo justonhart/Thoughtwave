@@ -67,6 +67,21 @@ export function driveRoom(room: Room) {
         runHomeSecurity(room);
         driveRemoteRoom(room);
 
+        if (room.memory.anchorPoint) {
+            let anchorPoint = posFromMem(room.memory.anchorPoint);
+            if (
+                anchorPoint
+                    .findInRange(FIND_HOSTILE_CREEPS, 6)
+                    .some(
+                        (creep) =>
+                            creep.owner.username !== 'Invader' &&
+                            (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
+                    )
+            ) {
+                room.controller.activateSafeMode();
+            }
+        }
+
         if (room.memory.gates?.length) {
             runGates(room);
         }
