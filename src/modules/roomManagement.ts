@@ -247,7 +247,7 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (workerCount) {
+    if (workerCount >= room.workerCapacity) {
         let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
         assigments.forEach((assignment) => {
             let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
