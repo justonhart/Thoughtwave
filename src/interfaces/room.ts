@@ -85,6 +85,7 @@ const enum EnergyStatus {
     RECOVERING,
     STABLE,
     SURPLUS,
+    OVERFLOW,
 }
 
 interface Gate {

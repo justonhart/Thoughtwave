@@ -25,6 +25,8 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
     get: function (this: Room) {
         if (!this.storage?.my) {
             return undefined;
+        } else if (this.storage.store[RESOURCE_ENERGY] >= 700000) {
+            return EnergyStatus.OVERFLOW;
         } else if (this.storage.store[RESOURCE_ENERGY] >= 400000) {
             return EnergyStatus.SURPLUS;
         } else if (this.storage.store[RESOURCE_ENERGY] >= 200000) {

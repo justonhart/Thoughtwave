@@ -23,6 +23,9 @@ export class PopulationManagement {
                 case EnergyStatus.SURPLUS:
                     limit = WORKER_CAPACITY * 2;
                     break;
+                case EnergyStatus.OVERFLOW:
+                    limit = WORKER_CAPACITY * 4;
+                    break;
             }
         }
 
