@@ -11,7 +11,7 @@ export class Protector extends CombatCreep {
             return; // Wait while creep is healing
         }
         if (this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) === IN_ROOM) {
-            if (!this.memory.targetId || this.memory.assignment === this.homeroom.name || !Game.getObjectById(this.memory.targetId)) {
+            if (!this.memory.targetId || this.memory.assignment === this.homeroom?.name || !Game.getObjectById(this.memory.targetId)) {
                 this.memory.targetId = this.findTarget();
             }
             if (!this.memory.targetId) {
@@ -39,7 +39,7 @@ export class Protector extends CombatCreep {
 
     private combatPathing(target: Creep) {
         // Prioritize rampart defense
-        if (this.room.name === this.homeroom.name) {
+        if (this.room.name === this.homeroom?.name) {
             const currentRange = this.pos.getRangeTo(target);
             if (currentRange === 1) {
                 return; // already in position
@@ -100,7 +100,7 @@ export class Protector extends CombatCreep {
         if (this.memory.combat.flee) {
             // TODO: In homeroom this will not work ==> Shouldnt matter as soon as ramparts are up but otherwise move to spawn?
             // Go back to the exit toward creeps homeroom while avoiding creeps along the way
-            return this.travelToRoom(this.homeroom.name, { ignoreCreeps: false, avoidHostiles: true });
+            return this.travelToRoom(this.homeroom?.name, { ignoreCreeps: false, avoidHostiles: true });
         }
 
         if (this.getActiveBodyparts(ATTACK)) {
@@ -132,7 +132,7 @@ export class Protector extends CombatCreep {
         const hostileCreeps = this.room.find(FIND_HOSTILE_CREEPS);
         if (hostileCreeps.length) {
             // Find closest Enemy and attack it to avoid stepping off ramparts as ATTACK creeps (include worker creeps as dangerous since they can dismantle)
-            if (this.pos.roomName === this.homeroom.name) {
+            if (this.pos.roomName === this.homeroom?.name) {
                 const closestDangerousHostile = this.pos.findClosestByRange(hostileCreeps, {
                     filter: (creep: Creep) =>
                         creep.body.some((bodyPart) => bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === WORK),
