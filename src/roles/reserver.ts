@@ -1,3 +1,4 @@
+import { posFromMem } from '../modules/memoryManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Reserver extends WaveCreep {
@@ -7,8 +8,17 @@ export class Reserver extends WaveCreep {
             return;
         }
 
-        // Go to the target room
-        if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
+        if (!this.memory.destination) {
+            if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
+                this.memory.destination = this.room.controller.pos.toMemSafe();
+            }
+        } else {
+            let targetPos = posFromMem(this.memory.destination);
+            if (!this.pos.isNearTo(targetPos)) {
+                this.travelTo(targetPos, { avoidHostiles: true, range: 1 });
+                return;
+            }
+
             if (
                 (this.room.controller?.reservation?.username && this.room.controller?.reservation?.username !== this.owner.username) ||
                 (this.room.controller?.owner && this.room.controller?.owner?.username !== this.owner.username)

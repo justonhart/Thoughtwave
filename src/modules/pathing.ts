@@ -164,7 +164,11 @@ export class Pathing {
         const cpuUsed = Game.cpu.getUsed() - cpuBefore;
         if (cpuUsed > REPORT_CPU_THRESHOLD) {
             console.log(
-                `Pathing: ${creep.name} shows heavy cpu use. cpu: ${cpuUsed}, pos: ${creep.pos.toMemSafe()}, dest: ${destination.toMemSafe()}`
+                `Pathing: ${
+                    creep.name
+                } shows heavy cpu use. cpu: ${cpuUsed}, pos: ${creep.pos.toMemSafe()}, dest: ${destination.toMemSafe()}, opts: ${JSON.stringify(
+                    opts
+                )}`
             );
         }
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
