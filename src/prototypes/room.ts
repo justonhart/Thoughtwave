@@ -23,7 +23,7 @@ Room.prototype.removeFromRepairQueue = function (this: Room, idToRemove: string)
 
 Object.defineProperty(Room.prototype, 'energyStatus', {
     get: function (this: Room) {
-        if (!this.storage?.my) {
+        if (!this.storage?.my || !this.storage.isActive()) {
             return undefined;
         } else if (this.storage.store[RESOURCE_ENERGY] >= 700000) {
             return EnergyStatus.OVERFLOW;
