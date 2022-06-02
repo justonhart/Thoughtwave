@@ -28,6 +28,10 @@ export class Scout extends WaveCreep {
             if (
                 Object.keys(this.homeroom.memory.remoteAssignments).length < maxRemoteMiningRooms &&
                 !this.room.controller?.owner?.username &&
+                (!this.room.controller?.reservation?.username ||
+                    this.room.controller?.reservation?.username === this.owner.username ||
+                    this.room.controller?.reservation?.username === 'Invader') &&
+                !Memory.empire.hostileRooms.find((room) => room.room === this.room.name) &&
                 !this.room.find(FIND_HOSTILE_CREEPS, {
                     filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
                 }).length &&
