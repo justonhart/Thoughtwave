@@ -1,7 +1,14 @@
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 import { driveRemoteRoom } from './remoteRoomManagement';
-import { findBunkerLocation, placeBunkerOuterRamparts, placeBunkerConstructionSites, placeMinerLinks, placeRoadsToPOIs } from './roomDesign';
+import {
+    findBunkerLocation,
+    placeBunkerOuterRamparts,
+    placeBunkerConstructionSites,
+    placeMinerLinks,
+    placeRoadsToPOIs,
+    cleanRoom,
+} from './roomDesign';
 
 const BUILD_CHECK_PERIOD = 100;
 const REPAIR_QUEUE_REFRESH_PERIOD = 500;
@@ -60,6 +67,7 @@ export function driveRoom(room: Room) {
                     placeBunkerConstructionSites(room);
                     placeRoadsToPOIs(room);
                 case 1:
+                    cleanRoom(room);
             }
         }
 
