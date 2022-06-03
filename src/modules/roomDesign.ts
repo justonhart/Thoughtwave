@@ -328,27 +328,29 @@ export function placeBunkerOuterRamparts(room: Room) {
 }
 
 export function placeMinerLinks(room: Room) {
-    Object.keys(room.memory.miningAssignments).forEach((assignmentString) => {
-        let assignmentPos = posFromMem(assignmentString);
+    if (room.managerLink) {
+        Object.keys(room.memory.miningAssignments).forEach((assignmentString) => {
+            let assignmentPos = posFromMem(assignmentString);
 
-        let linkNeeded =
-            !assignmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((structure) => structure.structureType === STRUCTURE_LINK) &&
-            !assignmentPos.findInRange(FIND_MY_CONSTRUCTION_SITES, 1).find((site) => site.structureType === STRUCTURE_LINK);
+            let linkNeeded =
+                !assignmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((structure) => structure.structureType === STRUCTURE_LINK) &&
+                !assignmentPos.findInRange(FIND_MY_CONSTRUCTION_SITES, 1).find((site) => site.structureType === STRUCTURE_LINK);
 
-        if (linkNeeded) {
-            let looks = room.lookAtArea(assignmentPos.y - 1, assignmentPos.x - 1, assignmentPos.y + 1, assignmentPos.x + 1, true);
-            let availableSpot = looks.find(
-                (look) =>
-                    look.type === 'terrain' &&
-                    look.terrain !== 'wall' &&
-                    !looks.some(
-                        (otherLook) => otherLook.x === look.x && otherLook.y === look.y && (otherLook.constructionSite || otherLook.structure)
-                    )
-            );
+            if (linkNeeded) {
+                let looks = room.lookAtArea(assignmentPos.y - 1, assignmentPos.x - 1, assignmentPos.y + 1, assignmentPos.x + 1, true);
+                let availableSpot = looks.find(
+                    (look) =>
+                        look.type === 'terrain' &&
+                        look.terrain !== 'wall' &&
+                        !looks.some(
+                            (otherLook) => otherLook.x === look.x && otherLook.y === look.y && (otherLook.constructionSite || otherLook.structure)
+                        )
+                );
 
-            room.createConstructionSite(availableSpot.x, availableSpot.y, STRUCTURE_LINK);
-        }
-    });
+                room.createConstructionSite(availableSpot.x, availableSpot.y, STRUCTURE_LINK);
+            }
+        });
+    }
 }
 
 // core structures are structures contained within auto-generated layouts: Spawns, storage, nuker, terminal, factory, extensions, labs, towers, observer
