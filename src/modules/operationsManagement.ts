@@ -14,9 +14,11 @@ export function manageOperations() {
         Memory.empire.operations = [];
     }
 
-    let ops = Memory.empire.operations.filter((op) => op.stage !== OperationStage.COMPLETE || op?.expireAt <= Game.time);
-    if (ops.length) {
-        ops.forEach((op) => {
+    Memory.empire.operations = Memory.empire.operations.filter(
+        (op) => op.stage !== OperationStage.COMPLETE && (op?.expireAt ?? Game.time + 1) >= Game.time
+    );
+    if (Memory.empire.operations.length) {
+        Memory.empire.operations.forEach((op) => {
             switch (op.type) {
                 case OperationType.COLONIZE:
                     manageColonizationOperation(op);
@@ -36,8 +38,6 @@ export function manageOperations() {
             }
         });
     }
-
-    Memory.empire.operations = ops;
 }
 
 function manageColonizationOperation(op: Operation) {
