@@ -1,7 +1,7 @@
 import { WaveCreep } from './waveCreep';
 
 export class WorkerCreep extends WaveCreep {
-    public run() {
+    protected run() {
         if (this.memory.gathering === true) {
             this.gatherEnergy();
         } else {

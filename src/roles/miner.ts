@@ -2,7 +2,7 @@ import { posFromMem } from '../modules/memoryManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Miner extends WaveCreep {
-    public run() {
+    protected run() {
         let assignedPos = posFromMem(this.memory.assignment);
         if (this.pos.isEqualTo(assignedPos)) {
             this.memory.currentTaskPriority = Priority.HIGH;

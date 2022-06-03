@@ -1,7 +1,7 @@
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class GoCreep extends WaveCreep {
-    public run() {
+    protected run() {
         if (this.travelToRoom(Game.flags.go.pos.roomName) === IN_ROOM) {
             if (Game.flags.go && this.pos !== Game.flags.go.pos) {
                 if (

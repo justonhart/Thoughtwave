@@ -4,7 +4,14 @@ import { PopulationManagement } from './populationManagement';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
-        addOperation(OperationType.COLONIZE, Game.flags.colonize.pos.roomName);
+        let portalLocations = [];
+
+        if (Game.flags.portal) {
+            portalLocations.push(Game.flags.portal.pos.toMemSafe());
+            Game.flags.portal.remove();
+        }
+
+        addOperation(OperationType.COLONIZE, Game.flags.colonize.pos.roomName, { portalLocations: portalLocations });
         Game.flags.colonize.remove();
     }
 

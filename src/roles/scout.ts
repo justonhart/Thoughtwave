@@ -2,7 +2,7 @@ import { posFromMem } from '../modules/memoryManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Scout extends WaveCreep {
-    public run() {
+    protected run() {
         let nextTarget = this.memory.scout?.path[this.memory.scout.path.length - 1];
         if (!nextTarget) {
             // Set memory

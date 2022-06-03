@@ -2,7 +2,7 @@ import { posFromMem } from '../modules/memoryManagement';
 import { posInsideBunker } from '../modules/roomDesign';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class RemoteMiner extends WaveCreep {
-    public run() {
+    protected run() {
         let assignedPos = posFromMem(this.memory.assignment);
 
         if (Memory.rooms[this.memory.room].remoteAssignments[assignedPos.roomName]?.state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS) {

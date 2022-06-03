@@ -1,7 +1,7 @@
 import { WaveCreep } from './waveCreep';
 
 export class TransportCreep extends WaveCreep {
-    public run() {
+    protected run() {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (!target) {
             this.memory.targetId = this.findTarget();

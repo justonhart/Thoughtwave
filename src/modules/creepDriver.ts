@@ -68,7 +68,7 @@ export default function driveCreep(creep: Creep) {
             waveCreep = new WaveCreep(creep.id);
     }
 
-    waveCreep.run();
+    waveCreep.drive();
 }
 
 function handleIncomingCreep(creep: Creep) {
