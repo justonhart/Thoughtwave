@@ -478,7 +478,10 @@ export function cleanRoom(room: Room) {
         }
 
         structuresToCheck.forEach((structure) => {
-            if (!structure.store.energy && getStructureForPos(RoomLayout.BUNKER, structure.pos, anchorPoint) !== structure.structureType) {
+            if (
+                getStructureForPos(RoomLayout.BUNKER, structure.pos, anchorPoint) !== structure.structureType &&
+                (!structure.store.energy || room.controller.level >= 4)
+            ) {
                 structure.destroy();
             }
         });
