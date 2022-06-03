@@ -14,7 +14,7 @@ export function manageOperations() {
         Memory.empire.operations = [];
     }
 
-    let ops = Memory.empire.operations.filter((op) => op.stage !== OperationStage.COMPLETE || op?.expireAt <= Game.time);
+    let ops = Memory.empire.operations.filter((op) => op.stage !== OperationStage.COMPLETE && op?.expireAt <= Game.time);
     if (ops.length) {
         ops.forEach((op) => {
             switch (op.type) {
