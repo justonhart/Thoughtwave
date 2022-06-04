@@ -115,8 +115,9 @@ function runTowers(room: Room) {
 
 function runHomeSecurity(homeRoom: Room) {
     const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS);
+    let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
 
-    if (hostileCreeps.length >= 2) {
+    if (hostileCreeps.length >= minNumHostileCreeps) {
         if (PopulationManagement.needsProtector(homeRoom.name)) {
             const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 300, 24);
             body.push(MOVE, HEAL);
