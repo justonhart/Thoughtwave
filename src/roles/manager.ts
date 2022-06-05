@@ -2,7 +2,7 @@ import { posFromMem } from '../modules/memoryManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Manager extends WaveCreep {
-    public run() {
+    protected run() {
         if (posFromMem(this.room.memory?.managerPos)?.isEqualTo(this.pos) === false) {
             this.travelTo(posFromMem(this.room.memory?.managerPos));
         } else {

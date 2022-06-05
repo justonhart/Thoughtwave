@@ -1,7 +1,16 @@
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 import { driveRemoteRoom } from './remoteRoomManagement';
-import { findBunkerLocation, placeBunkerOuterRamparts, placeBunkerConstructionSites, placeMinerLinks, placeRoadsToPOIs } from './roomDesign';
+import {
+    findBunkerLocation,
+    placeBunkerOuterRamparts,
+    placeBunkerConstructionSites,
+    placeMinerLinks,
+    placeRoadsToPOIs,
+    cleanRoom,
+    placeBunkerInnerRamparts,
+    roomNeedsCoreStructures,
+} from './roomDesign';
 
 const BUILD_CHECK_PERIOD = 100;
 const REPAIR_QUEUE_REFRESH_PERIOD = 500;
@@ -49,17 +58,23 @@ export function driveRoom(room: Room) {
                 case 8:
                 case 7:
                 case 6:
+                    if (!roomNeedsCoreStructures(room)) {
+                        placeBunkerInnerRamparts(room);
+                    }
                 case 5:
                     placeMinerLinks(room);
                 case 4:
-                    placeBunkerOuterRamparts(room);
-                    placeMiningRamparts(room);
+                    if (!roomNeedsCoreStructures(room)) {
+                        placeBunkerOuterRamparts(room);
+                        placeMiningRamparts(room);
+                    }
                 case 3:
                     placeMiningPositionContainers(room);
                 case 2:
                     placeBunkerConstructionSites(room);
                     placeRoadsToPOIs(room);
                 case 1:
+                    cleanRoom(room);
             }
         }
 
@@ -221,6 +236,8 @@ function runSpawning(room: Room) {
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
     let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length;
+    let roomContainsViolentHostiles =
+        room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0;
 
     if (distributor === undefined) {
         let spawn = availableSpawns.pop();
@@ -233,7 +250,7 @@ function runSpawning(room: Room) {
             .reduce((sum, next) => sum + next);
     }
 
-    if (PopulationManagement.needsTransporter(room)) {
+    if (PopulationManagement.needsTransporter(room) && !roomContainsViolentHostiles) {
         let options: SpawnOptions = {
             memory: {
                 room: room.name,
@@ -244,7 +261,7 @@ function runSpawning(room: Room) {
         spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.getCreepTag('t', spawn.name), options, 10);
     }
 
-    if (PopulationManagement.needsMiner(room)) {
+    if (PopulationManagement.needsMiner(room) && !roomContainsViolentHostiles) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
     }
@@ -262,7 +279,7 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (workerCount >= room.workerCapacity) {
+    if (workerCount >= room.workerCapacity || roomContainsViolentHostiles) {
         let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
         assigments.forEach((assignment) => {
             let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
@@ -272,7 +289,7 @@ function runSpawning(room: Room) {
             }
         });
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING && Object.keys(room.memory.remoteAssignments).length) {
+        if (room.energyStatus >= EnergyStatus.RECOVERING && Object.keys(room.memory.remoteAssignments).length && !roomContainsViolentHostiles) {
             if (PopulationManagement.needsRemoteMiner(room)) {
                 let spawn = availableSpawns.pop();
                 spawn?.spawnRemoteMiner();

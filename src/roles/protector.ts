@@ -2,7 +2,7 @@ import { Pathing } from '../modules/pathing';
 import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class Protector extends CombatCreep {
-    public run() {
+    protected run() {
         if (this.hits < this.hitsMax && this.getActiveBodyparts(HEAL)) {
             this.heal(this);
         }

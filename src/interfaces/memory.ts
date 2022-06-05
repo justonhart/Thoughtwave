@@ -45,6 +45,7 @@ interface Operation {
     targetPos?: string;
     resource?: ResourceConstant;
     expireAt?: number;
+    portalLocations?: string[];
 }
 
 interface OperationOpts {
@@ -54,6 +55,7 @@ interface OperationOpts {
     targetPos?: string;
     resource?: ResourceConstant;
     expireAt?: number;
+    portalLocations?: string[];
 }
 
 interface OriginOpts {

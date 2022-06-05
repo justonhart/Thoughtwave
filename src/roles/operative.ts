@@ -1,7 +1,7 @@
 import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
 export class Operative extends WorkerCreep {
-    public run() {
+    protected run() {
         if (!this.operation) {
             delete this.memory.operation;
             delete this.memory.destination;

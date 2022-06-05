@@ -1,4 +1,5 @@
 interface CreepMemory {
+    portalLocations?: string[];
     link?: Id<StructureLink>;
     destination?: string;
     assignment?: string;

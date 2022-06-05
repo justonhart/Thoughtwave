@@ -1,7 +1,24 @@
+import { posFromMem } from '../modules/memoryManagement';
+
 export class WaveCreep extends Creep {
     private static priorityQueue: Map<string, (creep: Creep) => void> = new Map();
 
-    public run() {
+    public drive() {
+        if (this.memory.portalLocations?.[0]) {
+            let portal = posFromMem(this.memory.portalLocations[0]);
+
+            if (!this.pos.isNearTo(portal)) {
+                this.travelTo(portal);
+            } else {
+                this.moveTo(portal);
+                this.memory.portalLocations.shift();
+            }
+        } else {
+            this.run();
+        }
+    }
+
+    protected run() {
         this.say(`Running ${this.name}`);
     }
 

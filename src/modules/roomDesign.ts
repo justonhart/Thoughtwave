@@ -185,6 +185,14 @@ export function getSpawnPos(room: Room) {
     }
 }
 
+export function getStoragePos(room: Room) {
+    switch (room.memory.layout) {
+        case RoomLayout.BUNKER:
+            let anchorPoint = posFromMem(room.memory.anchorPoint);
+            return new RoomPosition(anchorPoint.x + 1, anchorPoint.y - 1, room.name);
+    }
+}
+
 export function findPoiAverage(room: Room) {
     let pois = room.find(FIND_SOURCES).map((source) => source.pos);
     pois.push(room.controller.pos);
@@ -327,6 +335,21 @@ export function placeBunkerOuterRamparts(room: Room) {
     }
 }
 
+export function placeBunkerInnerRamparts(room: Room) {
+    let anchor = posFromMem(room.memory.anchorPoint);
+
+    if (anchor) {
+        let topLeft = new RoomPosition(anchor.x - 5, anchor.y - 5, room.name);
+        for (let xDif = 0; xDif <= 10; xDif++) {
+            for (let yDif = 0; yDif <= 10; yDif++) {
+                if (yDif <= 1 || xDif <= 1 || yDif >= 9 || xDif >= 9) {
+                    room.createConstructionSite(topLeft.x + xDif, topLeft.y + yDif, STRUCTURE_RAMPART);
+                }
+            }
+        }
+    }
+}
+
 export function placeMinerLinks(room: Room) {
     if (room.managerLink) {
         Object.keys(room.memory.miningAssignments).forEach((assignmentString) => {
@@ -365,11 +388,11 @@ export function roomNeedsCoreStructures(room: Room) {
     let labCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_LAB).length;
     let towerCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER).length;
     let managerLink =
-        posFromMem(room.memory.anchorPoint)
-            .findInRange(FIND_MY_STRUCTURES, 1)
+        posFromMem(room.memory.anchorPoint || room.memory.managerPos)
+            ?.findInRange(FIND_MY_STRUCTURES, 1)
             .filter((s) => s.structureType === STRUCTURE_LINK).length +
-            posFromMem(room.memory.anchorPoint)
-                .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
+            posFromMem(room.memory.anchorPoint || room.memory.managerPos)
+                ?.findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
                 .filter((s) => s.structureType === STRUCTURE_LINK).length >=
         1;
     let observer = roomStructures.filter((structure) => structure.structureType === STRUCTURE_OBSERVER).length;
@@ -452,5 +475,30 @@ export function placeBunkerConstructionSites(room: Room) {
                 }
             }
         }
+    }
+}
+
+//remove structures that aren't where they need to be (for example, storage structures that used to contain energy)
+export function cleanRoom(room: Room) {
+    let anchorPoint = posFromMem(room.memory.anchorPoint);
+
+    if (anchorPoint) {
+        let structuresToCheck: (StructureStorage | StructureTerminal)[] = [];
+        if (room.storage) {
+            structuresToCheck.push(room.storage);
+        }
+
+        if (room.terminal) {
+            structuresToCheck.push(room.terminal);
+        }
+
+        structuresToCheck.forEach((structure) => {
+            if (
+                getStructureForPos(RoomLayout.BUNKER, structure.pos, anchorPoint) !== structure.structureType &&
+                (!structure.store.energy || room.controller.level >= 4)
+            ) {
+                structure.destroy();
+            }
+        });
     }
 }

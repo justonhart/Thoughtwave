@@ -1,3 +1,4 @@
+import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 import { getSpawnPos, placeBunkerConstructionSites, roomNeedsCoreStructures } from './roomDesign';
 
@@ -61,6 +62,7 @@ function manageColonizationOperation(op: Operation) {
                         role: Role.CLAIMER,
                         destination: op.targetRoom,
                         room: op.originRoom,
+                        portalLocations: op.portalLocations,
                     },
                 });
             }
@@ -82,6 +84,7 @@ function manageColonizationOperation(op: Operation) {
                             role: Role.MINER,
                             assignment: key,
                             room: op.targetRoom,
+                            portalLocations: op.portalLocations,
                         },
                     });
                 }
@@ -99,6 +102,7 @@ function manageColonizationOperation(op: Operation) {
                     memoryOptions: {
                         role: Role.COLONIZER,
                         destination: op.targetRoom,
+                        portalLocations: op.portalLocations,
                     },
                 });
             }
@@ -209,7 +213,7 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
     delete opts?.originRoom;
 
     if (!originRoom) {
-        originRoom = findOperationOrigin(targetRoom, opts?.originOpts);
+        originRoom = findOperationOrigin(posFromMem(opts.portalLocations?.[0])?.roomName ?? targetRoom, opts?.originOpts);
         delete opts?.originOpts;
     }
 
