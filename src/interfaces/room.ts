@@ -25,6 +25,7 @@ interface RemoteAssignment {
 
 interface Room {
     removeFromRepairQueue(id: string): void;
+    creeps: Creep[];
     energyStatus: EnergyStatus;
     mineral: Mineral;
     managerLink: StructureLink;
