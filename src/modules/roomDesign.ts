@@ -335,6 +335,21 @@ export function placeBunkerOuterRamparts(room: Room) {
     }
 }
 
+export function placeBunkerInnerRamparts(room: Room) {
+    let anchor = posFromMem(room.memory.anchorPoint);
+
+    if (anchor) {
+        let topLeft = new RoomPosition(anchor.x - 5, anchor.y - 5, room.name);
+        for (let xDif = 0; xDif <= 10; xDif++) {
+            for (let yDif = 0; yDif <= 10; yDif++) {
+                if (yDif <= 1 || xDif <= 1 || yDif >= 9 || xDif >= 9) {
+                    room.createConstructionSite(topLeft.x + xDif, topLeft.y + yDif, STRUCTURE_RAMPART);
+                }
+            }
+        }
+    }
+}
+
 export function placeMinerLinks(room: Room) {
     if (room.managerLink) {
         Object.keys(room.memory.miningAssignments).forEach((assignmentString) => {
@@ -373,11 +388,11 @@ export function roomNeedsCoreStructures(room: Room) {
     let labCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_LAB).length;
     let towerCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER).length;
     let managerLink =
-        posFromMem(room.memory.anchorPoint)
-            .findInRange(FIND_MY_STRUCTURES, 1)
+        posFromMem(room.memory.anchorPoint || room.memory.managerPos)
+            ?.findInRange(FIND_MY_STRUCTURES, 1)
             .filter((s) => s.structureType === STRUCTURE_LINK).length +
-            posFromMem(room.memory.anchorPoint)
-                .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
+            posFromMem(room.memory.anchorPoint || room.memory.managerPos)
+                ?.findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
                 .filter((s) => s.structureType === STRUCTURE_LINK).length >=
         1;
     let observer = roomStructures.filter((structure) => structure.structureType === STRUCTURE_OBSERVER).length;

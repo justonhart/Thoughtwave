@@ -8,6 +8,8 @@ import {
     placeMinerLinks,
     placeRoadsToPOIs,
     cleanRoom,
+    placeBunkerInnerRamparts,
+    roomNeedsCoreStructures,
 } from './roomDesign';
 
 const BUILD_CHECK_PERIOD = 100;
@@ -56,11 +58,16 @@ export function driveRoom(room: Room) {
                 case 8:
                 case 7:
                 case 6:
+                    if (!roomNeedsCoreStructures(room)) {
+                        placeBunkerInnerRamparts(room);
+                    }
                 case 5:
                     placeMinerLinks(room);
                 case 4:
-                    placeBunkerOuterRamparts(room);
-                    placeMiningRamparts(room);
+                    if (!roomNeedsCoreStructures(room)) {
+                        placeBunkerOuterRamparts(room);
+                        placeMiningRamparts(room);
+                    }
                 case 3:
                     placeMiningPositionContainers(room);
                 case 2:
