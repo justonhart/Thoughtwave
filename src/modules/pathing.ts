@@ -29,7 +29,7 @@ export class Pathing {
         avoidRoads: false,
         avoidHostileRooms: true,
         reusePath: 50,
-        avoidHostiles: true,
+        avoidSourceKeepers: true,
         maxOps: 10000,
         range: 0,
         pathColor: 'orange',
@@ -173,7 +173,7 @@ export class Pathing {
         }
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
         if (
-            opts.avoidHostiles &&
+            opts.avoidSourceKeepers &&
             creep.memory._m.lastCoord &&
             posFromMem(creep.memory._m.lastCoord).roomName !== creep.pos.roomName &&
             !creep.memory._m.visibleRooms.includes(creep.pos.roomName)
@@ -330,18 +330,22 @@ export class Pathing {
                     matrix = Pathing.getCreepMatrix(room);
                 }
 
-                if (options.avoidHostiles) {
+                if (options.avoidSourceKeepers) {
                     matrix = matrix.clone();
-                    room.find(FIND_HOSTILE_CREEPS, {
-                        filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
-                    }).forEach((creep) => {
-                        const avoidArea = Pathing.getArea(creep.pos, 3);
-                        for (let x = avoidArea.left; x <= avoidArea.right; x++) {
-                            for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
-                                matrix.set(x, y, 0xc8);
+                    if (room.find(FIND_STRUCTURES).some((struct) => struct.structureType === STRUCTURE_KEEPER_LAIR)) {
+                        room.find(FIND_HOSTILE_CREEPS, {
+                            filter: (creep) =>
+                                creep.owner.username === 'Invader' &&
+                                (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0),
+                        }).forEach((creep) => {
+                            const avoidArea = Pathing.getArea(creep.pos, 3);
+                            for (let x = avoidArea.left; x <= avoidArea.right; x++) {
+                                for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
+                                    matrix.set(x, y, 0xc8);
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
 
                 if (options.exitCost) {

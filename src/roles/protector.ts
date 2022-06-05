@@ -10,7 +10,7 @@ export class Protector extends CombatCreep {
         if (this.fledToNewRoom()) {
             return; // Wait while creep is healing
         }
-        if (this.travelToRoom(this.memory.assignment, { avoidHostiles: false }) === IN_ROOM) {
+        if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
             if (!this.memory.targetId || this.memory.assignment === this.homeroom?.name || !Game.getObjectById(this.memory.targetId)) {
                 this.memory.targetId = this.findTarget();
             }
@@ -100,7 +100,7 @@ export class Protector extends CombatCreep {
         if (this.memory.combat.flee) {
             // TODO: In homeroom this will not work ==> Shouldnt matter as soon as ramparts are up but otherwise move to spawn?
             // Go back to the exit toward creeps homeroom while avoiding creeps along the way
-            return this.travelToRoom(this.homeroom?.name, { ignoreCreeps: false, avoidHostiles: true });
+            return this.travelToRoom(this.homeroom?.name, { ignoreCreeps: false, avoidSourceKeepers: true });
         }
 
         if (this.getActiveBodyparts(ATTACK)) {

@@ -15,7 +15,7 @@ export class Reserver extends WaveCreep {
         } else {
             let targetPos = posFromMem(this.memory.destination);
             if (!this.pos.isNearTo(targetPos)) {
-                this.travelTo(targetPos, { avoidHostiles: true, range: 1 });
+                this.travelTo(targetPos, { range: 1 });
                 return;
             }
 

@@ -20,7 +20,7 @@ export class Miner extends WaveCreep {
                 this.transfer(link, RESOURCE_ENERGY);
             }
         } else {
-            this.travelTo(assignedPos, { maxOps: 20000, avoidHostiles: true, avoidHostileRooms: true });
+            this.travelTo(assignedPos, { maxOps: 20000, avoidHostileRooms: true });
         }
     }
 }

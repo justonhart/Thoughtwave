@@ -6,7 +6,7 @@ interface TravelToOpts extends PathFinderOpts {
     /**
      * Default it is set to false to minimize cpu cost as most creeps are traveling inside the base.
      */
-    avoidHostiles?: boolean;
+    avoidSourceKeepers?: boolean;
     /**
      * Treating structures as walkable tiles. Could be useful in attacking scenario (like our trap)
      */
