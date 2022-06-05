@@ -38,7 +38,7 @@ export class Claimer extends WaveCreep {
             }
         } else {
             if (!this.memory.assignment) {
-                if (this.travelToRoom(this.memory.destination, { avoidHostileRooms: true, avoidHostiles: true }) === IN_ROOM) {
+                if (this.travelToRoom(this.memory.destination, { avoidHostileRooms: true }) === IN_ROOM) {
                     this.memory.assignment = this.room.controller.pos.toMemSafe();
                 }
             } else {
@@ -76,7 +76,7 @@ export class Claimer extends WaveCreep {
                 }
 
                 if (!this.pos.isNearTo(targetPos)) {
-                    this.travelTo(targetPos, { avoidHostileRooms: true, avoidHostiles: true, range: 1 });
+                    this.travelTo(targetPos, { avoidHostileRooms: true, avoidSourceKeepers: true, range: 1 });
                 } else {
                     if (Game.rooms[this.memory.destination]?.controller?.my) {
                         console.log(`${this.room.name} has been claimed!`);
