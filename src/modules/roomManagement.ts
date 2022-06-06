@@ -79,8 +79,11 @@ export function driveRoom(room: Room) {
         }
 
         runTowers(room);
-        runHomeSecurity(room);
-        driveRemoteRoom(room);
+        const isHomeUnderAttack = runHomeSecurity(room);
+        if (!isHomeUnderAttack) {
+            // Prioritize home defense
+            driveRemoteRoom(room);
+        }
 
         if (room.memory.anchorPoint) {
             let anchorPoint = posFromMem(room.memory.anchorPoint);
@@ -120,7 +123,7 @@ function runTowers(room: Room) {
         : towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
 }
 
-function runHomeSecurity(homeRoom: Room) {
+function runHomeSecurity(homeRoom: Room): boolean {
     const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS);
     let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
 
@@ -155,7 +158,9 @@ function runHomeSecurity(homeRoom: Room) {
                 },
             });
         }
+        return true;
     }
+    return false;
 }
 
 export function initRoom(room: Room) {

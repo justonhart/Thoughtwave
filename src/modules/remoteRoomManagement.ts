@@ -125,6 +125,12 @@ function reassignIdleProtector(homeRoomName: string, targetRoomName: string): bo
         (creep) => creep.memory.room === homeRoomName && creep.memory.role === Role.PROTECTOR && creep.ticksToLive > 200
     );
 
+    if (homeRoomName === targetRoomName) {
+        // Home Protection (reassign and still spawn default ones)
+        protectors.forEach((protector) => (protector.memory.assignment = targetRoomName));
+        return false;
+    }
+
     const idleProtector = protectors.find(
         (creep) => Memory.rooms[homeRoomName].remoteAssignments?.[creep.memory.assignment]?.state !== RemoteMiningRoomState.SAFE
     );
