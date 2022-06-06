@@ -45,6 +45,14 @@ Room.prototype.canSpawn = function (this: Room): boolean {
     return this.find(FIND_MY_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_SPAWN).length > 0;
 };
 
+Object.defineProperty(Room.prototype, 'creeps', {
+    get: function (this: Room) {
+        return Object.values(Game.creeps).filter((creep) => creep.memory.room === this.name);
+    },
+    enumerable: false,
+    configurable: true,
+});
+
 Object.defineProperty(Room.prototype, 'mineral', {
     get: function (this: Room) {
         return this.find(FIND_MINERALS).pop();

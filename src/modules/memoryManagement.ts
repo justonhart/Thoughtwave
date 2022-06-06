@@ -19,7 +19,7 @@ function handleDeadCreep(creepName: string) {
     let deadCreepMemory = Memory.creeps[creepName];
 
     if (Game.rooms[deadCreepMemory.room]?.controller?.my) {
-        if (deadCreepMemory.role === Role.MINER) {
+        if (deadCreepMemory.role === Role.MINER && !deadCreepMemory.hasTTLReplacement) {
             Memory.rooms[deadCreepMemory.room].miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
         }
         if (
