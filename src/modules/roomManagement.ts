@@ -322,7 +322,9 @@ function runSpawning(room: Room) {
         }
     }
 
-    availableSpawns.forEach((spawn) => spawn.spawnWorker());
+    if (!roomContainsViolentHostiles) {
+        availableSpawns.forEach((spawn) => spawn.spawnWorker());
+    }
 }
 
 export function findRepairTargets(room: Room): Id<Structure>[] {

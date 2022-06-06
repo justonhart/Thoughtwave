@@ -30,7 +30,10 @@ export class Worker extends WorkerCreep {
             return constructedDefenses.shift().id;
         }
 
-        if (!this.homeroom.controller.upgradeBlocked && this.homeroom.controller.ticksToDowngrade <= 5000) {
+        if (
+            !this.homeroom.controller.upgradeBlocked &&
+            this.homeroom.controller.ticksToDowngrade <= this.homeroom.controller.ticksToDowngradeMax / 2
+        ) {
             return this.homeroom.controller.id;
         }
 
