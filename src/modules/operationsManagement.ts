@@ -213,7 +213,7 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
     delete opts?.originRoom;
 
     if (!originRoom) {
-        originRoom = findOperationOrigin(posFromMem(opts.portalLocations?.[0])?.roomName ?? targetRoom, opts?.originOpts);
+        originRoom = findOperationOrigin(posFromMem(opts?.portalLocations?.[0])?.roomName ?? targetRoom, opts?.originOpts);
         delete opts?.originOpts;
     }
 
