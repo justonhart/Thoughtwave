@@ -13,6 +13,7 @@ import { RemoteMiner } from '../roles/remoteMiner';
 import { Manager } from '../roles/manager';
 import { Operative } from '../roles/operative';
 import { Colonizer } from '../roles/colonizer';
+import { RampartProtector } from '../roles/rampartProtector';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -63,6 +64,9 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.OPERATIVE:
             waveCreep = new Operative(creep.id);
+            break;
+        case Role.RAMPART_PROTECTOR:
+            waveCreep = new RampartProtector(creep.id);
             break;
         default:
             waveCreep = new WaveCreep(creep.id);

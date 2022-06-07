@@ -128,32 +128,44 @@ function runHomeSecurity(homeRoom: Room): boolean {
     let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
 
     if (hostileCreeps.length >= minNumHostileCreeps) {
-        if (PopulationManagement.needsProtector(homeRoom.name)) {
-            const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 300, 24);
-            body.push(MOVE, HEAL);
+        // Spawn multiple rampartProtectors based on the number of enemy hostiles
+        const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
+        if (!currentNumProtectors) {
+            const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: body,
                 memoryOptions: {
-                    role: Role.PROTECTOR,
+                    role: Role.RAMPART_PROTECTOR,
                     room: homeRoom.name,
-                    assignment: homeRoom.name,
                     currentTaskPriority: Priority.MEDIUM,
                     combat: { flee: false },
                 },
             });
-        } else if (hostileCreeps.length >= 4 && PopulationManagement.needsMeleeProtector(homeRoom.name)) {
+        }
+        if (hostileCreeps.length >= 4 && currentNumProtectors - Math.floor(hostileCreeps.length / 2) < 0) {
             console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
-            const body = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
+            const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
-                body: body,
+                body: attackerBody,
                 memoryOptions: {
-                    role: Role.PROTECTOR,
+                    role: Role.RAMPART_PROTECTOR,
                     room: homeRoom.name,
                     assignment: homeRoom.name,
                     currentTaskPriority: Priority.HIGH,
+                    combat: { flee: false },
+                },
+            });
+            const rangedBody = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
+            Memory.empire.spawnAssignments.push({
+                designee: homeRoom.name,
+                body: rangedBody,
+                memoryOptions: {
+                    role: Role.RAMPART_PROTECTOR,
+                    room: homeRoom.name,
+                    currentTaskPriority: Priority.MEDIUM,
                     combat: { flee: false },
                 },
             });

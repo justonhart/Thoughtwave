@@ -516,27 +516,19 @@ export class PopulationManagement {
     static needsProtector(roomName: string): boolean {
         return (
             !Object.values(Game.creeps).filter(
-                (creep) =>
-                    creep.memory.role === Role.PROTECTOR &&
-                    !creep.getActiveBodyparts(ATTACK) &&
-                    (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
+                (creep) => creep.memory.role === Role.PROTECTOR && (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
             ).length &&
             !Memory.empire.spawnAssignments.filter(
-                (creep) => creep.memoryOptions.role === Role.PROTECTOR && !creep.body.includes(ATTACK) && creep.memoryOptions.assignment === roomName
+                (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.memoryOptions.assignment === roomName
             ).length
         );
     }
 
-    static needsMeleeProtector(roomName: string): boolean {
+    static currentNumRampartProtectors(roomName: string): number {
         return (
-            !Object.values(Game.creeps).filter(
-                (creep) =>
-                    creep.memory.role === Role.PROTECTOR &&
-                    creep.getActiveBodyparts(ATTACK) &&
-                    (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
-            ).length &&
-            !Memory.empire.spawnAssignments.filter(
-                (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.body.includes(ATTACK) && creep.memoryOptions.assignment === roomName
+            Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR && creep.pos.roomName === roomName).length +
+            Memory.empire.spawnAssignments.filter(
+                (creep) => creep.memoryOptions.role === Role.RAMPART_PROTECTOR && creep.memoryOptions.room === roomName
             ).length
         );
     }
