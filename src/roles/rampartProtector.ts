@@ -27,6 +27,9 @@ export class RampartProtector extends CombatCreep {
             const targetCreep = Game.getObjectById(this.findTarget());
             this.pathingToRampart(target);
             creepActionReturnCode = this.attackCreep(targetCreep);
+            if (this.pos.getRangeTo(targetCreep) > 1) {
+                creepActionReturnCode = ERR_NOT_IN_RANGE; // Creep should always reevaluate for closest rampart if there is no enemy creep in the vicinity (squads sometimes move to other parts that are only 2 blocks away so ranged will only attack one creep otherwise)
+            }
         } else if (target instanceof Creep) {
             this.combatPathing(target);
             creepActionReturnCode = this.attackCreep(target);
@@ -42,7 +45,16 @@ export class RampartProtector extends CombatCreep {
         if (!targetRampart || Pathing.sameCoord(this.pos, targetRampart.pos)) {
             return;
         }
-        this.travelTo(targetRampart);
+
+        let customMatrixCosts: CustomMatrixCost[] = [];
+        this.room
+            .find(FIND_MY_STRUCTURES)
+            .filter((struct) => struct.structureType === STRUCTURE_RAMPART)
+            .forEach((rampart) => {
+                customMatrixCosts.push({ x: rampart.pos.x, y: rampart.pos.y, cost: 1 });
+            });
+
+        this.travelTo(targetRampart, { customMatrixCosts: customMatrixCosts });
     }
 
     private findTarget(): Id<Creep> {
@@ -73,6 +85,7 @@ export class RampartProtector extends CombatCreep {
                 ) as StructureRampart[];
 
             if (myRamparts.length) {
+                // Find all ramparts that are being attacked and not yet have a protector on them
                 const targetedRampart = myRamparts.find((rampart) =>
                     this.room
                         .lookAtArea(rampart.pos.y - 1, rampart.pos.x - 1, rampart.pos.y + 1, rampart.pos.x + 1, true)
@@ -88,7 +101,7 @@ export class RampartProtector extends CombatCreep {
                     return targetedRampart.id;
                 }
 
-                // Get closest rampart to the enemy that isn't already taken
+                // If no rampart is getting attacked yet then get closest rampart to the enemy that isn't already taken
                 const closestHostile = Game.getObjectById(hostileCreepId);
                 let closestRampartToHostile = myRamparts.find((rampart) => Pathing.sameCoord(rampart.pos, this.pos));
 
