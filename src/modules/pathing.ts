@@ -111,6 +111,7 @@ export class Pathing {
                 creep.memory._m.repath++;
                 opts.pathColor = 'blue';
                 opts.ignoreCreeps = false;
+                opts.preferRamparts = false;
                 delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
             } else {
                 new RoomVisual(creep.pos.roomName).circle(creep.pos, {
