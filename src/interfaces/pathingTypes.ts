@@ -51,6 +51,10 @@ interface TravelToOpts extends PathFinderOpts {
      * For adding costs to the matrix.
      */
     customMatrixCosts?: CustomMatrixCost[];
+    /**
+     * Prefer moving over ramparts. It will set the efficiency of creeps lower so they will avoid walking over plain.
+     */
+    preferRamparts?: boolean;
 }
 
 interface CustomMatrixCost {

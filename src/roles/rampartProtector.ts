@@ -46,15 +46,7 @@ export class RampartProtector extends CombatCreep {
             return;
         }
 
-        let customMatrixCosts: CustomMatrixCost[] = [];
-        this.room
-            .find(FIND_MY_STRUCTURES)
-            .filter((struct) => struct.structureType === STRUCTURE_RAMPART)
-            .forEach((rampart) => {
-                customMatrixCosts.push({ x: rampart.pos.x, y: rampart.pos.y, cost: 1 });
-            });
-
-        this.travelTo(targetRampart, { customMatrixCosts: customMatrixCosts });
+        this.travelTo(targetRampart, { preferRamparts: true });
     }
 
     private findTarget(): Id<Creep> {

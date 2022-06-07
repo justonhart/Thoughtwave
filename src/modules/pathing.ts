@@ -279,7 +279,7 @@ export class Pathing {
         origin = Pathing.normalizePos(origin);
         destination = Pathing.normalizePos(destination);
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
-        if (options.preferRoadConstruction) {
+        if (options.preferRoadConstruction || options.preferRamparts) {
             efficiency = 0.8; // Make other tiles cost more to avoid multiple roads
         }
         return PathFinder.search(
@@ -386,6 +386,13 @@ export class Pathing {
                     room.find(FIND_MY_CONSTRUCTION_SITES, { filter: (struct) => struct.structureType === STRUCTURE_ROAD }).forEach((struct) =>
                         matrix.set(struct.pos.x, struct.pos.y, 1)
                     );
+                }
+
+                if (options.preferRamparts) {
+                    matrix = matrix.clone();
+                    room.find(FIND_MY_STRUCTURES, { filter: (struct) => struct.structureType === STRUCTURE_RAMPART }).forEach((rampart) => {
+                        matrix.set(rampart.pos.x, rampart.pos.y, 1);
+                    });
                 }
 
                 if (options.customMatrixCosts) {
