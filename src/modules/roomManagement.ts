@@ -114,6 +114,13 @@ function runTowers(room: Room) {
     // @ts-ignore
     let towers: StructureTower[] = room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_TOWER);
 
+    // Heal creeps in baseroom. Can be optimized to check how many towers need to heal one creep but usually this should not be needed anyway if our "room under attack" logic works properly.
+    let myHurtCreep = room.find(FIND_MY_CREEPS).find((creep) => creep.hits < creep.hitsMax);
+    if (myHurtCreep) {
+        towers.forEach((tower) => tower.heal(myHurtCreep));
+        return;
+    }
+
     let hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
 
     let healers = hostileCreeps.filter((creep) => creep.getActiveBodyparts(HEAL) > 0);
