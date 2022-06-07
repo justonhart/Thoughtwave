@@ -100,13 +100,57 @@ export class PopulationManagement {
 
     static needsMiner(room: Room): boolean {
         let roomNeedsMiner = Object.values(room.memory.miningAssignments).some((assignment) => assignment === AssignmentStatus.UNASSIGNED);
-
+        if (!roomNeedsMiner) {
+            // Check for TTL
+            roomNeedsMiner = room.creeps.some(
+                (creep) =>
+                    creep.memory.role === Role.MINER &&
+                    creep.memory.room === room.name &&
+                    !creep.memory.hasTTLReplacement &&
+                    creep.ticksToLive <
+                        PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), room.energyCapacityAvailable).length * 3
+            );
+        }
         return roomNeedsMiner;
+    }
+
+    static getMinerBody(miningPos: RoomPosition, energyCapacityAvailable: number): (WORK | MOVE | CARRY)[] {
+        let minerBody: (WORK | MOVE | CARRY)[];
+
+        if (energyCapacityAvailable >= 650) {
+            minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
+        } else if (energyCapacityAvailable >= 550) {
+            minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE];
+        } else if (energyCapacityAvailable >= 450) {
+            minerBody = [WORK, WORK, WORK, WORK, MOVE];
+        } else if (energyCapacityAvailable >= 350) {
+            minerBody = [WORK, WORK, WORK, MOVE];
+        } else {
+            minerBody = [WORK, WORK, MOVE];
+        }
+
+        let link = miningPos.findInRange(FIND_MY_STRUCTURES, 1).find((s) => s.structureType === STRUCTURE_LINK);
+        if (link) {
+            minerBody.unshift(CARRY);
+        }
+        return minerBody;
     }
 
     static spawnMiner(spawn: StructureSpawn): ScreepsReturnCode {
         let assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
         let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
+        let currentMiner: Creep;
+        if (!assigment) {
+            // Check for TTL
+            currentMiner = spawn.room.creeps.find(
+                (creep) =>
+                    creep.memory.role === Role.MINER &&
+                    creep.memory.room === spawn.room.name &&
+                    creep.ticksToLive <
+                        PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), spawn.room.energyCapacityAvailable).length * 3
+            );
+            assigment = currentMiner?.pos?.toMemSafe();
+        }
 
         let options: SpawnOptions = {
             memory: {
@@ -117,30 +161,22 @@ export class PopulationManagement {
         };
 
         let tag = 'm';
-        let minerBody: ('work' | 'move' | 'carry')[];
-
-        if (spawn.room.energyCapacityAvailable >= 650) {
-            minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
-        } else if (spawn.room.energyCapacityAvailable >= 550) {
-            minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE];
-        } else if (spawn.room.energyCapacityAvailable >= 450) {
-            minerBody = [WORK, WORK, WORK, WORK, MOVE];
-        } else if (spawn.room.energyCapacityAvailable >= 350) {
-            minerBody = [WORK, WORK, WORK, MOVE];
-        } else {
-            minerBody = [WORK, WORK, MOVE];
-        }
 
         let assigmentPos = posFromMem(assigment);
-        let link = assigmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((s) => s.structureType === STRUCTURE_LINK);
+        let link = assigmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((s) => s.structureType === STRUCTURE_LINK) as StructureLink;
         if (link) {
-            //@ts-expect-error
             options.memory.link = link.id;
-            minerBody.unshift(CARRY);
         }
 
-        let result = spawn.smartSpawn(minerBody, this.getCreepTag(tag, spawn.name), options);
+        let result = spawn.smartSpawn(
+            PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable),
+            this.getCreepTag(tag, spawn.name),
+            options
+        );
         if (result === OK) {
+            if (currentMiner) {
+                currentMiner.memory.hasTTLReplacement = true;
+            }
             spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
         } else if (
             result === ERR_NOT_ENOUGH_ENERGY &&
@@ -150,6 +186,9 @@ export class PopulationManagement {
             let emergencyMinerBody = [WORK, WORK, MOVE];
             result = spawn.smartSpawn(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
             if (result === OK) {
+                if (currentMiner) {
+                    currentMiner.memory.hasTTLReplacement = true;
+                }
                 spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
             }
         }
@@ -485,16 +524,11 @@ export class PopulationManagement {
         );
     }
 
-    static needsMeleeProtector(roomName: string): boolean {
+    static currentNumRampartProtectors(roomName: string): number {
         return (
-            !Object.values(Game.creeps).filter(
-                (creep) =>
-                    creep.memory.role === Role.PROTECTOR &&
-                    creep.getActiveBodyparts(ATTACK) &&
-                    (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
-            ).length &&
-            !Memory.empire.spawnAssignments.filter(
-                (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.body.includes(ATTACK) && creep.memoryOptions.assignment === roomName
+            Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR && creep.pos.roomName === roomName).length +
+            Memory.empire.spawnAssignments.filter(
+                (creep) => creep.memoryOptions.role === Role.RAMPART_PROTECTOR && creep.memoryOptions.room === roomName
             ).length
         );
     }

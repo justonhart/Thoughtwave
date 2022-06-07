@@ -5,6 +5,7 @@ interface CreepMemory {
     assignment?: string;
     targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone>;
     miningPos?: string;
+    hasTTLReplacement?: boolean;
     gathering?: boolean;
     energySource?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
     room?: string;
@@ -62,6 +63,7 @@ const enum Role {
     BUILDER = 'BUILDER',
     SCOUT = 'SCOUT',
     PROTECTOR = 'PROTECTOR',
+    RAMPART_PROTECTOR = 'RAMPART_PROTECTOR',
     GO = 'GO',
     RESERVER = 'RESERVER',
     MANAGER = 'MANAGER',

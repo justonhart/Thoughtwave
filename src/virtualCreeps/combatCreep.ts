@@ -19,6 +19,38 @@ export class CombatCreep extends WaveCreep {
         return ERR_NO_BODYPART;
     }
 
+    protected combatPathing(target: Creep) {
+        if (this.memory.combat.flee) {
+            // Info: In homeroom this will not work ==> Shouldnt matter as soon as ramparts are up but otherwise move to spawn?
+            // Go back to the exit toward creeps homeroom while avoiding creeps along the way
+            return this.travelToRoom(this.homeroom?.name, { ignoreCreeps: false, avoidSourceKeepers: true });
+        }
+
+        if (this.getActiveBodyparts(ATTACK)) {
+            return this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: 1 });
+        } else if (this.getActiveBodyparts(RANGED_ATTACK)) {
+            let range = 3;
+            const exitCost = 10;
+            let shouldFlee = true;
+
+            const hostilesInSquadRange = this.pos.findInRange(FIND_HOSTILE_CREEPS, 3); // check around target for proper massAttack pathing
+            const rangeToTarget = this.pos.getRangeTo(target);
+
+            // If not in range, an enemy squad with RANGED_ATTACK, or no dangerous creeps, then go closer to enable massAttack
+            if (
+                rangeToTarget > range ||
+                (hostilesInSquadRange.length > 1 && hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(RANGED_ATTACK))) ||
+                !hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK))
+            ) {
+                range = 1;
+                shouldFlee = false;
+            } else if (!target.getActiveBodyparts(ATTACK)) {
+                range = 2; // Against other RANGED_ATTACK units to keep them from fleeing
+            }
+            return this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: exitCost });
+        }
+    }
+
     protected attackStructure(target: Structure): CreepActionReturnCode {
         if (this.getActiveBodyparts(ATTACK)) {
             return this.attack(target);

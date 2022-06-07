@@ -79,8 +79,11 @@ export function driveRoom(room: Room) {
         }
 
         runTowers(room);
-        runHomeSecurity(room);
-        driveRemoteRoom(room);
+        const isHomeUnderAttack = runHomeSecurity(room);
+        if (!isHomeUnderAttack) {
+            // Prioritize home defense
+            driveRemoteRoom(room);
+        }
 
         if (room.memory.anchorPoint) {
             let anchorPoint = posFromMem(room.memory.anchorPoint);
@@ -111,6 +114,13 @@ function runTowers(room: Room) {
     // @ts-ignore
     let towers: StructureTower[] = room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_TOWER);
 
+    // Heal creeps in baseroom. Can be optimized to check how many towers need to heal one creep but usually this should not be needed anyway if our "room under attack" logic works properly.
+    let myHurtCreep = room.find(FIND_MY_CREEPS).find((creep) => creep.hits < creep.hitsMax);
+    if (myHurtCreep) {
+        towers.forEach((tower) => tower.heal(myHurtCreep));
+        return;
+    }
+
     let hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
 
     let healers = hostileCreeps.filter((creep) => creep.getActiveBodyparts(HEAL) > 0);
@@ -120,42 +130,56 @@ function runTowers(room: Room) {
         : towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
 }
 
-function runHomeSecurity(homeRoom: Room) {
+function runHomeSecurity(homeRoom: Room): boolean {
     const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS);
     let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
 
     if (hostileCreeps.length >= minNumHostileCreeps) {
-        if (PopulationManagement.needsProtector(homeRoom.name)) {
-            const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable - 300, 24);
-            body.push(MOVE, HEAL);
+        // Spawn multiple rampartProtectors based on the number of enemy hostiles
+        const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
+        if (!currentNumProtectors) {
+            const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: body,
                 memoryOptions: {
-                    role: Role.PROTECTOR,
+                    role: Role.RAMPART_PROTECTOR,
                     room: homeRoom.name,
-                    assignment: homeRoom.name,
                     currentTaskPriority: Priority.MEDIUM,
                     combat: { flee: false },
                 },
             });
-        } else if (hostileCreeps.length >= 4 && PopulationManagement.needsMeleeProtector(homeRoom.name)) {
+        }
+        if (hostileCreeps.length >= 4 && currentNumProtectors - Math.floor(hostileCreeps.length / 2) < 0) {
             console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
-            const body = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
+            const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
-                body: body,
+                body: attackerBody,
                 memoryOptions: {
-                    role: Role.PROTECTOR,
+                    role: Role.RAMPART_PROTECTOR,
                     room: homeRoom.name,
                     assignment: homeRoom.name,
                     currentTaskPriority: Priority.HIGH,
                     combat: { flee: false },
                 },
             });
+            const rangedBody = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
+            Memory.empire.spawnAssignments.push({
+                designee: homeRoom.name,
+                body: rangedBody,
+                memoryOptions: {
+                    role: Role.RAMPART_PROTECTOR,
+                    room: homeRoom.name,
+                    currentTaskPriority: Priority.MEDIUM,
+                    combat: { flee: false },
+                },
+            });
         }
+        return true;
     }
+    return false;
 }
 
 export function initRoom(room: Room) {

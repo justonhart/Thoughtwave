@@ -111,6 +111,7 @@ export class Pathing {
                 creep.memory._m.repath++;
                 opts.pathColor = 'blue';
                 opts.ignoreCreeps = false;
+                opts.preferRamparts = false;
                 delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
             } else {
                 new RoomVisual(creep.pos.roomName).circle(creep.pos, {
@@ -279,7 +280,7 @@ export class Pathing {
         origin = Pathing.normalizePos(origin);
         destination = Pathing.normalizePos(destination);
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
-        if (options.preferRoadConstruction) {
+        if (options.preferRoadConstruction || options.preferRamparts) {
             efficiency = 0.8; // Make other tiles cost more to avoid multiple roads
         }
         return PathFinder.search(
@@ -335,7 +336,7 @@ export class Pathing {
                     if (room.find(FIND_STRUCTURES).some((struct) => struct.structureType === STRUCTURE_KEEPER_LAIR)) {
                         room.find(FIND_HOSTILE_CREEPS, {
                             filter: (creep) =>
-                                creep.owner.username === 'Invader' &&
+                                creep.owner.username === 'Source Keeper' &&
                                 (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0),
                         }).forEach((creep) => {
                             const avoidArea = Pathing.getArea(creep.pos, 3);
@@ -386,6 +387,13 @@ export class Pathing {
                     room.find(FIND_MY_CONSTRUCTION_SITES, { filter: (struct) => struct.structureType === STRUCTURE_ROAD }).forEach((struct) =>
                         matrix.set(struct.pos.x, struct.pos.y, 1)
                     );
+                }
+
+                if (options.preferRamparts) {
+                    matrix = matrix.clone();
+                    room.find(FIND_MY_STRUCTURES, { filter: (struct) => struct.structureType === STRUCTURE_RAMPART }).forEach((rampart) => {
+                        matrix.set(rampart.pos.x, rampart.pos.y, 1);
+                    });
                 }
 
                 if (options.customMatrixCosts) {
