@@ -336,7 +336,7 @@ export class Pathing {
                     if (room.find(FIND_STRUCTURES).some((struct) => struct.structureType === STRUCTURE_KEEPER_LAIR)) {
                         room.find(FIND_HOSTILE_CREEPS, {
                             filter: (creep) =>
-                                creep.owner.username === 'Invader' &&
+                                creep.owner.username === 'Source Keeper' &&
                                 (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0),
                         }).forEach((creep) => {
                             const avoidArea = Pathing.getArea(creep.pos, 3);
