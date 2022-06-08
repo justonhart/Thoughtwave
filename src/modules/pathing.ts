@@ -624,4 +624,15 @@ export class Pathing {
         }
         return destination;
     }
+
+    static positionAtDirection(origin: RoomPosition, direction: DirectionConstant): RoomPosition {
+        const offsetX = [0, 0, 1, 1, 1, 0, -1, -1, -1];
+        const offsetY = [0, -1, -1, 0, 1, 1, 1, 0, -1];
+        const x = origin.x + offsetX[direction];
+        const y = origin.y + offsetY[direction];
+        if (x > 49 || x < 0 || y > 49 || y < 0) {
+            return;
+        }
+        return new RoomPosition(x, y, origin.roomName);
+    }
 }

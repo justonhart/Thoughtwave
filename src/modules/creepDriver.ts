@@ -14,6 +14,8 @@ import { Manager } from '../roles/manager';
 import { Operative } from '../roles/operative';
 import { Colonizer } from '../roles/colonizer';
 import { RampartProtector } from '../roles/rampartProtector';
+import { SquadAttacker } from '../roles/squadAttacker';
+import { SquadHealer } from '../roles/squadHealer';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -67,6 +69,12 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.RAMPART_PROTECTOR:
             waveCreep = new RampartProtector(creep.id);
+            break;
+        case Role.SQUAD_ATTACKER:
+            waveCreep = new SquadAttacker(creep.id);
+            break;
+        case Role.SQUAD_HEALER:
+            waveCreep = new SquadHealer(creep.id);
             break;
         default:
             waveCreep = new WaveCreep(creep.id);

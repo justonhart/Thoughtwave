@@ -41,6 +41,8 @@ interface ScoutMemory {
 
 interface CombatMemory {
     flee?: boolean;
+    squadLeader?: Id<Creep>;
+    squadFollower?: Id<Creep>;
 }
 
 const enum Priority {
@@ -68,4 +70,6 @@ const enum Role {
     RESERVER = 'RESERVER',
     MANAGER = 'MANAGER',
     OPERATIVE = 'OPERATIVE',
+    SQUAD_ATTACKER = 'SQUAD_ATTACKER',
+    SQUAD_HEALER = 'SQUAD_HEALER',
 }
