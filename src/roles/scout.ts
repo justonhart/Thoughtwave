@@ -26,6 +26,7 @@ export class Scout extends WaveCreep {
             const maxRemoteMiningRooms = this.homeroom.controller.level < 7 ? 3 : 6;
             // Set Room memory
             if (
+                Game.shard.name !== 'shard3' &&
                 Object.keys(this.homeroom.memory.remoteAssignments).length < maxRemoteMiningRooms &&
                 !this.room.controller?.owner?.username &&
                 (!this.room.controller?.reservation?.username ||
