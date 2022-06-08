@@ -46,6 +46,7 @@ interface Operation {
     resource?: ResourceConstant;
     expireAt?: number;
     portalLocations?: string[];
+    forcedDestinations?: string[];
 }
 
 interface OperationOpts {
@@ -56,6 +57,7 @@ interface OperationOpts {
     resource?: ResourceConstant;
     expireAt?: number;
     portalLocations?: string[];
+    forcedDestinations?: string[];
 }
 
 interface OriginOpts {
@@ -69,6 +71,7 @@ const enum OperationType {
     COLLECTION,
     SECURE,
     ROOM_RECOVERY,
+    ATTACK,
 }
 
 const enum OperationStage {

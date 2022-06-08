@@ -43,6 +43,7 @@ interface CombatMemory {
     flee?: boolean;
     squadLeader?: Id<Creep>;
     squadFollower?: Id<Creep>;
+    forcedDestinations?: string[];
 }
 
 const enum Priority {

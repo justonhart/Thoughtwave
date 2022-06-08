@@ -4,12 +4,22 @@ import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class SquadAttacker extends CombatCreep {
     protected run() {
-        const squadFollower = Game.getObjectById(this.memory.combat.squadFollower);
+        const squadFollower = this.memory.combat.squadFollower ? Game.getObjectById(this.memory.combat.squadFollower) : undefined;
 
-        if (squadFollower && this.pos.isNearTo(squadFollower)) {
-            if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
-                const enemyStructId = this.combatPath();
-                let range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
+        if (squadFollower) {
+            if (!this.onEdge(this.pos) && !this.pos.isNearTo(squadFollower)) {
+                return; // Wait for follower to get closer
+            }
+            const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
+            if (this.memory.combat.forcedDestinations?.length) {
+                let nextDestination = this.memory.combat.forcedDestinations[0];
+                if (this.pos.toMemSafe() === nextDestination) {
+                    this.memory.combat.forcedDestinations = this.memory.combat.forcedDestinations.slice(1);
+                    nextDestination = this.memory.combat.forcedDestinations[0];
+                }
+                this.travelTo(posFromMem(nextDestination));
+            } else if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
+                const enemyStructId = this.combatPath(range);
                 const targetId = this.findTarget(range, enemyStructId);
 
                 if (targetId) {
@@ -22,10 +32,18 @@ export class SquadAttacker extends CombatCreep {
                 }
             }
         } else {
-            if (this.pos.roomName !== this.memory.assignment) {
-                return; // Wait on new squad leader
+            const newSquadFollower = this.room.creeps.find(
+                (creep) => creep.memory.role === Role.SQUAD_HEALER && creep.memory.assignment === this.memory.assignment
+            );
+            if (newSquadFollower) {
+                this.memory.combat.squadFollower = newSquadFollower.id;
+            } else {
+                if (this.pos.roomName !== this.memory.assignment) {
+                    this.moveOffExit();
+                    return; // Wait on new squad follower
+                }
+                this.flee();
             }
-            this.flee();
         }
     }
 
@@ -35,53 +53,37 @@ export class SquadAttacker extends CombatCreep {
      *
      * @returns nextPosition to travelTo
      */
-    private combatPath(): Id<Structure> {
-        const pathingOptions = { range: 1, ignoreStructures: true };
+    private combatPath(range: number): Id<Structure> {
         if (this.memory._m.path) {
-            const nextDirection = this.memory._m.path.slice(1);
+            const nextDirection = this.memory._m.path[0];
             const nextPosition = Pathing.positionAtDirection(this.pos, parseInt(nextDirection, 10) as DirectionConstant);
             const enemyStructure = this.room.lookForAt(LOOK_STRUCTURES, nextPosition);
             if (enemyStructure.length) {
                 return enemyStructure[0].id; // Do not move before structure is destroyed
             }
-            this.travelTo(posFromMem(this.memory._m.destination), pathingOptions); // continue on same path
-            return;
         }
 
-        const enemyTower = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType === STRUCTURE_TOWER });
-        if (enemyTower) {
-            this.travelTo(enemyTower, pathingOptions);
-            return;
+        let target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType === STRUCTURE_TOWER }) as any;
+        if (!target) {
+            target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType === STRUCTURE_SPAWN });
+        }
+        if (!target) {
+            target = this.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+        }
+        if (!target) {
+            target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
         }
 
-        const enemySpawner = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType === STRUCTURE_SPAWN });
-        if (enemySpawner) {
-            this.travelTo(enemySpawner, pathingOptions);
+        if (target instanceof Creep) {
+            this.travelTo(target, { range: range });
             return;
         }
-
-        // Default ==> Optimize later ==> cleanup of enemy creeps should be updated every tick
-        const enemyCreep = this.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-        if (enemyCreep) {
-            this.travelTo(enemyCreep, pathingOptions);
-            return;
-        }
-
-        const enemyStructure = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
-        if (enemyStructure) {
-            this.travelTo(enemyStructure, pathingOptions);
-            return;
-        }
+        this.travelTo(target, { range: 1, ignoreStructures: true });
     }
 
     /**
-     *
-     * 1. Find direct Path to tower or spawn if there are no towers
-     * 2. Move along path until I hit an obstacle (wall/rampart) and attack it UNLESS enemy creep is in range then prioritize that one without changing the travel path
-     * 3. For duo squad simply make one hole and for quads make two wide hole then continue on path (check if nextDirection of Path is an enemy structure)
-     * 4. Destroy tower/spawn then go for creeps then for everything else (could be prioritized later)
-     *
-     * Check if any enemy creeps are around that are not standing on ramparts. If so prioritize them. Otherwise simply get rid of the structure that is in the way.
+     * Check if any enemy creeps are around that are not standing on ramparts.
+     * If so prioritize them. Otherwise simply get rid of the structure that is in the way.
      *
      * @returns
      */

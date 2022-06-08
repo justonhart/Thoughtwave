@@ -96,4 +96,17 @@ export default function manageFlags() {
         addOperation(OperationType.ROOM_RECOVERY, Game.flags.recover.pos.roomName);
         Game.flags.recover.remove();
     }
+
+    if (Game.flags.attack) {
+        const flagName = 'squadMove';
+        let forcedDestinations = [];
+        let step = 1;
+        while (Game.flags[flagName + step]) {
+            forcedDestinations.push(Game.flags[flagName + step].pos.toMemSafe());
+            Game.flags[flagName + step].remove();
+            step++;
+        }
+        addOperation(OperationType.ATTACK, Game.flags.attack.pos.roomName, { forcedDestinations: forcedDestinations });
+        Game.flags.attack.remove();
+    }
 }

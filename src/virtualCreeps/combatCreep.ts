@@ -58,7 +58,7 @@ export class CombatCreep extends WaveCreep {
     protected attackStructure(target: Structure): CreepActionReturnCode {
         if (this.getActiveBodyparts(ATTACK)) {
             return this.attack(target);
-        } else if (this.getActiveBodyparts(RANGED_ATTACK) && this.pos.getRangeTo(target) > 1) {
+        } else if (this.getActiveBodyparts(RANGED_ATTACK) && (target.structureType === STRUCTURE_WALL || this.pos.getRangeTo(target) > 1)) {
             return this.rangedAttack(target);
         } else {
             return this.rangedMassAttack();
