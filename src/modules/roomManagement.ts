@@ -260,6 +260,7 @@ function runSpawning(room: Room) {
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
     let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length;
+    let assignments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
     let roomContainsViolentHostiles =
         room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0;
 
@@ -272,6 +273,21 @@ function runSpawning(room: Room) {
         room.memory.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
             .map((part) => BODYPART_COST[part])
             .reduce((sum, next) => sum + next);
+    }
+
+    if (roomContainsViolentHostiles) {
+        let protectorAssignments = assignments.filter(
+            (assignment) =>
+                assignment.memoryOptions.destination === room.name &&
+                (assignment.memoryOptions.role === Role.RAMPART_PROTECTOR || assignment.memoryOptions.role === Role.PROTECTOR)
+        );
+        protectorAssignments.forEach((assignment) => {
+            let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
+            if (canSpawnAssignment) {
+                let spawn = availableSpawns.pop();
+                spawn?.spawnAssignedCreep(assignment);
+            }
+        });
     }
 
     if (PopulationManagement.needsTransporter(room) && !roomContainsViolentHostiles) {
@@ -303,9 +319,8 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (workerCount >= room.workerCapacity || roomContainsViolentHostiles) {
-        let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
-        assigments.forEach((assignment) => {
+    if (workerCount >= room.workerCapacity && !roomContainsViolentHostiles) {
+        assignments.forEach((assignment) => {
             let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
             if (canSpawnAssignment) {
                 let spawn = availableSpawns.pop();
