@@ -43,13 +43,13 @@ export class Manager extends WaveCreep {
 
         if (managerLink?.store[RESOURCE_ENERGY]) {
             this.withdraw(managerLink, RESOURCE_ENERGY);
-            this.memory.targetId = this.room.storage.id;
+            this.memory.targetId = storage.id;
             return;
         }
 
         let spawnInNeed = spawns.find((spawn) => spawn.store[RESOURCE_ENERGY] < 300);
         if (spawnInNeed) {
-            this.withdraw(this.room.storage, RESOURCE_ENERGY, 300 - spawnInNeed.store[RESOURCE_ENERGY]);
+            this.withdraw(storage, RESOURCE_ENERGY, 300 - spawnInNeed.store[RESOURCE_ENERGY]);
             this.memory.targetId = spawnInNeed.id;
             return;
         }
@@ -62,18 +62,18 @@ export class Manager extends WaveCreep {
 
         if (this.room.energyStatus < EnergyStatus.RECOVERING && terminal?.store[RESOURCE_ENERGY]) {
             this.withdraw(terminal, RESOURCE_ENERGY);
-            this.memory.targetId = this.room.storage.id;
+            this.memory.targetId = storage.id;
             return;
         }
 
-        if (nuker?.store.G < 5000 && this.room.storage.store.G) {
-            this.withdraw(this.room.storage, RESOURCE_GHODIUM, Math.min(5000 - nuker.store[RESOURCE_GHODIUM], this.store.getFreeCapacity()));
+        if (nuker?.store.G < 5000 && terminal?.store.G) {
+            this.withdraw(terminal, RESOURCE_GHODIUM, Math.min(5000 - nuker.store[RESOURCE_GHODIUM], this.store.getFreeCapacity()));
             this.memory.targetId = nuker.id;
             return;
         }
 
         if (this.room.energyStatus >= EnergyStatus.STABLE && nuker?.store.energy < 300000) {
-            this.withdraw(this.room.storage, RESOURCE_ENERGY, Math.min(300000 - nuker.store[RESOURCE_ENERGY], this.store.getFreeCapacity()));
+            this.withdraw(storage, RESOURCE_ENERGY, Math.min(300000 - nuker.store[RESOURCE_ENERGY], this.store.getFreeCapacity()));
             this.memory.targetId = nuker.id;
             return;
         }
