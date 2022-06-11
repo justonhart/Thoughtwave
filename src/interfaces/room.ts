@@ -8,6 +8,7 @@ interface RoomMemory {
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: { [posString: string]: AssignmentStatus };
+    mineralMiningAssignments: { [posString: string]: AssignmentStatus };
     remoteAssignments: { [roomName: string]: RemoteAssignment };
     reservedEnergy?: number;
     layout?: RoomLayout;

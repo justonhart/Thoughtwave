@@ -1,4 +1,5 @@
 interface StructureSpawn {
+    spawnMineralMiner(): ScreepsReturnCode;
     spawnMiner(): ScreepsReturnCode;
     spawnDistributor(): ScreepsReturnCode;
     spawnRemoteMiner: () => ScreepsReturnCode;

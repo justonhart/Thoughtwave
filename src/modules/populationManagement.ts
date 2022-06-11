@@ -538,4 +538,34 @@ export class PopulationManagement {
         let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 1000);
         return !transporter && !!room.storage && bigDroppedResources.length > 1;
     }
+
+    static needsMineralMiner(room: Room) {
+        if (!room.memory.mineralMiningAssignments) {
+            room.memory.mineralMiningAssignments = {};
+        }
+
+        let mineralMiningAssignments = room.memory.mineralMiningAssignments;
+        return Object.keys(mineralMiningAssignments).some((k) => mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED);
+    }
+
+    static spawnMineralMiner(spawn: StructureSpawn): ScreepsReturnCode {
+        let nextAvailableAssignment = Object.keys(spawn.room.memory.mineralMiningAssignments).find(
+            (k) => spawn.room.memory.mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED
+        );
+
+        let options: SpawnOptions = {
+            memory: {
+                room: spawn.room.name,
+                role: Role.MINERAL_MINER,
+                currentTaskPriority: Priority.HIGH,
+                assignment: nextAvailableAssignment,
+            },
+        };
+
+        let result = spawn.spawnMax([WORK, WORK, MOVE], this.getCreepTag('m', spawn.name), options);
+        if (result === OK) {
+            spawn.room.memory.mineralMiningAssignments[nextAvailableAssignment] = AssignmentStatus.ASSIGNED;
+        }
+        return result;
+    }
 }

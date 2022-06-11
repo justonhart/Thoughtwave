@@ -68,4 +68,5 @@ const enum Role {
     RESERVER = 'RESERVER',
     MANAGER = 'MANAGER',
     OPERATIVE = 'OPERATIVE',
+    MINERAL_MINER = 'MINERAL_MINER',
 }

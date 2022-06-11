@@ -61,6 +61,8 @@ export function driveRoom(room: Room) {
                     if (!roomNeedsCoreStructures(room)) {
                         placeBunkerInnerRamparts(room);
                     }
+                    placeExtractor(room);
+                    placeMineralContainers(room);
                 case 5:
                     placeMinerLinks(room);
                 case 4:
@@ -194,12 +196,16 @@ export function initRoom(room: Room) {
         repairSearchCooldown: 0,
         repairQueue: [],
         miningAssignments: {},
+        mineralMiningAssignments: {},
         remoteAssignments: {},
     };
 
     miningPostitions.forEach((pos) => {
         room.memory.miningAssignments[pos.toMemSafe()] = AssignmentStatus.UNASSIGNED;
     });
+
+    let mineralMiningPosition = findMineralMiningPosition(room);
+    room.memory.mineralMiningAssignments[mineralMiningPosition.toMemSafe()] = AssignmentStatus.UNASSIGNED;
 
     //calculate room layout here
     let anchorPoint = findBunkerLocation(room);
@@ -235,6 +241,21 @@ function findMiningPostitions(room: Room) {
     }
 
     return undefined;
+}
+
+function findMineralMiningPosition(room: Room): RoomPosition {
+    let possiblePositions = room
+        .lookForAtArea(LOOK_TERRAIN, room.mineral.pos.y - 1, room.mineral.pos.x - 1, room.mineral.pos.y + 1, room.mineral.pos.x + 1, true)
+        .filter((terrain) => terrain.terrain != 'wall')
+        .map((terrain) => new RoomPosition(terrain.x, terrain.y, room.mineral.room.name));
+
+    //set closest position to storage as container position
+    let anchorPoint = posFromMem(room.memory.anchorPoint);
+    let referencePos = anchorPoint ? new RoomPosition(anchorPoint.x + 1, anchorPoint.y - 1, room.name) : room.controller.pos;
+    let candidate = referencePos.findClosestByPath(possiblePositions, { ignoreCreeps: true });
+    if (candidate) {
+        return candidate;
+    }
 }
 
 function runSpawning(room: Room) {
@@ -317,6 +338,11 @@ function runSpawning(room: Room) {
             let spawn = availableSpawns.pop();
             spawn?.spawnManager();
         }
+    }
+
+    if (PopulationManagement.needsMineralMiner(room)) {
+        let spawn = availableSpawns.pop();
+        spawn?.spawnMineralMiner();
     }
 
     if (workerCount >= room.workerCapacity && !roomContainsViolentHostiles) {
@@ -411,15 +437,38 @@ function runGates(room: Room): void {
 
     room.memory.gates = gates;
 }
+
 function placeMiningPositionContainers(room: Room) {
     let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos));
     miningPositions.forEach((pos) => {
         room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
     });
 }
+
 function placeMiningRamparts(room: Room) {
     let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos));
     miningPositions.forEach((pos) => {
         room.createConstructionSite(pos.x, pos.y, STRUCTURE_RAMPART);
     });
+}
+
+function placeMineralContainers(room: Room) {
+    if (!room.memory.mineralMiningAssignments) {
+        room.memory.mineralMiningAssignments = {};
+        let mineralMiningPos = findMineralMiningPosition(room);
+        room.memory.mineralMiningAssignments[mineralMiningPos.toMemSafe()] = AssignmentStatus.UNASSIGNED;
+    }
+
+    let miningPositions = Object.keys(room.memory.mineralMiningAssignments).map((pos) => posFromMem(pos));
+    miningPositions.forEach((pos) => {
+        Game.rooms[pos.roomName]?.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
+    });
+}
+
+function placeExtractor(room: Room) {
+    let extractor = room.find(FIND_STRUCTURES).find((struct) => struct.structureType === STRUCTURE_EXTRACTOR);
+    if (!extractor) {
+        let mineralPos = room.mineral.pos;
+        room.createConstructionSite(mineralPos, STRUCTURE_EXTRACTOR);
+    }
 }
