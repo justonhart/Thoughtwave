@@ -31,7 +31,7 @@ export function manageEmpireResources() {
                             )}`
                         );
                     }
-                } else if (roomsInProgress.length) {
+                } else if (roomsInProgress.length && hasTooMuchEnergy(room)) {
                     let recipientName = findClosestRecipient(room, roomsInProgress);
                     let amountToSend = calculateAmountToSend(room.name, recipientName);
                     let result = room.terminal.send(RESOURCE_ENERGY, amountToSend, recipientName);
