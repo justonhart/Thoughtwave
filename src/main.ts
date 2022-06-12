@@ -2,6 +2,7 @@ import driveCreep from './modules/creepDriver';
 import { manageEmpire } from './modules/empireManagement';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
+import { manageEmpireResources } from './modules/resourceManagement';
 import { driveRoom } from './modules/roomManagement';
 import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
@@ -44,6 +45,12 @@ module.exports.loop = function () {
             }
         }
     });
+
+    try {
+        manageEmpireResources();
+    } catch (e) {
+        console.log(`Error caught in resource management: \n${e}`);
+    }
 
     // Run PriorityQueue
     WaveCreep.getCreepsWithPriorityTask().forEach((creepName) => {

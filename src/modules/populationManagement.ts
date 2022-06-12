@@ -545,7 +545,11 @@ export class PopulationManagement {
         }
 
         let mineralMiningAssignments = room.memory.mineralMiningAssignments;
-        return Object.keys(mineralMiningAssignments).some((k) => mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED);
+        return Object.keys(mineralMiningAssignments).some(
+            (k) =>
+                mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED &&
+                (Game.rooms[posFromMem(k)?.roomName] ? Game.rooms[posFromMem(k)?.roomName].mineral.mineralAmount > 0 : true)
+        );
     }
 
     static spawnMineralMiner(spawn: StructureSpawn): ScreepsReturnCode {

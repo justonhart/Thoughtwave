@@ -41,14 +41,14 @@ export class Manager extends WaveCreep {
 
         let storage = this.room.storage;
 
-        if (managerLink?.store[RESOURCE_ENERGY]) {
+        if (managerLink?.store[RESOURCE_ENERGY] && storage.store.getFreeCapacity()) {
             this.withdraw(managerLink, RESOURCE_ENERGY);
             this.memory.targetId = storage.id;
             return;
         }
 
         let spawnInNeed = spawns.find((spawn) => spawn.store[RESOURCE_ENERGY] < 300);
-        if (spawnInNeed) {
+        if (spawnInNeed && storage.store.energy) {
             this.withdraw(storage, RESOURCE_ENERGY, 300 - spawnInNeed.store[RESOURCE_ENERGY]);
             this.memory.targetId = spawnInNeed.id;
             return;
@@ -60,8 +60,8 @@ export class Manager extends WaveCreep {
             return;
         }
 
-        if (this.room.energyStatus < EnergyStatus.RECOVERING && terminal?.store[RESOURCE_ENERGY]) {
-            this.withdraw(terminal, RESOURCE_ENERGY);
+        if (terminal?.store[RESOURCE_ENERGY] > 50000 || (this.room.energyStatus < EnergyStatus.STABLE && terminal?.store.energy)) {
+            this.withdraw(terminal, RESOURCE_ENERGY, Math.min(terminal?.store[RESOURCE_ENERGY] - 50000, this.store.getFreeCapacity()));
             this.memory.targetId = storage.id;
             return;
         }
@@ -76,6 +76,14 @@ export class Manager extends WaveCreep {
             this.withdraw(storage, RESOURCE_ENERGY, Math.min(300000 - nuker.store[RESOURCE_ENERGY], this.store.getFreeCapacity()));
             this.memory.targetId = nuker.id;
             return;
+        }
+
+        if (terminal?.store.getFreeCapacity() && storage.store.energy < storage.store.getUsedCapacity()) {
+            let resourceToWithdraw = Object.keys(storage.store)
+                .filter((res) => res !== RESOURCE_ENERGY && terminal.store[res] < 5000)
+                .shift();
+            this.withdraw(storage, resourceToWithdraw as ResourceConstant);
+            this.memory.targetId = terminal.id;
         }
     }
 }
