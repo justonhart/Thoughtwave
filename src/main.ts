@@ -57,7 +57,7 @@ module.exports.loop = function () {
         Game.creeps[creepName].runPriorityQueueTask();
     });
 
-    if (Game.cpu.bucket === 10000) {
+    if (Game.shard.name !== 'shard3' && Game.cpu.bucket === 10000) {
         Game.cpu.generatePixel();
     }
 };
