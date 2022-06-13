@@ -454,7 +454,7 @@ function placeMiningRamparts(room: Room) {
 }
 
 function placeMineralContainers(room: Room) {
-    if (!room.memory.mineralMiningAssignments) {
+    if (!room.memory.mineralMiningAssignments || !Object.keys(room.memory.mineralMiningAssignments).length) {
         room.memory.mineralMiningAssignments = {};
         let mineralMiningPos = findMineralMiningPosition(room);
         room.memory.mineralMiningAssignments[mineralMiningPos.toMemSafe()] = AssignmentStatus.UNASSIGNED;
