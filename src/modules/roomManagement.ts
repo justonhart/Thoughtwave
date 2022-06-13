@@ -283,7 +283,8 @@ function runSpawning(room: Room) {
     let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length;
     let assignments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
     let roomContainsViolentHostiles =
-        room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0;
+        room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0 &&
+        !room.controller.safeMode;
 
     if (distributor === undefined) {
         let spawn = availableSpawns.pop();

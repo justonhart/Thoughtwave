@@ -548,7 +548,12 @@ export class PopulationManagement {
         return Object.keys(mineralMiningAssignments).some(
             (k) =>
                 mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED &&
-                (Game.rooms[posFromMem(k)?.roomName] ? Game.rooms[posFromMem(k)?.roomName].mineral.mineralAmount > 0 : true)
+                (Game.rooms[posFromMem(k)?.roomName]
+                    ? posFromMem(k)
+                          .findInRange(FIND_STRUCTURES, 1)
+                          .filter((struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.isActive()).length &&
+                      Game.rooms[posFromMem(k)?.roomName].mineral.mineralAmount > 0
+                    : true)
         );
     }
 
