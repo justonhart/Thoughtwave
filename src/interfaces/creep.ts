@@ -15,6 +15,7 @@ interface CreepMemory {
     _m?: TravelState;
     scout?: ScoutMemory;
     combat?: CombatMemory;
+    nextRole?: Role;
 }
 
 interface Creep {
@@ -69,4 +70,5 @@ const enum Role {
     MANAGER = 'MANAGER',
     OPERATIVE = 'OPERATIVE',
     MINERAL_MINER = 'MINERAL_MINER',
+    INTERSHARD_TRAVELLER = 'INTERSHARD_TRAVELLER',
 }

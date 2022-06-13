@@ -15,6 +15,7 @@ import { Operative } from '../roles/operative';
 import { Colonizer } from '../roles/colonizer';
 import { RampartProtector } from '../roles/rampartProtector';
 import { MineralMiner } from '../roles/mineralMiner';
+import { IntershardTraveler } from '../roles/intershardTraveller';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -71,6 +72,9 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.MINERAL_MINER:
             waveCreep = new MineralMiner(creep.id);
+            break;
+        case Role.INTERSHARD_TRAVELLER:
+            waveCreep = new IntershardTraveler(creep.id);
             break;
         default:
             waveCreep = new WaveCreep(creep.id);

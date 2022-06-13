@@ -5,13 +5,22 @@ export class WaveCreep extends Creep {
 
     public drive() {
         if (this.memory.portalLocations?.[0]) {
-            let portal = posFromMem(this.memory.portalLocations[0]);
+            let portalPos = posFromMem(this.memory.portalLocations[0]);
 
-            if (!this.pos.isNearTo(portal)) {
-                this.travelTo(portal);
+            if (!this.pos.isNearTo(portalPos)) {
+                this.travelTo(portalPos);
             } else {
-                this.moveTo(portal);
-                this.memory.portalLocations.shift();
+                let portalStructure: StructurePortal = portalPos
+                    .lookFor(LOOK_STRUCTURES)
+                    .find((struct) => struct.structureType === STRUCTURE_PORTAL) as StructurePortal;
+
+                this.memory.portalLocations = this.memory.portalLocations.filter((pos) => pos !== this.memory.portalLocations[0]);
+
+                if (portalStructure.destination instanceof RoomPosition) {
+                    this.moveTo(portalPos);
+                } else {
+                    this.enterInterShardPortal(portalStructure);
+                }
             }
         } else {
             this.run();
