@@ -12,7 +12,12 @@ export class TransportCreep extends WaveCreep {
             this.runPickupJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer) {
             this.runCollectionJob(target);
-        } else if (target instanceof StructureSpawn || target instanceof StructureExtension || target instanceof StructureTower) {
+        } else if (
+            target instanceof StructureSpawn ||
+            target instanceof StructureExtension ||
+            target instanceof StructureTower ||
+            target instanceof StructureLab
+        ) {
             if (this.store.energy) {
                 this.runRefillJob(target);
             } else {
@@ -60,6 +65,15 @@ export class TransportCreep extends WaveCreep {
             .filter((structure) => structure.structureType === STRUCTURE_TOWER && structure.store[RESOURCE_ENERGY] < 700);
         if (towers.length) {
             return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
+        }
+
+        let labs = this.homeroom
+            .find(FIND_MY_STRUCTURES)
+            .filter(
+                (structure) => structure.structureType === STRUCTURE_LAB && structure.store.energy < structure.store.getCapacity(RESOURCE_ENERGY)
+            );
+        if (labs.length) {
+            return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
         }
     }
 

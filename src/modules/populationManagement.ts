@@ -83,7 +83,6 @@ export class PopulationManagement {
                 case EnergyStatus.RECOVERING:
                     creepCapacity = Math.ceil(creepCapacity / 2);
                     break;
-                default:
                 case EnergyStatus.STABLE:
                     break;
                 case EnergyStatus.SURPLUS:
@@ -92,6 +91,19 @@ export class PopulationManagement {
                 case EnergyStatus.OVERFLOW:
                     creepCapacity *= 4;
                     break;
+                //room has no storage
+                default:
+                    let hasStartupEnergy =
+                        room
+                            .find(FIND_STRUCTURES)
+                            .filter(
+                                (struct) =>
+                                    (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) &&
+                                    struct.store.energy > 200000
+                            ).length > 0;
+                    if (hasStartupEnergy) {
+                        creepCapacity *= 4;
+                    }
             }
         }
 

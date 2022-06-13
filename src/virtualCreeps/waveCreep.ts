@@ -31,7 +31,7 @@ export class WaveCreep extends Creep {
         this.say(`Running ${this.name}`);
     }
 
-    protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage) {
+    protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage | StructureLab) {
         this.memory.currentTaskPriority = Priority.MEDIUM;
         if (target.store.getFreeCapacity(RESOURCE_ENERGY)) {
             switch (this.transfer(target, RESOURCE_ENERGY)) {
