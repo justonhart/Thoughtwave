@@ -6,9 +6,12 @@ export class TransportCreep extends WaveCreep {
         if (!target) {
             this.memory.targetId = this.findTarget();
             target = Game.getObjectById(this.memory.targetId);
+            delete this.memory.preparingLabs;
         }
 
-        if (target instanceof Resource) {
+        if (this.memory.preparingLabs) {
+            this.prepareLabs();
+        } else if (target instanceof Resource) {
             this.runPickupJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer) {
             this.runCollectionJob(target);
@@ -150,6 +153,36 @@ export class TransportCreep extends WaveCreep {
             case 0:
             case ERR_FULL:
                 this.onTaskFinished();
+        }
+    }
+
+    protected prepareLabs() {
+        let preparingTaskIndex = this.room.memory.labTasks.findIndex((task) => task.primaryLab === this.memory.targetId);
+        if (preparingTaskIndex > -1) {
+            let task = this.room.memory.labTasks[preparingTaskIndex];
+
+            switch (task.type) {
+                case LabTaskType.BOOST:
+                    let primaryLab = Game.getObjectById(task.primaryLab);
+
+                    let labHasAllResources = task.reagentsNeeded
+                        .map((need) => primaryLab.store[need.resource] >= need.amount)
+                        .reduce((allNeedsFulfilled, next) => allNeedsFulfilled && next);
+
+                    if (labHasAllResources) {
+                        task.status = TaskStatus.COMPLETE;
+                    } else {
+                        // identify next needed resource AND amount, and get resource if available
+                        //let need = task.reagentsNeeded.
+                    }
+
+                    break;
+            }
+
+            this.room.memory.labTasks[preparingTaskIndex] = task;
+        } else {
+            delete this.memory.targetId;
+            delete this.memory.preparingLabs;
         }
     }
 }

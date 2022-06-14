@@ -12,6 +12,7 @@ interface RoomMemory {
     remoteAssignments: { [roomName: string]: RemoteAssignment };
     reservedEnergy?: number;
     layout?: RoomLayout;
+    labTasks?: LabTask[];
 }
 
 interface RemoteAssignment {

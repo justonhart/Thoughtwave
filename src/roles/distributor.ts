@@ -12,6 +12,11 @@ export class Distributor extends TransportCreep {
             target = this.findRefillTarget();
         }
 
+        // if(this.room.memory.labTasks.some(task => task.status === TaskStatus.PREPARING)){
+        //     let labTask = this.room.memory.labTasks.find(task => task.status === TaskStatus.PREPARING);
+        //     target = labTask.primaryLab;
+        // }
+
         if (!target && this.store.getUsedCapacity() < this.store.getCapacity() / 2) {
             target = this.findCollectionTarget();
         }

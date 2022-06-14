@@ -1,3 +1,4 @@
+import { runLabs } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 import { driveRemoteRoom } from './remoteRoomManagement';
@@ -107,6 +108,8 @@ export function driveRoom(room: Room) {
         }
 
         runSpawning(room);
+
+        runLabs(room);
 
         delete room.memory.reservedEnergy;
     }
