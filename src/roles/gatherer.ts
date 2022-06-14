@@ -10,7 +10,8 @@ export class Gatherer extends TransportCreep {
 
         let target: any = Game.getObjectById(this.memory.targetId);
         if (!target) {
-            if (this.travelToRoom(this.memory.assignment) == IN_ROOM) {
+            const targetRoom = Game.rooms[this.memory.assignment];
+            if (targetRoom || this.travelToRoom(this.memory.assignment) == IN_ROOM) {
                 // travel to room before finding a target
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
