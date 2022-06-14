@@ -12,11 +12,11 @@ export class Gatherer extends TransportCreep {
         if (!target) {
             const targetRoom = Game.rooms[this.memory.assignment];
             if (targetRoom || this.travelToRoom(this.memory.assignment) == IN_ROOM) {
-                // travel to room before finding a target
+                // Find target is visibility exists
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
-                this.checkConstructionProgress();
-                this.checkEnergyStatus();
+                this.checkConstructionProgress(targetRoom);
+                this.checkEnergyStatus(targetRoom);
             }
         }
 
@@ -36,25 +36,29 @@ export class Gatherer extends TransportCreep {
         }
     }
 
-    private checkConstructionProgress() {
-        const constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
-        if (constructionSites.length > 4) {
-            Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].needsConstruction = true;
-        } else {
-            Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].needsConstruction = false;
+    private checkConstructionProgress(targetRoom: Room) {
+        if (targetRoom) {
+            const constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
+            if (constructionSites.length > 4) {
+                Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].needsConstruction = true;
+            } else {
+                Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].needsConstruction = false;
+            }
         }
     }
 
-    private checkEnergyStatus() {
-        let looseResources = this.room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
-        if (looseResources.length) {
-            const amount = looseResources.reduce((total, resource) => total + resource.amount, 0);
-            if (amount > 3000) {
-                Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].energyStatus = EnergyStatus.SURPLUS;
-                return;
+    private checkEnergyStatus(targetRoom: Room) {
+        if (targetRoom) {
+            let looseResources = this.room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
+            if (looseResources.length) {
+                const amount = looseResources.reduce((total, resource) => total + resource.amount, 0);
+                if (amount > 3000) {
+                    Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].energyStatus = EnergyStatus.SURPLUS;
+                    return;
+                }
             }
+            Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].energyStatus = EnergyStatus.STABLE;
         }
-        Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].energyStatus = EnergyStatus.STABLE;
     }
 
     protected findTarget() {
