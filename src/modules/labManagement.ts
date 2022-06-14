@@ -3,35 +3,36 @@ export function runLabs(room: Room) {
         room.memory.labTasks = [];
     }
 
-    room.memory.labTasks = room.memory.labTasks.filter((t) => t.status !== TaskStatus.COMPLETE);
+    // room.memory.labTasks.forEach(task => {
+    //     if(task.status === TaskStatus.PREPARING){
+    //         switch(task.type){
 
-    let tasksWithIndex: { task: LabTask; index: number }[] = room.memory.labTasks.map((task, index) => {
-        return { task, index };
-    });
+    //         }
+    //     }
+    // });
 
-    let runningTasks = tasksWithIndex.filter((entry) => entry.task.status !== TaskStatus.QUEUED);
-    let activeTasks = runningTasks.filter((entry) => entry.task.status === TaskStatus.ACTIVE);
+    room.labs.forEach((lab) => {
+        if (lab.status === LabStatus.IN_USE_PRIMARY) {
+            let task = lab.room.memory.labTasks[lab.taskIndex];
 
-    activeTasks.forEach((entry) => {
-        let updatedTask: LabTask;
+            if (task?.status === TaskStatus.ACTIVE) {
+                switch (task.type) {
+                    case LabTaskType.REACT:
+                        task = runReactTask(task);
+                        break;
+                    case LabTaskType.REVERSE:
+                        task = runReverseTask(task);
+                        break;
+                    case LabTaskType.BOOST:
+                        task = runBoostTask(task);
+                        break;
+                    case LabTaskType.UNBOOST:
+                        task = runUnboostTask(task);
+                        break;
+                }
 
-        switch (entry.task.type) {
-            case LabTaskType.REACT:
-                updatedTask = runReactTask(entry.task);
-                break;
-            case LabTaskType.REVERSE:
-                updatedTask = runReverseTask(entry.task);
-                break;
-            case LabTaskType.BOOST:
-                updatedTask = runBoostTask(entry.task);
-                break;
-            case LabTaskType.UNBOOST:
-                updatedTask = runUnboostTask(entry.task);
-                break;
-        }
-
-        if (updatedTask) {
-            room.memory.labTasks[entry.index] = updatedTask;
+                room.memory.labTasks[this.taskIndex] = task;
+            }
         }
     });
 }
@@ -40,7 +41,7 @@ function runReactTask(task: LabTask): LabTask {
     let primaryLab = Game.getObjectById(task.primaryLab);
     let auxillaryLabs = task.auxillaryLabs.map((id) => Game.getObjectById(id));
 
-    let targetCycles = task.reagentsNeeded[0].amount / 5;
+    let targetCycles = task.labNeeds[0].amount / 5;
 
     if (task.cyclesCompleted < targetCycles) {
         let result = primaryLab.runReaction(auxillaryLabs[0], auxillaryLabs[1]);
@@ -58,7 +59,7 @@ function runReverseTask(task: LabTask): LabTask {
     let primaryLab = Game.getObjectById(task.primaryLab);
     let auxillaryLabs = task.auxillaryLabs.map((id) => Game.getObjectById(id));
 
-    let targetCycles = task.reagentsNeeded[0].amount / 5;
+    let targetCycles = task.labNeeds[0].amount / 5;
 
     if (task.cyclesCompleted < targetCycles) {
         let result = primaryLab.reverseReaction(auxillaryLabs[0], auxillaryLabs[1]);

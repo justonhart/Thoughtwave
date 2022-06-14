@@ -81,3 +81,11 @@ Object.defineProperty(Room.prototype, 'workerCapacity', {
     enumerable: false,
     configurable: true,
 });
+
+Object.defineProperty(Room.prototype, 'labs', {
+    get: function (this: Room) {
+        return this.find(FIND_MY_STRUCTURES).filter((s) => s.structureType === STRUCTURE_LAB && s.isActive());
+    },
+    enumerable: false,
+    configurable: true,
+});

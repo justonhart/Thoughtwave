@@ -1,4 +1,5 @@
 interface RoomMemory {
+    labRequests?: LabNeed[];
     energyDistance?: number;
     controllerDistance?: number;
     unclaim?: boolean;
@@ -34,6 +35,7 @@ interface Room {
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
     workerCapacity: number;
+    labs: StructureLab[];
 }
 
 interface RoomPosition {

@@ -1,4 +1,5 @@
 interface CreepMemory {
+    resourceSource?: Id<Structure>;
     preparingLabs?: boolean;
     portalLocations?: string[];
     link?: Id<StructureLink>;

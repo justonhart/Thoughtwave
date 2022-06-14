@@ -63,38 +63,6 @@ interface OriginOpts {
     maxLinearDistance?: number;
 }
 
-interface LabTask {
-    primaryLab: Id<StructureLab>;
-    auxillaryLabs?: Id<StructureLab>[];
-    type: LabTaskType;
-    status: TaskStatus;
-    reagentsNeeded?: [{ resource: ResourceConstant; amount: number }];
-    cyclesCompleted?: number;
-    targetCreep?: Id<Creep>;
-}
-
-interface LabTaskOpts {
-    type: LabTaskType;
-    reagentsNeeded: [{ resource: ResourceConstant; amount: number }];
-    targetCreep?: Id<Creep>;
-}
-
-const enum LabTaskType {
-    REACT = 1,
-    REVERSE,
-    BOOST,
-    UNBOOST,
-}
-
-const enum TaskStatus {
-    QUEUED = 1,
-    PREPARING,
-    WAITING,
-    ACTIVE,
-    CLEANUP,
-    COMPLETE,
-}
-
 const enum OperationType {
     COLONIZE = 1,
     STERILIZE,

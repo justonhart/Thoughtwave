@@ -6,11 +6,10 @@ export class TransportCreep extends WaveCreep {
         if (!target) {
             this.memory.targetId = this.findTarget();
             target = Game.getObjectById(this.memory.targetId);
-            delete this.memory.preparingLabs;
         }
 
         if (this.memory.preparingLabs) {
-            this.prepareLabs();
+            //this.prepareLabs();
         } else if (target instanceof Resource) {
             this.runPickupJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer) {
@@ -156,33 +155,88 @@ export class TransportCreep extends WaveCreep {
         }
     }
 
-    protected prepareLabs() {
-        let preparingTaskIndex = this.room.memory.labTasks.findIndex((task) => task.primaryLab === this.memory.targetId);
-        if (preparingTaskIndex > -1) {
-            let task = this.room.memory.labTasks[preparingTaskIndex];
+    // protected prepareLabs() {
 
-            switch (task.type) {
-                case LabTaskType.BOOST:
-                    let primaryLab = Game.getObjectById(task.primaryLab);
+    //     let preparingTaskIndex = this.room.memory.labTasks.findIndex((task) => task.primaryLab === this.memory.targetId);
+    //     if (preparingTaskIndex > -1) {
+    //         let task = this.room.memory.labTasks[preparingTaskIndex];
 
-                    let labHasAllResources = task.reagentsNeeded
-                        .map((need) => primaryLab.store[need.resource] >= need.amount)
-                        .reduce((allNeedsFulfilled, next) => allNeedsFulfilled && next);
+    //         switch (task.type) {
+    //             case LabTaskType.BOOST:
+    //                 let primaryLab = Game.getObjectById(task.primaryLab);
 
-                    if (labHasAllResources) {
-                        task.status = TaskStatus.COMPLETE;
-                    } else {
-                        // identify next needed resource AND amount, and get resource if available
-                        //let need = task.reagentsNeeded.
-                    }
+    //                 let labHasAllResources = task.reagentsNeeded
+    //                     .map((need) => primaryLab.store[need.resource] >= need.amount)
+    //                     .reduce((allNeedsFulfilled, next) => allNeedsFulfilled && next);
 
-                    break;
-            }
+    //                 if (labHasAllResources) {
+    //                     task.status = TaskStatus.WAITING;
+    //                     this.clearLabTaskMemoryValues();
+    //                 } else {
 
-            this.room.memory.labTasks[preparingTaskIndex] = task;
-        } else {
-            delete this.memory.targetId;
-            delete this.memory.preparingLabs;
-        }
+    //                     // identify next needed resource AND amount, and get resource if available
+    //                     let resourceNeeded = task.reagentsNeeded[0].resource;
+    //                     let amountNeeded = task.reagentsNeeded[0].amount - primaryLab.store[resourceNeeded];
+    //                     console.log(`${amountNeeded} ${resourceNeeded} needed`)
+    //                     if(!this.memory.resourceSource){
+    //                         let resourceSource = this.room.storage?.store[resourceNeeded] ?
+    //                             this.room.storage.id :
+    //                             this.room.terminal?.store[resourceNeeded] ?
+    //                                 this.room.terminal.id :
+    //                                 undefined;
+
+    //                         if(resourceSource){
+    //                             this.memory.resourceSource = resourceSource;
+    //                         } else {
+    //                             //if no source found, room doesn't have necessary resouces - we shouldn't be creaing jobs we don't have the resources for
+    //                             task.status = TaskStatus.CLEANUP;
+    //                             this.clearLabTaskMemoryValues();
+    //                         }
+    //                     }
+
+    //                     let resourceSource = Game.getObjectById(this.memory.resourceSource);
+    //                     if(this.store[resourceNeeded] >= amountNeeded){
+    //                         if(!this.pos.isNearTo(primaryLab)){
+    //                             this.travelTo(primaryLab);
+    //                         } else {
+    //                             let result = this.transfer(primaryLab, resourceNeeded, amountNeeded);
+    //                             if(result === OK){
+
+    //                                 if(this.store[resourceNeeded] + primaryLab.store[resourceNeeded] === amountNeeded){
+    //                                     delete this.memory.resourceSource;
+
+    //                                     //doublecheck resources to see if any more are needed
+    //                                     labHasAllResources = task.reagentsNeeded.filter(entry => entry.resource !== resourceNeeded)
+    //                                         .map((need) => primaryLab.store[need.resource] >= need.amount)
+    //                                         .reduce((allNeedsFulfilled, next) => allNeedsFulfilled && next);
+
+    //                                     if(labHasAllResources){
+    //                                         task.status = TaskStatus.WAITING;
+    //                                         this.clearLabTaskMemoryValues();
+    //                                     }
+    //                                 }
+    //                             }
+    //                         }
+    //                     } else {
+    //                         if(!this.pos.isNearTo(resourceSource)){
+    //                             this.travelTo(resourceSource);
+    //                         } else {
+    //                             this.withdraw(resourceSource, resourceNeeded, amountNeeded);
+    //                         }
+    //                     }
+    //                 }
+
+    //                 break;
+    //         }
+
+    //         this.room.memory.labTasks[preparingTaskIndex] = task;
+    //     } else {
+    //         this.clearLabTaskMemoryValues();
+    //     }
+    // }
+
+    private clearLabTaskMemoryValues() {
+        delete this.memory.preparingLabs;
+        delete this.memory.targetId;
     }
 }
