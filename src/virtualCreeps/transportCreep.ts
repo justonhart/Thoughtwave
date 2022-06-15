@@ -182,11 +182,12 @@ export class TransportCreep extends WaveCreep {
                 }
             } else {
                 if (!this.memory.resourceSource) {
-                    this.memory.resourceSource = this.room.storage?.store[request.resource]
-                        ? this.room.storage.id
-                        : this.room.terminal?.store[request.resource]
-                        ? this.room.terminal.id
-                        : undefined;
+                    this.memory.resourceSource =
+                        this.room.storage?.store[request.resource] >= request.amount
+                            ? this.room.storage.id
+                            : this.room.terminal?.store[request.resource] >= request.amount
+                            ? this.room.terminal.id
+                            : undefined;
                 }
 
                 let source = Game.getObjectById(this.memory.resourceSource);
@@ -196,6 +197,8 @@ export class TransportCreep extends WaveCreep {
                     } else {
                         this.withdraw(source, request.resource, request.amount);
                     }
+                } else {
+                    //there is no source w/ enough requested resource
                 }
             }
         } else {

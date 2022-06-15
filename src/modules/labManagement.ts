@@ -94,7 +94,7 @@ function runBoostTask(task: LabTask): LabTask {
     let primaryLab = Game.getObjectById(task.primaryLab);
     let targetCreep = Game.getObjectById(task.targetCreep);
 
-    if (targetCreep.pos.isNearTo(primaryLab)) {
+    if (targetCreep?.pos.isNearTo(primaryLab)) {
         let result = primaryLab.boostCreep(targetCreep);
         if (result === OK) {
             task.status = TaskStatus.COMPLETE;
@@ -108,7 +108,7 @@ function runUnboostTask(task: LabTask): LabTask {
     let primaryLab = Game.getObjectById(task.primaryLab);
     let targetCreep = Game.getObjectById(task.targetCreep);
 
-    if (targetCreep.pos.isNearTo(primaryLab)) {
+    if (targetCreep?.pos.isNearTo(primaryLab)) {
         let result = primaryLab.unboostCreep(targetCreep);
         if (result === OK) {
             task.status = TaskStatus.COMPLETE;
@@ -125,10 +125,29 @@ export function findLabs(room: Room, auxillaryLabsNeeded: boolean = false): Id<S
         return undefined;
     }
 
-    if (auxillaryLabsNeeded) {
+    let primaryLab;
+    let auxLabs: StructureLab[] = [];
+
+    if (!auxillaryLabsNeeded) {
+        primaryLab = availableLabs.pop();
     } else {
-        return [availableLabs.pop()?.id];
+        let suitablePrimaryLab = availableLabs.find((lab, index) => {
+            let adjacentAvailableLabs = availableLabs.filter((auxLab, auxIndex) => auxIndex !== index && lab.pos.getRangeTo(auxLab) <= 2);
+            return adjacentAvailableLabs.length >= 2;
+        });
+
+        if (suitablePrimaryLab) {
+            primaryLab = suitablePrimaryLab;
+            let availableAuxLabs = availableLabs.filter((auxLab) => auxLab.id !== primaryLab.id && primaryLab.pos.getRangeTo(auxLab) <= 2);
+            while (auxLabs.length < 2) {
+                auxLabs.push(availableAuxLabs.shift());
+            }
+        } else {
+            return undefined;
+        }
     }
+
+    return [primaryLab, ...auxLabs].map((lab) => lab.id);
 }
 
 export function addLabTask(room: Room, opts: LabTaskOpts) {
@@ -146,9 +165,10 @@ function attemptToStartTask(room: Room, task: LabTask): LabTask {
     if (labs) {
         task.primaryLab = labs.shift();
         if (auxNeeded) {
+            task.auxillaryLabs = labs;
             if (task.type === LabTaskType.REACT) {
-                task.reagentsNeeded.forEach((need) => {
-                    need.lab = labs.shift();
+                task.reagentsNeeded.forEach((need, index) => {
+                    need.lab = task.auxillaryLabs[index];
                 });
             } else {
                 task.reagentsNeeded[0].lab = task.primaryLab;
