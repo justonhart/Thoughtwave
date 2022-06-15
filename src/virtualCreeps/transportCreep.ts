@@ -195,7 +195,7 @@ export class TransportCreep extends WaveCreep {
                     if (!this.pos.isNearTo(source)) {
                         this.travelTo(source);
                     } else {
-                        this.withdraw(source, request.resource, request.amount);
+                        this.withdraw(source, request.resource, Math.min(request.amount, this.store.getFreeCapacity()));
                     }
                 } else {
                     //there is no source w/ enough requested resource

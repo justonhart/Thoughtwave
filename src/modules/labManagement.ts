@@ -150,13 +150,23 @@ export function findLabs(room: Room, auxillaryLabsNeeded: boolean = false): Id<S
     return [primaryLab, ...auxLabs].map((lab) => lab.id);
 }
 
-export function addLabTask(room: Room, opts: LabTaskOpts) {
-    let task: LabTask = {
-        status: TaskStatus.QUEUED,
-        ...opts,
-    };
+export function addLabTask(room: Room, opts: LabTaskOpts): ScreepsReturnCode {
+    //check room for necessary resources
+    let roomHasAllResources = opts.reagentsNeeded
+        .map((need) => roomHasNeededResource(room, need))
+        .reduce((hasNeeded, nextNeed) => hasNeeded && nextNeed);
 
-    room.memory.labTasks.push(task);
+    if (roomHasAllResources) {
+        let task: LabTask = {
+            status: TaskStatus.QUEUED,
+            ...opts,
+        };
+
+        room.memory.labTasks.push(task);
+        return OK;
+    }
+
+    return ERR_NOT_ENOUGH_RESOURCES;
 }
 
 function attemptToStartTask(room: Room, task: LabTask): LabTask {
@@ -190,4 +200,8 @@ function attemptToStartTask(room: Room, task: LabTask): LabTask {
     }
 
     return undefined;
+}
+
+function roomHasNeededResource(room: Room, need: LabNeed) {
+    return room.storage?.store[need.resource] >= need.amount ? true : room.terminal?.store[need.resource] >= need.amount ? true : false;
 }

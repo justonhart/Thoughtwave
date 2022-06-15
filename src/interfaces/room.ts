@@ -36,6 +36,7 @@ interface Room {
     canSpawn(): boolean;
     workerCapacity: number;
     labs: StructureLab[];
+    addLabTask(opts: LabTaskOpts): ScreepsReturnCode;
 }
 
 interface RoomPosition {
