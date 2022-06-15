@@ -4,7 +4,9 @@ export class WaveCreep extends Creep {
     private static priorityQueue: Map<string, (creep: Creep) => void> = new Map();
 
     public drive() {
-        if (this.memory.portalLocations?.[0]) {
+        if (this.memory.needsBoosted) {
+            this.getNextBoost();
+        } else if (this.memory.portalLocations?.[0]) {
             let portalPos = posFromMem(this.memory.portalLocations[0]);
 
             if (!this.pos.isNearTo(portalPos)) {
@@ -98,7 +100,7 @@ export class WaveCreep extends Creep {
         return Array.from(WaveCreep.priorityQueue.keys());
     }
 
-    public enterInterShardPortal(portal: StructurePortal) {
+    protected enterInterShardPortal(portal: StructurePortal) {
         //@ts-expect-error
         console.log(`${this.name} is going to ${portal.destination.shard}! Safe travels!`);
 
@@ -117,5 +119,17 @@ export class WaveCreep extends Creep {
 
         //remove creep memory from shard memory
         delete Memory.creeps[this.name];
+    }
+
+    private getNextBoost() {
+        let nextBoostTask = this.room.memory.labTasks.find((task) => task.targetCreepName === this.name);
+        if (nextBoostTask) {
+            let boostLab = Game.getObjectById(nextBoostTask.primaryLab);
+            if (boostLab && nextBoostTask.status === TaskStatus.ACTIVE) {
+                this.travelTo(boostLab);
+            }
+        } else {
+            delete this.memory.needsBoosted;
+        }
     }
 }

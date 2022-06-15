@@ -92,7 +92,7 @@ function runReverseTask(task: LabTask): LabTask {
 
 function runBoostTask(task: LabTask): LabTask {
     let primaryLab = Game.getObjectById(task.primaryLab);
-    let targetCreep = Game.getObjectById(task.targetCreep);
+    let targetCreep = Game.creeps[task.targetCreepName];
 
     if (targetCreep?.pos.isNearTo(primaryLab)) {
         let result = primaryLab.boostCreep(targetCreep);
@@ -106,7 +106,7 @@ function runBoostTask(task: LabTask): LabTask {
 
 function runUnboostTask(task: LabTask): LabTask {
     let primaryLab = Game.getObjectById(task.primaryLab);
-    let targetCreep = Game.getObjectById(task.targetCreep);
+    let targetCreep = Game.creeps[task.targetCreepName];
 
     if (targetCreep?.pos.isNearTo(primaryLab)) {
         let result = primaryLab.unboostCreep(targetCreep);

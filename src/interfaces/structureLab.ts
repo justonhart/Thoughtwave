@@ -10,13 +10,13 @@ interface LabTask {
     status: TaskStatus;
     reagentsNeeded?: LabNeed[];
     cyclesCompleted?: number;
-    targetCreep?: Id<Creep>;
+    targetCreepName?: string;
 }
 
 interface LabTaskOpts {
     type: LabTaskType;
     reagentsNeeded: LabNeed[];
-    targetCreep?: Id<Creep>;
+    targetCreepName?: string;
 }
 
 interface LabNeed {

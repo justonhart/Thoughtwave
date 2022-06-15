@@ -462,6 +462,10 @@ export class PopulationManagement {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
+        if (opts.boosts) {
+            //get total available resources per boost request by type
+        }
+
         // find safe spawn direction in predefined layouts
         if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
             if (!opts.directions) {
