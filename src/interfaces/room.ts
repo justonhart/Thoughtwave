@@ -37,6 +37,7 @@ interface Room {
     workerCapacity: number;
     labs: StructureLab[];
     addLabTask(opts: LabTaskOpts): ScreepsReturnCode;
+    getBoostResourcesAvailable(boostTypes: BoostType[]): { [type: number]: { resource: string; amount: number }[] };
 }
 
 interface RoomPosition {

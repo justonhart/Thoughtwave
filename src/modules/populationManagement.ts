@@ -1,4 +1,18 @@
+import { getResourceBoostsAvailable } from './labManagement';
 import { posFromMem } from './memoryManagement';
+
+const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
+    1: ATTACK,
+    2: RANGED_ATTACK,
+    3: HEAL,
+    4: WORK,
+    5: WORK,
+    6: WORK,
+    7: WORK,
+    8: MOVE,
+    9: CARRY,
+    10: TOUGH,
+};
 
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
@@ -462,8 +476,45 @@ export class PopulationManagement {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
-        if (opts.boosts) {
-            //get total available resources per boost request by type
+        let labTasksToAdd = [];
+        if (opts.boosts?.length) {
+            //get total requested boosts available by type
+            let boostMap = getResourceBoostsAvailable(spawn.room, Array.from(opts.boosts));
+
+            //calculate number of boosts needed
+            opts.boosts.forEach((boostType) => {
+                let boostsAvailable = boostMap[boostType];
+                let boostsAvailableCount = boostsAvailable.map((boost) => boost.amount).reduce((sum, next) => sum + next);
+                let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
+
+                let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
+
+                let resourcesNeeded: { [resource: string]: number } = {};
+
+                for (let i = 0; i < numberOfBoosts; i++) {
+                    let nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
+                    boostMap[nextAvailableBoostResource] -= 1;
+                    !resourcesNeeded[nextAvailableBoostResource]
+                        ? (resourcesNeeded[nextAvailableBoostResource] = 30)
+                        : (resourcesNeeded[nextAvailableBoostResource] += 30);
+                }
+
+                Object.keys(resourcesNeeded).forEach((resource) => {
+                    labTasksToAdd.push({
+                        type: LabTaskType.BOOST,
+                        reagentsNeeded: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
+                        targetCreepName: name,
+                    });
+                });
+            });
+
+            if (labTasksToAdd.length) {
+                labTasksToAdd.forEach((task) => {
+                    spawn.room.addLabTask(task);
+                });
+
+                opts.memory.needsBoosted = true;
+            }
         }
 
         // find safe spawn direction in predefined layouts
@@ -485,6 +536,10 @@ export class PopulationManagement {
 
         if (result !== OK) {
             console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
+        } else {
+            labTasksToAdd.forEach((task) => {
+                spawn.room.addLabTask(task);
+            });
         }
 
         return result;

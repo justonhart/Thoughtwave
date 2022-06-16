@@ -1,4 +1,4 @@
-import { addLabTask } from '../modules/labManagement';
+import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
 import { posFromMem } from '../modules/memoryManagement';
 import { PopulationManagement } from '../modules/populationManagement';
 import { findRepairTargets } from '../modules/roomManagement';
@@ -93,4 +93,8 @@ Object.defineProperty(Room.prototype, 'labs', {
 
 Room.prototype.addLabTask = function (this: Room, opts: LabTaskOpts): ScreepsReturnCode {
     return addLabTask(this, opts);
+};
+
+Room.prototype.getBoostResourcesAvailable = function (this: Room, boostTypes: BoostType[]) {
+    return getResourceBoostsAvailable(this, boostTypes);
 };

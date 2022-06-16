@@ -14,12 +14,7 @@ interface StructureSpawn {
 }
 
 interface SpawnOptions {
-    boosts?: BoostRequest[];
-}
-
-interface BoostRequest {
-    type: BoostType;
-    policy: BoostPolicy;
+    boosts?: BoostType[];
 }
 
 const enum BoostType {
