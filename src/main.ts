@@ -2,7 +2,7 @@ import driveCreep from './modules/creepDriver';
 import { manageEmpire } from './modules/empireManagement';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
-import { manageEmpireResources } from './modules/resourceManagement';
+import { getAllRoomNeeds, manageEmpireResources } from './modules/resourceManagement';
 import { driveRoom } from './modules/roomManagement';
 import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
@@ -19,6 +19,9 @@ module.exports.loop = function () {
     } catch (e) {
         console.log(`Error caught in flag management: \n${e}`);
     }
+
+    //set map of all room resource needs
+    global.resourceNeeds = getAllRoomNeeds();
 
     try {
         manageEmpire();

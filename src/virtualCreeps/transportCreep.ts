@@ -50,6 +50,13 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findRefillTarget(): Id<Structure> {
+        let towers = this.homeroom
+            .find(FIND_MY_STRUCTURES)
+            .filter((structure) => structure.structureType === STRUCTURE_TOWER && structure.store[RESOURCE_ENERGY] < 700);
+        if (towers.length) {
+            return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
+        }
+
         let spawnStructures = this.homeroom.find(FIND_MY_STRUCTURES).filter(
             (structure) =>
                 // @ts-ignore
@@ -60,13 +67,6 @@ export class TransportCreep extends WaveCreep {
 
         if (spawnStructures.length) {
             return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
-        }
-
-        let towers = this.homeroom
-            .find(FIND_MY_STRUCTURES)
-            .filter((structure) => structure.structureType === STRUCTURE_TOWER && structure.store[RESOURCE_ENERGY] < 700);
-        if (towers.length) {
-            return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
         }
 
         let labs = this.homeroom
@@ -197,7 +197,7 @@ export class TransportCreep extends WaveCreep {
                 if (!this.pos.isNearTo(deliveryTarget)) {
                     this.travelTo(deliveryTarget, { range: 1 });
                 } else {
-                    let result = this.transfer(deliveryTarget, requests[0].resource, requests[0].amount);
+                    let result = this.transfer(deliveryTarget, requests[0].resource, Math.min(requests[0].amount, this.store[requests[0].resource]));
                     if (result === OK) {
                         requests[0].amount -= Math.min(requests[0].amount, this.store[requests[0].resource]);
                         if (requests[0].amount <= 0) {
