@@ -128,11 +128,7 @@ function runTowers(room: Room) {
 
     let hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
 
-    let healers = hostileCreeps.filter((creep) => creep.getActiveBodyparts(HEAL) > 0);
-
-    healers.length
-        ? towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(healers)))
-        : towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
+    towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {
