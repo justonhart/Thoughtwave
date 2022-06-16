@@ -484,7 +484,7 @@ export class PopulationManagement {
             //calculate number of boosts needed
             opts.boosts.forEach((boostType) => {
                 let boostsAvailable = boostMap[boostType];
-                let boostsAvailableCount = boostsAvailable.map((boost) => boost.amount).reduce((sum, next) => sum + next);
+                let boostsAvailableCount = boostsAvailable?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
                 let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
 
                 let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
@@ -509,10 +509,6 @@ export class PopulationManagement {
             });
 
             if (labTasksToAdd.length) {
-                labTasksToAdd.forEach((task) => {
-                    spawn.room.addLabTask(task);
-                });
-
                 opts.memory.needsBoosted = true;
             }
         }

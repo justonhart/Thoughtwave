@@ -218,7 +218,6 @@ export function getResourceBoostsAvailable(
 
     if (boostNeeds.includes(BoostType.ATTACK)) {
         Object.keys(BOOSTS[ATTACK]).forEach((resource) => {
-            console.log(resource);
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
             if (amount) {
                 availableResources[BoostType.ATTACK] = [
@@ -226,12 +225,12 @@ export function getResourceBoostsAvailable(
                     { resource: resource as ResourceConstant, amount },
                 ];
             }
-            availableResources[BoostType.ATTACK] = availableResources[BoostType.ATTACK].sort(
-                (a, b) =>
-                    Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) -
-                    Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-            );
         });
+
+        availableResources[BoostType.ATTACK] = availableResources[BoostType.ATTACK]?.sort(
+            (a, b) =>
+                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
+        );
     }
 
     if (boostNeeds.includes(BoostType.RANGED_ATTACK)) {
@@ -243,12 +242,11 @@ export function getResourceBoostsAvailable(
                     { resource: resource as ResourceConstant, amount },
                 ];
             }
-            availableResources[BoostType.RANGED_ATTACK] = availableResources[BoostType.RANGED_ATTACK].sort(
-                (a, b) =>
-                    Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) -
-                    Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-            );
         });
+        availableResources[BoostType.RANGED_ATTACK] = availableResources[BoostType.RANGED_ATTACK]?.sort(
+            (a, b) =>
+                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
+        );
     }
 
     if (boostNeeds.includes(BoostType.HEAL)) {
@@ -260,12 +258,11 @@ export function getResourceBoostsAvailable(
                     { resource: resource as ResourceConstant, amount },
                 ];
             }
-            availableResources[BoostType.HEAL] = availableResources[BoostType.HEAL].sort(
-                (a, b) =>
-                    Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) -
-                    Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-            );
         });
+        availableResources[BoostType.HEAL] = availableResources[BoostType.HEAL]?.sort(
+            (a, b) =>
+                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
+        );
     }
 
     if (boostNeeds.includes(BoostType.CARRY)) {
@@ -277,12 +274,11 @@ export function getResourceBoostsAvailable(
                     { resource: resource as ResourceConstant, amount },
                 ];
             }
-            availableResources[BoostType.CARRY] = availableResources[BoostType.CARRY].sort(
-                (a, b) =>
-                    Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) -
-                    Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-            );
         });
+        availableResources[BoostType.CARRY] = availableResources[BoostType.CARRY]?.sort(
+            (a, b) =>
+                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
+        );
     }
 
     if (boostNeeds.includes(BoostType.MOVE)) {
@@ -294,12 +290,11 @@ export function getResourceBoostsAvailable(
                     { resource: resource as ResourceConstant, amount },
                 ];
             }
-            availableResources[BoostType.MOVE] = availableResources[BoostType.MOVE].sort(
-                (a, b) =>
-                    Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) -
-                    Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-            );
         });
+        availableResources[BoostType.MOVE] = availableResources[BoostType.MOVE]?.sort(
+            (a, b) =>
+                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
+        );
     }
 
     if (boostNeeds.includes(BoostType.TOUGH)) {
@@ -311,12 +306,11 @@ export function getResourceBoostsAvailable(
                     { resource: resource as ResourceConstant, amount },
                 ];
             }
-            availableResources[BoostType.TOUGH] = availableResources[BoostType.TOUGH].sort(
-                (a, b) =>
-                    Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) -
-                    Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-            );
         });
+        availableResources[BoostType.TOUGH] = availableResources[BoostType.TOUGH]?.sort(
+            (a, b) =>
+                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
+        );
     }
 
     if (boostNeeds.includes(BoostType.UPGRADE)) {
@@ -325,12 +319,11 @@ export function getResourceBoostsAvailable(
             if (amount) {
                 availableResources[BoostType.UPGRADE] = [...(availableResources[BoostType.UPGRADE as number] ?? []), { resource, amount }];
             }
-            availableResources[BoostType.UPGRADE] = availableResources[BoostType.UPGRADE].sort(
-                (a, b) =>
-                    Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) -
-                    Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-            );
         });
+        availableResources[BoostType.UPGRADE] = availableResources[BoostType.UPGRADE]?.sort(
+            (a, b) =>
+                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
+        );
     }
 
     if (boostNeeds.includes(BoostType.BUILD)) {
@@ -339,12 +332,11 @@ export function getResourceBoostsAvailable(
             if (amount) {
                 availableResources[BoostType.BUILD] = [...(availableResources[BoostType.BUILD as number] ?? []), { resource, amount }];
             }
-            availableResources[BoostType.BUILD] = availableResources[BoostType.BUILD].sort(
-                (a, b) =>
-                    Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) -
-                    Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-            );
         });
+        availableResources[BoostType.BUILD] = availableResources[BoostType.BUILD]?.sort(
+            (a, b) =>
+                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
+        );
     }
 
     if (boostNeeds.includes(BoostType.DISMANTLE)) {
@@ -353,12 +345,11 @@ export function getResourceBoostsAvailable(
             if (amount) {
                 availableResources[BoostType.DISMANTLE] = [...(availableResources[BoostType.DISMANTLE as number] ?? []), { resource, amount }];
             }
-            availableResources[BoostType.DISMANTLE] = availableResources[BoostType.DISMANTLE].sort(
-                (a, b) =>
-                    Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) -
-                    Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-            );
         });
+        availableResources[BoostType.DISMANTLE] = availableResources[BoostType.DISMANTLE]?.sort(
+            (a, b) =>
+                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
+        );
     }
 
     if (boostNeeds.includes(BoostType.HARVEST)) {
@@ -367,12 +358,11 @@ export function getResourceBoostsAvailable(
             if (amount) {
                 availableResources[BoostType.HARVEST] = [...(availableResources[BoostType.HARVEST as number] ?? []), { resource, amount }];
             }
-            availableResources[BoostType.HARVEST] = availableResources[BoostType.HARVEST].sort(
-                (a, b) =>
-                    Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) -
-                    Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-            );
         });
+        availableResources[BoostType.HARVEST] = availableResources[BoostType.HARVEST]?.sort(
+            (a, b) =>
+                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
+        );
     }
 
     return availableResources;
