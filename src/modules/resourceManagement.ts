@@ -142,7 +142,7 @@ function getRoomResourceNeeds(room: Room): ResourceConstant[] {
     return needs;
 }
 
-function getResourceAmount(room: Room, resource: ResourceConstant): number {
+export function getResourceAmount(room: Room, resource: ResourceConstant): number {
     return (room.storage?.store[resource] ?? 0) + (room.terminal?.store[resource] ?? 0);
 }
 
@@ -172,4 +172,16 @@ export function getExtraResources(room: Room): ResourceConstant[] {
     });
 
     return extraResources;
+}
+
+export function getNextResourceGoal() {
+    return Object.keys(global.resourceNeeds).find(
+        (resource) =>
+            Object.keys(REACTION_TIME).includes(resource) &&
+            global.resourceNeeds[resource].length >=
+                Object.keys(Game.rooms).filter(
+                    (room) => Game.rooms[room].controller?.my && Game.rooms[room].controller.level >= 6 && Game.rooms[room].terminal
+                ).length *
+                    0.5
+    );
 }

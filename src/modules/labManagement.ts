@@ -1,3 +1,5 @@
+import { getResourceAmount } from './resourceManagement';
+
 export function runLabs(room: Room) {
     if (!room.memory.labTasks) {
         room.memory.labTasks = [];
@@ -19,38 +21,49 @@ export function runLabs(room: Room) {
         }
     }
 
+    let labs = room.labs;
+    let labsInUse = labs.filter((lab) => lab.status === LabStatus.AVAILABLE);
+    let primaryLabsInUse = labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY);
+
+    //if there are 4 or more available labs, try to add react task
+    // if(labs.length - labsInUse.length > 3){
+    //     let resourceToMake = getNextResourceToCreate(room);
+    //     if(resourceToMake){
+    //         let reagents = getReagents(resourceToMake);
+    //         let amountToCreate = Math.min(...reagents.map(resource => getResourceAmount(room, resource)), 3000);
+    //         room.addLabTask({type: LabTaskType.REACT, reagentsNeeded: reagents.map(r => {return { resource: r, amount: amountToCreate}})});
+    //     }
+    // }
+
     //run tasks
-    room.labs.forEach((lab) => {
-        if (lab.status === LabStatus.IN_USE_PRIMARY) {
-            let task = lab.room.memory.labTasks[lab.taskIndex];
-
-            if (task?.status === TaskStatus.ACTIVE) {
-                switch (task.type) {
-                    case LabTaskType.REACT:
-                        task = runReactTask(task);
-                        break;
-                    case LabTaskType.REVERSE:
-                        task = runReverseTask(task);
-                        break;
-                    case LabTaskType.BOOST:
-                        task = runBoostTask(task);
-                        break;
-                    case LabTaskType.UNBOOST:
-                        task = runUnboostTask(task);
-                        break;
-                }
-            } else if (task?.status === TaskStatus.PREPARING) {
-                let allNeedsFulfilled = task.reagentsNeeded
-                    .map((need) => Game.getObjectById(need.lab).store[need.resource] >= need.amount)
-                    .reduce((readyState, next) => readyState && next);
-
-                if (allNeedsFulfilled) {
-                    task.status = TaskStatus.ACTIVE;
-                }
+    primaryLabsInUse.forEach((lab) => {
+        let task = lab.room.memory.labTasks[lab.taskIndex];
+        if (task?.status === TaskStatus.ACTIVE) {
+            switch (task.type) {
+                case LabTaskType.REACT:
+                    task = runReactTask(task);
+                    break;
+                case LabTaskType.REVERSE:
+                    task = runReverseTask(task);
+                    break;
+                case LabTaskType.BOOST:
+                    task = runBoostTask(task);
+                    break;
+                case LabTaskType.UNBOOST:
+                    task = runUnboostTask(task);
+                    break;
             }
+        } else if (task?.status === TaskStatus.PREPARING) {
+            let allNeedsFulfilled = task.reagentsNeeded
+                .map((need) => Game.getObjectById(need.lab).store[need.resource] >= need.amount)
+                .reduce((readyState, next) => readyState && next);
 
-            room.memory.labTasks[lab.taskIndex] = task;
+            if (allNeedsFulfilled) {
+                task.status = TaskStatus.ACTIVE;
+            }
         }
+
+        room.memory.labTasks[lab.taskIndex] = task;
     });
 }
 
@@ -366,4 +379,50 @@ export function getResourceBoostsAvailable(
     }
 
     return availableResources;
+}
+
+//find next needed resource that room can currently create
+export function getNextResourceToCreate(room: Room): MineralCompoundConstant {
+    return Object.keys(global.resourceNeeds).find(
+        (resource) => global.resourceNeeds[resource].length && hasNecessaryReagentsForReaction(room, resource as MineralCompoundConstant)
+    ) as MineralCompoundConstant;
+}
+
+export function hasNecessaryReagentsForReaction(room: Room, compound: MineralCompoundConstant): boolean {
+    return getReagents(compound)
+        .map((resource) => getResourceAmount(room, resource) > 0)
+        .reduce((hasAll, next) => hasAll && next);
+}
+
+export function getReagents(compound: MineralCompoundConstant): ResourceConstant[] {
+    let reagents = [];
+
+    if (compound.length === 2) {
+        reagents = compound.split('');
+    } else if (compound.startsWith('X')) {
+        reagents = ['X', compound.substring(1, compound.length)];
+    } else if (compound.includes('H2')) {
+        reagents = [compound.charAt(0) + 'H', 'OH'];
+    } else if (compound.includes('O2')) {
+        reagents = [compound.charAt(0) + 'O', 'OH'];
+    } else {
+        reagents = ['ZK', 'UL'];
+    }
+
+    return reagents;
+}
+
+//for testing
+export function tryAddNextReact(room: Room) {
+    let resourceToMake = getNextResourceToCreate(room);
+    if (resourceToMake) {
+        let reagents = getReagents(resourceToMake);
+        let amountToCreate = Math.min(...reagents.map((resource) => getResourceAmount(room, resource)), 3000);
+        room.addLabTask({
+            type: LabTaskType.REACT,
+            reagentsNeeded: reagents.map((r) => {
+                return { resource: r, amount: amountToCreate };
+            }),
+        });
+    }
 }
