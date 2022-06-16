@@ -124,10 +124,12 @@ export class WaveCreep extends Creep {
     private getNextBoost() {
         let nextBoostTask = this.room.memory.labTasks.find((task) => task.targetCreepName === this.name);
         if (nextBoostTask) {
-            this.memory.currentTaskPriority = Priority.HIGH;
             let boostLab = Game.getObjectById(nextBoostTask.primaryLab);
             if (boostLab && nextBoostTask.status === TaskStatus.ACTIVE) {
+                this.memory.currentTaskPriority = Priority.HIGH;
                 this.travelTo(boostLab);
+            } else {
+                this.memory.currentTaskPriority = Priority.LOW;
             }
         } else {
             delete this.memory.needsBoosted;

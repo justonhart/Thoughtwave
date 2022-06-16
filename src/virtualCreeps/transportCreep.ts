@@ -8,8 +8,8 @@ export class TransportCreep extends WaveCreep {
             target = Game.getObjectById(this.memory.targetId);
         }
 
-        if (this.memory.labRequest) {
-            this.prepareLab();
+        if (this.memory.labRequests?.length) {
+            this.prepareLabs();
         } else if (target instanceof Resource) {
             this.runPickupJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer || target?.status === LabStatus.NEEDS_EMPTYING) {
@@ -160,51 +160,71 @@ export class TransportCreep extends WaveCreep {
         }
     }
 
-    protected prepareLab() {
-        let targetLab = Game.getObjectById(this.memory.targetId) as StructureLab;
-        let request = this.memory.labRequest;
+    protected prepareLabs() {
+        this.memory.currentTaskPriority = Priority.HIGH;
+        let requests = this.memory.labRequests;
 
-        if (request.amount > 0) {
-            if (this.store[request.resource]) {
-                if (!this.pos.isNearTo(targetLab)) {
-                    this.travelTo(targetLab);
-                } else {
-                    let transferResult = this.transfer(targetLab, request.resource);
-                    if (transferResult === OK) {
-                        request.amount -= this.store[request.resource];
-                        this.memory.labRequest = request;
-                        if (request.amount <= 0) {
-                            delete this.memory.labRequest;
-                            delete this.memory.targetId;
-                            delete this.memory.resourceSource;
-                        }
-                    }
-                }
+        if (this.memory.gatheringLabResources) {
+            let resourceList: { [resource: string]: number } = {};
+            requests.forEach((req) => {
+                !resourceList[req.resource] ? (resourceList[req.resource] = req.amount) : (resourceList[req.resource] += req.amount);
+            });
+
+            let totalAmountToGather = Math.min(
+                this.store.getCapacity(),
+                Object.values(resourceList).reduce((sum, next) => sum + next)
+            );
+
+            if (this.store.getUsedCapacity() >= totalAmountToGather) {
+                this.memory.gatheringLabResources = false;
             } else {
-                if (!this.memory.resourceSource) {
-                    this.memory.resourceSource =
-                        this.room.storage?.store[request.resource] >= request.amount
-                            ? this.room.storage.id
-                            : this.room.terminal?.store[request.resource] >= request.amount
-                            ? this.room.terminal.id
-                            : undefined;
-                }
+                let resourceToGather = Object.keys(resourceList).find((res) => resourceList[res] > this.store[res]) as ResourceConstant;
 
-                let source = Game.getObjectById(this.memory.resourceSource);
-                if (source) {
-                    if (!this.pos.isNearTo(source)) {
-                        this.travelTo(source);
-                    } else {
-                        this.withdraw(source, request.resource, Math.min(request.amount, this.store.getFreeCapacity()));
-                    }
+                let target = [this.room.storage, this.room.terminal].find((struct) => struct.store[resourceToGather]);
+                if (!this.pos.isNearTo(target)) {
+                    this.travelTo(target, { range: 1 });
                 } else {
-                    //there is no source w/ enough requested resource
+                    let amountToWithdraw = Math.min(resourceList[resourceToGather] - this.store[resourceToGather], this.store.getFreeCapacity());
+                    this.withdraw(target, resourceToGather, amountToWithdraw);
+                    if (amountToWithdraw + this.store.getUsedCapacity() >= totalAmountToGather) {
+                        this.memory.gatheringLabResources = false;
+                    }
                 }
             }
         } else {
-            delete this.memory.labRequest;
-            delete this.memory.targetId;
-            delete this.memory.resourceSource;
+            if (this.store.getUsedCapacity()) {
+                let deliveryTarget = Game.getObjectById(requests[0].lab);
+                if (!this.pos.isNearTo(deliveryTarget)) {
+                    this.travelTo(deliveryTarget, { range: 1 });
+                } else {
+                    let result = this.transfer(deliveryTarget, requests[0].resource, Math.min(requests[0].amount, this.store[requests[0].resource]));
+                    if (result === OK) {
+                        requests[0].amount -= Math.min(requests[0].amount, this.store[requests[0].resource]);
+                        if (requests[0].amount <= 0) {
+                            requests.shift();
+                        }
+                    }
+
+                    if (!requests.length) {
+                        delete this.memory.gatheringLabResources;
+                    }
+
+                    this.memory.labRequests = requests;
+                }
+            } else {
+                this.memory.gatheringLabResources = true;
+            }
         }
+    }
+
+    protected claimLabRequests() {
+        let availableCapacity = this.store.getFreeCapacity();
+        let i: number;
+        for (i = 0; availableCapacity > 0 && i < this.homeroom.memory.labRequests.length; i++) {
+            availableCapacity -= this.homeroom.memory.labRequests[i].amount;
+        }
+
+        this.memory.labRequests = this.homeroom.memory.labRequests.splice(0, i);
+        this.memory.gatheringLabResources = true;
     }
 }

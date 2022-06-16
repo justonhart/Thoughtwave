@@ -44,8 +44,8 @@ function handleDeadCreep(creepName: string) {
         if (deadCreepMemory.role === Role.MINERAL_MINER) {
             Memory.rooms[deadCreepMemory.room].mineralMiningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
         }
-        if (deadCreepMemory.labRequest) {
-            Memory.rooms[deadCreepMemory.room].labRequests.unshift(deadCreepMemory.labRequest);
+        if (deadCreepMemory.labRequests) {
+            Memory.rooms[deadCreepMemory.room].labRequests.unshift(...deadCreepMemory.labRequests);
         }
     }
 
