@@ -156,7 +156,8 @@ export function findLabs(room: Room, type: LabTaskType): Id<StructureLab>[][] {
     if (type === LabTaskType.BOOST || type === LabTaskType.UNBOOST) {
         primaryLabs[0] = availableLabs.pop();
     } else {
-        if (availableLabs.length < 3) {
+        let labsNeedingEmptied = room.labs.filter((lab) => lab.status === LabStatus.NEEDS_EMPTYING);
+        if (labsNeedingEmptied.length || availableLabs.length < 3) {
             return undefined;
         } else {
             if (type === LabTaskType.REACT) {
@@ -459,19 +460,4 @@ export function getReagents(compound: MineralCompoundConstant): ResourceConstant
     }
 
     return reagents;
-}
-
-//for testing
-export function tryAddNextReact(room: Room) {
-    let resourceToMake = getNextResourceToCreate(room);
-    if (resourceToMake) {
-        let reagents = getReagents(resourceToMake);
-        let amountToCreate = Math.min(...reagents.map((resource) => getResourceAmount(room, resource)), 3000);
-        room.addLabTask({
-            type: LabTaskType.REACT,
-            reagentsNeeded: reagents.map((r) => {
-                return { resource: r, amount: amountToCreate };
-            }),
-        });
-    }
 }
