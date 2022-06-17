@@ -13,6 +13,7 @@ export class Distributor extends TransportCreep {
                 target = this.homeroom.storage.id;
             } else {
                 this.claimLabRequests();
+                return;
             }
         }
 

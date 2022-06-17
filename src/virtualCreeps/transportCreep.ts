@@ -206,6 +206,7 @@ export class TransportCreep extends WaveCreep {
                         requests[0].amount -= Math.min(requests[0].amount, this.store[requests[0].resource]);
                         if (requests[0].amount <= 0) {
                             requests.shift();
+                            this.memory.gatheringLabResources = true;
                         }
                     }
 
