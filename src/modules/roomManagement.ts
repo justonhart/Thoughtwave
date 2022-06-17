@@ -50,7 +50,8 @@ export function driveRoom(room: Room) {
         }
 
         if (
-            Game.time % BUILD_CHECK_PERIOD === 0 &&
+            !global.roomConstructionsChecked &&
+            (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
             (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
             Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
             room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
@@ -79,6 +80,8 @@ export function driveRoom(room: Room) {
                 case 1:
                     cleanRoom(room);
             }
+            global.roomConstructionsChecked = true;
+            room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
         }
 
         runTowers(room);

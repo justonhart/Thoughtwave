@@ -14,6 +14,7 @@ interface RoomMemory {
     reservedEnergy?: number;
     layout?: RoomLayout;
     labTasks?: LabTask[];
+    dontCheckConstructionsBefore?: number;
 }
 
 interface RemoteAssignment {
