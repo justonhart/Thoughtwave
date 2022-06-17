@@ -26,11 +26,17 @@ export function runLabs(room: Room) {
     let primaryLabsInUse = labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY);
 
     //if there are 4 or more available labs, try to add react task
-    if (labs.length - labsInUse.length > 3) {
+    if (
+        labs.length - labsInUse.length > 3 &&
+        !room.memory.labTasks.some((task) => task.type === LabTaskType.REACT && task.status !== TaskStatus.ACTIVE)
+    ) {
         let resourceToMake = getNextResourceToCreate(room);
         if (resourceToMake) {
             let reagents = getReagents(resourceToMake);
             let amountToCreate = Math.min(...reagents.map((resource) => getResourceAmount(room, resource)), 3000);
+            while (amountToCreate % 5) {
+                amountToCreate--;
+            }
             let result = room.addLabTask({
                 type: LabTaskType.REACT,
                 reagentsNeeded: reagents.map((r) => {
@@ -440,7 +446,7 @@ export function getNextResourceToCreate(room: Room): MineralCompoundConstant {
 
 export function hasNecessaryReagentsForReaction(room: Room, compound: MineralCompoundConstant): boolean {
     return getReagents(compound)
-        .map((resource) => getResourceAmount(room, resource) > 0)
+        .map((resource) => getResourceAmount(room, resource) > 450)
         .reduce((hasAll, next) => hasAll && next);
 }
 
