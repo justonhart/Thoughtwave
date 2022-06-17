@@ -3,7 +3,7 @@ import { WaveCreep } from './waveCreep';
 export class TransportCreep extends WaveCreep {
     protected run() {
         let target: any = Game.getObjectById(this.memory.targetId);
-        if (!target) {
+        if (!target && !this.memory.labRequests?.length) {
             this.memory.targetId = this.findTarget();
             target = Game.getObjectById(this.memory.targetId);
         }
@@ -185,9 +185,13 @@ export class TransportCreep extends WaveCreep {
                     this.travelTo(target, { range: 1 });
                 } else {
                     let amountToWithdraw = Math.min(resourceList[resourceToGather] - this.store[resourceToGather], this.store.getFreeCapacity());
-                    this.withdraw(target, resourceToGather, amountToWithdraw);
-                    if (amountToWithdraw + this.store.getUsedCapacity() >= totalAmountToGather) {
-                        this.memory.gatheringLabResources = false;
+                    let result = this.withdraw(target, resourceToGather, Math.min(amountToWithdraw, target.store[resourceToGather]));
+                    if (result === OK) {
+                        if (amountToWithdraw + this.store.getUsedCapacity() >= totalAmountToGather) {
+                            this.memory.gatheringLabResources = false;
+                        }
+                    } else {
+                        this.say('e');
                     }
                 }
             }

@@ -126,9 +126,10 @@ function runTowers(room: Room) {
         return;
     }
 
-    let hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
-
-    towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
+    if (!room.controller.safeMode) {
+        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+        towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
+    }
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {

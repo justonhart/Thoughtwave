@@ -1,6 +1,6 @@
 Object.defineProperty(StructureLab.prototype, 'taskIndex', {
     get: function (this: StructureLab) {
-        let index = this.room.memory.labTasks.findIndex((task) => task.primaryLab === this.id || task.auxillaryLabs?.includes(this.id));
+        let index = this.room.memory.labTasks.findIndex((task) => task.reactionLabs?.includes(this.id) || task.auxillaryLabs?.includes(this.id));
         return index > -1 ? index : undefined;
     },
     enumerable: false,
@@ -13,7 +13,7 @@ Object.defineProperty(StructureLab.prototype, 'status', {
             ? !this.mineralType
                 ? LabStatus.AVAILABLE
                 : LabStatus.NEEDS_EMPTYING
-            : this.room.memory.labTasks[this.taskIndex].primaryLab === this.id
+            : this.room.memory.labTasks[this.taskIndex].reactionLabs?.includes(this.id)
             ? LabStatus.IN_USE_PRIMARY
             : LabStatus.IN_USE_AUXILLARY;
     },

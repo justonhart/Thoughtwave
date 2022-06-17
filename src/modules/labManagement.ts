@@ -22,18 +22,26 @@ export function runLabs(room: Room) {
     }
 
     let labs = room.labs;
-    let labsInUse = labs.filter((lab) => lab.status === LabStatus.AVAILABLE);
+    let labsInUse = labs.filter((lab) => lab.status !== LabStatus.AVAILABLE);
     let primaryLabsInUse = labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY);
 
     //if there are 4 or more available labs, try to add react task
-    // if(labs.length - labsInUse.length > 3){
-    //     let resourceToMake = getNextResourceToCreate(room);
-    //     if(resourceToMake){
-    //         let reagents = getReagents(resourceToMake);
-    //         let amountToCreate = Math.min(...reagents.map(resource => getResourceAmount(room, resource)), 3000);
-    //         room.addLabTask({type: LabTaskType.REACT, reagentsNeeded: reagents.map(r => {return { resource: r, amount: amountToCreate}})});
-    //     }
-    // }
+    if (labs.length - labsInUse.length > 3) {
+        let resourceToMake = getNextResourceToCreate(room);
+        if (resourceToMake) {
+            let reagents = getReagents(resourceToMake);
+            let amountToCreate = Math.min(...reagents.map((resource) => getResourceAmount(room, resource)), 3000);
+            let result = room.addLabTask({
+                type: LabTaskType.REACT,
+                reagentsNeeded: reagents.map((r) => {
+                    return { resource: r, amount: amountToCreate };
+                }),
+            });
+            if (result === OK) {
+                console.log(`${room.name} added task to create ${amountToCreate} ${resourceToMake}`);
+            }
+        }
+    }
 
     //run tasks
     primaryLabsInUse.forEach((lab) => {
@@ -68,16 +76,18 @@ export function runLabs(room: Room) {
 }
 
 function runReactTask(task: LabTask): LabTask {
-    let primaryLab = Game.getObjectById(task.primaryLab);
+    let primaryLabs = task.reactionLabs.map((id) => Game.getObjectById(id));
     let auxillaryLabs = task.auxillaryLabs.map((id) => Game.getObjectById(id));
 
     let targetCycles = task.reagentsNeeded[0].amount / 5;
 
     if (task.cyclesCompleted < targetCycles) {
-        let result = primaryLab.runReaction(auxillaryLabs[0], auxillaryLabs[1]);
-        if (result === OK) {
-            task.cyclesCompleted++;
-        }
+        primaryLabs.forEach((lab) => {
+            let result = lab.runReaction(auxillaryLabs[0], auxillaryLabs[1]);
+            if (result === OK) {
+                task.cyclesCompleted++;
+            }
+        });
     } else {
         task.status = TaskStatus.COMPLETE;
     }
@@ -86,16 +96,18 @@ function runReactTask(task: LabTask): LabTask {
 }
 
 function runReverseTask(task: LabTask): LabTask {
-    let primaryLab = Game.getObjectById(task.primaryLab);
+    let primaryLabs = task.reactionLabs.map((id) => Game.getObjectById(id));
     let auxillaryLabs = task.auxillaryLabs.map((id) => Game.getObjectById(id));
 
     let targetCycles = task.reagentsNeeded[0].amount / 5;
 
     if (task.cyclesCompleted < targetCycles) {
-        let result = primaryLab.reverseReaction(auxillaryLabs[0], auxillaryLabs[1]);
-        if (result === OK) {
-            task.cyclesCompleted++;
-        }
+        primaryLabs.forEach((lab) => {
+            let result = lab.reverseReaction(auxillaryLabs[0], auxillaryLabs[1]);
+            if (result === OK) {
+                task.cyclesCompleted++;
+            }
+        });
     } else {
         task.status = TaskStatus.COMPLETE;
     }
@@ -104,7 +116,7 @@ function runReverseTask(task: LabTask): LabTask {
 }
 
 function runBoostTask(task: LabTask): LabTask {
-    let primaryLab = Game.getObjectById(task.primaryLab);
+    let primaryLab = Game.getObjectById(task.reactionLabs[0]);
     let targetCreep = Game.creeps[task.targetCreepName];
 
     if (targetCreep?.pos.isNearTo(primaryLab)) {
@@ -118,7 +130,7 @@ function runBoostTask(task: LabTask): LabTask {
 }
 
 function runUnboostTask(task: LabTask): LabTask {
-    let primaryLab = Game.getObjectById(task.primaryLab);
+    let primaryLab = Game.getObjectById(task.reactionLabs[0]);
     let targetCreep = Game.creeps[task.targetCreepName];
 
     if (targetCreep?.pos.isNearTo(primaryLab)) {
@@ -131,36 +143,74 @@ function runUnboostTask(task: LabTask): LabTask {
     return task;
 }
 
-export function findLabs(room: Room, auxillaryLabsNeeded: boolean = false): Id<StructureLab>[] {
-    let availableLabs = room.labs.filter((s) => s.status === LabStatus.AVAILABLE);
+export function findLabs(room: Room, type: LabTaskType): Id<StructureLab>[][] {
+    let availableLabs = room.labs.filter((lab) => lab.status === LabStatus.AVAILABLE);
 
     if (!availableLabs.length) {
         return undefined;
     }
 
-    let primaryLab;
+    let primaryLabs: StructureLab[] = [];
     let auxLabs: StructureLab[] = [];
 
-    if (!auxillaryLabsNeeded) {
-        primaryLab = availableLabs.pop();
+    if (type === LabTaskType.BOOST || type === LabTaskType.UNBOOST) {
+        primaryLabs[0] = availableLabs.pop();
     } else {
-        let suitablePrimaryLab = availableLabs.find((lab, index) => {
-            let adjacentAvailableLabs = availableLabs.filter((auxLab, auxIndex) => auxIndex !== index && lab.pos.getRangeTo(auxLab) <= 2);
-            return adjacentAvailableLabs.length >= 2;
-        });
-
-        if (suitablePrimaryLab) {
-            primaryLab = suitablePrimaryLab;
-            let availableAuxLabs = availableLabs.filter((auxLab) => auxLab.id !== primaryLab.id && primaryLab.pos.getRangeTo(auxLab) <= 2);
-            while (auxLabs.length < 2) {
-                auxLabs.push(availableAuxLabs.shift());
-            }
-        } else {
+        if (availableLabs.length < 3) {
             return undefined;
+        } else {
+            if (type === LabTaskType.REACT) {
+                //can use multiple reaction labs to speed up task - find aux labs first
+                //find available labs w/ most adjacent labs
+                let labsWithAdjacentCount = availableLabs
+                    .map((lab) => {
+                        return {
+                            lab: lab,
+                            inRangeCount: lab.pos.findInRange(FIND_MY_STRUCTURES, 2, {
+                                filter: (adjacentLab) => adjacentLab?.id !== lab?.id && availableLabs.includes(adjacentLab as StructureLab),
+                            }).length,
+                        };
+                    })
+                    .filter((lab) => lab.inRangeCount > 1)
+                    .sort((a, b) => b.inRangeCount - a.inRangeCount)
+                    .map((labWithCount) => labWithCount.lab);
+
+                if (labsWithAdjacentCount.length < 3) {
+                    return undefined;
+                }
+
+                auxLabs = labsWithAdjacentCount.splice(0, 2);
+                for (let i = 0; i < labsWithAdjacentCount.length && auxLabs.length + primaryLabs.length < availableLabs.length - 1; i++) {
+                    if (labsWithAdjacentCount[i].pos.inRangeTo(auxLabs[0], 2) && labsWithAdjacentCount[i].pos.inRangeTo(auxLabs[1], 2)) {
+                        primaryLabs.push(labsWithAdjacentCount[i]);
+                    }
+                }
+
+                if (!primaryLabs.length) {
+                    return undefined;
+                }
+            } else {
+                let suitablePrimaryLab = availableLabs.find((lab, index) => {
+                    let adjacentAvailableLabs = availableLabs.filter((auxLab, auxIndex) => auxIndex !== index && lab.pos.getRangeTo(auxLab) <= 2);
+                    return adjacentAvailableLabs.length >= 2;
+                });
+
+                if (suitablePrimaryLab) {
+                    primaryLabs[0] = suitablePrimaryLab;
+                    let availableAuxLabs = availableLabs.filter(
+                        (auxLab) => auxLab.id !== primaryLabs[0].id && primaryLabs[0].pos.getRangeTo(auxLab) <= 2
+                    );
+                    while (auxLabs.length < 2) {
+                        auxLabs.push(availableAuxLabs.shift());
+                    }
+                } else {
+                    return undefined;
+                }
+            }
         }
     }
 
-    return [primaryLab, ...auxLabs].map((lab) => lab.id);
+    return [primaryLabs.map((lab) => lab?.id), auxLabs.map((lab) => lab?.id)];
 }
 
 export function addLabTask(room: Room, opts: LabTaskOpts): ScreepsReturnCode {
@@ -183,24 +233,23 @@ export function addLabTask(room: Room, opts: LabTaskOpts): ScreepsReturnCode {
 }
 
 function attemptToStartTask(room: Room, task: LabTask): LabTask {
-    let auxNeeded = task.type === LabTaskType.REACT || task.type === LabTaskType.REVERSE;
-    let labs: Id<StructureLab>[] = findLabs(room, auxNeeded);
-    if (labs) {
-        task.primaryLab = labs.shift();
-        if (auxNeeded) {
-            task.auxillaryLabs = labs;
+    let labsFound: Id<StructureLab>[][] = findLabs(room, task.type);
+    if (labsFound) {
+        task.reactionLabs = labsFound[0];
+        if (task.type === LabTaskType.REACT || task.type === LabTaskType.REVERSE) {
+            task.auxillaryLabs = labsFound[1];
             if (task.type === LabTaskType.REACT) {
                 task.reagentsNeeded.forEach((need, index) => {
                     need.lab = task.auxillaryLabs[index];
                 });
             } else {
-                task.reagentsNeeded[0].lab = task.primaryLab;
+                task.reagentsNeeded[0].lab = task.reactionLabs[0];
             }
 
             task.cyclesCompleted = 0;
         } else {
             if (task.type === LabTaskType.BOOST) {
-                task.reagentsNeeded[0].lab = task.primaryLab;
+                task.reagentsNeeded[0].lab = task.reactionLabs[0];
             }
         }
 

@@ -4,7 +4,7 @@ interface StructureLab {
 }
 
 interface LabTask {
-    primaryLab?: Id<StructureLab>;
+    reactionLabs?: Id<StructureLab>[];
     auxillaryLabs?: Id<StructureLab>[];
     type: LabTaskType;
     status: TaskStatus;
