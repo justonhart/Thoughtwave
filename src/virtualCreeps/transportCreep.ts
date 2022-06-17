@@ -138,7 +138,7 @@ export class TransportCreep extends WaveCreep {
                 this.travelTo(target, { range: 1 });
                 break;
             case 0:
-                if (resourcesToWithdraw.length === 1 || target.store[nextResource] >= this.store.getFreeCapacity()) {
+                if (target.store[nextResource] >= this.store.getFreeCapacity() || target instanceof StructureLab) {
                     this.onTaskFinished();
                 }
                 break;
