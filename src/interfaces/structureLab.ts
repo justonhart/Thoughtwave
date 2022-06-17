@@ -9,7 +9,6 @@ interface LabTask {
     type: LabTaskType;
     status: TaskStatus;
     reagentsNeeded?: LabNeed[];
-    cyclesCompleted?: number;
     targetCreepName?: string;
 }
 

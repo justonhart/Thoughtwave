@@ -85,14 +85,9 @@ function runReactTask(task: LabTask): LabTask {
     let primaryLabs = task.reactionLabs.map((id) => Game.getObjectById(id));
     let auxillaryLabs = task.auxillaryLabs.map((id) => Game.getObjectById(id));
 
-    let targetCycles = task.reagentsNeeded[0].amount / 5;
-
-    if (task.cyclesCompleted < targetCycles) {
+    if (auxillaryLabs.map((lab) => !lab.mineralType).reduce((anyEmpty, next) => anyEmpty || next)) {
         primaryLabs.forEach((lab) => {
-            let result = lab.runReaction(auxillaryLabs[0], auxillaryLabs[1]);
-            if (result === OK) {
-                task.cyclesCompleted++;
-            }
+            lab.runReaction(auxillaryLabs[0], auxillaryLabs[1]);
         });
     } else {
         task.status = TaskStatus.COMPLETE;
@@ -105,14 +100,9 @@ function runReverseTask(task: LabTask): LabTask {
     let primaryLabs = task.reactionLabs.map((id) => Game.getObjectById(id));
     let auxillaryLabs = task.auxillaryLabs.map((id) => Game.getObjectById(id));
 
-    let targetCycles = task.reagentsNeeded[0].amount / 5;
-
-    if (task.cyclesCompleted < targetCycles) {
+    if (primaryLabs[0].mineralType) {
         primaryLabs.forEach((lab) => {
-            let result = lab.reverseReaction(auxillaryLabs[0], auxillaryLabs[1]);
-            if (result === OK) {
-                task.cyclesCompleted++;
-            }
+            lab.reverseReaction(auxillaryLabs[0], auxillaryLabs[1]);
         });
     } else {
         task.status = TaskStatus.COMPLETE;
@@ -252,8 +242,6 @@ function attemptToStartTask(room: Room, task: LabTask): LabTask {
             } else {
                 task.reagentsNeeded[0].lab = task.reactionLabs[0];
             }
-
-            task.cyclesCompleted = 0;
         } else {
             if (task.type === LabTaskType.BOOST) {
                 task.reagentsNeeded[0].lab = task.reactionLabs[0];
