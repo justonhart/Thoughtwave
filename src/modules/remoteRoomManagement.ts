@@ -3,7 +3,9 @@ import { PopulationManagement } from './populationManagement';
 export function driveRemoteRoom(room: Room) {
     if (room.memory.remoteAssignments) {
         try {
-            Object.keys(room.memory.remoteAssignments).forEach((remoteRoomName) => runSecurity(room, remoteRoomName));
+            Object.keys(room.memory.remoteAssignments).forEach((remoteRoomName) => {
+                runSecurity(room, remoteRoomName);
+            });
         } catch (e) {
             console.log(`Error caught in remote room management: \n${e}`);
         }

@@ -22,18 +22,26 @@ export function runLabs(room: Room) {
     }
 
     let labs = room.labs;
-    let labsInUse = labs.filter((lab) => lab.status === LabStatus.AVAILABLE);
+    let labsInUse = labs.filter((lab) => lab.status !== LabStatus.AVAILABLE);
     let primaryLabsInUse = labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY);
 
     //if there are 4 or more available labs, try to add react task
-    // if(labs.length - labsInUse.length > 3){
-    //     let resourceToMake = getNextResourceToCreate(room);
-    //     if(resourceToMake){
-    //         let reagents = getReagents(resourceToMake);
-    //         let amountToCreate = Math.min(...reagents.map(resource => getResourceAmount(room, resource)), 3000);
-    //         room.addLabTask({type: LabTaskType.REACT, reagentsNeeded: reagents.map(r => {return { resource: r, amount: amountToCreate}})});
-    //     }
-    // }
+    if (labs.length - labsInUse.length > 3) {
+        let resourceToMake = getNextResourceToCreate(room);
+        if (resourceToMake) {
+            let reagents = getReagents(resourceToMake);
+            let amountToCreate = Math.min(...reagents.map((resource) => getResourceAmount(room, resource)), 3000);
+            let result = room.addLabTask({
+                type: LabTaskType.REACT,
+                reagentsNeeded: reagents.map((r) => {
+                    return { resource: r, amount: amountToCreate };
+                }),
+            });
+            if (result === OK) {
+                console.log(`${room.name} added task to create ${amountToCreate} ${resourceToMake}`);
+            }
+        }
+    }
 
     //run tasks
     primaryLabsInUse.forEach((lab) => {
