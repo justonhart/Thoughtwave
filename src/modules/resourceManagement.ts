@@ -70,9 +70,10 @@ export function manageEmpireResources() {
 
             let extraResources = getExtraResources(room);
             if (extraResources.length) {
+                let sent = false;
                 extraResources.forEach((resource) => {
                     let roomsInNeed = global.resourceNeeds[resource];
-                    if (roomsInNeed?.length) {
+                    if (roomsInNeed?.length && !sent) {
                         let recipient = findClosestRecipient(
                             room,
                             roomsInNeed.map((roomName) => Game.rooms[roomName])
@@ -87,6 +88,7 @@ export function manageEmpireResources() {
                                     recipient
                                 )}`
                             );
+                            sent = true;
                             return;
                         } else {
                             console.log(
@@ -166,7 +168,7 @@ export function getExtraResources(room: Room): ResourceConstant[] {
 
     const ALL_MINERALS_AND_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)] as ResourceConstant[];
     ALL_MINERALS_AND_COMPOUNDS.forEach((resource) => {
-        if (getResourceAmount(room, resource) >= 10000 && room.terminal[resource] >= 5000) {
+        if (getResourceAmount(room, resource) >= 10000 && room.terminal.store[resource] >= 5000) {
             extraResources.push(resource);
         }
     });
