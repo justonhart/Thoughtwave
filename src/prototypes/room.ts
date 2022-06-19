@@ -1,3 +1,4 @@
+import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
 import { posFromMem } from '../modules/memoryManagement';
 import { PopulationManagement } from '../modules/populationManagement';
 import { findRepairTargets } from '../modules/roomManagement';
@@ -25,9 +26,9 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
     get: function (this: Room) {
         if (!this.storage?.my || !this.storage.isActive()) {
             return undefined;
-        } else if (this.storage.store[RESOURCE_ENERGY] >= 700000) {
+        } else if (this.storage.store[RESOURCE_ENERGY] >= 500000) {
             return EnergyStatus.OVERFLOW;
-        } else if (this.storage.store[RESOURCE_ENERGY] >= 400000) {
+        } else if (this.storage.store[RESOURCE_ENERGY] >= 350000) {
             return EnergyStatus.SURPLUS;
         } else if (this.storage.store[RESOURCE_ENERGY] >= 200000) {
             return EnergyStatus.STABLE;
@@ -81,3 +82,19 @@ Object.defineProperty(Room.prototype, 'workerCapacity', {
     enumerable: false,
     configurable: true,
 });
+
+Object.defineProperty(Room.prototype, 'labs', {
+    get: function (this: Room) {
+        return this.find(FIND_MY_STRUCTURES).filter((s) => s.structureType === STRUCTURE_LAB && s.isActive());
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Room.prototype.addLabTask = function (this: Room, opts: LabTaskOpts): ScreepsReturnCode {
+    return addLabTask(this, opts);
+};
+
+Room.prototype.getBoostResourcesAvailable = function (this: Room, boostTypes: BoostType[]) {
+    return getResourceBoostsAvailable(this, boostTypes);
+};

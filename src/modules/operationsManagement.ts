@@ -321,3 +321,63 @@ function manageRoomRecoveryOperation(op: Operation) {
         placeBunkerConstructionSites(targetRoom);
     }
 }
+
+export function launchIntershardParty(portalLocations: string[], destinationRoom: string) {
+    let origin = findOperationOrigin(posFromMem(portalLocations[0]).roomName);
+
+    console.log(`launching intershard from ${origin}`);
+
+    Memory.empire.spawnAssignments.push({
+        designee: origin,
+        body: [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM],
+        memoryOptions: {
+            role: Role.CLAIMER,
+            portalLocations: portalLocations,
+            destination: destinationRoom,
+        },
+    });
+
+    Memory.empire.spawnAssignments.push({
+        designee: origin,
+        body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
+        memoryOptions: {
+            role: Role.INTERSHARD_TRAVELLER,
+            nextRole: Role.MINER,
+            destination: destinationRoom,
+            portalLocations: portalLocations,
+        },
+    });
+
+    Memory.empire.spawnAssignments.push({
+        designee: origin,
+        body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
+        memoryOptions: {
+            role: Role.INTERSHARD_TRAVELLER,
+            nextRole: Role.MINER,
+            destination: destinationRoom,
+            portalLocations: portalLocations,
+        },
+    });
+
+    Memory.empire.spawnAssignments.push({
+        designee: origin,
+        body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[origin].energyCapacityAvailable),
+        memoryOptions: {
+            role: Role.INTERSHARD_TRAVELLER,
+            nextRole: Role.WORKER,
+            destination: destinationRoom,
+            portalLocations: portalLocations,
+        },
+    });
+
+    Memory.empire.spawnAssignments.push({
+        designee: origin,
+        body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[origin].energyCapacityAvailable),
+        memoryOptions: {
+            role: Role.INTERSHARD_TRAVELLER,
+            nextRole: Role.WORKER,
+            destination: destinationRoom,
+            portalLocations: portalLocations,
+        },
+    });
+}

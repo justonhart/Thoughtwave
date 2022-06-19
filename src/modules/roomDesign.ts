@@ -352,26 +352,48 @@ export function placeBunkerInnerRamparts(room: Room) {
 
 export function placeMinerLinks(room: Room) {
     if (room.managerLink) {
-        Object.keys(room.memory.miningAssignments).forEach((assignmentString) => {
-            let assignmentPos = posFromMem(assignmentString);
+        Object.keys(room.memory.miningAssignments)
+            .sort((posA, posB) => room.managerLink.pos.getRangeTo(posFromMem(posB)) - room.managerLink.pos.getRangeTo(posFromMem(posA)))
+            .forEach((assignmentString) => {
+                let assignmentPos = posFromMem(assignmentString);
 
-            let linkNeeded =
-                !assignmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((structure) => structure.structureType === STRUCTURE_LINK) &&
-                !assignmentPos.findInRange(FIND_MY_CONSTRUCTION_SITES, 1).find((site) => site.structureType === STRUCTURE_LINK);
+                let linkNeeded =
+                    !assignmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((structure) => structure.structureType === STRUCTURE_LINK) &&
+                    !assignmentPos.findInRange(FIND_MY_CONSTRUCTION_SITES, 1).find((site) => site.structureType === STRUCTURE_LINK);
 
-            if (linkNeeded) {
-                let looks = room.lookAtArea(assignmentPos.y - 1, assignmentPos.x - 1, assignmentPos.y + 1, assignmentPos.x + 1, true);
-                let availableSpot = looks.find(
-                    (look) =>
-                        look.type === 'terrain' &&
-                        look.terrain !== 'wall' &&
-                        !looks.some(
-                            (otherLook) => otherLook.x === look.x && otherLook.y === look.y && (otherLook.constructionSite || otherLook.structure)
-                        )
-                );
+                if (linkNeeded) {
+                    let looks = room.lookAtArea(assignmentPos.y - 1, assignmentPos.x - 1, assignmentPos.y + 1, assignmentPos.x + 1, true);
+                    let availableSpot = looks.find(
+                        (look) =>
+                            look.type === 'terrain' &&
+                            look.terrain !== 'wall' &&
+                            !looks.some(
+                                (otherLook) => otherLook.x === look.x && otherLook.y === look.y && (otherLook.constructionSite || otherLook.structure)
+                            )
+                    );
 
-                room.createConstructionSite(availableSpot.x, availableSpot.y, STRUCTURE_LINK);
-            }
+                    room.createConstructionSite(availableSpot.x, availableSpot.y, STRUCTURE_LINK);
+                }
+            });
+    }
+}
+
+export function placeUpgraderLink(room: Room) {
+    if (room.managerLink) {
+        let looks = room.lookAtArea(room.controller.pos.y - 4, room.controller.pos.x - 4, room.controller.pos.y + 4, room.controller.pos.x + 4, true);
+        let availableSpots = looks
+            .filter(
+                (look) =>
+                    look.type === 'terrain' &&
+                    look.terrain !== 'wall' &&
+                    !looks.some(
+                        (otherLook) => otherLook.x === look.x && otherLook.y === look.y && (otherLook.constructionSite || otherLook.structure)
+                    )
+            )
+            .map((spot) => new RoomPosition(spot.x, spot.y, room.name));
+
+        availableSpots.forEach((pos) => {
+            room.visual.text('X', pos);
         });
     }
 }

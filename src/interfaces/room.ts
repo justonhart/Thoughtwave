@@ -1,4 +1,5 @@
 interface RoomMemory {
+    labRequests?: LabNeed[];
     energyDistance?: number;
     controllerDistance?: number;
     unclaim?: boolean;
@@ -8,9 +9,12 @@ interface RoomMemory {
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: { [posString: string]: AssignmentStatus };
+    mineralMiningAssignments: { [posString: string]: AssignmentStatus };
     remoteAssignments: { [roomName: string]: RemoteAssignment };
     reservedEnergy?: number;
     layout?: RoomLayout;
+    labTasks?: LabTask[];
+    dontCheckConstructionsBefore?: number;
 }
 
 interface RemoteAssignment {
@@ -32,6 +36,9 @@ interface Room {
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
     workerCapacity: number;
+    labs: StructureLab[];
+    addLabTask(opts: LabTaskOpts): ScreepsReturnCode;
+    getBoostResourcesAvailable(boostTypes: BoostType[]): { [type: number]: { resource: string; amount: number }[] };
 }
 
 interface RoomPosition {

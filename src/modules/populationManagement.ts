@@ -1,4 +1,18 @@
+import { getResourceBoostsAvailable } from './labManagement';
 import { posFromMem } from './memoryManagement';
+
+const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
+    1: ATTACK,
+    2: RANGED_ATTACK,
+    3: HEAL,
+    4: WORK,
+    5: WORK,
+    6: WORK,
+    7: WORK,
+    8: MOVE,
+    9: CARRY,
+    10: TOUGH,
+};
 
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
@@ -83,7 +97,6 @@ export class PopulationManagement {
                 case EnergyStatus.RECOVERING:
                     creepCapacity = Math.ceil(creepCapacity / 2);
                     break;
-                default:
                 case EnergyStatus.STABLE:
                     break;
                 case EnergyStatus.SURPLUS:
@@ -92,6 +105,19 @@ export class PopulationManagement {
                 case EnergyStatus.OVERFLOW:
                     creepCapacity *= 4;
                     break;
+                //room has no storage
+                default:
+                    let hasStartupEnergy =
+                        room
+                            .find(FIND_STRUCTURES)
+                            .filter(
+                                (struct) =>
+                                    (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) &&
+                                    struct.store.energy > 200000
+                            ).length > 0;
+                    if (hasStartupEnergy) {
+                        creepCapacity *= 4;
+                    }
             }
         }
 
@@ -450,6 +476,43 @@ export class PopulationManagement {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
+        let labTasksToAdd = [];
+        if (opts.boosts?.length) {
+            //get total requested boosts available by type
+            let boostMap = getResourceBoostsAvailable(spawn.room, Array.from(opts.boosts));
+
+            //calculate number of boosts needed
+            opts.boosts.forEach((boostType) => {
+                let boostsAvailable = boostMap[boostType];
+                let boostsAvailableCount = boostsAvailable?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
+                let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
+
+                let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
+
+                let resourcesNeeded: { [resource: string]: number } = {};
+
+                for (let i = 0; i < numberOfBoosts; i++) {
+                    let nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
+                    boostMap[nextAvailableBoostResource] -= 1;
+                    !resourcesNeeded[nextAvailableBoostResource]
+                        ? (resourcesNeeded[nextAvailableBoostResource] = 30)
+                        : (resourcesNeeded[nextAvailableBoostResource] += 30);
+                }
+
+                Object.keys(resourcesNeeded).forEach((resource) => {
+                    labTasksToAdd.push({
+                        type: LabTaskType.BOOST,
+                        reagentsNeeded: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
+                        targetCreepName: name,
+                    });
+                });
+            });
+
+            if (labTasksToAdd.length) {
+                opts.memory.needsBoosted = true;
+            }
+        }
+
         // find safe spawn direction in predefined layouts
         if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
             if (!opts.directions) {
@@ -469,6 +532,10 @@ export class PopulationManagement {
 
         if (result !== OK) {
             console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
+        } else {
+            labTasksToAdd.forEach((task) => {
+                spawn.room.addLabTask(task);
+            });
         }
 
         return result;
@@ -537,5 +604,44 @@ export class PopulationManagement {
         let transporter = Object.values(Game.creeps).find((c) => c.memory.role === Role.TRANSPORTER && c.memory.room === room.name);
         let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 1000);
         return !transporter && !!room.storage && bigDroppedResources.length > 1;
+    }
+
+    static needsMineralMiner(room: Room) {
+        if (!room.memory.mineralMiningAssignments) {
+            room.memory.mineralMiningAssignments = {};
+        }
+
+        let mineralMiningAssignments = room.memory.mineralMiningAssignments;
+        return Object.keys(mineralMiningAssignments).some(
+            (k) =>
+                mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED &&
+                (Game.rooms[posFromMem(k)?.roomName]
+                    ? posFromMem(k)
+                          .findInRange(FIND_STRUCTURES, 1)
+                          .filter((struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.isActive()).length &&
+                      Game.rooms[posFromMem(k)?.roomName].mineral.mineralAmount > 0
+                    : true)
+        );
+    }
+
+    static spawnMineralMiner(spawn: StructureSpawn): ScreepsReturnCode {
+        let nextAvailableAssignment = Object.keys(spawn.room.memory.mineralMiningAssignments).find(
+            (k) => spawn.room.memory.mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED
+        );
+
+        let options: SpawnOptions = {
+            memory: {
+                room: spawn.room.name,
+                role: Role.MINERAL_MINER,
+                currentTaskPriority: Priority.HIGH,
+                assignment: nextAvailableAssignment,
+            },
+        };
+
+        let result = spawn.spawnMax([WORK, WORK, MOVE], this.getCreepTag('m', spawn.name), options);
+        if (result === OK) {
+            spawn.room.memory.mineralMiningAssignments[nextAvailableAssignment] = AssignmentStatus.ASSIGNED;
+        }
+        return result;
     }
 }
