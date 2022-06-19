@@ -428,12 +428,7 @@ export function getResourceBoostsAvailable(
 //find next needed resource that room can currently create
 export function getNextResourceToCreate(room: Room): MineralCompoundConstant {
     return Object.keys(global.resourceNeeds).find(
-        (resource) =>
-            global.resourceNeeds[resource].length >=
-                Object.keys(Game.rooms).filter(
-                    (room) => Game.rooms[room].controller?.my && Game.rooms[room].controller.level >= 6 && Game.rooms[room].terminal
-                ).length *
-                    0.75 && hasNecessaryReagentsForReaction(room, resource as MineralCompoundConstant)
+        (resource) => global.resourceNeeds[resource].length && hasNecessaryReagentsForReaction(room, resource as MineralCompoundConstant)
     ) as MineralCompoundConstant;
 }
 
