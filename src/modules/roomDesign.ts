@@ -55,7 +55,7 @@ export function findBunkerLocation(room: Room): RoomPosition {
 function checkBunkerBoundary(anchorPoint: RoomPosition) {
     let room = Game.rooms[anchorPoint.roomName];
 
-    let areaLooks = room.lookForAtArea(LOOK_TERRAIN, anchorPoint.y - 6, anchorPoint.x - 6, anchorPoint.y + 6, anchorPoint.x + 6, true);
+    let areaLooks = room.lookForAtArea(LOOK_TERRAIN, anchorPoint.y - 5, anchorPoint.x - 5, anchorPoint.y + 5, anchorPoint.x + 5, true);
 
     //if there are any walls in the area
     return !areaLooks.some((look) => look.terrain === 'wall');
@@ -215,7 +215,11 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
 
         pois.push(...room.find(FIND_MINERALS));
         pois.push(room.controller);
-        pois.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
+        if (room.controller.my) {
+            pois.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
+        } else {
+            pois.push(...room.find(FIND_SOURCES).map((source) => source.pos));
+        }
 
         let storagePos = new RoomPosition(anchorPos.x + 1, anchorPos.y - 1, anchorPos.roomName);
         let roadPositions = [];
@@ -226,7 +230,7 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
         for (let xDif = 0; xDif < 13; xDif++) {
             for (let yDif = 0; yDif < 13; yDif++) {
                 let lookPos = new RoomPosition(topLeft.x + xDif, topLeft.y + yDif, room.name);
-                if (getStructureForPos(RoomLayout.BUNKER, lookPos, anchorPos) === STRUCTURE_ROAD) {
+                if (getStructureForPos(RoomLayout.BUNKER, lookPos, anchorPos) === STRUCTURE_ROAD && lookPos.lookFor(LOOK_TERRAIN)[0] !== 'wall') {
                     roadPositions.push(lookPos);
                 } else {
                     blockedPositions.push(lookPos);
@@ -236,7 +240,9 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
 
         roadPositions.push(...room.find(FIND_MY_CONSTRUCTION_SITES).filter((site) => site.structureType === STRUCTURE_ROAD));
 
-        blockedPositions.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
+        if (room.controller.my) {
+            blockedPositions.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
+        }
 
         let findPathToStorage = (poi: RoomPosition | Mineral | StructureController) => {
             let range: number;
@@ -269,7 +275,9 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
             return path;
         };
 
-        let sourcePaths = Object.keys(room.memory.miningAssignments).map((pos) => findPathToStorage(posFromMem(pos)));
+        let sourcePaths = room.controller.my
+            ? Object.keys(room.memory.miningAssignments).map((pos) => findPathToStorage(posFromMem(pos)))
+            : room.find(FIND_SOURCES).map((source) => findPathToStorage(source.pos));
         let avgEnergyToStorageDistance = sourcePaths.map((path) => path.length).reduce((sum, next) => sum + next, 0) / sourcePaths.length;
 
         room.memory.energyDistance = avgEnergyToStorageDistance;
