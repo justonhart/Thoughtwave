@@ -1,4 +1,8 @@
 interface CreepMemory {
+    gatheringLabResources?: boolean;
+    needsBoosted?: boolean;
+    labRequests?: LabNeed[];
+    resourceSource?: Id<Structure>;
     portalLocations?: string[];
     link?: Id<StructureLink>;
     destination?: string;
@@ -15,6 +19,7 @@ interface CreepMemory {
     _m?: TravelState;
     scout?: ScoutMemory;
     combat?: CombatMemory;
+    nextRole?: Role;
 }
 
 interface Creep {
@@ -93,4 +98,6 @@ const enum Role {
     OPERATIVE = 'OPERATIVE',
     SQUAD_ATTACKER = 'SQUAD_ATTACKER',
     SQUAD_HEALER = 'SQUAD_HEALER',
+    MINERAL_MINER = 'MINERAL_MINER',
+    INTERSHARD_TRAVELLER = 'INTERSHARD_TRAVELLER',
 }

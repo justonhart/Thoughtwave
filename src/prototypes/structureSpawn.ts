@@ -43,3 +43,7 @@ StructureSpawn.prototype.smartSpawn = function (body: BodyPartConstant[], name: 
 StructureSpawn.prototype.spawnManager = function () {
     return PopulationManagement.spawnManager(this);
 };
+
+StructureSpawn.prototype.spawnMineralMiner = function () {
+    return PopulationManagement.spawnMineralMiner(this);
+};

@@ -1,3 +1,4 @@
+import { runLabs } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 import { driveRemoteRoom } from './remoteRoomManagement';
@@ -49,7 +50,8 @@ export function driveRoom(room: Room) {
         }
 
         if (
-            Game.time % BUILD_CHECK_PERIOD === 0 &&
+            !global.roomConstructionsChecked &&
+            (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
             (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
             Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
             room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
@@ -61,6 +63,8 @@ export function driveRoom(room: Room) {
                     if (!roomNeedsCoreStructures(room)) {
                         placeBunkerInnerRamparts(room);
                     }
+                    placeExtractor(room);
+                    placeMineralContainers(room);
                 case 5:
                     placeMinerLinks(room);
                 case 4:
@@ -76,6 +80,8 @@ export function driveRoom(room: Room) {
                 case 1:
                     cleanRoom(room);
             }
+            global.roomConstructionsChecked = true;
+            room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
         }
 
         runTowers(room);
@@ -106,6 +112,8 @@ export function driveRoom(room: Room) {
 
         runSpawning(room);
 
+        runLabs(room);
+
         delete room.memory.reservedEnergy;
     }
 }
@@ -121,13 +129,10 @@ function runTowers(room: Room) {
         return;
     }
 
-    let hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
-
-    let healers = hostileCreeps.filter((creep) => creep.getActiveBodyparts(HEAL) > 0);
-
-    healers.length
-        ? towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(healers)))
-        : towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
+    if (!room.controller.safeMode) {
+        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+        towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
+    }
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {
@@ -194,12 +199,16 @@ export function initRoom(room: Room) {
         repairSearchCooldown: 0,
         repairQueue: [],
         miningAssignments: {},
+        mineralMiningAssignments: {},
         remoteAssignments: {},
     };
 
     miningPostitions.forEach((pos) => {
         room.memory.miningAssignments[pos.toMemSafe()] = AssignmentStatus.UNASSIGNED;
     });
+
+    let mineralMiningPosition = findMineralMiningPosition(room);
+    room.memory.mineralMiningAssignments[mineralMiningPosition.toMemSafe()] = AssignmentStatus.UNASSIGNED;
 
     //calculate room layout here
     let anchorPoint = findBunkerLocation(room);
@@ -237,6 +246,21 @@ function findMiningPostitions(room: Room) {
     return undefined;
 }
 
+function findMineralMiningPosition(room: Room): RoomPosition {
+    let possiblePositions = room
+        .lookForAtArea(LOOK_TERRAIN, room.mineral.pos.y - 1, room.mineral.pos.x - 1, room.mineral.pos.y + 1, room.mineral.pos.x + 1, true)
+        .filter((terrain) => terrain.terrain != 'wall')
+        .map((terrain) => new RoomPosition(terrain.x, terrain.y, room.mineral.room.name));
+
+    //set closest position to storage as container position
+    let anchorPoint = posFromMem(room.memory.anchorPoint);
+    let referencePos = anchorPoint ? new RoomPosition(anchorPoint.x + 1, anchorPoint.y - 1, room.name) : room.controller.pos;
+    let candidate = referencePos.findClosestByPath(possiblePositions, { ignoreCreeps: true });
+    if (candidate) {
+        return candidate;
+    }
+}
+
 function runSpawning(room: Room) {
     let spawns = Object.values(Game.spawns).filter((spawn) => spawn.room === room);
 
@@ -260,8 +284,10 @@ function runSpawning(room: Room) {
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
     let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length;
+    let assignments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
     let roomContainsViolentHostiles =
-        room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0;
+        room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0 &&
+        !room.controller.safeMode;
 
     if (distributor === undefined) {
         let spawn = availableSpawns.pop();
@@ -272,6 +298,21 @@ function runSpawning(room: Room) {
         room.memory.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
             .map((part) => BODYPART_COST[part])
             .reduce((sum, next) => sum + next);
+    }
+
+    if (roomContainsViolentHostiles) {
+        let protectorAssignments = assignments.filter(
+            (assignment) =>
+                assignment.memoryOptions.destination === room.name &&
+                (assignment.memoryOptions.role === Role.RAMPART_PROTECTOR || assignment.memoryOptions.role === Role.PROTECTOR)
+        );
+        protectorAssignments.forEach((assignment) => {
+            let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
+            if (canSpawnAssignment) {
+                let spawn = availableSpawns.pop();
+                spawn?.spawnAssignedCreep(assignment);
+            }
+        });
     }
 
     if (PopulationManagement.needsTransporter(room) && !roomContainsViolentHostiles) {
@@ -303,9 +344,13 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (workerCount >= room.workerCapacity || roomContainsViolentHostiles) {
-        let assigments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
-        assigments.forEach((assignment) => {
+    if (PopulationManagement.needsMineralMiner(room)) {
+        let spawn = availableSpawns.pop();
+        spawn?.spawnMineralMiner();
+    }
+
+    if (workerCount >= room.workerCapacity && !roomContainsViolentHostiles) {
+        assignments.forEach((assignment) => {
             let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
             if (canSpawnAssignment) {
                 let spawn = availableSpawns.pop();
@@ -396,15 +441,38 @@ function runGates(room: Room): void {
 
     room.memory.gates = gates;
 }
+
 function placeMiningPositionContainers(room: Room) {
     let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos));
     miningPositions.forEach((pos) => {
         room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
     });
 }
+
 function placeMiningRamparts(room: Room) {
     let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos));
     miningPositions.forEach((pos) => {
         room.createConstructionSite(pos.x, pos.y, STRUCTURE_RAMPART);
     });
+}
+
+function placeMineralContainers(room: Room) {
+    if (!room.memory.mineralMiningAssignments || !Object.keys(room.memory.mineralMiningAssignments).length) {
+        room.memory.mineralMiningAssignments = {};
+        let mineralMiningPos = findMineralMiningPosition(room);
+        room.memory.mineralMiningAssignments[mineralMiningPos.toMemSafe()] = AssignmentStatus.UNASSIGNED;
+    }
+
+    let miningPositions = Object.keys(room.memory.mineralMiningAssignments).map((pos) => posFromMem(pos));
+    miningPositions.forEach((pos) => {
+        Game.rooms[pos.roomName]?.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
+    });
+}
+
+function placeExtractor(room: Room) {
+    let extractor = room.find(FIND_STRUCTURES).find((struct) => struct.structureType === STRUCTURE_EXTRACTOR);
+    if (!extractor) {
+        let mineralPos = room.mineral.pos;
+        room.createConstructionSite(mineralPos, STRUCTURE_EXTRACTOR);
+    }
 }

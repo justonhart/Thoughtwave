@@ -41,6 +41,12 @@ function handleDeadCreep(creepName: string) {
         if (deadCreepMemory.role === Role.RESERVER && Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment]) {
             Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;
         }
+        if (deadCreepMemory.role === Role.MINERAL_MINER) {
+            Memory.rooms[deadCreepMemory.room].mineralMiningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
+        }
+        if (deadCreepMemory.labRequests) {
+            Memory.rooms[deadCreepMemory.room].labRequests.unshift(...deadCreepMemory.labRequests);
+        }
     }
 
     delete Memory.creeps[creepName];

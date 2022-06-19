@@ -3,16 +3,23 @@ import { WaveCreep } from './waveCreep';
 export class TransportCreep extends WaveCreep {
     protected run() {
         let target: any = Game.getObjectById(this.memory.targetId);
-        if (!target) {
+        if (!target && !this.memory.labRequests?.length) {
             this.memory.targetId = this.findTarget();
             target = Game.getObjectById(this.memory.targetId);
         }
 
-        if (target instanceof Resource) {
+        if (this.memory.labRequests?.length) {
+            this.prepareLabs();
+        } else if (target instanceof Resource) {
             this.runPickupJob(target);
-        } else if (target instanceof Tombstone || target instanceof StructureContainer) {
+        } else if (target instanceof Tombstone || target instanceof StructureContainer || target?.status === LabStatus.NEEDS_EMPTYING) {
             this.runCollectionJob(target);
-        } else if (target instanceof StructureSpawn || target instanceof StructureExtension || target instanceof StructureTower) {
+        } else if (
+            target instanceof StructureSpawn ||
+            target instanceof StructureExtension ||
+            target instanceof StructureTower ||
+            target instanceof StructureLab
+        ) {
             if (this.store.energy) {
                 this.runRefillJob(target);
             } else {
@@ -61,6 +68,15 @@ export class TransportCreep extends WaveCreep {
         if (spawnStructures.length) {
             return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
         }
+
+        let labs = this.homeroom
+            .find(FIND_MY_STRUCTURES)
+            .filter(
+                (structure) => structure.structureType === STRUCTURE_LAB && structure.store.energy < structure.store.getCapacity(RESOURCE_ENERGY)
+            );
+        if (labs.length) {
+            return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
+        }
     }
 
     protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> | Id<Tombstone> {
@@ -72,10 +88,14 @@ export class TransportCreep extends WaveCreep {
             return undefined;
         }
 
-        //@ts-ignore
+        let labsNeedingEmptied = this.room.labs?.filter((lab) => lab.status === LabStatus.NEEDS_EMPTYING);
+        if (labsNeedingEmptied.length) {
+            return this.pos.findClosestByRange(labsNeedingEmptied).id;
+        }
+
         let containers: StructureContainer[] = room
             .find(FIND_STRUCTURES)
-            .filter((structure) => structure.structureType === STRUCTURE_CONTAINER && structure.store.getUsedCapacity());
+            .filter((structure) => structure.structureType === STRUCTURE_CONTAINER && structure.store.getUsedCapacity()) as StructureContainer[];
         let fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
         if (fillingContainers.length) {
             return fillingContainers.reduce((fullestContainer, nextContainer) =>
@@ -107,17 +127,18 @@ export class TransportCreep extends WaveCreep {
     }
 
     //gather resources for the purpose of storing
-    protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone): void {
+    protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone | StructureLab): void {
         this.memory.currentTaskPriority = Priority.MEDIUM;
-        //@ts-ignore
-        let resourceToWithdraw: ResourceConstant = Object.keys(target.store).shift();
-        let result = this.withdraw(target, resourceToWithdraw);
+
+        let resourcesToWithdraw = target instanceof StructureLab ? [target.mineralType] : (Object.keys(target.store) as ResourceConstant[]);
+        let nextResource: ResourceConstant = resourcesToWithdraw.shift();
+        let result = this.withdraw(target, nextResource);
         switch (result) {
             case ERR_NOT_IN_RANGE:
                 this.travelTo(target, { range: 1 });
                 break;
             case 0:
-                if (Object.keys(target.store).length === 1 || target.store[resourceToWithdraw] >= this.store.getFreeCapacity()) {
+                if (target.store[nextResource] >= this.store.getFreeCapacity() || target instanceof StructureLab) {
                     this.onTaskFinished();
                 }
                 break;
@@ -137,5 +158,78 @@ export class TransportCreep extends WaveCreep {
             case ERR_FULL:
                 this.onTaskFinished();
         }
+    }
+
+    protected prepareLabs() {
+        this.memory.currentTaskPriority = Priority.HIGH;
+        let requests = this.memory.labRequests;
+
+        if (this.memory.gatheringLabResources) {
+            let resourceList: { [resource: string]: number } = {};
+            requests.forEach((req) => {
+                !resourceList[req.resource] ? (resourceList[req.resource] = req.amount) : (resourceList[req.resource] += req.amount);
+            });
+
+            let totalAmountToGather = Math.min(
+                this.store.getCapacity(),
+                Object.values(resourceList).reduce((sum, next) => sum + next)
+            );
+
+            if (this.store.getUsedCapacity() >= totalAmountToGather) {
+                this.memory.gatheringLabResources = false;
+            } else {
+                let resourceToGather = Object.keys(resourceList).find((res) => resourceList[res] > this.store[res]) as ResourceConstant;
+
+                let target = [this.room.storage, this.room.terminal].find((struct) => struct.store[resourceToGather]);
+                if (!this.pos.isNearTo(target)) {
+                    this.travelTo(target, { range: 1 });
+                } else {
+                    let amountToWithdraw = Math.min(resourceList[resourceToGather] - this.store[resourceToGather], this.store.getFreeCapacity());
+                    let result = this.withdraw(target, resourceToGather, Math.min(amountToWithdraw, target.store[resourceToGather]));
+                    if (result === OK) {
+                        if (amountToWithdraw + this.store.getUsedCapacity() >= totalAmountToGather) {
+                            this.memory.gatheringLabResources = false;
+                        }
+                    } else {
+                        this.say('e');
+                    }
+                }
+            }
+        } else {
+            if (this.store.getUsedCapacity()) {
+                let deliveryTarget = Game.getObjectById(requests[0].lab);
+                if (!this.pos.isNearTo(deliveryTarget)) {
+                    this.travelTo(deliveryTarget, { range: 1 });
+                } else {
+                    let result = this.transfer(deliveryTarget, requests[0].resource, Math.min(requests[0].amount, this.store[requests[0].resource]));
+                    if (result === OK) {
+                        requests[0].amount -= Math.min(requests[0].amount, this.store[requests[0].resource]);
+                        if (requests[0].amount <= 0) {
+                            requests.shift();
+                            this.memory.gatheringLabResources = true;
+                        }
+                    }
+
+                    if (!requests.length) {
+                        delete this.memory.gatheringLabResources;
+                    }
+
+                    this.memory.labRequests = requests;
+                }
+            } else {
+                this.memory.gatheringLabResources = true;
+            }
+        }
+    }
+
+    protected claimLabRequests() {
+        let availableCapacity = this.store.getFreeCapacity();
+        let i: number;
+        for (i = 0; availableCapacity > 0 && i < this.homeroom.memory.labRequests.length; i++) {
+            availableCapacity -= this.homeroom.memory.labRequests[i].amount;
+        }
+
+        this.memory.labRequests = this.homeroom.memory.labRequests.splice(0, i);
+        this.memory.gatheringLabResources = true;
     }
 }

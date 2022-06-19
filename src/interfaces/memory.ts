@@ -3,6 +3,7 @@ interface Memory {
 }
 
 interface EmpireMemory {
+    logCPU?: boolean;
     spawnAssignments?: SpawnAssignment[];
     hostileRooms?: HostileRoom[];
     scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>

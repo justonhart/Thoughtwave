@@ -2,16 +2,23 @@ import driveCreep from './modules/creepDriver';
 import { manageEmpire } from './modules/empireManagement';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
+import { getAllRoomNeeds, manageEmpireResources } from './modules/resourceManagement';
 import { driveRoom } from './modules/roomManagement';
 import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
+    let cpuUsed = 0;
+    let cpuUsageString = `${Game.time}:   `;
+
     try {
         manageMemory();
     } catch (e) {
         console.log(`Error caught in memory management: \n${e}`);
     }
+
+    cpuUsageString += `memory CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
+    cpuUsed = Game.cpu.getUsed();
 
     try {
         manageFlags();
@@ -19,11 +26,19 @@ module.exports.loop = function () {
         console.log(`Error caught in flag management: \n${e}`);
     }
 
+    //set map of all room resource needs
+    global.resourceNeeds = getAllRoomNeeds();
+
+    global.roomConstructionsChecked = false;
+
     try {
         manageEmpire();
     } catch (e) {
         console.log(`Error caught in empire management: \n${e}`);
     }
+
+    cpuUsageString += `empire CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
+    cpuUsed = Game.cpu.getUsed();
 
     Object.values(Game.rooms)
         .filter((r) => r.controller?.my)
@@ -35,6 +50,9 @@ module.exports.loop = function () {
             }
         });
 
+    cpuUsageString += `rooms CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
+    cpuUsed = Game.cpu.getUsed();
+
     Object.values(Game.creeps).forEach((creep) => {
         if (!creep.spawning) {
             try {
@@ -45,12 +63,28 @@ module.exports.loop = function () {
         }
     });
 
+    cpuUsageString += `creeps CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
+    cpuUsed = Game.cpu.getUsed();
+
+    try {
+        manageEmpireResources();
+    } catch (e) {
+        console.log(`Error caught in resource management: \n${e}`);
+    }
+
+    cpuUsageString += `resource cpu: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
+    cpuUsed = Game.cpu.getUsed();
+
     // Run PriorityQueue
     WaveCreep.getCreepsWithPriorityTask().forEach((creepName) => {
         Game.creeps[creepName].runPriorityQueueTask();
     });
 
-    if (Game.cpu.bucket === 10000) {
+    if (Memory.empire.logCPU) {
+        console.log(cpuUsageString + `total: ${Game.cpu.getUsed().toFixed(2)}`);
+    }
+
+    if (Game.shard.name !== 'shard3' && Game.cpu.bucket === 10000) {
         Game.cpu.generatePixel();
     }
 };
