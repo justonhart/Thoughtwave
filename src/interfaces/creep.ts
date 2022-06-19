@@ -23,7 +23,7 @@ interface Creep {
     operation: Operation;
     travelTo(destination: HasPos | RoomPosition, opts?: TravelToOpts): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND;
     travelToRoom(roomName: string, opts?: TravelToOpts): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND | IN_ROOM;
-    onEdge(position: HasPos | RoomPosition): boolean;
+    onEdge(): boolean;
     addTaskToPriorityQueue(priority: Priority, actionCallback: () => void): void;
     runPriorityQueueTask(): void;
 }
@@ -41,9 +41,29 @@ interface ScoutMemory {
 
 interface CombatMemory {
     flee?: boolean;
+    squadMemberType?: SquadMemberType;
+    squadType?: SquadType;
+    squadMembers?: { [squadMemberType: number]: Id<Creep> };
+    forcedDestinations?: string[];
+}
+
+interface SquadMembers {
     squadLeader?: Id<Creep>;
     squadFollower?: Id<Creep>;
-    forcedDestinations?: string[];
+    squadSecondLeader?: Id<Creep>;
+    squadSecondFollower?: Id<Creep>;
+}
+
+const enum SquadType {
+    DUO,
+    QUAD,
+}
+
+const enum SquadMemberType {
+    SQUAD_LEADER,
+    SQUAD_FOLLOWER,
+    SQUAD_SECOND_LEADER,
+    SQUAD_SECOND_FOLLOWER,
 }
 
 const enum Priority {

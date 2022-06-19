@@ -21,7 +21,7 @@ export class CombatCreep extends WaveCreep {
 
     // Info: In homeroom this will not work ==> Shouldnt matter as soon as ramparts are up but otherwise move to spawn?
     // Go back to the exit toward creeps homeroom while avoiding creeps along the way
-    protected flee() {
+    public flee() {
         return this.travelToRoom(this.homeroom?.name, { ignoreCreeps: false, avoidSourceKeepers: true });
     }
 
@@ -60,10 +60,8 @@ export class CombatCreep extends WaveCreep {
             return this.attack(target);
         } else if (this.getActiveBodyparts(RANGED_ATTACK) && (target.structureType === STRUCTURE_WALL || this.pos.getRangeTo(target) > 1)) {
             return this.rangedAttack(target);
-        } else {
-            return this.rangedMassAttack();
         }
-        return ERR_NO_BODYPART;
+        return this.rangedMassAttack();
     }
 
     /**

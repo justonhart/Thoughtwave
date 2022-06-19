@@ -1,48 +1,80 @@
 import { posFromMem } from '../modules/memoryManagement';
 import { Pathing } from '../modules/pathing';
+import { SquadManagement } from '../modules/squadManagement';
 import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class SquadAttacker extends CombatCreep {
     protected run() {
-        const squadFollower = this.memory.combat.squadFollower ? Game.getObjectById(this.memory.combat.squadFollower) : undefined;
-
-        if (squadFollower) {
-            if (!this.onEdge(this.pos) && !this.pos.isNearTo(squadFollower)) {
-                return; // Wait for follower to get closer
+        // --- QUADS
+        let fleeing = false;
+        if (SquadManagement.isPartOfQuad(this)) {
+            if (SquadManagement.missingQuadCreep(this)) {
+                SquadManagement.setupQuad(this);
+                SquadManagement.fleeing(this);
+                fleeing = true;
             }
-            const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
-            if (this.memory.combat.forcedDestinations?.length) {
-                let nextDestination = this.memory.combat.forcedDestinations[0];
-                if (this.pos.toMemSafe() === nextDestination) {
-                    this.memory.combat.forcedDestinations = this.memory.combat.forcedDestinations.slice(1);
-                    nextDestination = this.memory.combat.forcedDestinations[0];
-                }
-                this.travelTo(posFromMem(nextDestination));
-            } else if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
-                const enemyStructId = this.combatPath(range);
-                const targetId = this.findTarget(range, enemyStructId);
 
-                if (targetId) {
-                    const target = Game.getObjectById(targetId);
-                    if (target instanceof Creep) {
-                        this.attackCreep(target);
-                    } else if (target instanceof Structure) {
-                        this.attackStructure(target);
+            const squadLeader = SquadManagement.getSquadLeader(this);
+            const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
+            let enemyStructId: Id<Structure>;
+            if (!fleeing && !SquadManagement.closeToTargetRoom(squadLeader) && squadLeader.pos.roomName !== squadLeader.memory.assignment) {
+                if (this.onEdge() || SquadManagement.getInLineFormation(this)) {
+                    SquadManagement.linePathing(this);
+                }
+            } else {
+                if (!fleeing) {
+                    if (this.onEdge() || SquadManagement.getIntoFormation(this)) {
+                        SquadManagement.formationPathing(this, range);
+                    } else {
+                        // Not in formation TODO: remove once formation doesnt break anymore
+                        const hostile = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
+                        this.memory.targetId = hostile.id;
                     }
                 }
             }
-        } else {
-            const newSquadFollower = this.room.creeps.find(
-                (creep) => creep.memory.role === Role.SQUAD_HEALER && creep.memory.assignment === this.memory.assignment
-            );
-            if (newSquadFollower) {
-                this.memory.combat.squadFollower = newSquadFollower.id;
-            } else {
-                if (this.pos.roomName !== this.memory.assignment) {
-                    this.moveOffExit();
-                    return; // Wait on new squad follower
-                }
-                this.flee();
+
+            if (!Game.getObjectById(this.memory.targetId)) {
+                delete this.memory.targetId;
+            }
+
+            // No target for second leader
+            this.attackTarget(range, this.memory.targetId as Id<Structure>);
+            return;
+        }
+
+        // --- SQUADS
+        if (SquadManagement.missingDuoCreep(this)) {
+            SquadManagement.setupDuo(this);
+            SquadManagement.fleeing(this);
+            fleeing = true;
+        }
+
+        if (!fleeing && !this.onEdge() && !SquadManagement.getInDuoFormation(this)) {
+            return; // Wait for follower to get closer
+        }
+        const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
+        let enemyStructId: Id<Structure>;
+        if (!fleeing && this.memory.combat.forcedDestinations?.length) {
+            let nextDestination = this.memory.combat.forcedDestinations[0];
+            if (this.pos.toMemSafe() === nextDestination) {
+                this.memory.combat.forcedDestinations = this.memory.combat.forcedDestinations.slice(1);
+                nextDestination = this.memory.combat.forcedDestinations[0];
+            }
+            this.travelTo(posFromMem(nextDestination));
+        } else if (!fleeing && this.travelToRoom(this.memory.assignment) === IN_ROOM) {
+            enemyStructId = this.combatPath(range);
+        }
+        this.attackTarget(range, enemyStructId);
+    }
+
+    private attackTarget(range: number, enemyStructId: Id<Structure>) {
+        const targetId = this.findTarget(range, enemyStructId);
+        if (targetId) {
+            const target = Game.getObjectById(targetId);
+            if (target instanceof Creep) {
+                this.attackCreep(target);
+            } else if (target instanceof Structure) {
+                this.attackStructure(target);
             }
         }
     }

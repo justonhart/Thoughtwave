@@ -72,6 +72,7 @@ const enum OperationType {
     SECURE,
     ROOM_RECOVERY,
     ATTACK,
+    QUAD_ATTACK,
 }
 
 const enum OperationStage {
