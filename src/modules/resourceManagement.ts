@@ -3,9 +3,6 @@ export function manageEmpireResources() {
     let roomsInNeed = terminalRooms.filter((room) => room.energyStatus < EnergyStatus.STABLE).sort((a, b) => a.energyStatus - b.energyStatus);
     let roomsInProgress = terminalRooms.filter((room) => room.controller.level < 8 && room.energyStatus < EnergyStatus.SURPLUS);
 
-    // let reasonablePrice = Game.market.getHistory(RESOURCE_ENERGY).pop().avgPrice * .8;
-    // let suitableEnergyOrders = Game.market.getAllOrders().filter(o => o.resourceType === RESOURCE_ENERGY && o.type === ORDER_BUY && o.price >= reasonablePrice);
-
     terminalRooms
         .filter((room) => !room.terminal.cooldown)
         .forEach((room) => {
@@ -54,17 +51,6 @@ export function manageEmpireResources() {
                             )}`
                         );
                     }
-                    // } else if(hasTooMuchEnergy(room) && suitableEnergyOrders.length){
-                    //     let closestSuitableOrder = suitableEnergyOrders.map(o => {
-                    //         return {order: o, distance: Game.map.getRoomLinearDistance(room.name, o.roomName)}
-                    //     }).reduce((closest, next) => closest.distance < next.distance ? closest : next).order;
-                    //     let result = Game.market.deal(closestSuitableOrder.id, Math.min(30000, closestSuitableOrder.remainingAmount), room.name);
-                    //     if(result === OK){
-                    //         console.log(`${room.name } completed order ${closestSuitableOrder.id}: Cost: ${Game.market.calcTransactionCost(30000, room.name, closestSuitableOrder.roomName)}`)
-                    //     }
-                    //     else{
-                    //         console.log(`${room.name } was unable to complete order ${closestSuitableOrder.id}: ${result}`)
-                    //     }
                 }
             }
 
