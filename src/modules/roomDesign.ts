@@ -380,21 +380,33 @@ export function placeMinerLinks(room: Room) {
 
 export function placeUpgraderLink(room: Room) {
     if (room.managerLink) {
-        let looks = room.lookAtArea(room.controller.pos.y - 4, room.controller.pos.x - 4, room.controller.pos.y + 4, room.controller.pos.x + 4, true);
-        let availableSpots = looks
-            .filter(
-                (look) =>
-                    look.type === 'terrain' &&
-                    look.terrain !== 'wall' &&
-                    !looks.some(
-                        (otherLook) => otherLook.x === look.x && otherLook.y === look.y && (otherLook.constructionSite || otherLook.structure)
-                    )
-            )
-            .map((spot) => new RoomPosition(spot.x, spot.y, room.name));
+        if (!room.memory.upgraderLinkPos) {
+            let looks = room.lookAtArea(
+                room.controller.pos.y - 4,
+                room.controller.pos.x - 4,
+                room.controller.pos.y + 4,
+                room.controller.pos.x + 4,
+                true
+            );
+            let availableSpots = looks
+                .filter(
+                    (look) =>
+                        look.type === 'terrain' &&
+                        look.terrain !== 'wall' &&
+                        !posInsideBunker(new RoomPosition(look.x, look.y, room.name)) &&
+                        !looks.some(
+                            (otherLook) => otherLook.x === look.x && otherLook.y === look.y && (otherLook.constructionSite || otherLook.structure)
+                        )
+                )
+                .map((spot) => new RoomPosition(spot.x, spot.y, room.name));
 
-        availableSpots.forEach((pos) => {
-            room.visual.text('X', pos);
-        });
+            let closest = room.managerLink.pos.findClosestByRange(availableSpots);
+            room.memory.upgraderLinkPos = closest.toMemSafe();
+        }
+
+        let linkPos = posFromMem(room.memory.upgraderLinkPos);
+
+        room.createConstructionSite(linkPos, STRUCTURE_LINK);
     }
 }
 

@@ -26,20 +26,26 @@ export class Manager extends WaveCreep {
 
     private startNewTask() {
         let structuresToManage = this.pos.findInRange(FIND_MY_STRUCTURES, 1);
-        //@ts-expect-error
-        let managerLink: StructureLink = structuresToManage.find((structure) => structure.structureType === STRUCTURE_LINK);
-        //@ts-expect-error
-        let nuker: StructureNuker = structuresToManage.find((structure) => structure.structureType === STRUCTURE_NUKER);
-        //@ts-expect-error
-        let factory: StructureFactory = structuresToManage.find((structure) => structure.structureType === STRUCTURE_FACTORY);
-        //@ts-expect-error
-        let spawns: StructureSpawn[] = structuresToManage.filter((structure) => structure.structureType === STRUCTURE_SPAWN);
-        //@ts-expect-error
-        let powerSpawn: StructurePowerSpawn = structuresToManage.find((structure) => structure.structureType === STRUCTURE_POWER_SPAWN);
-        //@ts-expect-error
-        let terminal: StructureTerminal = structuresToManage.find((structure) => structure.structureType === STRUCTURE_TERMINAL);
+        let managerLink: StructureLink = structuresToManage.find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
+        let nuker: StructureNuker = structuresToManage.find((structure) => structure.structureType === STRUCTURE_NUKER) as StructureNuker;
+        let factory: StructureFactory = structuresToManage.find((structure) => structure.structureType === STRUCTURE_FACTORY) as StructureFactory;
+        let spawns: StructureSpawn[] = structuresToManage.filter((structure) => structure.structureType === STRUCTURE_SPAWN) as StructureSpawn[];
+        let powerSpawn: StructurePowerSpawn = structuresToManage.find(
+            (structure) => structure.structureType === STRUCTURE_POWER_SPAWN
+        ) as StructurePowerSpawn;
+        let terminal: StructureTerminal = structuresToManage.find((structure) => structure.structureType === STRUCTURE_TERMINAL) as StructureTerminal;
 
         let storage = this.room.storage;
+
+        if (this.room.upgraderLink?.store.energy <= 400 && storage.store.energy) {
+            if (managerLink?.store.energy > 0) {
+                managerLink.transferEnergy(this.room.upgraderLink);
+            } else {
+                this.withdraw(storage, RESOURCE_ENERGY);
+                this.memory.targetId = managerLink.id;
+                return;
+            }
+        }
 
         if (managerLink?.store[RESOURCE_ENERGY] && storage.store.getFreeCapacity()) {
             this.withdraw(managerLink, RESOURCE_ENERGY);

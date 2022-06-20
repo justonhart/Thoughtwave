@@ -11,6 +11,7 @@ import {
     cleanRoom,
     placeBunkerInnerRamparts,
     roomNeedsCoreStructures,
+    placeUpgraderLink,
 } from './roomDesign';
 
 const BUILD_CHECK_PERIOD = 100;
@@ -59,6 +60,7 @@ export function driveRoom(room: Room) {
             switch (room.controller.level) {
                 case 8:
                 case 7:
+                    placeUpgraderLink(room);
                 case 6:
                     if (!roomNeedsCoreStructures(room)) {
                         placeBunkerInnerRamparts(room);
@@ -387,6 +389,31 @@ function runSpawning(room: Room) {
                     role: Role.SCOUT,
                     room: room.name,
                 },
+            });
+        }
+    }
+
+    if (
+        !roomContainsViolentHostiles &&
+        !room.creeps.some((creep) => creep.memory.role === Role.UPGRADER) &&
+        room.energyStatus > EnergyStatus.RECOVERING
+    ) {
+        let spawn = availableSpawns.pop();
+
+        if (room.upgraderLink) {
+            let body = PopulationManagement.createPartsArray(
+                [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE],
+                room.energyCapacityAvailable,
+                5
+            );
+            spawn.smartSpawn(body, PopulationManagement.getCreepTag('u', spawn.name), {
+                memory: { role: Role.UPGRADER, room: room.name },
+                boosts: [BoostType.UPGRADE],
+            });
+        } else {
+            spawn?.spawnMax([WORK, CARRY, MOVE], PopulationManagement.getCreepTag('u', spawn.name), {
+                memory: { role: Role.UPGRADER, room: room.name },
+                boosts: [BoostType.UPGRADE],
             });
         }
     }

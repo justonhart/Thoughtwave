@@ -25,10 +25,12 @@ export class PopulationManagement {
             },
         };
 
+        let workerNeeded = workers.length < spawn.room.workerCapacity && (spawn.room.controller.level < 8 || workers.length < 1);
+
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 15;
         let tag = 'w';
-        if (workers.length < spawn.room.workerCapacity) {
+        if (workerNeeded) {
             let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
             return result;
         } else {
@@ -85,40 +87,37 @@ export class PopulationManagement {
         let spawnCostPerCyclePerCreep = spawnCost / 5;
         let energyExpenditurePerCyclePerCreep = spawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
-        let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
+        //remove one for dedicated upgrader
+        let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep - 1;
 
-        if (room.controller.level === 8) {
-            creepCapacity = 1;
-        } else {
-            switch (room.energyStatus) {
-                case EnergyStatus.CRITICAL:
-                    creepCapacity = 0;
-                    break;
-                case EnergyStatus.RECOVERING:
-                    creepCapacity = Math.ceil(creepCapacity / 2);
-                    break;
-                case EnergyStatus.STABLE:
-                    break;
-                case EnergyStatus.SURPLUS:
-                    creepCapacity *= 2;
-                    break;
-                case EnergyStatus.OVERFLOW:
+        switch (room.energyStatus) {
+            case EnergyStatus.CRITICAL:
+                creepCapacity = 0;
+                break;
+            case EnergyStatus.RECOVERING:
+                creepCapacity = Math.ceil(creepCapacity / 2);
+                break;
+            case EnergyStatus.STABLE:
+                break;
+            case EnergyStatus.SURPLUS:
+                creepCapacity *= 2;
+                break;
+            case EnergyStatus.OVERFLOW:
+                creepCapacity *= 4;
+                break;
+            //room has no storage
+            default:
+                let hasStartupEnergy =
+                    room
+                        .find(FIND_STRUCTURES)
+                        .filter(
+                            (struct) =>
+                                (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) &&
+                                struct.store.energy > 200000
+                        ).length > 0;
+                if (hasStartupEnergy) {
                     creepCapacity *= 4;
-                    break;
-                //room has no storage
-                default:
-                    let hasStartupEnergy =
-                        room
-                            .find(FIND_STRUCTURES)
-                            .filter(
-                                (struct) =>
-                                    (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) &&
-                                    struct.store.energy > 200000
-                            ).length > 0;
-                    if (hasStartupEnergy) {
-                        creepCapacity *= 4;
-                    }
-            }
+                }
         }
 
         return Math.max(1, Math.floor(creepCapacity));
