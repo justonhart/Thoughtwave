@@ -8,6 +8,7 @@ interface EmpireMemory {
     hostileRooms?: HostileRoom[];
     scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>
     operations?: Operation[];
+    playersToIgnore?: string[];
 }
 
 interface EmpireIntershard {

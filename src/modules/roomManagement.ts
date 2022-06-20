@@ -1,3 +1,4 @@
+import { filter } from 'lodash';
 import { runLabs } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
@@ -132,13 +133,13 @@ function runTowers(room: Room) {
     }
 
     if (!room.controller.safeMode) {
-        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.empire.playersToIgnore?.includes(creep.owner.username) });
         towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
     }
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {
-    const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS);
+    const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.empire.playersToIgnore?.includes(creep.owner.username) });
     let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
 
     if (hostileCreeps.length >= minNumHostileCreeps) {
