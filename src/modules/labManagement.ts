@@ -68,11 +68,11 @@ export function runLabs(room: Room) {
                     break;
             }
         } else if (task?.status === TaskStatus.PREPARING) {
-            let allNeedsFulfilled = task.reagentsNeeded
-                .map((need) => Game.getObjectById(need.lab).store[need.resource] >= need.amount)
+            let canStartTask = task.reagentsNeeded
+                .map((need) => Game.getObjectById(need.lab).store[need.resource])
                 .reduce((readyState, next) => readyState && next);
 
-            if (allNeedsFulfilled) {
+            if (canStartTask) {
                 task.status = TaskStatus.ACTIVE;
             }
         }
