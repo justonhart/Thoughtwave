@@ -251,7 +251,11 @@ function manageSecureRoomOperation(op: Operation) {
         let targetIsColonizeTarget = !!Memory.empire.operations.find(
             (otherOperation) => op.targetRoom === otherOperation.targetRoom && otherOperation.type === OperationType.COLONIZE
         );
-        let bodyParts = targetIsColonizeTarget ? [ATTACK, MOVE] : [RANGED_ATTACK, MOVE];
+        let bodyParts =
+            targetIsColonizeTarget &&
+            Game.rooms[op.targetRoom]?.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_INVADER_CORE }).length
+                ? [ATTACK, MOVE]
+                : [RANGED_ATTACK, MOVE];
 
         const body = PopulationManagement.createPartsArray(bodyParts, origin.energyCapacityAvailable - 300);
         body.push(HEAL, MOVE);
@@ -263,6 +267,7 @@ function manageSecureRoomOperation(op: Operation) {
                 assignment: op.targetRoom,
                 currentTaskPriority: Priority.MEDIUM,
                 combat: { flee: false },
+                room: op.targetRoom,
             },
         });
     }
