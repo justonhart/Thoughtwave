@@ -1,4 +1,3 @@
-import { openStdin } from 'process';
 import { posFromMem } from './memoryManagement';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
@@ -275,31 +274,31 @@ function manageSecureRoomOperation(op: Operation) {
         op.pathCost = operationResult?.cost;
     }
 
-    let origin = Game.rooms[op.originRoom];
+    const origin = Game.rooms[op.originRoom];
+
+    const targetIsColonizeTarget = !!Memory.empire.operations.find(
+        (otherOperation) => op.targetRoom === otherOperation.targetRoom && otherOperation.type === OperationType.COLONIZE
+    );
+    const bodyParts =
+        targetIsColonizeTarget &&
+        Game.rooms[op.targetRoom]?.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_INVADER_CORE }).length
+            ? [ATTACK, MOVE]
+            : [RANGED_ATTACK, MOVE];
+    const body = PopulationManagement.createPartsArray(bodyParts, origin.energyCapacityAvailable - 300);
+    body.push(HEAL, MOVE);
 
     let assignedProtectorCount =
         Object.values(Game.creeps).filter(
             (creep) =>
                 creep.memory.assignment === op.targetRoom &&
                 creep.memory.role === Role.RAMPART_PROTECTOR &&
-                (creep.spawning || creep.ticksToLive > op.pathCost)
+                (creep.spawning || creep.ticksToLive > op.pathCost + body.length * 3)
         ).length +
         Memory.empire.spawnAssignments.filter(
             (creep) => creep.memoryOptions.assignment === op.targetRoom && creep.memoryOptions.role === Role.PROTECTOR
         ).length;
 
     if (Game.rooms[op.originRoom] && assignedProtectorCount < op.operativeCount) {
-        let targetIsColonizeTarget = !!Memory.empire.operations.find(
-            (otherOperation) => op.targetRoom === otherOperation.targetRoom && otherOperation.type === OperationType.COLONIZE
-        );
-        let bodyParts =
-            targetIsColonizeTarget &&
-            Game.rooms[op.targetRoom]?.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_INVADER_CORE }).length
-                ? [ATTACK, MOVE]
-                : [RANGED_ATTACK, MOVE];
-
-        const body = PopulationManagement.createPartsArray(bodyParts, origin.energyCapacityAvailable - 300);
-        body.push(HEAL, MOVE);
         Memory.empire.spawnAssignments.push({
             designee: op.originRoom,
             body: body,
