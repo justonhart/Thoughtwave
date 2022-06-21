@@ -14,6 +14,27 @@ export class Operative extends WorkerCreep {
             case OperationType.COLLECTION:
                 this.runCollect();
                 break;
+            case OperationType.UPGRADE_BOOST:
+                this.runUpgradeBoost();
+                break;
+        }
+    }
+
+    private runUpgradeBoost() {
+        if (this.store.energy) {
+            let controller = Game.rooms[this.memory.destination].controller;
+            if (this.pos.inRangeTo(controller, 3)) {
+                this.upgradeController(controller);
+            } else {
+                this.travelTo(controller, { range: 3 });
+            }
+        } else {
+            let origin = Game.rooms[this.operation.originRoom];
+            if (!this.pos.isNearTo(origin.storage)) {
+                this.travelTo(origin.storage);
+            } else {
+                this.withdraw(origin.storage, RESOURCE_ENERGY);
+            }
         }
     }
 

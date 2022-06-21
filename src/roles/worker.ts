@@ -75,6 +75,12 @@ export class Worker extends WorkerCreep {
             return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare))?.id;
         }
 
-        return !this.room.controller.upgradeBlocked ? this.homeroom.controller?.id : undefined;
+        return !this.room.controller.upgradeBlocked && this.room.controller.level < 8
+            ? this.homeroom.controller?.id
+            : this.homeroom
+                  .find(FIND_STRUCTURES, {
+                      filter: (s) => (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) && s.hits < s.hitsMax,
+                  })
+                  .reduce((lowest, next) => (lowest.hits < next.hits ? lowest : next))?.id;
     }
 }

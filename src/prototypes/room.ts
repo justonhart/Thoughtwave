@@ -75,6 +75,19 @@ Object.defineProperty(Room.prototype, 'managerLink', {
     configurable: true,
 });
 
+Object.defineProperty(Room.prototype, 'upgraderLink', {
+    get: function (this: Room) {
+        let posToCheck = posFromMem(this.memory.upgraderLinkPos);
+        let link = posToCheck
+            ?.lookFor(LOOK_STRUCTURES)
+            .filter((structure) => structure.structureType === STRUCTURE_LINK)
+            .pop();
+        return link;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
 Object.defineProperty(Room.prototype, 'workerCapacity', {
     get: function (this: Room) {
         return PopulationManagement.calculateWorkerCapacity(this);

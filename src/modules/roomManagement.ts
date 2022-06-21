@@ -1,3 +1,4 @@
+import { filter } from 'lodash';
 import { runLabs } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
@@ -11,6 +12,7 @@ import {
     cleanRoom,
     placeBunkerInnerRamparts,
     roomNeedsCoreStructures,
+    placeUpgraderLink,
 } from './roomDesign';
 
 const BUILD_CHECK_PERIOD = 100;
@@ -59,6 +61,7 @@ export function driveRoom(room: Room) {
             switch (room.controller.level) {
                 case 8:
                 case 7:
+                    placeUpgraderLink(room);
                 case 6:
                     if (!roomNeedsCoreStructures(room)) {
                         placeBunkerInnerRamparts(room);
@@ -130,13 +133,13 @@ function runTowers(room: Room) {
     }
 
     if (!room.controller.safeMode) {
-        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.empire.playersToIgnore?.includes(creep.owner.username) });
         towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
     }
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {
-    const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS);
+    const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.empire.playersToIgnore?.includes(creep.owner.username) });
     let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
 
     if (hostileCreeps.length >= minNumHostileCreeps) {
@@ -387,6 +390,27 @@ function runSpawning(room: Room) {
                     role: Role.SCOUT,
                     room: room.name,
                 },
+            });
+        }
+    }
+
+    if (
+        !roomContainsViolentHostiles &&
+        !room.creeps.some((creep) => creep.memory.role === Role.UPGRADER) &&
+        room.energyStatus > EnergyStatus.RECOVERING
+    ) {
+        let spawn = availableSpawns.pop();
+
+        if (room.upgraderLink) {
+            let body = PopulationManagement.createPartsArray([WORK, WORK, WORK, CARRY, MOVE, MOVE], room.energyCapacityAvailable, 5);
+            spawn?.smartSpawn(body, PopulationManagement.getCreepTag('u', spawn.name), {
+                memory: { role: Role.UPGRADER, room: room.name },
+                boosts: [BoostType.UPGRADE],
+            });
+        } else {
+            spawn?.spawnMax([WORK, CARRY, MOVE], PopulationManagement.getCreepTag('u', spawn.name), {
+                memory: { role: Role.UPGRADER, room: room.name },
+                boosts: [BoostType.UPGRADE],
             });
         }
     }

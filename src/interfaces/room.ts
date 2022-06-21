@@ -1,4 +1,5 @@
 interface RoomMemory {
+    upgraderLinkPos?: string;
     labRequests?: LabNeed[];
     energyDistance?: number;
     controllerDistance?: number;
@@ -33,6 +34,7 @@ interface Room {
     energyStatus: EnergyStatus;
     mineral: Mineral;
     managerLink: StructureLink;
+    upgraderLink: StructureLink;
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
     workerCapacity: number;

@@ -8,6 +8,7 @@ const OPERATION_STARTING_STAGE_MAP: Record<OperationType, OperationStage> = {
     3: OperationStage.ACTIVE,
     4: OperationStage.ACTIVE,
     5: OperationStage.ACTIVE,
+    6: OperationStage.ACTIVE,
 };
 
 export function manageOperations() {
@@ -35,6 +36,9 @@ export function manageOperations() {
                     break;
                 case OperationType.ROOM_RECOVERY:
                     manageRoomRecoveryOperation(op);
+                    break;
+                case OperationType.UPGRADE_BOOST:
+                    manageUpgradeBoostOperation(op);
                     break;
             }
         });
@@ -385,4 +389,43 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
             portalLocations: portalLocations,
         },
     });
+}
+function manageUpgradeBoostOperation(op: Operation) {
+    let originRoom = Game.rooms[op.originRoom];
+
+    //consider operation done once room hits lvl 6
+    if (Game.rooms[op.targetRoom].controller.level >= 6) {
+        let opIndex = Memory.empire.operations.findIndex((findOp) => findOp.targetRoom === op.targetRoom && findOp.type === op.type);
+        if (opIndex > -1) {
+            Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
+        }
+        return;
+    }
+
+    let assignedOperativesCount =
+        Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
+        Memory.empire.spawnAssignments.filter(
+            (creep) => creep.memoryOptions.destination === op.targetRoom && creep.memoryOptions.operation === op.type
+        ).length;
+    if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1) && originRoom.energyStatus >= EnergyStatus.STABLE) {
+        let availableOperatives = Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.OPERATIVE && !creep.memory.operation);
+
+        if (availableOperatives.length) {
+            let reassignedOperative = availableOperatives.pop();
+            reassignedOperative.memory.destination = op.targetRoom;
+            reassignedOperative.memory.operation = op.type;
+
+            console.log(`Reassigned ${reassignedOperative.name} to operation targeting ${op.targetRoom}`);
+        } else {
+            Memory.empire.spawnAssignments.push({
+                designee: op.originRoom,
+                body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
+                memoryOptions: {
+                    role: Role.OPERATIVE,
+                    operation: OperationType.UPGRADE_BOOST,
+                    destination: op.targetRoom,
+                },
+            });
+        }
+    }
 }
