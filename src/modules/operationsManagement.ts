@@ -393,6 +393,15 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
 function manageUpgradeBoostOperation(op: Operation) {
     let originRoom = Game.rooms[op.originRoom];
 
+    //consider operation done once room hits lvl 6
+    if (Game.rooms[op.targetRoom].controller.level >= 6) {
+        let opIndex = Memory.empire.operations.findIndex((findOp) => findOp.targetRoom === op.targetRoom && findOp.type === op.type);
+        if (opIndex > -1) {
+            Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
+        }
+        return;
+    }
+
     let assignedOperativesCount =
         Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
         Memory.empire.spawnAssignments.filter(
