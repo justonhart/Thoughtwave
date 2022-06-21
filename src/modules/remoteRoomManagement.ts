@@ -87,12 +87,14 @@ function spawnProtector(homeRoomName: string, remoteRoomName: string, body: Body
     Memory.empire.spawnAssignments.push({
         designee: homeRoomName,
         body: body,
-        memoryOptions: {
-            role: Role.PROTECTOR,
-            room: homeRoomName,
-            assignment: remoteRoomName,
-            currentTaskPriority: Priority.MEDIUM,
-            combat: { flee: false },
+        spawnOpts: {
+            memory: {
+                role: Role.PROTECTOR,
+                room: homeRoomName,
+                assignment: remoteRoomName,
+                currentTaskPriority: Priority.MEDIUM,
+                combat: { flee: false },
+            },
         },
     });
 }

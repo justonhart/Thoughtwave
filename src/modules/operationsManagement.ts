@@ -55,18 +55,20 @@ function manageColonizationOperation(op: Operation) {
             let claimerExistsOrAssigned: boolean =
                 Object.values(Memory.creeps).filter((creep) => creep.role === Role.CLAIMER && creep.destination === op.targetRoom).length +
                     Memory.empire.spawnAssignments.filter(
-                        (creep) => creep.memoryOptions.destination === op.targetRoom && creep.memoryOptions.role === Role.CLAIMER
+                        (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.role === Role.CLAIMER
                     ).length >
                 0;
             if (op.originRoom && !claimerExistsOrAssigned) {
                 Memory.empire.spawnAssignments.push({
                     designee: op.originRoom,
                     body: [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM],
-                    memoryOptions: {
-                        role: Role.CLAIMER,
-                        destination: op.targetRoom,
-                        room: op.originRoom,
-                        portalLocations: op.portalLocations,
+                    spawnOpts: {
+                        memory: {
+                            role: Role.CLAIMER,
+                            destination: op.targetRoom,
+                            room: op.originRoom,
+                            portalLocations: op.portalLocations,
+                        },
                     },
                 });
             }
@@ -77,18 +79,20 @@ function manageColonizationOperation(op: Operation) {
                 if (
                     Memory.rooms[op.targetRoom]?.miningAssignments?.[key] === AssignmentStatus.UNASSIGNED &&
                     !Memory.empire.spawnAssignments.filter(
-                        (creep) => creep.memoryOptions.room === op.targetRoom && creep.memoryOptions.assignment === key
+                        (creep) => creep.spawnOpts.memory.room === op.targetRoom && creep.spawnOpts.memory.assignment === key
                     ).length
                 ) {
                     Memory.rooms[op.targetRoom].miningAssignments[key] = AssignmentStatus.ASSIGNED;
                     Memory.empire.spawnAssignments.push({
                         designee: op.originRoom,
                         body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
-                        memoryOptions: {
-                            role: Role.MINER,
-                            assignment: key,
-                            room: op.targetRoom,
-                            portalLocations: op.portalLocations,
+                        spawnOpts: {
+                            memory: {
+                                role: Role.MINER,
+                                assignment: key,
+                                room: op.targetRoom,
+                                portalLocations: op.portalLocations,
+                            },
                         },
                     });
                 }
@@ -97,16 +101,18 @@ function manageColonizationOperation(op: Operation) {
             let numberOfColonizersFound =
                 Object.values(Memory.creeps).filter((creep) => creep.role === Role.COLONIZER && creep.destination === op.targetRoom).length +
                 Memory.empire.spawnAssignments.filter(
-                    (creep) => creep.memoryOptions.destination === op.targetRoom && creep.memoryOptions.role === Role.COLONIZER
+                    (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.role === Role.COLONIZER
                 ).length;
             if (op.originRoom && numberOfColonizersFound < 2) {
                 Memory.empire.spawnAssignments.push({
                     designee: op.originRoom,
                     body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
-                    memoryOptions: {
-                        role: Role.COLONIZER,
-                        destination: op.targetRoom,
-                        portalLocations: op.portalLocations,
+                    spawnOpts: {
+                        memory: {
+                            role: Role.COLONIZER,
+                            destination: op.targetRoom,
+                            portalLocations: op.portalLocations,
+                        },
                     },
                 });
             }
@@ -154,7 +160,7 @@ function manageSterilizeOperation(op: Operation) {
     let assignedOperativesCount =
         Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
         Memory.empire.spawnAssignments.filter(
-            (creep) => creep.memoryOptions.destination === op.targetRoom && creep.memoryOptions.operation === op.type
+            (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.operation === op.type
         ).length;
     if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1)) {
         let availableOperatives = Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.OPERATIVE && !creep.memory.operation);
@@ -169,10 +175,12 @@ function manageSterilizeOperation(op: Operation) {
             Memory.empire.spawnAssignments.push({
                 designee: op.originRoom,
                 body: PopulationManagement.createPartsArray([WORK, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
-                memoryOptions: {
-                    role: Role.OPERATIVE,
-                    operation: OperationType.STERILIZE,
-                    destination: op.targetRoom,
+                spawnOpts: {
+                    memory: {
+                        role: Role.OPERATIVE,
+                        operation: OperationType.STERILIZE,
+                        destination: op.targetRoom,
+                    },
                 },
             });
         }
@@ -187,7 +195,7 @@ function manageCollectionOperation(op: Operation) {
     let assignedOperativesCount =
         Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
         Memory.empire.spawnAssignments.filter(
-            (creep) => creep.memoryOptions.destination === op.targetRoom && creep.memoryOptions.operation === op.type
+            (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.operation === op.type
         ).length;
     if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1)) {
         let availableOperatives = Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.OPERATIVE && !creep.memory.operation);
@@ -202,10 +210,12 @@ function manageCollectionOperation(op: Operation) {
             Memory.empire.spawnAssignments.push({
                 designee: op.originRoom,
                 body: PopulationManagement.createPartsArray([CARRY, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
-                memoryOptions: {
-                    role: Role.OPERATIVE,
-                    operation: OperationType.COLLECTION,
-                    destination: op.targetRoom,
+                spawnOpts: {
+                    memory: {
+                        role: Role.OPERATIVE,
+                        operation: OperationType.COLLECTION,
+                        destination: op.targetRoom,
+                    },
                 },
             });
         }
@@ -248,7 +258,7 @@ function manageSecureRoomOperation(op: Operation) {
     let assignedProtectorCount =
         Object.values(Memory.creeps).filter((creep) => creep.assignment === op.targetRoom && creep.role === Role.PROTECTOR).length +
         Memory.empire.spawnAssignments.filter(
-            (creep) => creep.memoryOptions.assignment === op.targetRoom && creep.memoryOptions.role === Role.PROTECTOR
+            (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.PROTECTOR
         ).length;
 
     if (Game.rooms[op.originRoom] && assignedProtectorCount < op.operativeCount) {
@@ -266,12 +276,14 @@ function manageSecureRoomOperation(op: Operation) {
         Memory.empire.spawnAssignments.push({
             designee: op.originRoom,
             body: body,
-            memoryOptions: {
-                role: Role.PROTECTOR,
-                assignment: op.targetRoom,
-                currentTaskPriority: Priority.MEDIUM,
-                combat: { flee: false },
-                room: op.targetRoom,
+            spawnOpts: {
+                memory: {
+                    role: Role.PROTECTOR,
+                    assignment: op.targetRoom,
+                    currentTaskPriority: Priority.MEDIUM,
+                    combat: { flee: false },
+                    room: op.targetRoom,
+                },
             },
         });
     }
@@ -288,17 +300,20 @@ function manageRoomRecoveryOperation(op: Operation) {
     miningAssignments.forEach((key) => {
         if (
             Memory.rooms[op.targetRoom]?.miningAssignments?.[key] === AssignmentStatus.UNASSIGNED &&
-            !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.room === op.targetRoom && creep.memoryOptions.assignment === key)
-                .length
+            !Memory.empire.spawnAssignments.filter(
+                (creep) => creep.spawnOpts.memory.room === op.targetRoom && creep.spawnOpts.memory.assignment === key
+            ).length
         ) {
             Memory.rooms[op.targetRoom].miningAssignments[key] = AssignmentStatus.ASSIGNED;
             Memory.empire.spawnAssignments.push({
                 designee: op.originRoom,
                 body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
-                memoryOptions: {
-                    role: Role.MINER,
-                    assignment: key,
-                    room: op.targetRoom,
+                spawnOpts: {
+                    memory: {
+                        role: Role.MINER,
+                        assignment: key,
+                        room: op.targetRoom,
+                    },
                 },
             });
         }
@@ -309,16 +324,20 @@ function manageRoomRecoveryOperation(op: Operation) {
             .length +
         Memory.empire.spawnAssignments.filter(
             (creep) =>
-                creep.memoryOptions.room === op.targetRoom && creep.memoryOptions.role === Role.WORKER && creep.memoryOptions.operation === op.type
+                creep.spawnOpts.memory.room === op.targetRoom &&
+                creep.spawnOpts.memory.role === Role.WORKER &&
+                creep.spawnOpts.memory.operation === op.type
         ).length;
     if (op.originRoom && numberOfRecoveryWorkers < (op.operativeCount ?? miningAssignments.length)) {
         Memory.empire.spawnAssignments.push({
             designee: op.originRoom,
             body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
-            memoryOptions: {
-                role: Role.WORKER,
-                room: op.targetRoom,
-                operation: op.type,
+            spawnOpts: {
+                memory: {
+                    role: Role.WORKER,
+                    room: op.targetRoom,
+                    operation: op.type,
+                },
             },
         });
     }
@@ -339,54 +358,64 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
     Memory.empire.spawnAssignments.push({
         designee: origin,
         body: [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM],
-        memoryOptions: {
-            role: Role.CLAIMER,
-            portalLocations: portalLocations,
-            destination: destinationRoom,
+        spawnOpts: {
+            memory: {
+                role: Role.CLAIMER,
+                portalLocations: portalLocations,
+                destination: destinationRoom,
+            },
         },
     });
 
     Memory.empire.spawnAssignments.push({
         designee: origin,
         body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
-        memoryOptions: {
-            role: Role.INTERSHARD_TRAVELLER,
-            nextRole: Role.MINER,
-            destination: destinationRoom,
-            portalLocations: portalLocations,
+        spawnOpts: {
+            memory: {
+                role: Role.INTERSHARD_TRAVELLER,
+                nextRole: Role.MINER,
+                destination: destinationRoom,
+                portalLocations: portalLocations,
+            },
         },
     });
 
     Memory.empire.spawnAssignments.push({
         designee: origin,
         body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
-        memoryOptions: {
-            role: Role.INTERSHARD_TRAVELLER,
-            nextRole: Role.MINER,
-            destination: destinationRoom,
-            portalLocations: portalLocations,
+        spawnOpts: {
+            memory: {
+                role: Role.INTERSHARD_TRAVELLER,
+                nextRole: Role.MINER,
+                destination: destinationRoom,
+                portalLocations: portalLocations,
+            },
         },
     });
 
     Memory.empire.spawnAssignments.push({
         designee: origin,
         body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[origin].energyCapacityAvailable),
-        memoryOptions: {
-            role: Role.INTERSHARD_TRAVELLER,
-            nextRole: Role.WORKER,
-            destination: destinationRoom,
-            portalLocations: portalLocations,
+        spawnOpts: {
+            memory: {
+                role: Role.INTERSHARD_TRAVELLER,
+                nextRole: Role.WORKER,
+                destination: destinationRoom,
+                portalLocations: portalLocations,
+            },
         },
     });
 
     Memory.empire.spawnAssignments.push({
         designee: origin,
         body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[origin].energyCapacityAvailable),
-        memoryOptions: {
-            role: Role.INTERSHARD_TRAVELLER,
-            nextRole: Role.WORKER,
-            destination: destinationRoom,
-            portalLocations: portalLocations,
+        spawnOpts: {
+            memory: {
+                role: Role.INTERSHARD_TRAVELLER,
+                nextRole: Role.WORKER,
+                destination: destinationRoom,
+                portalLocations: portalLocations,
+            },
         },
     });
 }
@@ -405,7 +434,7 @@ function manageUpgradeBoostOperation(op: Operation) {
     let assignedOperativesCount =
         Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
         Memory.empire.spawnAssignments.filter(
-            (creep) => creep.memoryOptions.destination === op.targetRoom && creep.memoryOptions.operation === op.type
+            (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.operation === op.type
         ).length;
     if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1) && originRoom.energyStatus >= EnergyStatus.STABLE) {
         let availableOperatives = Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.OPERATIVE && !creep.memory.operation);
@@ -420,10 +449,12 @@ function manageUpgradeBoostOperation(op: Operation) {
             Memory.empire.spawnAssignments.push({
                 designee: op.originRoom,
                 body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
-                memoryOptions: {
-                    role: Role.OPERATIVE,
-                    operation: OperationType.UPGRADE_BOOST,
-                    destination: op.targetRoom,
+                spawnOpts: {
+                    memory: {
+                        role: Role.OPERATIVE,
+                        operation: OperationType.UPGRADE_BOOST,
+                        destination: op.targetRoom,
+                    },
                 },
             });
         }

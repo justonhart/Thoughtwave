@@ -29,7 +29,7 @@ interface OutboundCreepEntry {
 
 interface SpawnAssignment {
     designee: string; //room name
-    memoryOptions: CreepMemory;
+    spawnOpts: SpawnOptions;
     body: BodyPartConstant[];
 }
 

@@ -150,11 +150,13 @@ function runHomeSecurity(homeRoom: Room): boolean {
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: body,
-                memoryOptions: {
-                    role: Role.RAMPART_PROTECTOR,
-                    room: homeRoom.name,
-                    currentTaskPriority: Priority.MEDIUM,
-                    combat: { flee: false },
+                spawnOpts: {
+                    memory: {
+                        role: Role.RAMPART_PROTECTOR,
+                        room: homeRoom.name,
+                        currentTaskPriority: Priority.MEDIUM,
+                        combat: { flee: false },
+                    },
                 },
             });
         }
@@ -165,23 +167,27 @@ function runHomeSecurity(homeRoom: Room): boolean {
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: attackerBody,
-                memoryOptions: {
-                    role: Role.RAMPART_PROTECTOR,
-                    room: homeRoom.name,
-                    assignment: homeRoom.name,
-                    currentTaskPriority: Priority.HIGH,
-                    combat: { flee: false },
+                spawnOpts: {
+                    memory: {
+                        role: Role.RAMPART_PROTECTOR,
+                        room: homeRoom.name,
+                        assignment: homeRoom.name,
+                        currentTaskPriority: Priority.HIGH,
+                        combat: { flee: false },
+                    },
                 },
             });
             const rangedBody = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
             Memory.empire.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: rangedBody,
-                memoryOptions: {
-                    role: Role.RAMPART_PROTECTOR,
-                    room: homeRoom.name,
-                    currentTaskPriority: Priority.MEDIUM,
-                    combat: { flee: false },
+                spawnOpts: {
+                    memory: {
+                        role: Role.RAMPART_PROTECTOR,
+                        room: homeRoom.name,
+                        currentTaskPriority: Priority.MEDIUM,
+                        combat: { flee: false },
+                    },
                 },
             });
         }
@@ -306,8 +312,8 @@ function runSpawning(room: Room) {
     if (roomContainsViolentHostiles) {
         let protectorAssignments = assignments.filter(
             (assignment) =>
-                assignment.memoryOptions.destination === room.name &&
-                (assignment.memoryOptions.role === Role.RAMPART_PROTECTOR || assignment.memoryOptions.role === Role.PROTECTOR)
+                assignment.spawnOpts.memory.destination === room.name &&
+                (assignment.spawnOpts.memory.role === Role.RAMPART_PROTECTOR || assignment.spawnOpts.memory.role === Role.PROTECTOR)
         );
         protectorAssignments.forEach((assignment) => {
             let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
@@ -381,14 +387,16 @@ function runSpawning(room: Room) {
         // TODO remove set room and put in function
         if (
             Game.time % 8000 === 0 &&
-            !Memory.empire.spawnAssignments.filter((creep) => creep.memoryOptions.role === Role.SCOUT && creep.designee === room.name).length
+            !Memory.empire.spawnAssignments.filter((creep) => creep.spawnOpts.memory.role === Role.SCOUT && creep.designee === room.name).length
         ) {
             Memory.empire.spawnAssignments.push({
                 designee: room.name,
                 body: [MOVE],
-                memoryOptions: {
-                    role: Role.SCOUT,
-                    room: room.name,
+                spawnOpts: {
+                    memory: {
+                        role: Role.SCOUT,
+                        room: room.name,
+                    },
                 },
             });
         }
