@@ -312,7 +312,7 @@ function runSpawning(room: Room) {
     if (roomContainsViolentHostiles) {
         let protectorAssignments = assignments.filter(
             (assignment) =>
-                assignment.spawnOpts.memory.destination === room.name &&
+                assignment.spawnOpts.memory.room === room.name &&
                 (assignment.spawnOpts.memory.role === Role.RAMPART_PROTECTOR || assignment.spawnOpts.memory.role === Role.PROTECTOR)
         );
         protectorAssignments.forEach((assignment) => {
