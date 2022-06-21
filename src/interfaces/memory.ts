@@ -8,6 +8,7 @@ interface EmpireMemory {
     hostileRooms?: HostileRoom[];
     scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>
     operations?: Operation[];
+    playersToIgnore?: string[];
 }
 
 interface EmpireIntershard {
@@ -81,6 +82,7 @@ const enum OperationType {
     ROOM_RECOVERY,
     ATTACK,
     QUAD_ATTACK,
+    UPGRADE_BOOST,
 }
 
 const enum OperationStage {
