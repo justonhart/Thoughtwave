@@ -37,7 +37,7 @@ export class Manager extends WaveCreep {
 
         let storage = this.room.storage;
 
-        if (this.room.upgraderLink?.store.energy <= 400 && storage.store.energy) {
+        if (!this.room.managerLink?.cooldown && this.room.upgraderLink?.store.energy <= 400 && storage.store.energy) {
             if (managerLink?.store.energy > 0) {
                 managerLink.transferEnergy(this.room.upgraderLink);
             } else {
