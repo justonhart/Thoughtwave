@@ -403,7 +403,7 @@ function runSpawning(room: Room) {
 
         if (room.upgraderLink) {
             let body = PopulationManagement.createPartsArray([WORK, WORK, WORK, CARRY, MOVE, MOVE], room.energyCapacityAvailable, 5);
-            spawn.smartSpawn(body, PopulationManagement.getCreepTag('u', spawn.name), {
+            spawn?.smartSpawn(body, PopulationManagement.getCreepTag('u', spawn.name), {
                 memory: { role: Role.UPGRADER, room: room.name },
                 boosts: [BoostType.UPGRADE],
             });
