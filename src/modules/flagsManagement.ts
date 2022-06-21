@@ -96,4 +96,12 @@ export default function manageFlags() {
         addOperation(OperationType.ROOM_RECOVERY, Game.flags.recover.pos.roomName);
         Game.flags.recover.remove();
     }
+
+    if (Game.flags.boost) {
+        addOperation(OperationType.UPGRADE_BOOST, Game.flags.boost.pos.roomName, {
+            operativeCount: 3,
+            originOpts: { minEnergyStatus: EnergyStatus.STABLE },
+        });
+        Game.flags.boost.remove();
+    }
 }

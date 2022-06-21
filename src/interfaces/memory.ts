@@ -71,6 +71,7 @@ const enum OperationType {
     COLLECTION,
     SECURE,
     ROOM_RECOVERY,
+    UPGRADE_BOOST,
 }
 
 const enum OperationStage {
