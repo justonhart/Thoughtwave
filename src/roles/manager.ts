@@ -66,7 +66,7 @@ export class Manager extends WaveCreep {
             return;
         }
 
-        if (terminal?.store[RESOURCE_ENERGY] > 50000 || (this.room.energyStatus < EnergyStatus.STABLE && terminal?.store.energy)) {
+        if (terminal?.store[RESOURCE_ENERGY] > 50000) {
             this.withdraw(terminal, RESOURCE_ENERGY, Math.min(terminal?.store[RESOURCE_ENERGY] - 50000, this.store.getFreeCapacity()));
             this.memory.targetId = storage.id;
             return;
@@ -84,6 +84,13 @@ export class Manager extends WaveCreep {
             return;
         }
 
+        if (this.getResourceToMove()) {
+            let res = this.getResourceToMove();
+            this.withdraw(storage, res, Math.min(5000 - terminal.store[res], this.store.getFreeCapacity()));
+            this.memory.targetId = terminal.id;
+            return;
+        }
+
         if (terminal?.store.getFreeCapacity() && storage.store.energy < storage.store.getUsedCapacity()) {
             let resourceToWithdraw = Object.keys(storage.store)
                 .filter((res) => res !== RESOURCE_ENERGY && terminal.store[res] < 5000)
@@ -91,5 +98,11 @@ export class Manager extends WaveCreep {
             this.withdraw(storage, resourceToWithdraw as ResourceConstant);
             this.memory.targetId = terminal.id;
         }
+    }
+
+    private getResourceToMove(): MineralCompoundConstant {
+        return Object.keys(this.room.storage?.store).find(
+            (res) => this.room.storage.store[res] && this.room.terminal?.store[res] < 5000
+        ) as MineralCompoundConstant;
     }
 }
