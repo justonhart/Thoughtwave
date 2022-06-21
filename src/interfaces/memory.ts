@@ -48,6 +48,7 @@ interface Operation {
     expireAt?: number;
     portalLocations?: string[];
     forcedDestinations?: string[];
+    pathCost?: number;
 }
 
 interface OperationOpts {
@@ -59,11 +60,17 @@ interface OperationOpts {
     expireAt?: number;
     portalLocations?: string[];
     forcedDestinations?: string[];
+    pathCost?: number;
 }
 
 interface OriginOpts {
     minEnergyStatus?: EnergyStatus;
     maxLinearDistance?: number;
+}
+
+interface OriginResult {
+    roomName: string;
+    cost: number;
 }
 
 const enum OperationType {

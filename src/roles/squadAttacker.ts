@@ -21,15 +21,13 @@ export class SquadAttacker extends CombatCreep {
                 if (this.onEdge() || SquadManagement.getInLineFormation(this)) {
                     SquadManagement.linePathing(this);
                 }
-            } else {
-                if (!fleeing) {
-                    if (this.onEdge() || SquadManagement.getIntoFormation(this)) {
-                        SquadManagement.formationPathing(this, range);
-                    } else {
-                        // Not in formation TODO: remove once formation doesnt break anymore
-                        const hostile = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
-                        this.memory.targetId = hostile.id;
-                    }
+            } else if (!fleeing) {
+                if (this.onEdge() || SquadManagement.getIntoFormation(this)) {
+                    SquadManagement.formationPathing(this, range);
+                } else {
+                    // Not in formation TODO: remove once formation doesnt break anymore
+                    const hostile = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
+                    this.memory.targetId = hostile.id;
                 }
             }
 

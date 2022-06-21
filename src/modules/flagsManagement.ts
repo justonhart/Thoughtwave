@@ -26,7 +26,7 @@ export default function manageFlags() {
     }
 
     if (Game.flags.intershardLaunch) {
-        let origin = findOperationOrigin(Game.flags.intershardLaunch.pos.roomName);
+        const origin = findOperationOrigin(Game.flags.intershardLaunch.pos.roomName)?.roomName;
 
         console.log(`Launching intershard colony from ${origin}`);
 

@@ -1,4 +1,6 @@
+import { openStdin } from 'process';
 import { posFromMem } from './memoryManagement';
+import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
 import { getSpawnPos, placeBunkerConstructionSites, roomNeedsCoreStructures } from './roomDesign';
 
@@ -51,7 +53,7 @@ export function manageOperations() {
 
 function manageColonizationOperation(op: Operation) {
     if (!Game.rooms[op.originRoom]) {
-        op.originRoom = findOperationOrigin(op.targetRoom);
+        op.originRoom = findOperationOrigin(op.targetRoom)?.roomName;
     }
 
     switch (op.stage) {
@@ -118,7 +120,7 @@ function manageColonizationOperation(op: Operation) {
     }
 }
 
-export function findOperationOrigin(targetRoom: string, opts?: OriginOpts) {
+export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): OriginResult {
     let possibleSpawnRooms = Object.values(Game.rooms).filter(
         (room) =>
             room.controller?.my &&
@@ -127,24 +129,40 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts) {
             Game.map.getRoomLinearDistance(room.name, targetRoom) <= (opts?.maxLinearDistance ?? 10)
     );
 
-    let bestRoom: string;
+    let bestRoom: OriginResult;
 
     let rooms = possibleSpawnRooms.map((room) => {
+        const allowedRooms = Pathing.findRoute(room.name, targetRoom, { avoidHostileRooms: true });
+        if (allowedRooms === ERR_NO_PATH) {
+            return undefined;
+        }
         return {
             name: room.name,
             path: PathFinder.search(
                 room.controller?.pos,
                 { pos: new RoomPosition(25, 25, targetRoom), range: 23 },
-                { maxRooms: 25, swampCost: 1, maxOps: 10000 }
+                {
+                    maxRooms: 25,
+                    swampCost: 1,
+                    maxOps: 100000,
+                    roomCallback(roomName) {
+                        if (allowedRooms) {
+                            if (!allowedRooms.includes(roomName)) {
+                                return false;
+                            }
+                        }
+                    },
+                }
             ),
         };
     });
     rooms = rooms.filter((room) => !room.path.incomplete);
 
     if (rooms.length) {
-        bestRoom = rooms.reduce((best, next) => {
+        const closestRoom = rooms.reduce((best, next) => {
             return next.path.cost <= best.path.cost ? next : best;
-        }).name;
+        });
+        bestRoom = { roomName: closestRoom.name, cost: closestRoom.path.cost };
     }
 
     return bestRoom;
@@ -152,7 +170,7 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts) {
 
 function manageSterilizeOperation(op: Operation) {
     if (!Game.rooms[op.originRoom]) {
-        op.originRoom = findOperationOrigin(op.targetRoom);
+        op.originRoom = findOperationOrigin(op.targetRoom)?.roomName;
     }
 
     let assignedOperativesCount =
@@ -185,7 +203,7 @@ function manageSterilizeOperation(op: Operation) {
 
 function manageCollectionOperation(op: Operation) {
     if (!Game.rooms[op.originRoom]) {
-        op.originRoom = findOperationOrigin(op.targetRoom);
+        op.originRoom = findOperationOrigin(op.targetRoom)?.roomName;
     }
 
     let assignedOperativesCount =
@@ -221,7 +239,11 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
     delete opts?.originRoom;
 
     if (!originRoom) {
-        originRoom = findOperationOrigin(posFromMem(opts?.portalLocations?.[0])?.roomName ?? targetRoom, opts?.originOpts);
+        const originResult = findOperationOrigin(posFromMem(opts?.portalLocations?.[0])?.roomName ?? targetRoom, opts?.originOpts);
+        originRoom = originResult?.roomName;
+        if (!opts.pathCost) {
+            opts.pathCost = originResult?.cost;
+        }
         delete opts?.originOpts;
     }
 
@@ -244,13 +266,20 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
 
 function manageSecureRoomOperation(op: Operation) {
     if (!Game.rooms[op.originRoom]) {
-        op.originRoom = findOperationOrigin(op.targetRoom);
+        const operationResult = findOperationOrigin(op.targetRoom);
+        op.originRoom = operationResult?.roomName;
+        op.pathCost = operationResult?.cost;
     }
 
     let origin = Game.rooms[op.originRoom];
 
     let assignedProtectorCount =
-        Object.values(Memory.creeps).filter((creep) => creep.assignment === op.targetRoom && creep.role === Role.PROTECTOR).length +
+        Object.values(Game.creeps).filter(
+            (creep) =>
+                creep.memory.assignment === op.targetRoom &&
+                creep.memory.role === Role.RAMPART_PROTECTOR &&
+                (creep.spawning || creep.ticksToLive > op.pathCost)
+        ).length +
         Memory.empire.spawnAssignments.filter(
             (creep) => creep.memoryOptions.assignment === op.targetRoom && creep.memoryOptions.role === Role.PROTECTOR
         ).length;
@@ -526,7 +555,7 @@ function sortByBodyPart(prioritizedBodyPart: BodyPartConstant, bodyA: BodyPartCo
 }
 
 export function launchIntershardParty(portalLocations: string[], destinationRoom: string) {
-    let origin = findOperationOrigin(posFromMem(portalLocations[0]).roomName);
+    let origin = findOperationOrigin(posFromMem(portalLocations[0]).roomName)?.roomName;
 
     console.log(`launching intershard from ${origin}`);
 

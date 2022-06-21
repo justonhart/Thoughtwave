@@ -422,7 +422,7 @@ export class Pathing {
         };
     }
 
-    static findRoute(originRoom: string, destination: string, options: TravelToOpts): string[] | ERR_NO_PATH {
+    public static findRoute(originRoom: string, destination: string, options: TravelToOpts): string[] | ERR_NO_PATH {
         let allowedRooms = [originRoom];
         const route = Game.map.findRoute(originRoom, destination, {
             routeCallback: (roomName) => {
@@ -602,6 +602,7 @@ export class Pathing {
             //check if creep is in nextPos
             const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
             if (obstacleCreep?.memory?._m?.destination) {
+                obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
                 if (obstacleCreep.memory._m?.path?.length > 1) {
                     if (!obstacleCreep.fatigue && obstacleCreep.memory._m?.lastMove < Game.time - 2) {
                         // idle creep
@@ -637,6 +638,10 @@ export class Pathing {
                     return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
                 }
             } else if (obstacleCreep) {
+                if (!obstacleCreep.memory._m) {
+                    obstacleCreep.memory._m = { repath: 0 };
+                }
+                obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
                 return Pathing.moveObstacleCreep(obstacleCreep, nextDirection);
             }
         }

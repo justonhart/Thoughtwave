@@ -77,6 +77,7 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.SQUAD_HEALER:
             waveCreep = new SquadHealer(creep.id);
+            break;
         case Role.MINERAL_MINER:
             waveCreep = new MineralMiner(creep.id);
             break;

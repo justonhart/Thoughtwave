@@ -460,7 +460,7 @@ export class SquadManagement {
             .map((squadMemberId) => Game.getObjectById(squadMemberId))
             .filter((squadMembers) => !!squadMembers);
         if (!squadMembers.length) {
-            return undefined;
+            return creep;
         }
         if (squadMembers.length === 1) {
             return squadMembers[0];
