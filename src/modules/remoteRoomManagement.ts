@@ -63,22 +63,22 @@ function runSecurity(homeRoom: Room, remoteRoomName: string) {
     }
 
     // --- STRUCTURES
-    const hostileStuctures = targetRoom
-        ?.find(FIND_HOSTILE_STRUCTURES)
-        .filter((struct) => !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity()));
-    if (
-        hostileStuctures?.length ||
-        (!targetRoom &&
-            homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_STRUCTS &&
-            !reassignIdleProtector(homeRoom.name, remoteRoomName))
-    ) {
-        homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.ENEMY_STRUCTS;
+    // const hostileStuctures = targetRoom
+    //     ?.find(FIND_HOSTILE_STRUCTURES)
+    //     .filter((struct) => !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity()));
+    // if (
+    //     hostileStuctures?.length ||
+    //     (!targetRoom &&
+    //         homeRoom.memory.remoteAssignments[remoteRoomName].state === RemoteMiningRoomState.ENEMY_STRUCTS &&
+    //         !reassignIdleProtector(homeRoom.name, remoteRoomName))
+    // ) {
+    //     homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.ENEMY_STRUCTS;
 
-        if (PopulationManagement.needsProtector(remoteRoomName)) {
-            spawnProtector(homeRoom.name, remoteRoomName, PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 6));
-        }
-        return;
-    }
+    //     if (PopulationManagement.needsProtector(remoteRoomName)) {
+    //         spawnProtector(homeRoom.name, remoteRoomName, PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 6));
+    //     }
+    //     return;
+    // }
 
     homeRoom.memory.remoteAssignments[remoteRoomName].state = RemoteMiningRoomState.SAFE;
 }
