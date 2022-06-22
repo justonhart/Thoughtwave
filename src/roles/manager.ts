@@ -86,7 +86,7 @@ export class Manager extends WaveCreep {
 
         if (this.getResourceToMove()) {
             let res = this.getResourceToMove();
-            this.withdraw(storage, res, Math.min(5000 - terminal.store[res], this.store.getFreeCapacity()));
+            this.withdraw(storage, res, Math.min(storage.store[res], 5000 - terminal.store[res], this.store.getFreeCapacity()));
             this.memory.targetId = terminal.id;
             return;
         }
