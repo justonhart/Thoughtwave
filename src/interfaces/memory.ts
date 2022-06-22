@@ -5,8 +5,6 @@ interface Memory {
 interface EmpireMemory {
     logCPU?: boolean;
     spawnAssignments?: SpawnAssignment[];
-    hostileRooms?: HostileRoom[];
-    scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>
     operations?: Operation[];
     playersToIgnore?: string[];
 }
@@ -31,11 +29,6 @@ interface SpawnAssignment {
     designee: string; //room name
     spawnOpts: SpawnOptions;
     body: BodyPartConstant[];
-}
-
-interface HostileRoom {
-    room: string;
-    expireAt: number; // Game Tick at which the room is no longer considered hostile
 }
 
 interface Operation {

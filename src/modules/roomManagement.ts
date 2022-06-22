@@ -1,9 +1,7 @@
-import { filter } from 'lodash';
-import { cpuUsage } from 'process';
 import { runLabs } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
-import { driveRemoteRoom } from './remoteRoomManagement';
+import { manageRemoteRoom } from './remoteRoomManagement';
 import {
     findBunkerLocation,
     placeBunkerOuterRamparts,
@@ -91,10 +89,6 @@ export function driveRoom(room: Room) {
 
         runTowers(room);
         const isHomeUnderAttack = runHomeSecurity(room);
-        if (!isHomeUnderAttack) {
-            // Prioritize home defense
-            driveRemoteRoom(room);
-        }
 
         if (room.memory.anchorPoint) {
             let anchorPoint = posFromMem(room.memory.anchorPoint);
@@ -115,6 +109,8 @@ export function driveRoom(room: Room) {
             runGates(room);
         }
 
+        runRemoteRooms(room);
+
         runSpawning(room);
 
         runLabs(room);
@@ -124,8 +120,7 @@ export function driveRoom(room: Room) {
 }
 
 function runTowers(room: Room) {
-    // @ts-ignore
-    let towers: StructureTower[] = room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_TOWER);
+    let towers: StructureTower[] = room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_TOWER) as StructureTower[];
 
     // Heal creeps in baseroom. Can be optimized to check how many towers need to heal one creep but usually this should not be needed anyway if our "room under attack" logic works properly.
     let myHurtCreep = room.find(FIND_MY_CREEPS).find((creep) => creep.hits < creep.hitsMax);
@@ -206,6 +201,7 @@ export function initRoom(room: Room) {
     }
 
     Memory.rooms[room.name] = {
+        roomStatus: RoomMemoryStatus.OWNED_ME,
         gates: [],
         repairSearchCooldown: 0,
         repairQueue: [],
@@ -369,23 +365,6 @@ function runSpawning(room: Room) {
             }
         });
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING && Object.keys(room.memory.remoteAssignments).length && !roomContainsViolentHostiles) {
-            if (PopulationManagement.needsRemoteMiner(room)) {
-                let spawn = availableSpawns.pop();
-                spawn?.spawnRemoteMiner();
-            }
-
-            if (PopulationManagement.needsGatherer(room)) {
-                let spawn = availableSpawns.pop();
-                spawn?.spawnGatherer();
-            }
-
-            if (PopulationManagement.needsReserver(room)) {
-                let spawn = availableSpawns.pop();
-                spawn?.spawnReserver();
-            }
-        }
-
         // TODO remove set room and put in function
         if (
             Game.time % 8000 === 0 &&
@@ -509,4 +488,15 @@ function placeExtractor(room: Room) {
         let mineralPos = room.mineral.pos;
         room.createConstructionSite(mineralPos, STRUCTURE_EXTRACTOR);
     }
+}
+
+function runRemoteRooms(room: Room) {
+    let remoteRooms = room.memory.remoteMiningRooms;
+    remoteRooms.forEach((remoteRoomName) => {
+        try {
+            manageRemoteRoom(remoteRoomName);
+        } catch (e) {
+            console.log(`Error caught running remote room ${remoteRoomName}: \n${e}`);
+        }
+    });
 }

@@ -1,4 +1,12 @@
+interface Memory {
+    rooms: (OwnedRoomMemory | RemoteRoomMemory | ScoutedRoomMemory)[];
+}
+
 interface RoomMemory {
+    roomStatus: RoomMemoryStatus;
+}
+
+interface OwnedRoomMemory extends RoomMemory {
     upgraderLinkPos?: string;
     labRequests?: LabNeed[];
     energyDistance?: number;
@@ -11,11 +19,35 @@ interface RoomMemory {
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: { [posString: string]: AssignmentStatus };
     mineralMiningAssignments: { [posString: string]: AssignmentStatus };
-    remoteAssignments: { [roomName: string]: RemoteAssignment };
+    remoteMiningRooms: string[];
     reservedEnergy?: number;
     layout?: RoomLayout;
     labTasks?: LabTask[];
     dontCheckConstructionsBefore?: number;
+}
+
+interface RemoteRoomMemory extends RoomMemory {
+    reservationState?: RemoteMiningRoomControllerState;
+    miningPositions: string[];
+    miner: AssignmentStatus;
+    hauler: AssignmentStatus;
+    reserver?: AssignmentStatus;
+    hostileStatus: RemoteMiningRoomState;
+    controllingRoom: string;
+}
+
+interface ScoutedRoomMemory extends RoomMemory {
+    hostile?: boolean;
+}
+
+const enum RoomMemoryStatus {
+    VACANT = 1,
+    RESERVED_OTHER,
+    RESERVED_INVADER,
+    OWNED_OTHER,
+    OWNED_INVADER,
+    REMOTE_MINING,
+    OWNED_ME,
 }
 
 interface RemoteAssignment {
@@ -29,6 +61,7 @@ interface RemoteAssignment {
 }
 
 interface Room {
+    memory: OwnedRoomMemory;
     removeFromRepairQueue(id: string): void;
     creeps: Creep[];
     energyStatus: EnergyStatus;
@@ -45,10 +78,6 @@ interface Room {
 
 interface RoomPosition {
     toMemSafe(): string;
-}
-
-const enum PhaseShiftStatus {
-    PREPARE = 1,
 }
 
 const enum AssignmentStatus {
