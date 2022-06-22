@@ -1,4 +1,5 @@
 import { filter } from 'lodash';
+import { cpuUsage } from 'process';
 import { runLabs } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
@@ -52,6 +53,7 @@ export function driveRoom(room: Room) {
         }
 
         if (
+            Game.cpu.bucket > 200 &&
             !global.roomConstructionsChecked &&
             (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
             (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
