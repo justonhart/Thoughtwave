@@ -1,5 +1,6 @@
 interface Memory {
     empire: EmpireMemory;
+    rooms: (OwnedRoomMemory | RemoteRoomMemory | ScoutedRoomMemory)[];
 }
 
 interface EmpireMemory {

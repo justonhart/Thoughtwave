@@ -494,7 +494,7 @@ function runRemoteRooms(room: Room) {
     let remoteRooms = room.memory.remoteMiningRooms;
     remoteRooms.forEach((remoteRoomName) => {
         try {
-            manageRemoteRoom(remoteRoomName);
+            manageRemoteRoom(room.name, remoteRoomName);
         } catch (e) {
             console.log(`Error caught running remote room ${remoteRoomName}: \n${e}`);
         }

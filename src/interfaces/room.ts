@@ -1,7 +1,3 @@
-interface Memory {
-    rooms: (OwnedRoomMemory | RemoteRoomMemory | ScoutedRoomMemory)[];
-}
-
 interface RoomMemory {
     roomStatus: RoomMemoryStatus;
 }
@@ -27,13 +23,13 @@ interface OwnedRoomMemory extends RoomMemory {
 }
 
 interface RemoteRoomMemory extends RoomMemory {
-    reservationState?: RemoteMiningRoomControllerState;
+    reservationState?: RemoteRoomReservationStatus;
     miningPositions: string[];
     miner: AssignmentStatus;
     hauler: AssignmentStatus;
     reserver?: AssignmentStatus;
-    hostileStatus: RemoteMiningRoomState;
-    controllingRoom: string;
+    threatLevel: RemoteRoomThreatLevel;
+    keeperExterminator?: AssignmentStatus;
 }
 
 interface ScoutedRoomMemory extends RoomMemory {
@@ -48,16 +44,6 @@ const enum RoomMemoryStatus {
     OWNED_INVADER,
     REMOTE_MINING,
     OWNED_ME,
-}
-
-interface RemoteAssignment {
-    needsConstruction: boolean;
-    energyStatus: EnergyStatus;
-    state: RemoteMiningRoomState;
-    controllerState: RemoteMiningRoomControllerState;
-    reserver: AssignmentStatus;
-    gatherer: AssignmentStatus;
-    miners: Map<string, AssignmentStatus>;
 }
 
 interface Room {
@@ -88,23 +74,19 @@ const enum AssignmentStatus {
 /**
  * The enums on the top overwrite the lower ones (for example if an attack unit is in the room and a structure it will set ENEMY_ATTACK_CREEPS)
  */
-const enum RemoteMiningRoomState {
-    /**
-     * Enemy Creeps with attack body parts.
-     */
-    ENEMY_ATTTACK_CREEPS,
+const enum RemoteRoomThreatLevel {
+    SAFE = 0,
     /**
      * Enemy Creeps with other body parts.
      */
     ENEMY_NON_COMBAT_CREEPS,
     /**
-     * Enemy structures (includes invader cores).
+     * Enemy Creeps with attack body parts.
      */
-    ENEMY_STRUCTS,
-    SAFE,
+    ENEMY_ATTTACK_CREEPS,
 }
 
-const enum RemoteMiningRoomControllerState {
+const enum RemoteRoomReservationStatus {
     /**
      * Controller reserve above 4500.
      */

@@ -8,18 +8,6 @@ StructureSpawn.prototype.spawnDistributor = function () {
     return PopulationManagement.spawnDistributor(this);
 };
 
-StructureSpawn.prototype.spawnRemoteMiner = function () {
-    return PopulationManagement.spawnRemoteMiner(this);
-};
-
-StructureSpawn.prototype.spawnGatherer = function () {
-    return PopulationManagement.spawnGatherer(this);
-};
-
-StructureSpawn.prototype.spawnReserver = function () {
-    return PopulationManagement.spawnReserver(this);
-};
-
 StructureSpawn.prototype.spawnWorker = function () {
     return PopulationManagement.spawnWorker(this);
 };

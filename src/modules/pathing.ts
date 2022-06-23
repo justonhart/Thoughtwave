@@ -221,7 +221,7 @@ export class Pathing {
             const hostileRoom = Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName);
             if (
                 Memory.rooms &&
-                Object.values(Memory.rooms).find((room) => room.remoteAssignments?.[roomName]?.state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS)
+                Object.values(Memory.rooms).find((room) => room.remoteAssignments?.[roomName]?.state === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS)
             ) {
                 return true; // avoid homeBases mining rooms with enemies in them
             }

@@ -56,8 +56,8 @@ export class Scout extends WaveCreep {
                                 reserver: AssignmentStatus.UNASSIGNED,
                                 needsConstruction: true,
                                 energyStatus: EnergyStatus.STABLE,
-                                state: RemoteMiningRoomState.SAFE,
-                                controllerState: RemoteMiningRoomControllerState.LOW,
+                                state: RemoteRoomThreatLevel.SAFE,
+                                controllerState: RemoteRoomReservationStatus.LOW,
                             };
                         }
                         Memory.rooms[this.memory.room].remoteAssignments[this.room.name].miners[

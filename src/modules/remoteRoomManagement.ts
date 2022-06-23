@@ -1,6 +1,20 @@
-export function manageRemoteRoom(remoteRoomName: string) {}
+import { getStoragePos } from './roomDesign';
 
-function runSecurity(homeRoom: Room, remoteRoomName: string) {}
+export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: string) {
+    let remoteRoom = Game.rooms[remoteRoomName];
+    if (remoteRoom) {
+        Memory.rooms[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
+    }
+}
+
+function monitorThreatLevel(room: Room) {
+    let creeps = room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
+    return creeps.some((c) => c.getActiveBodyparts('attack') + c.getActiveBodyparts('ranged_attack') > 0)
+        ? RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
+        : creeps.length
+        ? RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS
+        : RemoteRoomThreatLevel.SAFE;
+}
 
 function spawnProtector(homeRoomName: string, remoteRoomName: string, body: BodyPartConstant[]) {
     Memory.empire.spawnAssignments.push({
@@ -55,7 +69,7 @@ function reassignIdleProtector(homeRoomName: string, targetRoomName: string): bo
     }
 
     const idleProtector = protectors.find(
-        (creep) => Memory.rooms[homeRoomName].remoteAssignments?.[creep.memory.assignment]?.state !== RemoteMiningRoomState.SAFE
+        (creep) => Memory.rooms[homeRoomName].remoteAssignments?.[creep.memory.assignment]?.state !== RemoteRoomThreatLevel.SAFE
     );
     if (idleProtector) {
         idleProtector.memory.assignment = targetRoomName;
@@ -68,4 +82,73 @@ function reassignIdleProtector(homeRoomName: string, targetRoomName: string): bo
         return true;
     }
     return false;
+}
+
+function addRemoteRoomAssignment(controllingRoomName: string, remoteRoomName: string) {
+    let remoteRoom = Game.rooms[remoteRoomName];
+
+    if (remoteRoom) {
+        let miningPositions = findMiningPositions(controllingRoomName, remoteRoomName);
+
+        if (isCentralRoom(remoteRoomName)) {
+            let roomMemory: RemoteRoomMemory = {
+                roomStatus: RoomMemoryStatus.REMOTE_MINING,
+                miningPositions: miningPositions,
+                threatLevel: RemoteRoomThreatLevel.SAFE,
+                miner: AssignmentStatus.UNASSIGNED,
+                hauler: AssignmentStatus.UNASSIGNED,
+            };
+
+            if (remoteRoom.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR })) {
+                roomMemory.keeperExterminator = AssignmentStatus.UNASSIGNED;
+            }
+
+            Memory.rooms[remoteRoomName] = roomMemory;
+            Game.rooms[controllingRoomName].memory.remoteMiningRooms.push(remoteRoomName);
+        } else {
+            let roomMemory: RemoteRoomMemory = {
+                roomStatus: RoomMemoryStatus.REMOTE_MINING,
+                miningPositions: miningPositions,
+                threatLevel: RemoteRoomThreatLevel.SAFE,
+                miner: AssignmentStatus.UNASSIGNED,
+                hauler: AssignmentStatus.UNASSIGNED,
+                reserver: AssignmentStatus.UNASSIGNED,
+                reservationState: RemoteRoomReservationStatus.LOW,
+            };
+
+            Memory.rooms[remoteRoomName] = roomMemory;
+            Game.rooms[controllingRoomName].memory.remoteMiningRooms.push(remoteRoomName);
+        }
+    } else {
+        throw 'Remote room must be visible';
+    }
+}
+
+function findMiningPositions(controllingRoomName: string, remoteRoomName: string): string[] {
+    let controllingRoom = Game.rooms[controllingRoomName];
+    let remoteRoom = Game.rooms[remoteRoomName];
+
+    let harvestTargets: (Source | Mineral)[] = [...remoteRoom.find(FIND_SOURCES)];
+    if (isCentralRoom(remoteRoomName)) {
+        harvestTargets.push(...remoteRoom.find(FIND_MINERALS));
+    }
+    let miningPositions: string[] = [];
+
+    harvestTargets.forEach((target) => {
+        const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
+        if (!path.incomplete) {
+            miningPositions.push(path.path.pop().toMemSafe());
+        }
+    });
+
+    return miningPositions;
+}
+
+function isCentralRoom(roomName: string) {
+    return roomName
+        .replace(/[EW]/, '')
+        .replace(/[NS]/, '.')
+        .split('.')
+        .map((num) => parseInt(num) % 10 >= 4 && parseInt(num) % 10 <= 6)
+        .reduce((last, next) => last && next);
 }
