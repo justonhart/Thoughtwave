@@ -92,8 +92,7 @@ export class PopulationManagement {
 
         switch (room.energyStatus) {
             case EnergyStatus.CRITICAL:
-                creepCapacity = 0;
-                break;
+                return 0;
             case EnergyStatus.RECOVERING:
                 creepCapacity = Math.ceil(creepCapacity / 2);
                 break;
