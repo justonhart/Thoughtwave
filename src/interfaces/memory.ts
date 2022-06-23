@@ -72,6 +72,7 @@ const enum OperationType {
     SECURE,
     ROOM_RECOVERY,
     UPGRADE_BOOST,
+    REMOTE_BUILD,
 }
 
 const enum OperationStage {

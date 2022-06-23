@@ -17,6 +17,9 @@ export class Operative extends WorkerCreep {
             case OperationType.UPGRADE_BOOST:
                 this.runUpgradeBoost();
                 break;
+            case OperationType.REMOTE_BUILD:
+                this.runRemoteBuild();
+                break;
         }
     }
 
@@ -29,12 +32,24 @@ export class Operative extends WorkerCreep {
                 this.travelTo(controller, { range: 3 });
             }
         } else {
-            let origin = Game.rooms[this.operation.originRoom];
-            if (!this.pos.isNearTo(origin.storage)) {
-                this.travelTo(origin.storage);
-            } else {
-                this.withdraw(origin.storage, RESOURCE_ENERGY);
+            this.gatherResourceFromOrigin(RESOURCE_ENERGY);
+        }
+    }
+
+    private runRemoteBuild() {
+        if (this.store.energy) {
+            let constructionSite = Game.rooms[this.memory.destination]
+                .find(FIND_MY_CONSTRUCTION_SITES)
+                .reduce((mostProgressed, next) => (mostProgressed.progress > next.progress ? mostProgressed : next));
+            if (constructionSite) {
+                if (this.pos.inRangeTo(constructionSite, 3)) {
+                    this.build(constructionSite);
+                } else {
+                    this.travelTo(constructionSite, { range: 3 });
+                }
             }
+        } else {
+            this.gatherResourceFromOrigin(RESOURCE_ENERGY);
         }
     }
 
@@ -108,5 +123,14 @@ export class Operative extends WorkerCreep {
 
         delete this.memory.destination;
         delete this.memory.operation;
+    }
+
+    private gatherResourceFromOrigin(resource: ResourceConstant) {
+        let origin = Game.rooms[this.operation.originRoom];
+        if (!this.pos.isNearTo(origin.storage)) {
+            this.travelTo(origin.storage);
+        } else {
+            this.withdraw(origin.storage, resource);
+        }
     }
 }
