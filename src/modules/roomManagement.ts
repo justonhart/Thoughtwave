@@ -43,6 +43,11 @@ export function driveRoom(room: Room) {
 
         if (Game.time % REPAIR_QUEUE_REFRESH_PERIOD === 0) {
             room.memory.repairQueue = findRepairTargets(room);
+            room.memory.needsWallRepair =
+                room.find(FIND_STRUCTURES, {
+                    filter: (s) =>
+                        (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < room.getDefenseHitpointTarget(),
+                }).length > 0;
         }
 
         if (room.memory.repairQueue.length) {
@@ -400,27 +405,6 @@ function runSpawning(room: Room) {
                         room: room.name,
                     },
                 },
-            });
-        }
-    }
-
-    if (
-        !roomContainsViolentHostiles &&
-        !room.creeps.some((creep) => creep.memory.role === Role.UPGRADER) &&
-        room.energyStatus > EnergyStatus.RECOVERING
-    ) {
-        let spawn = availableSpawns.pop();
-
-        if (room.upgraderLink) {
-            let body = PopulationManagement.createPartsArray([WORK, WORK, WORK, CARRY, MOVE, MOVE], room.energyCapacityAvailable, 5);
-            spawn?.smartSpawn(body, PopulationManagement.getCreepTag('u', spawn.name), {
-                memory: { role: Role.UPGRADER, room: room.name },
-                boosts: [BoostType.UPGRADE],
-            });
-        } else {
-            spawn?.spawnMax([WORK, CARRY, MOVE], PopulationManagement.getCreepTag('u', spawn.name), {
-                memory: { role: Role.UPGRADER, room: room.name },
-                boosts: [BoostType.UPGRADE],
             });
         }
     }

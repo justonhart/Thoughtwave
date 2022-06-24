@@ -1,4 +1,5 @@
 interface RoomMemory {
+    needsWallRepair?: boolean;
     upgraderLinkPos?: string;
     labRequests?: LabNeed[];
     energyDistance?: number;
@@ -39,6 +40,7 @@ interface Room {
     canSpawn(): boolean;
     workerCapacity: number;
     labs: StructureLab[];
+    getDefenseHitpointTarget(): number;
     addLabTask(opts: LabTaskOpts): ScreepsReturnCode;
     getBoostResourcesAvailable(boostTypes: BoostType[]): { [type: number]: { resource: string; amount: number }[] };
 }

@@ -111,3 +111,7 @@ Room.prototype.addLabTask = function (this: Room, opts: LabTaskOpts): ScreepsRet
 Room.prototype.getBoostResourcesAvailable = function (this: Room, boostTypes: BoostType[]) {
     return getResourceBoostsAvailable(this, boostTypes);
 };
+
+Room.prototype.getDefenseHitpointTarget = function (this: Room): number {
+    return this.controller.level * this.controller.level * 50000;
+};

@@ -16,7 +16,12 @@ const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
 
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
-        let workers = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name && creep.memory.role === Role.WORKER);
+        let workers = spawn.room.creeps.filter((creep) => creep.memory.role === Role.WORKER);
+        let hasUpgrader = spawn.room.creeps.some((c) => c.memory.role === Role.UPGRADER);
+        let roomNeedsConstruction =
+            spawn.room.memory.repairQueue.length + spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length > 0 || spawn.room.memory.needsWallRepair;
+
+        let workerCount = workers.length + (hasUpgrader ? 1 : 0);
 
         let options: SpawnOptions = {
             memory: {
@@ -25,12 +30,28 @@ export class PopulationManagement {
             },
         };
 
-        let workerNeeded = workers.length < spawn.room.workerCapacity && (spawn.room.controller.level < 8 || workers.length < 1);
+        let canSupportAnotherWorker = workerCount < spawn.room.workerCapacity && (spawn.room.controller.level < 8 || workers.length < 1);
+
+        let spawnUpgrader = canSupportAnotherWorker && !hasUpgrader && (!roomNeedsConstruction || workers.length > 0);
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 15;
         let tag = 'w';
-        if (workerNeeded) {
+        if (spawnUpgrader) {
+            options.memory.role = Role.UPGRADER;
+            tag = 'u';
+            options.boosts = [BoostType.UPGRADE];
+            let result: ScreepsReturnCode;
+
+            if (spawn.room.upgraderLink) {
+                let body = this.createPartsArray([WORK, WORK, WORK, CARRY, MOVE, MOVE], spawn.room.energyCapacityAvailable, 5);
+                result = spawn.smartSpawn(body, this.getCreepTag(tag, spawn.name), options);
+            } else {
+                result = spawn.spawnMax([WORK, CARRY, MOVE], this.getCreepTag(tag, spawn.name), options);
+            }
+
+            return result;
+        } else if (canSupportAnotherWorker) {
             let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
             return result;
         } else {

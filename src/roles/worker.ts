@@ -47,7 +47,7 @@ export class Worker extends WorkerCreep {
                 //@ts-expect-error
                 structure.ticksToDecay !== undefined &&
                 (structure.structureType === STRUCTURE_RAMPART
-                    ? structure.hits <= this.getDefenseHitpointTarget() * 0.1
+                    ? structure.hits <= this.room.getDefenseHitpointTarget() * 0.1
                     : structure.hits <= structure.hitsMax * 0.1)
         );
         if (decayingStructuresAtRisk.length) {
@@ -66,21 +66,15 @@ export class Worker extends WorkerCreep {
             return constructionSite;
         }
 
-        let defenses = this.homeroom.find(FIND_STRUCTURES).filter(
-            (structure) =>
-                //@ts-ignore
-                [STRUCTURE_WALL, STRUCTURE_RAMPART].includes(structure.structureType) && structure.hits < this.getDefenseHitpointTarget()
-        );
-        if (defenses.length) {
-            return defenses.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare))?.id;
+        if (this.room.memory.needsWallRepair || this.room.controller.level === 8) {
+            let defensesToRepair = this.homeroom.find(FIND_STRUCTURES, {
+                filter: (s) => (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) && s.hits < s.hitsMax,
+            });
+            if (defensesToRepair.length) {
+                return defensesToRepair.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare))?.id;
+            }
         }
 
-        return !this.room.controller.upgradeBlocked && this.room.controller.level < 8
-            ? this.homeroom.controller?.id
-            : this.homeroom
-                  .find(FIND_STRUCTURES, {
-                      filter: (s) => (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) && s.hits < s.hitsMax,
-                  })
-                  .reduce((lowest, next) => (lowest.hits < next.hits ? lowest : next))?.id;
+        return this.homeroom.controller?.id;
     }
 }
