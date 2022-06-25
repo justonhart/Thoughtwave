@@ -43,6 +43,7 @@ interface Room {
     getDefenseHitpointTarget(): number;
     addLabTask(opts: LabTaskOpts): ScreepsReturnCode;
     getBoostResourcesAvailable(boostTypes: BoostType[]): { [type: number]: { resource: string; amount: number }[] };
+    getNextNukeProtectionTask(): Id<Structure> | Id<ConstructionSite>;
 }
 
 interface RoomPosition {

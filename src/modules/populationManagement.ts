@@ -32,7 +32,8 @@ export class PopulationManagement {
 
         let canSupportAnotherWorker = workerCount < spawn.room.workerCapacity && (spawn.room.controller.level < 8 || workers.length < 1);
 
-        let spawnUpgrader = canSupportAnotherWorker && !hasUpgrader && (!roomNeedsConstruction || workers.length > 0);
+        let spawnUpgrader =
+            canSupportAnotherWorker && !spawn.room.find(FIND_NUKES).length && !hasUpgrader && (!roomNeedsConstruction || workers.length > 0);
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 15;

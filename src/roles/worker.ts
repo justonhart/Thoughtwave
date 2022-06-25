@@ -21,6 +21,11 @@ export class Worker extends WorkerCreep {
     }
 
     protected findTarget(): Id<Structure> | Id<ConstructionSite> {
+        let nukeShieldTarget = this.homeroom.getNextNukeProtectionTask();
+        if (nukeShieldTarget) {
+            return nukeShieldTarget;
+        }
+
         let constructedDefenses = this.pos
             .findInRange(FIND_STRUCTURES, 3)
             .filter(
