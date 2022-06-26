@@ -117,7 +117,7 @@ Room.prototype.getDefenseHitpointTarget = function (this: Room): number {
 };
 
 Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> | Id<ConstructionSite> {
-    let structuresToProtect = getStructuresToProtect(this.find(FIND_NUKES));
+    let structuresToProtect = getStructuresToProtect(this.find(FIND_NUKES)).map((id) => Game.getObjectById(id));
     let spawn = structuresToProtect.find((s) => s.structureType === STRUCTURE_SPAWN);
     if (spawn) {
         return spawn.getRampart()?.id ?? spawn.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0]?.id;
@@ -132,7 +132,5 @@ Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> 
     if (terminal) {
         return terminal.getRampart()?.id ?? terminal.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0]?.id;
     }
-    return getStructuresToProtect(this.find(FIND_NUKES)).map(
-        (structure) => structure.getRampart() ?? structure.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0]
-    )?.[0]?.id;
+    return structuresToProtect.map((structure) => structure.getRampart() ?? structure.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0])?.[0]?.id;
 };

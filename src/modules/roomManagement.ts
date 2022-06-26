@@ -39,10 +39,12 @@ export function driveRoom(room: Room) {
 
         let nukes = room.find(FIND_NUKES);
         if (nukes.length) {
-            let structuresAtRisk = getStructuresToProtect(nukes);
-            structuresAtRisk.forEach((structure) => {
-                if (!structure.getRampart()) {
-                    let constructionSite = structure.pos.lookFor(LOOK_CONSTRUCTION_SITES).pop();
+            let structuresAtRiskHitsMap = getStructuresToProtect(nukes);
+            let structuresAtRisk = Object.keys(structuresAtRiskHitsMap) as Id<Structure>[];
+            structuresAtRisk.forEach((structureId) => {
+                let structure = Game.getObjectById(structureId);
+                if (structure && !structure?.getRampart()) {
+                    let constructionSite = structure?.pos.lookFor(LOOK_CONSTRUCTION_SITES).pop();
                     if (constructionSite?.structureType !== STRUCTURE_RAMPART) {
                         constructionSite?.remove();
                         structure.pos.createConstructionSite(STRUCTURE_RAMPART);
@@ -510,22 +512,24 @@ function placeExtractor(room: Room) {
 }
 
 export function getStructuresToProtect(nukes: Nuke[]) {
-    let structuresToProtect: Structure[] = [];
+    let structuresToProtectWithHitAmounts = new Map<string, number>();
 
     nukes.forEach((nuke) => {
         let structuresAtRisk = nuke.room
             .lookForAtArea(LOOK_STRUCTURES, nuke.pos.y - 2, nuke.pos.x - 2, nuke.pos.y + 2, nuke.pos.x + 2, true)
-            .filter(
-                (s) =>
-                    s.structure.structureType !== STRUCTURE_ROAD &&
-                    s.structure.structureType !== STRUCTURE_RAMPART &&
-                    !(s.structure.getRampart()?.hits >= (nuke.pos.isEqualTo(s.structure.pos) ? 10000000 : 5000000))
-            );
+            .filter((s) => s.structure.structureType !== STRUCTURE_ROAD && s.structure.structureType !== STRUCTURE_RAMPART);
         structuresAtRisk.forEach((look) => {
             nuke.room.visual.circle(look.structure.pos, { opacity: 1, strokeWidth: 0.8, stroke: '#f44336' });
-            structuresToProtect.push(look.structure);
+            structuresToProtectWithHitAmounts[look.structure.id]
+                ? (structuresToProtectWithHitAmounts[look.structure.id] += look.structure.pos.isEqualTo(nuke.pos) ? 10000000 : 5000000)
+                : (structuresToProtectWithHitAmounts[look.structure.id] = look.structure.pos.isEqualTo(nuke.pos) ? 10000000 : 5000000);
         });
     });
 
-    return structuresToProtect;
+    let structureIds = Object.keys(structuresToProtectWithHitAmounts) as Id<Structure>[];
+    let filteredStructuresToProtect = structureIds.filter(
+        (structureId) => !(Game.getObjectById(structureId)?.getRampart()?.hits > structuresToProtectWithHitAmounts[structureId])
+    );
+
+    return filteredStructuresToProtect;
 }
