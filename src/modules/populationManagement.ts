@@ -110,7 +110,6 @@ export class PopulationManagement {
         let energyExpenditurePerCyclePerCreep = spawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
         let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
-        console.log(`${room.name}: ${creepCapacity}`);
 
         switch (room.energyStatus) {
             case EnergyStatus.CRITICAL:
