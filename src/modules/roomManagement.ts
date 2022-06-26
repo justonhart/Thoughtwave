@@ -39,10 +39,10 @@ export function driveRoom(room: Room) {
 
         let nukes = room.find(FIND_NUKES);
         if (nukes.length) {
-            let structuresAtRiskHitsMap = getStructuresToProtect(nukes);
-            let structuresAtRisk = Object.keys(structuresAtRiskHitsMap) as Id<Structure>[];
+            let structuresAtRisk = getStructuresToProtect(nukes);
             structuresAtRisk.forEach((structureId) => {
                 let structure = Game.getObjectById(structureId);
+                room.visual.circle(structure.pos, { opacity: 1, strokeWidth: 0.8, stroke: '#f44336' });
                 if (structure && !structure?.getRampart()) {
                     let constructionSite = structure?.pos.lookFor(LOOK_CONSTRUCTION_SITES).pop();
                     if (constructionSite?.structureType !== STRUCTURE_RAMPART) {
@@ -315,7 +315,7 @@ function runSpawning(room: Room) {
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
-    let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length;
+    let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER || creep.memory.role === Role.UPGRADER).length;
     let assignments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
     let roomContainsViolentHostiles =
         room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0 &&
@@ -519,7 +519,6 @@ export function getStructuresToProtect(nukes: Nuke[]) {
             .lookForAtArea(LOOK_STRUCTURES, nuke.pos.y - 2, nuke.pos.x - 2, nuke.pos.y + 2, nuke.pos.x + 2, true)
             .filter((s) => s.structure.structureType !== STRUCTURE_ROAD && s.structure.structureType !== STRUCTURE_RAMPART);
         structuresAtRisk.forEach((look) => {
-            nuke.room.visual.circle(look.structure.pos, { opacity: 1, strokeWidth: 0.8, stroke: '#f44336' });
             structuresToProtectWithHitAmounts[look.structure.id]
                 ? (structuresToProtectWithHitAmounts[look.structure.id] += look.structure.pos.isEqualTo(nuke.pos) ? 10000000 : 5000000)
                 : (structuresToProtectWithHitAmounts[look.structure.id] = look.structure.pos.isEqualTo(nuke.pos) ? 10000000 : 5000000);
@@ -528,7 +527,11 @@ export function getStructuresToProtect(nukes: Nuke[]) {
 
     let structureIds = Object.keys(structuresToProtectWithHitAmounts) as Id<Structure>[];
     let filteredStructuresToProtect = structureIds.filter(
-        (structureId) => !(Game.getObjectById(structureId)?.getRampart()?.hits > structuresToProtectWithHitAmounts[structureId])
+        (structureId) =>
+            !(
+                Game.getObjectById(structureId)?.getRampart()?.hits >= structuresToProtectWithHitAmounts[structureId] ||
+                Game.getObjectById(structureId)?.getRampart()?.hits === RAMPART_HITS_MAX[Game.getObjectById(structureId).room.controller.level]
+            )
     );
 
     return filteredStructuresToProtect;

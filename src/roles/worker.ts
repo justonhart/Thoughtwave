@@ -23,6 +23,7 @@ export class Worker extends WorkerCreep {
     protected findTarget(): Id<Structure> | Id<ConstructionSite> {
         let nukeShieldTarget = this.homeroom.getNextNukeProtectionTask();
         if (nukeShieldTarget) {
+            console.log(Game.getObjectById(nukeShieldTarget).pos.toString());
             return nukeShieldTarget;
         }
 
