@@ -315,7 +315,7 @@ function runSpawning(room: Room) {
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
-    let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length;
+    let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER || creep.memory.role === Role.UPGRADER).length;
     let assignments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
     let roomContainsViolentHostiles =
         room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0 &&
