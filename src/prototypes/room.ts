@@ -132,5 +132,10 @@ Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> 
     if (terminal) {
         return terminal.getRampart()?.id ?? terminal.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0]?.id;
     }
+
+    let tower = structuresToProtect.find((s) => s.structureType === STRUCTURE_TOWER);
+    if (tower) {
+        return tower.getRampart()?.id ?? tower.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0]?.id;
+    }
     return structuresToProtect.map((structure) => structure.getRampart() ?? structure.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0])?.[0]?.id;
 };
