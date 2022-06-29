@@ -371,9 +371,7 @@ export class PopulationManagement {
 
     static spawnAssignedCreep(spawn: StructureSpawn, assignment: SpawnAssignment): ScreepsReturnCode {
         let options: SpawnOptions = {
-            memory: {
-                ...assignment.memoryOptions,
-            },
+            ...assignment.spawnOpts,
         };
 
         let result = spawn.smartSpawn(assignment.body, this.getCreepTag('s', spawn.name), options);
@@ -585,7 +583,7 @@ export class PopulationManagement {
                 (creep) => creep.memory.role === Role.PROTECTOR && (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
             ).length &&
             !Memory.empire.spawnAssignments.filter(
-                (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.memoryOptions.assignment === roomName
+                (creep) => creep.spawnOpts.memory.role === Role.PROTECTOR && creep.spawnOpts.memory.assignment === roomName
             ).length
         );
     }
@@ -594,7 +592,7 @@ export class PopulationManagement {
         return (
             Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR && creep.pos.roomName === roomName).length +
             Memory.empire.spawnAssignments.filter(
-                (creep) => creep.memoryOptions.role === Role.RAMPART_PROTECTOR && creep.memoryOptions.room === roomName
+                (creep) => creep.spawnOpts.memory.role === Role.RAMPART_PROTECTOR && creep.spawnOpts.memory.room === roomName
             ).length
         );
     }

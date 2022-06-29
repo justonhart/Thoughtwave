@@ -42,7 +42,7 @@ export function unclaimRoom(roomName: string) {
 
     Memory.empire.operations = Memory.empire.operations.filter((op) => op.targetRoom !== roomName);
     Memory.empire.spawnAssignments = Memory.empire.spawnAssignments.filter(
-        (asssignment) => asssignment.designee !== roomName && asssignment.memoryOptions.destination !== roomName
+        (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
     );
 
     delete Memory.empire.scoutAssignments[roomName];

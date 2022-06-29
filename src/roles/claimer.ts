@@ -26,18 +26,20 @@ export class Claimer extends WaveCreep {
                             (creep.pos.roomName === this.room.name || creep.memory.assignment === this.room.name)
                     ).length &&
                     !Memory.empire.spawnAssignments.filter(
-                        (creep) => creep.memoryOptions.role === Role.PROTECTOR && creep.designee === this.homeroom.name
+                        (creep) => creep.spawnOpts.memory.role === Role.PROTECTOR && creep.designee === this.homeroom.name
                     ).length &&
                     this.homeroom.canSpawn()
                 ) {
                     Memory.empire.spawnAssignments.push({
                         designee: this.homeroom.name,
                         body: PopulationManagement.createPartsArray([ATTACK, MOVE], this.homeroom.energyCapacityAvailable, 8),
-                        memoryOptions: {
-                            role: Role.PROTECTOR,
-                            room: this.homeroom.name,
-                            assignment: this.room.name,
-                            currentTaskPriority: Priority.MEDIUM,
+                        spawnOpts: {
+                            memory: {
+                                role: Role.PROTECTOR,
+                                room: this.homeroom.name,
+                                assignment: this.room.name,
+                                currentTaskPriority: Priority.MEDIUM,
+                            },
                         },
                     });
                 }
