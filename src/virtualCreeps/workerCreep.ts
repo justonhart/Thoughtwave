@@ -220,6 +220,9 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected getDefenseHitpointTarget() {
+        if (this.room.controller.level === 8) {
+            return 15000000; // Randomly selected to at least withstand one nuke ==> technically we can just max it out
+        }
         return this.room.controller.level * this.room.controller.level * 50000;
     }
 

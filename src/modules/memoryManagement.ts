@@ -10,6 +10,8 @@ export function manageMemory() {
         }
     }
 
+    handleDeadSquads();
+
     // if(!!InterShardMemory.getLocal()){
     //     cleanIntershardOutboundList();
     // }
@@ -49,7 +51,21 @@ function handleDeadCreep(creepName: string) {
         }
     }
 
+    if (deadCreepMemory.combat?.squadId) {
+        delete Memory.empire.squads[deadCreepMemory.combat.squadId].members[deadCreepMemory.combat.squadMemberType];
+    }
+
     delete Memory.creeps[creepName];
+}
+
+function handleDeadSquads() {
+    if (Memory.empire.squads) {
+        for (const squadId in Memory.empire.squads) {
+            if (Memory.empire.squads[squadId].members && !Object.keys(Memory.empire.squads[squadId].members)?.length) {
+                delete Memory.empire.squads[squadId];
+            }
+        }
+    }
 }
 
 //having some trouble getting this to work properly

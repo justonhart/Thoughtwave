@@ -14,6 +14,8 @@ import { Manager } from '../roles/manager';
 import { Operative } from '../roles/operative';
 import { Colonizer } from '../roles/colonizer';
 import { RampartProtector } from '../roles/rampartProtector';
+import { SquadAttacker } from '../roles/squadAttacker';
+import { SquadHealer } from '../roles/squadHealer';
 import { MineralMiner } from '../roles/mineralMiner';
 import { IntershardTraveler } from '../roles/intershardTraveller';
 import { Upgrader } from '../roles/upgrader';
@@ -70,6 +72,12 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.RAMPART_PROTECTOR:
             waveCreep = new RampartProtector(creep.id);
+            break;
+        case Role.SQUAD_ATTACKER:
+            waveCreep = new SquadAttacker(creep.id);
+            break;
+        case Role.SQUAD_HEALER:
+            waveCreep = new SquadHealer(creep.id);
             break;
         case Role.MINERAL_MINER:
             waveCreep = new MineralMiner(creep.id);

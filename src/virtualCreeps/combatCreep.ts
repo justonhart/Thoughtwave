@@ -19,11 +19,15 @@ export class CombatCreep extends WaveCreep {
         return ERR_NO_BODYPART;
     }
 
+    // Info: In homeroom this will not work ==> Shouldnt matter as soon as ramparts are up but otherwise move to spawn?
+    // Go back to the exit toward creeps homeroom while avoiding creeps along the way
+    public flee() {
+        return this.travelToRoom(this.homeroom?.name, { ignoreCreeps: false, avoidSourceKeepers: true });
+    }
+
     protected combatPathing(target: Creep) {
         if (this.memory.combat.flee) {
-            // Info: In homeroom this will not work ==> Shouldnt matter as soon as ramparts are up but otherwise move to spawn?
-            // Go back to the exit toward creeps homeroom while avoiding creeps along the way
-            return this.travelToRoom(this.homeroom?.name, { ignoreCreeps: false, avoidSourceKeepers: true });
+            this.flee();
         }
 
         if (this.getActiveBodyparts(ATTACK)) {
@@ -54,10 +58,10 @@ export class CombatCreep extends WaveCreep {
     protected attackStructure(target: Structure): CreepActionReturnCode {
         if (this.getActiveBodyparts(ATTACK)) {
             return this.attack(target);
-        } else if (this.getActiveBodyparts(RANGED_ATTACK)) {
+        } else if (this.getActiveBodyparts(RANGED_ATTACK) && (target.structureType === STRUCTURE_WALL || this.pos.getRangeTo(target) > 1)) {
             return this.rangedAttack(target);
         }
-        return ERR_NO_BODYPART;
+        return this.rangedMassAttack();
     }
 
     /**
@@ -68,7 +72,7 @@ export class CombatCreep extends WaveCreep {
     public fledToNewRoom(): boolean {
         if (!this.memory.combat?.flee && this.hits / this.hitsMax < 0.4 && this.getActiveBodyparts(HEAL)) {
             this.memory.combat.flee = true;
-        } else if (this.memory.combat?.flee && this.hits / this.hitsMax > 0.8) {
+        } else if (this.memory.combat?.flee && this.hits / this.hitsMax > 0.95) {
             this.memory.combat.flee = false;
         }
         if (this.memory.combat?.flee && this.pos.roomName !== this.memory.assignment) {

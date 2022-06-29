@@ -37,16 +37,6 @@ export class RemoteMiner extends WaveCreep {
                     .reduce((biggestSource, sourceToCompare) => (biggestSource.energy > sourceToCompare.energy ? biggestSource : sourceToCompare))
             );
         } else {
-            // avoid placing roads when potentially moving around an enemy
-            if (
-                Object.values(this.homeroom.memory.remoteAssignments).some(
-                    (assignment) => assignment.state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS
-                )
-            ) {
-                if (this.memory._m) {
-                    this.memory._m.repath = 1; // do not create roads
-                }
-            }
             this.travelTo(assignedPos, { preferRoadConstruction: true });
             // Create roads to the source if not already present and the remote miner did not have to repath
             if (
