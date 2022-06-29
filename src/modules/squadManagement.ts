@@ -221,6 +221,7 @@ export class SquadManagement {
                 (lookObject) =>
                     lookObject.type === LOOK_CREEPS &&
                     lookObject.creep?.owner?.username !== this.currentCreep.owner.username &&
+                    !lookObject.creep?.spawning &&
                     lookObject.structure?.structureType !== STRUCTURE_RAMPART
             );
 
