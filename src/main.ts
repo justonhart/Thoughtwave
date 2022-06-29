@@ -58,7 +58,7 @@ module.exports.loop = function () {
             try {
                 driveCreep(creep);
             } catch (e) {
-                console.log(`Error caught in ${creep.name}: \n${e}`);
+                console.log(`Error caught in creep: ${creep.name}, room: ${creep.pos.roomName}: \n${e}`);
             }
         }
     });
