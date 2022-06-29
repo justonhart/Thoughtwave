@@ -393,7 +393,7 @@ function manageAttackRoomOperation(op: Operation) {
     const hasSquadAttacker =
         originRoom.creeps.find((creep) => creep.memory.role === Role.SQUAD_ATTACKER && creep.memory.assignment === op.targetRoom) ||
         Memory.empire.spawnAssignments.find(
-            (creep) => creep.memoryOptions.assignment === op.targetRoom && creep.memoryOptions.role === Role.SQUAD_ATTACKER
+            (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.SQUAD_ATTACKER
         );
     if (!hasSquadAttacker) {
         Memory.empire.spawnAssignments.push({
@@ -401,14 +401,16 @@ function manageAttackRoomOperation(op: Operation) {
             body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(MOVE, bodyA, bodyB)
             ),
-            memoryOptions: {
-                role: Role.SQUAD_ATTACKER,
-                room: originRoom.name,
-                currentTaskPriority: Priority.MEDIUM,
-                combat: {
-                    flee: false,
-                    squadId: squadId,
-                    squadMemberType: SquadMemberType.SQUAD_LEADER,
+            spawnOpts: {
+                memory: {
+                    role: Role.SQUAD_ATTACKER,
+                    room: originRoom.name,
+                    currentTaskPriority: Priority.MEDIUM,
+                    combat: {
+                        flee: false,
+                        squadId: squadId,
+                        squadMemberType: SquadMemberType.SQUAD_LEADER,
+                    },
                 },
             },
         });
@@ -420,7 +422,8 @@ function manageAttackRoomOperation(op: Operation) {
         ) ||
         Memory.empire.spawnAssignments.find(
             (creep) =>
-                creep.memoryOptions.assignment === op.targetRoom && creep.memoryOptions.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER
+                creep.spawnOpts.memory.assignment === op.targetRoom &&
+                creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER
         );
     if (!hasSquadHealer) {
         Memory.empire.spawnAssignments.push({
@@ -428,14 +431,16 @@ function manageAttackRoomOperation(op: Operation) {
             body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(HEAL, bodyA, bodyB)
             ),
-            memoryOptions: {
-                role: Role.SQUAD_HEALER,
-                room: originRoom.name,
-                currentTaskPriority: Priority.MEDIUM,
-                combat: {
-                    flee: false,
-                    squadId: squadId,
-                    squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
+            spawnOpts: {
+                memory: {
+                    role: Role.SQUAD_HEALER,
+                    room: originRoom.name,
+                    currentTaskPriority: Priority.MEDIUM,
+                    combat: {
+                        flee: false,
+                        squadId: squadId,
+                        squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
+                    },
                 },
             },
         });
@@ -457,7 +462,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
         ).length +
         Memory.empire.spawnAssignments.filter(
             (creep) =>
-                creep.memoryOptions.assignment === op.targetRoom && creep.memoryOptions.combat?.squadMemberType === SquadMemberType.SQUAD_LEADER
+                creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_LEADER
         ).length;
     if (!hasSquadLeader) {
         Memory.empire.spawnAssignments.push({
@@ -465,14 +470,16 @@ function manageQuadAttackRoomOperation(op: Operation) {
             body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(MOVE, bodyA, bodyB)
             ),
-            memoryOptions: {
-                role: Role.SQUAD_ATTACKER,
-                room: originRoom.name,
-                currentTaskPriority: Priority.HIGH,
-                combat: {
-                    flee: false,
-                    squadId: squadId,
-                    squadMemberType: SquadMemberType.SQUAD_LEADER,
+            spawnOpts: {
+                memory: {
+                    role: Role.SQUAD_ATTACKER,
+                    room: originRoom.name,
+                    currentTaskPriority: Priority.HIGH,
+                    combat: {
+                        flee: false,
+                        squadId: squadId,
+                        squadMemberType: SquadMemberType.SQUAD_LEADER,
+                    },
                 },
             },
         });
@@ -484,8 +491,8 @@ function manageQuadAttackRoomOperation(op: Operation) {
         ).length +
         Memory.empire.spawnAssignments.filter(
             (creep) =>
-                creep.memoryOptions.assignment === op.targetRoom &&
-                creep.memoryOptions.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_LEADER
+                creep.spawnOpts.memory.assignment === op.targetRoom &&
+                creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_LEADER
         ).length;
     if (!hasSecondSquadLeader) {
         Memory.empire.spawnAssignments.push({
@@ -493,14 +500,16 @@ function manageQuadAttackRoomOperation(op: Operation) {
             body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(MOVE, bodyA, bodyB)
             ),
-            memoryOptions: {
-                role: Role.SQUAD_ATTACKER,
-                room: originRoom.name,
-                currentTaskPriority: Priority.MEDIUM,
-                combat: {
-                    flee: false,
-                    squadId: squadId,
-                    squadMemberType: SquadMemberType.SQUAD_SECOND_LEADER,
+            spawnOpts: {
+                memory: {
+                    role: Role.SQUAD_ATTACKER,
+                    room: originRoom.name,
+                    currentTaskPriority: Priority.MEDIUM,
+                    combat: {
+                        flee: false,
+                        squadId: squadId,
+                        squadMemberType: SquadMemberType.SQUAD_SECOND_LEADER,
+                    },
                 },
             },
         });
@@ -512,7 +521,8 @@ function manageQuadAttackRoomOperation(op: Operation) {
         ).length +
         Memory.empire.spawnAssignments.filter(
             (creep) =>
-                creep.memoryOptions.assignment === op.targetRoom && creep.memoryOptions.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER
+                creep.spawnOpts.memory.assignment === op.targetRoom &&
+                creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER
         ).length;
     if (!hasSquadFollower) {
         Memory.empire.spawnAssignments.push({
@@ -520,14 +530,16 @@ function manageQuadAttackRoomOperation(op: Operation) {
             body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(HEAL, bodyA, bodyB)
             ),
-            memoryOptions: {
-                role: Role.SQUAD_HEALER,
-                room: originRoom.name,
-                currentTaskPriority: Priority.MEDIUM,
-                combat: {
-                    flee: false,
-                    squadId: squadId,
-                    squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
+            spawnOpts: {
+                memory: {
+                    role: Role.SQUAD_HEALER,
+                    room: originRoom.name,
+                    currentTaskPriority: Priority.MEDIUM,
+                    combat: {
+                        flee: false,
+                        squadId: squadId,
+                        squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
+                    },
                 },
             },
         });
@@ -539,8 +551,8 @@ function manageQuadAttackRoomOperation(op: Operation) {
         ).length +
         Memory.empire.spawnAssignments.filter(
             (creep) =>
-                creep.memoryOptions.assignment === op.targetRoom &&
-                creep.memoryOptions.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_FOLLOWER
+                creep.spawnOpts.memory.assignment === op.targetRoom &&
+                creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_FOLLOWER
         ).length;
     if (!hasSecondSquadFollower) {
         Memory.empire.spawnAssignments.push({
@@ -548,14 +560,16 @@ function manageQuadAttackRoomOperation(op: Operation) {
             body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(HEAL, bodyA, bodyB)
             ),
-            memoryOptions: {
-                role: Role.SQUAD_HEALER,
-                room: originRoom.name,
-                currentTaskPriority: Priority.MEDIUM,
-                combat: {
-                    flee: false,
-                    squadId: squadId,
-                    squadMemberType: SquadMemberType.SQUAD_SECOND_FOLLOWER,
+            spawnOpts: {
+                memory: {
+                    role: Role.SQUAD_HEALER,
+                    room: originRoom.name,
+                    currentTaskPriority: Priority.MEDIUM,
+                    combat: {
+                        flee: false,
+                        squadId: squadId,
+                        squadMemberType: SquadMemberType.SQUAD_SECOND_FOLLOWER,
+                    },
                 },
             },
         });
