@@ -3,22 +3,22 @@ import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class SquadHealer extends CombatCreep {
     protected run() {
-        if (SquadManagement.isPartOfQuad(this) && SquadManagement.missingQuadCreep(this)) {
-            SquadManagement.setupQuad(this);
-            SquadManagement.fleeing(this);
+        const squadManagement = new SquadManagement(this);
+        if (squadManagement.isPartOfQuad() && squadManagement.missingQuadCreep()) {
+            squadManagement.fleeing();
         }
 
-        if (SquadManagement.isPartOfDuo(this) && SquadManagement.missingDuoCreep(this)) {
-            SquadManagement.setupDuo(this);
-            SquadManagement.fleeing(this);
+        if (squadManagement.isPartOfDuo() && squadManagement.missingDuoCreep()) {
+            squadManagement.fleeing();
         }
 
         // action
-        const target = SquadManagement.getSquadHealingTarget(this);
+        const target = squadManagement.getSquadHealingTarget();
         if (this.pos.isNearTo(target)) {
             this.heal(target);
         } else {
             this.rangedHeal(target);
         }
+        squadManagement.cleanUp();
     }
 }

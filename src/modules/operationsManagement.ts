@@ -291,7 +291,7 @@ function manageSecureRoomOperation(op: Operation) {
         Object.values(Game.creeps).filter(
             (creep) =>
                 creep.memory.assignment === op.targetRoom &&
-                creep.memory.role === Role.RAMPART_PROTECTOR &&
+                creep.memory.role === Role.PROTECTOR &&
                 (creep.spawning || creep.ticksToLive > op.pathCost + body.length * 3)
         ).length +
         Memory.empire.spawnAssignments.filter(
@@ -312,6 +312,7 @@ function manageSecureRoomOperation(op: Operation) {
         });
     }
 }
+
 function manageRoomRecoveryOperation(op: Operation) {
     let targetRoom = Game.rooms[op.targetRoom];
 
@@ -369,7 +370,7 @@ function manageRoomRecoveryOperation(op: Operation) {
 
 function manageAttackRoomOperation(op: Operation) {
     const originRoom = Game.rooms[op.originRoom];
-
+    const squadId = 's2' + Game.shard.name.slice(-1) + originRoom.name + Game.time.toString().slice(-4);
     const hasSquadAttacker =
         originRoom.creeps.find((creep) => creep.memory.role === Role.SQUAD_ATTACKER && creep.memory.assignment === op.targetRoom) ||
         Memory.empire.spawnAssignments.find(
@@ -384,13 +385,11 @@ function manageAttackRoomOperation(op: Operation) {
             memoryOptions: {
                 role: Role.SQUAD_ATTACKER,
                 room: originRoom.name,
-                assignment: op.targetRoom,
                 currentTaskPriority: Priority.MEDIUM,
                 combat: {
                     flee: false,
+                    squadId: squadId,
                     squadMemberType: SquadMemberType.SQUAD_LEADER,
-                    squadType: SquadType.DUO,
-                    forcedDestinations: op.forcedDestinations,
                 },
             },
         });
@@ -413,24 +412,26 @@ function manageAttackRoomOperation(op: Operation) {
             memoryOptions: {
                 role: Role.SQUAD_HEALER,
                 room: originRoom.name,
-                assignment: op.targetRoom,
                 currentTaskPriority: Priority.MEDIUM,
                 combat: {
                     flee: false,
+                    squadId: squadId,
                     squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
-                    squadType: SquadType.DUO,
-                    forcedDestinations: op.forcedDestinations,
                 },
             },
         });
     }
-    let opIndex = Memory.empire.operations.findIndex((operation) => op === operation);
-    Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn 2. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
+    if (!Memory.empire.squads) {
+        Memory.empire.squads = {};
+    }
+    Memory.empire.squads[squadId] = { squadType: SquadType.DUO, forcedDestinations: op.forcedDestinations, assignment: op.targetRoom };
+    const opIndex = Memory.empire.operations.findIndex((operation) => op === operation);
+    Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
 }
 
 function manageQuadAttackRoomOperation(op: Operation) {
     const originRoom = Game.rooms[op.originRoom];
-
+    const squadId = 's4' + Game.shard.name.slice(-1) + originRoom.name + Game.time.toString().slice(-4);
     const hasSquadLeader =
         originRoom.creeps.filter(
             (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_LEADER && creep.memory.assignment === op.targetRoom
@@ -448,12 +449,10 @@ function manageQuadAttackRoomOperation(op: Operation) {
             memoryOptions: {
                 role: Role.SQUAD_ATTACKER,
                 room: originRoom.name,
-                assignment: op.targetRoom,
                 currentTaskPriority: Priority.HIGH,
                 combat: {
                     flee: false,
-                    forcedDestinations: op.forcedDestinations,
-                    squadType: SquadType.QUAD,
+                    squadId: squadId,
                     squadMemberType: SquadMemberType.SQUAD_LEADER,
                 },
             },
@@ -478,12 +477,10 @@ function manageQuadAttackRoomOperation(op: Operation) {
             memoryOptions: {
                 role: Role.SQUAD_ATTACKER,
                 room: originRoom.name,
-                assignment: op.targetRoom,
                 currentTaskPriority: Priority.MEDIUM,
                 combat: {
                     flee: false,
-                    forcedDestinations: op.forcedDestinations,
-                    squadType: SquadType.QUAD,
+                    squadId: squadId,
                     squadMemberType: SquadMemberType.SQUAD_SECOND_LEADER,
                 },
             },
@@ -507,12 +504,10 @@ function manageQuadAttackRoomOperation(op: Operation) {
             memoryOptions: {
                 role: Role.SQUAD_HEALER,
                 room: originRoom.name,
-                assignment: op.targetRoom,
                 currentTaskPriority: Priority.MEDIUM,
                 combat: {
                     flee: false,
-                    forcedDestinations: op.forcedDestinations,
-                    squadType: SquadType.QUAD,
+                    squadId: squadId,
                     squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
                 },
             },
@@ -537,19 +532,21 @@ function manageQuadAttackRoomOperation(op: Operation) {
             memoryOptions: {
                 role: Role.SQUAD_HEALER,
                 room: originRoom.name,
-                assignment: op.targetRoom,
                 currentTaskPriority: Priority.MEDIUM,
                 combat: {
                     flee: false,
-                    forcedDestinations: op.forcedDestinations,
-                    squadType: SquadType.QUAD,
+                    squadId: squadId,
                     squadMemberType: SquadMemberType.SQUAD_SECOND_FOLLOWER,
                 },
             },
         });
     }
-    let opIndex = Memory.empire.operations.findIndex((operation) => op === operation);
-    Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn 2. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
+    if (!Memory.empire.squads) {
+        Memory.empire.squads = {};
+    }
+    Memory.empire.squads[squadId] = { squadType: SquadType.QUAD, forcedDestinations: op.forcedDestinations, assignment: op.targetRoom };
+    const opIndex = Memory.empire.operations.findIndex((operation) => op === operation);
+    Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
 }
 
 function sortByBodyPart(prioritizedBodyPart: BodyPartConstant, bodyA: BodyPartConstant, bodyB: BodyPartConstant) {

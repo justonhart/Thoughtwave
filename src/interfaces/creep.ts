@@ -46,22 +46,8 @@ interface ScoutMemory {
 
 interface CombatMemory {
     flee?: boolean;
+    squadId?: string;
     squadMemberType?: SquadMemberType;
-    squadType?: SquadType;
-    squadMembers?: { [squadMemberType: number]: Id<Creep> };
-    forcedDestinations?: string[];
-}
-
-interface SquadMembers {
-    squadLeader?: Id<Creep>;
-    squadFollower?: Id<Creep>;
-    squadSecondLeader?: Id<Creep>;
-    squadSecondFollower?: Id<Creep>;
-}
-
-const enum SquadType {
-    DUO,
-    QUAD,
 }
 
 const enum SquadMemberType {

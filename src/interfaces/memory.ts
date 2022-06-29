@@ -9,6 +9,7 @@ interface EmpireMemory {
     scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>
     operations?: Operation[];
     playersToIgnore?: string[];
+    squads?: { [squadId: string]: Squad };
 }
 
 interface EmpireIntershard {
@@ -72,6 +73,27 @@ interface OriginOpts {
 interface OriginResult {
     roomName: string;
     cost: number;
+}
+
+interface Squad {
+    squadType: SquadType;
+    members?: SquadMembers;
+    forcedDestinations?: string[];
+    assignment: string; // RoomName
+    orientation?: TOP | RIGHT | BOTTOM | LEFT;
+    anchor?: RIGHT | LEFT; // squadLeaders relative position (clockwise)
+}
+
+interface SquadMembers {
+    squadLeader?: Id<Creep>;
+    squadFollower?: Id<Creep>;
+    squadSecondLeader?: Id<Creep>;
+    squadSecondFollower?: Id<Creep>;
+}
+
+const enum SquadType {
+    DUO,
+    QUAD,
 }
 
 const enum OperationType {
