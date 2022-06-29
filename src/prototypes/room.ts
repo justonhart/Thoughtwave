@@ -113,7 +113,7 @@ Room.prototype.getBoostResourcesAvailable = function (this: Room, boostTypes: Bo
 };
 
 Room.prototype.getDefenseHitpointTarget = function (this: Room): number {
-    return this.controller.level * this.controller.level * 50000;
+    return this.controller.level < 8 ? this.controller.level * this.controller.level * 50000 : 15000000;
 };
 
 Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> | Id<ConstructionSite> {
