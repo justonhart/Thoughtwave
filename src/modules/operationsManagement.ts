@@ -139,7 +139,9 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
             room.controller?.my &&
             room.canSpawn() &&
             room.energyStatus >= (opts?.minEnergyStatus ?? EnergyStatus.RECOVERING) &&
-            Game.map.getRoomLinearDistance(room.name, targetRoom) <= (opts?.maxLinearDistance ?? 10)
+            Game.map.getRoomLinearDistance(room.name, targetRoom) <= (opts?.maxLinearDistance ?? 10) &&
+            (opts?.multipleSpawns ? room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN }).length >= 2 : true) &&
+            (opts?.needsBoost ? room.labs.length > 0 : true)
     );
 
     let bestRoom: OriginResult;

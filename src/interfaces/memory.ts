@@ -68,6 +68,8 @@ interface OperationOpts {
 interface OriginOpts {
     minEnergyStatus?: EnergyStatus;
     maxLinearDistance?: number;
+    multipleSpawns?: boolean;
+    needsBoost?: boolean;
 }
 
 interface OriginResult {
