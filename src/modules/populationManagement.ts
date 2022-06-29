@@ -1,5 +1,6 @@
 import { getResourceBoostsAvailable } from './labManagement';
 import { posFromMem } from './memoryManagement';
+import { roomNeedsCoreStructures } from './roomDesign';
 
 const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
     1: ATTACK,
@@ -33,7 +34,11 @@ export class PopulationManagement {
         let canSupportAnotherWorker = workerCount < spawn.room.workerCapacity && (spawn.room.controller.level < 8 || workers.length < 1);
 
         let spawnUpgrader =
-            canSupportAnotherWorker && !spawn.room.find(FIND_NUKES).length && !hasUpgrader && (!roomNeedsConstruction || workers.length > 0);
+            canSupportAnotherWorker &&
+            !spawn.room.find(FIND_NUKES).length &&
+            !hasUpgrader &&
+            (!roomNeedsConstruction || workers.length > 0) &&
+            !roomNeedsCoreStructures(spawn.room);
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 15;
