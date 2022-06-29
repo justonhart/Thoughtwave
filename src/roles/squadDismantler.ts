@@ -31,9 +31,8 @@ export class SquadDismantler extends CombatCreep {
                 fleeing = true;
             }
 
-            const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
             if (!fleeing && squadManagement.getInDuoFormation()) {
-                squadManagement.duoPathing(range);
+                squadManagement.duoPathing(1);
             }
 
             this.dismantleTarget(squadManagement);
