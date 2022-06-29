@@ -194,7 +194,7 @@ export class PopulationManagement {
                     creep.ticksToLive <
                         PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), spawn.room.energyCapacityAvailable).length * 3
             );
-            assigment = currentMiner?.pos?.toMemSafe();
+            assigment = currentMiner?.memory.assignment;
         }
 
         let options: SpawnOptions = {
