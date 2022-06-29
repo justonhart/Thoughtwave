@@ -262,6 +262,38 @@ export class SquadManagement {
         }
     }
 
+    public findPriorityDismantleTarget() {
+        if (this.currentCreep.pos.roomName === this.assignment) {
+            if (Game.flags.target?.pos?.roomName === this.assignment) {
+                // Manual targeting
+                const enemyStructure = Game.flags.target.pos.lookFor(LOOK_STRUCTURES);
+                if (enemyStructure.length) {
+                    return enemyStructure[0];
+                }
+            }
+
+            const obstacleStructure = this.getObstacleStructure();
+            if (obstacleStructure) {
+                return obstacleStructure;
+            }
+            let target: any;
+            if (!target) {
+                target = this.currentCreep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+                    filter: (struct) => struct.structureType === STRUCTURE_TOWER,
+                });
+            }
+            if (!target) {
+                target = this.currentCreep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+                    filter: (struct) => struct.structureType === STRUCTURE_SPAWN,
+                });
+            }
+            if (!target) {
+                target = this.currentCreep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
+            }
+            return target;
+        }
+    }
+
     private findPath(target: any, range: number): PathFinderPath {
         const matrix = SquadManagement.getQuadMatrix(this.squadLeader, this.assignment, this.orientation, this.anchor);
         if (Game.flags.moveSquad?.pos?.roomName === this.assignment) {
