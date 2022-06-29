@@ -63,9 +63,7 @@ function runSecurity(homeRoom: Room, remoteRoomName: string) {
     }
 
     // --- STRUCTURES
-    const hostileStuctures = targetRoom
-        ?.find(FIND_HOSTILE_STRUCTURES)
-        .filter((struct) => !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity()));
+    const hostileStuctures = targetRoom?.find(FIND_HOSTILE_STRUCTURES).filter((struct) => struct.structureType === STRUCTURE_INVADER_CORE);
     if (
         hostileStuctures?.length ||
         (!targetRoom &&

@@ -219,13 +219,6 @@ export class WorkerCreep extends WaveCreep {
         return this.store[RESOURCE_ENERGY] <= energyUsedPerWork;
     }
 
-    protected getDefenseHitpointTarget() {
-        if (this.room.controller.level === 8) {
-            return 15000000; // Randomly selected to at least withstand one nuke ==> technically we can just max it out
-        }
-        return this.room.controller.level * this.room.controller.level * 50000;
-    }
-
     protected findConstructionSite(): Id<ConstructionSite> {
         let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
         if (constructionSites.length) {

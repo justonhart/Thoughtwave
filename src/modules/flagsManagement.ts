@@ -90,4 +90,12 @@ export default function manageFlags() {
         });
         Game.flags.boost.remove();
     }
+
+    if (Game.flags.build) {
+        addOperation(OperationType.REMOTE_BUILD, Game.flags.build.pos.roomName, {
+            operativeCount: 3,
+            originOpts: { minEnergyStatus: EnergyStatus.STABLE },
+        });
+        Game.flags.build.remove();
+    }
 }

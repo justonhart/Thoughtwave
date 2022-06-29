@@ -1,7 +1,7 @@
 import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
 import { posFromMem } from '../modules/memoryManagement';
 import { PopulationManagement } from '../modules/populationManagement';
-import { findRepairTargets } from '../modules/roomManagement';
+import { findRepairTargets, getStructuresToProtect } from '../modules/roomManagement';
 
 RoomPosition.prototype.toMemSafe = function (this: RoomPosition): string {
     return `${this.x}.${this.y}.${this.roomName}`;
@@ -110,4 +110,32 @@ Room.prototype.addLabTask = function (this: Room, opts: LabTaskOpts): ScreepsRet
 
 Room.prototype.getBoostResourcesAvailable = function (this: Room, boostTypes: BoostType[]) {
     return getResourceBoostsAvailable(this, boostTypes);
+};
+
+Room.prototype.getDefenseHitpointTarget = function (this: Room): number {
+    return this.controller.level < 8 ? this.controller.level * this.controller.level * 50000 : 15000000;
+};
+
+Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> | Id<ConstructionSite> {
+    let structuresToProtect = getStructuresToProtect(this.find(FIND_NUKES)).map((id) => Game.getObjectById(id));
+    let spawn = structuresToProtect.find((s) => s.structureType === STRUCTURE_SPAWN);
+    if (spawn) {
+        return spawn.getRampart()?.id ?? spawn.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0]?.id;
+    }
+
+    let storage = structuresToProtect.find((s) => s.structureType === STRUCTURE_STORAGE);
+    if (storage) {
+        return storage.getRampart()?.id ?? storage.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0]?.id;
+    }
+
+    let terminal = structuresToProtect.find((s) => s.structureType === STRUCTURE_TERMINAL);
+    if (terminal) {
+        return terminal.getRampart()?.id ?? terminal.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0]?.id;
+    }
+
+    let tower = structuresToProtect.find((s) => s.structureType === STRUCTURE_TOWER);
+    if (tower) {
+        return tower.getRampart()?.id ?? tower.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0]?.id;
+    }
+    return structuresToProtect.map((structure) => structure.getRampart() ?? structure.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0])?.[0]?.id;
 };

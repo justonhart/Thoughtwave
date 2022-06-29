@@ -105,6 +105,7 @@ const enum OperationType {
     ATTACK,
     QUAD_ATTACK,
     UPGRADE_BOOST,
+    REMOTE_BUILD,
 }
 
 const enum OperationStage {

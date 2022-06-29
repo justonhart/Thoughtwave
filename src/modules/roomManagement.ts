@@ -37,56 +37,77 @@ export function driveRoom(room: Room) {
     } else {
         room.memory.reservedEnergy = 0;
 
-        if (room.memory.repairSearchCooldown > 0) {
-            room.memory.repairSearchCooldown--;
-        }
-
-        if (Game.time % REPAIR_QUEUE_REFRESH_PERIOD === 0) {
-            room.memory.repairQueue = findRepairTargets(room);
-        }
-
-        if (room.memory.repairQueue.length) {
-            room.memory.repairQueue.forEach((job) => {
-                let pos = Game.getObjectById(job)?.pos;
-                room.visual.text('🛠', pos);
+        let nukes = room.find(FIND_NUKES);
+        if (nukes.length) {
+            let structuresAtRisk = getStructuresToProtect(nukes);
+            structuresAtRisk.forEach((structureId) => {
+                let structure = Game.getObjectById(structureId);
+                room.visual.circle(structure.pos, { opacity: 1, strokeWidth: 0.8, stroke: '#f44336' });
+                if (structure && !structure?.getRampart()) {
+                    let constructionSite = structure?.pos.lookFor(LOOK_CONSTRUCTION_SITES).pop();
+                    if (constructionSite?.structureType !== STRUCTURE_RAMPART) {
+                        constructionSite?.remove();
+                        structure.pos.createConstructionSite(STRUCTURE_RAMPART);
+                    }
+                }
             });
-        }
-
-        if (
-            Game.cpu.bucket > 200 &&
-            !global.roomConstructionsChecked &&
-            (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
-            (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
-            Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-            room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
-        ) {
-            switch (room.controller.level) {
-                case 8:
-                case 7:
-                    placeUpgraderLink(room);
-                case 6:
-                    if (!roomNeedsCoreStructures(room)) {
-                        placeBunkerInnerRamparts(room);
-                    }
-                    placeExtractor(room);
-                    placeMineralContainers(room);
-                case 5:
-                    placeMinerLinks(room);
-                case 4:
-                    if (!roomNeedsCoreStructures(room)) {
-                        placeBunkerOuterRamparts(room);
-                        placeMiningRamparts(room);
-                    }
-                case 3:
-                    placeMiningPositionContainers(room);
-                case 2:
-                    placeBunkerConstructionSites(room);
-                    placeRoadsToPOIs(room);
-                case 1:
-                    cleanRoom(room);
+        } else {
+            if (room.memory.repairSearchCooldown > 0) {
+                room.memory.repairSearchCooldown--;
             }
-            global.roomConstructionsChecked = true;
-            room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
+
+            if (Game.time % REPAIR_QUEUE_REFRESH_PERIOD === 0) {
+                room.memory.repairQueue = findRepairTargets(room);
+                room.memory.needsWallRepair =
+                    room.find(FIND_STRUCTURES, {
+                        filter: (s) =>
+                            (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < room.getDefenseHitpointTarget(),
+                    }).length > 0;
+            }
+
+            if (room.memory.repairQueue.length) {
+                room.memory.repairQueue.forEach((job) => {
+                    let pos = Game.getObjectById(job)?.pos;
+                    room.visual.text('🛠', pos);
+                });
+            }
+
+            if (
+                Game.cpu.bucket > 200 &&
+                !global.roomConstructionsChecked &&
+                (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
+                (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
+                Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
+                room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
+            ) {
+                switch (room.controller.level) {
+                    case 8:
+                    case 7:
+                        placeUpgraderLink(room);
+                    case 6:
+                        if (!roomNeedsCoreStructures(room)) {
+                            placeBunkerInnerRamparts(room);
+                        }
+                        placeExtractor(room);
+                        placeMineralContainers(room);
+                    case 5:
+                        placeMinerLinks(room);
+                    case 4:
+                        if (!roomNeedsCoreStructures(room)) {
+                            placeBunkerOuterRamparts(room);
+                            placeMiningRamparts(room);
+                        }
+                    case 3:
+                        placeMiningPositionContainers(room);
+                    case 2:
+                        placeBunkerConstructionSites(room);
+                        placeRoadsToPOIs(room);
+                    case 1:
+                        cleanRoom(room);
+                }
+                global.roomConstructionsChecked = true;
+                room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
+            }
         }
 
         runTowers(room);
@@ -294,7 +315,7 @@ function runSpawning(room: Room) {
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
-    let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER).length;
+    let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER || creep.memory.role === Role.UPGRADER).length;
     let assignments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
     let roomContainsViolentHostiles =
         room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0 &&
@@ -404,27 +425,6 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (
-        !roomContainsViolentHostiles &&
-        !room.creeps.some((creep) => creep.memory.role === Role.UPGRADER) &&
-        room.energyStatus > EnergyStatus.RECOVERING
-    ) {
-        let spawn = availableSpawns.pop();
-
-        if (room.upgraderLink) {
-            let body = PopulationManagement.createPartsArray([WORK, WORK, WORK, CARRY, MOVE, MOVE], room.energyCapacityAvailable, 5);
-            spawn?.smartSpawn(body, PopulationManagement.getCreepTag('u', spawn.name), {
-                memory: { role: Role.UPGRADER, room: room.name },
-                boosts: [BoostType.UPGRADE],
-            });
-        } else {
-            spawn?.spawnMax([WORK, CARRY, MOVE], PopulationManagement.getCreepTag('u', spawn.name), {
-                memory: { role: Role.UPGRADER, room: room.name },
-                boosts: [BoostType.UPGRADE],
-            });
-        }
-    }
-
     if (!roomContainsViolentHostiles) {
         availableSpawns.forEach((spawn) => spawn.spawnWorker());
     }
@@ -509,4 +509,30 @@ function placeExtractor(room: Room) {
         let mineralPos = room.mineral.pos;
         room.createConstructionSite(mineralPos, STRUCTURE_EXTRACTOR);
     }
+}
+
+export function getStructuresToProtect(nukes: Nuke[]) {
+    let structuresToProtectWithHitAmounts = new Map<string, number>();
+
+    nukes.forEach((nuke) => {
+        let structuresAtRisk = nuke.room
+            .lookForAtArea(LOOK_STRUCTURES, nuke.pos.y - 2, nuke.pos.x - 2, nuke.pos.y + 2, nuke.pos.x + 2, true)
+            .filter((s) => s.structure.structureType !== STRUCTURE_ROAD && s.structure.structureType !== STRUCTURE_RAMPART);
+        structuresAtRisk.forEach((look) => {
+            structuresToProtectWithHitAmounts[look.structure.id]
+                ? (structuresToProtectWithHitAmounts[look.structure.id] += look.structure.pos.isEqualTo(nuke.pos) ? 10000000 : 5000000)
+                : (structuresToProtectWithHitAmounts[look.structure.id] = look.structure.pos.isEqualTo(nuke.pos) ? 10000000 : 5000000);
+        });
+    });
+
+    let structureIds = Object.keys(structuresToProtectWithHitAmounts) as Id<Structure>[];
+    let filteredStructuresToProtect = structureIds.filter(
+        (structureId) =>
+            !(
+                Game.getObjectById(structureId)?.getRampart()?.hits >= structuresToProtectWithHitAmounts[structureId] ||
+                Game.getObjectById(structureId)?.getRampart()?.hits === RAMPART_HITS_MAX[Game.getObjectById(structureId).room.controller.level]
+            )
+    );
+
+    return filteredStructuresToProtect;
 }
