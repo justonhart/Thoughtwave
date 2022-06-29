@@ -73,7 +73,7 @@ export class Manager extends WaveCreep {
         }
 
         if (nuker?.store.G < 5000 && terminal?.store.G) {
-            this.withdraw(terminal, RESOURCE_GHODIUM, Math.min(5000 - nuker.store[RESOURCE_GHODIUM], this.store.getFreeCapacity()));
+            this.withdraw(terminal, RESOURCE_GHODIUM, Math.min(5000 - nuker.store[RESOURCE_GHODIUM], terminal.store.G, this.store.getFreeCapacity()));
             this.memory.targetId = nuker.id;
             return;
         }
