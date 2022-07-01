@@ -1,6 +1,8 @@
 import { posFromMem } from '../modules/memoryManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
+const MINERAL_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)];
+
 export class Manager extends WaveCreep {
     protected run() {
         if (posFromMem(this.room.memory?.managerPos)?.isEqualTo(this.pos) === false) {
@@ -84,25 +86,34 @@ export class Manager extends WaveCreep {
             return;
         }
 
-        if (this.getResourceToMove()) {
-            let res = this.getResourceToMove();
+        let res = this.getResourceToTransferToTerminal();
+        if (res) {
             this.withdraw(storage, res, Math.min(storage.store[res], 5000 - terminal.store[res], this.store.getFreeCapacity()));
             this.memory.targetId = terminal.id;
             return;
         }
 
-        if (terminal?.store.getFreeCapacity() && storage.store.energy < storage.store.getUsedCapacity()) {
-            let resourceToWithdraw = Object.keys(storage.store)
-                .filter((res) => res !== RESOURCE_ENERGY && terminal.store[res] < 5000)
-                .shift();
-            this.withdraw(storage, resourceToWithdraw as ResourceConstant);
-            this.memory.targetId = terminal.id;
+        let remRes = this.getResourceToMoveToStorage();
+        if (remRes) {
+            let amount = MINERAL_COMPOUNDS.includes(remRes)
+                ? Math.min(terminal.store[remRes] - 5000, this.store.getFreeCapacity())
+                : Math.min(this.store.getFreeCapacity(), terminal.store[remRes]);
+            this.withdraw(terminal, remRes, amount);
+            this.memory.targetId = storage.id;
+            return;
         }
     }
 
-    private getResourceToMove(): MineralCompoundConstant {
+    private getResourceToTransferToTerminal(): MineralCompoundConstant {
         return Object.keys(this.room.storage?.store).find(
-            (res) => this.room.storage.store[res] && this.room.terminal?.store[res] < 5000
+            (res) => MINERAL_COMPOUNDS.includes(res) && this.room.terminal?.store[res] < 5000
         ) as MineralCompoundConstant;
+    }
+
+    private getResourceToMoveToStorage(): ResourceConstant {
+        if (this.room.terminal) {
+            let resources = Object.keys(this.room.terminal.store).filter((res) => res !== RESOURCE_ENERGY);
+            return resources.find((res) => (MINERAL_COMPOUNDS.includes(res) ? this.room.terminal.store[res] > 5000 : true)) as ResourceConstant;
+        }
     }
 }
