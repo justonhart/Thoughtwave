@@ -221,6 +221,7 @@ export class SquadManagement {
                 (lookObject) =>
                     lookObject.type === LOOK_CREEPS &&
                     lookObject.creep?.owner?.username !== this.currentCreep.owner.username &&
+                    !lookObject.creep?.spawning &&
                     lookObject.structure?.structureType !== STRUCTURE_RAMPART
             );
 
@@ -254,6 +255,38 @@ export class SquadManagement {
             }
             if (!target) {
                 target = this.currentCreep.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+            }
+            if (!target) {
+                target = this.currentCreep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
+            }
+            return target;
+        }
+    }
+
+    public findPriorityDismantleTarget() {
+        if (this.currentCreep.pos.roomName === this.assignment) {
+            if (Game.flags.target?.pos?.roomName === this.assignment) {
+                // Manual targeting
+                const enemyStructure = Game.flags.target.pos.lookFor(LOOK_STRUCTURES);
+                if (enemyStructure.length) {
+                    return enemyStructure[0];
+                }
+            }
+
+            const obstacleStructure = this.getObstacleStructure();
+            if (obstacleStructure) {
+                return obstacleStructure;
+            }
+            let target: any;
+            if (!target) {
+                target = this.currentCreep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+                    filter: (struct) => struct.structureType === STRUCTURE_TOWER,
+                });
+            }
+            if (!target) {
+                target = this.currentCreep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+                    filter: (struct) => struct.structureType === STRUCTURE_SPAWN,
+                });
             }
             if (!target) {
                 target = this.currentCreep.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
