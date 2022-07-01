@@ -6,7 +6,23 @@ export function manageEmpireResources() {
     terminalRooms
         .filter((room) => !room.terminal.cooldown)
         .forEach((room) => {
-            if (hasExtraEnergy(room) && room.terminal.store.energy >= 50000) {
+            let readyShipmentIndex = room.memory.shipments?.findIndex((shipment) => shipment.ready);
+
+            if (readyShipmentIndex > -1) {
+                let shipment = room.memory.shipments[readyShipmentIndex];
+                let result: ScreepsReturnCode;
+                if (shipment.marketOrderId) {
+                } else {
+                    result = room.terminal.send(shipment.resource, shipment.amount, shipment.destinationRoom);
+                }
+
+                if (result === OK) {
+                    room.memory.shipments.splice(readyShipmentIndex, 1);
+                    console.log(`${room.name} sent ${shipment.amount} ${shipment.resource} to ${shipment.destinationRoom}`);
+                } else {
+                    console.log(`${room.name} was unable to send ${shipment.resource} to ${shipment.destinationRoom}: ${result}`);
+                }
+            } else if (hasExtraEnergy(room) && room.terminal.store.energy >= 50000) {
                 if (roomsInNeed.length) {
                     let recipientName = findClosestRecipient(room, roomsInNeed);
                     let amountToSend = calculateEnergyToSend(room.name, recipientName);

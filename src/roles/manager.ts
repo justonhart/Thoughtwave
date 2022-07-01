@@ -55,6 +55,16 @@ export class Manager extends WaveCreep {
             return;
         }
 
+        if (terminal && (this.memory.shipment || this.room.memory.shipments?.some((shipment) => !shipment.ready))) {
+            if (!this.memory.shipment) {
+                let shipmentsToWorkIndex = this.room.memory.shipments.findIndex((shipment) => !shipment.ready);
+                this.memory.shipment = this.room.memory.shipments.splice(shipmentsToWorkIndex, 1).shift();
+            }
+
+            this.workShipment();
+            return;
+        }
+
         let spawnInNeed = spawns.find((spawn) => spawn.store[RESOURCE_ENERGY] < 300);
         if (spawnInNeed && storage.store.energy) {
             this.withdraw(storage, RESOURCE_ENERGY, 300 - spawnInNeed.store[RESOURCE_ENERGY]);
@@ -113,7 +123,60 @@ export class Manager extends WaveCreep {
     private getResourceToMoveToStorage(): ResourceConstant {
         if (this.room.terminal) {
             let resources = Object.keys(this.room.terminal.store).filter((res) => res !== RESOURCE_ENERGY);
-            return resources.find((res) => (MINERAL_COMPOUNDS.includes(res) ? this.room.terminal.store[res] > 5000 : true)) as ResourceConstant;
+            return resources.find(
+                (res) =>
+                    (MINERAL_COMPOUNDS.includes(res) ? this.room.terminal.store[res] > 5000 : true) &&
+                    !this.room.memory.shipments?.some((shipment) => shipment.resource === res)
+            ) as ResourceConstant;
+        }
+    }
+
+    private workShipment() {
+        let shipment = this.memory.shipment;
+        let energyNeeded =
+            Game.market.calcTransactionCost(shipment.amount, this.room.name, shipment.destinationRoom) +
+            (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
+        if (this.room.terminal.store[shipment.resource] < shipment.amount) {
+            if (!this.store[shipment.resource]) {
+                this.withdraw(
+                    this.room.storage,
+                    shipment.resource,
+                    Math.min(this.store.getFreeCapacity(), shipment.amount - this.room.terminal.store[shipment.resource])
+                );
+                this.memory.targetId = this.room.terminal.id;
+            } else {
+                this.transfer(this.room.terminal, shipment.resource);
+                if (
+                    this.store[shipment.resource] + this.room.terminal.store[shipment.resource] === shipment.amount &&
+                    this.room.terminal.store.energy >= energyNeeded
+                ) {
+                    shipment.ready = true;
+                    this.room.memory.shipments.push(shipment);
+                    delete this.memory.shipment;
+                }
+                delete this.memory.targetId;
+            }
+        } else if (this.room.terminal.store.energy < energyNeeded) {
+            if (!this.store.energy) {
+                this.withdraw(
+                    this.room.storage,
+                    RESOURCE_ENERGY,
+                    Math.min(this.store.getFreeCapacity(), energyNeeded - this.room.terminal.store.energy)
+                );
+                this.memory.targetId = this.room.terminal.id;
+            } else {
+                this.transfer(this.room.terminal, RESOURCE_ENERGY);
+                if (this.store.energy + this.room.terminal.store.energy >= energyNeeded) {
+                    shipment.ready = true;
+                    this.room.memory.shipments.push(shipment);
+                    delete this.memory.shipment;
+                }
+                delete this.memory.targetId;
+            }
+        } else {
+            shipment.ready = true;
+            this.room.memory.shipments.push(shipment);
+            delete this.memory.shipment;
         }
     }
 }

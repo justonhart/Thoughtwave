@@ -93,6 +93,14 @@ interface SquadMembers {
     squadSecondFollower?: Id<Creep>;
 }
 
+interface Shipment {
+    destinationRoom: string;
+    resource: ResourceConstant;
+    amount: number;
+    marketOrderId?: string;
+    ready: boolean;
+}
+
 const enum SquadType {
     DUO,
     QUAD,

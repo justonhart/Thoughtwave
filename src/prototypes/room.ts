@@ -1,3 +1,4 @@
+import { rearg } from 'lodash';
 import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
 import { posFromMem } from '../modules/memoryManagement';
 import { PopulationManagement } from '../modules/populationManagement';
@@ -138,4 +139,36 @@ Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> 
         return tower.getRampart()?.id ?? tower.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0]?.id;
     }
     return structuresToProtect.map((structure) => structure.getRampart() ?? structure.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0])?.[0]?.id;
+};
+
+Room.prototype.addShipment = function (
+    this: Room,
+    destination: string,
+    resource: ResourceConstant,
+    amount: number,
+    marketOrderId?: string
+): ScreepsReturnCode {
+    let storageAmount = this.storage?.store[resource] ?? 0;
+    let terminalAmount = this.terminal?.store[resource] ?? 0;
+
+    if (amount <= 0) {
+        return ERR_INVALID_ARGS;
+    }
+    if (storageAmount + terminalAmount < amount) {
+        return ERR_NOT_ENOUGH_RESOURCES;
+    }
+
+    let shipment: Shipment = {
+        destinationRoom: destination,
+        resource: resource,
+        amount: amount,
+        ready: false,
+    };
+
+    if (marketOrderId) {
+        shipment.marketOrderId = marketOrderId;
+    }
+
+    this.memory.shipments ? this.memory.shipments.push(shipment) : (this.memory.shipments = [shipment]);
+    return OK;
 };

@@ -17,6 +17,7 @@ interface RoomMemory {
     layout?: RoomLayout;
     labTasks?: LabTask[];
     dontCheckConstructionsBefore?: number;
+    shipments?: Shipment[];
 }
 
 interface RemoteAssignment {
@@ -44,6 +45,7 @@ interface Room {
     addLabTask(opts: LabTaskOpts): ScreepsReturnCode;
     getBoostResourcesAvailable(boostTypes: BoostType[]): { [type: number]: { resource: string; amount: number }[] };
     getNextNukeProtectionTask(): Id<Structure> | Id<ConstructionSite>;
+    addShipment(destination: string, resource: ResourceConstant, amount: number, marketOrderId?: string): ScreepsReturnCode;
 }
 
 interface RoomPosition {

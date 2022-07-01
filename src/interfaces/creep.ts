@@ -20,6 +20,7 @@ interface CreepMemory {
     scout?: ScoutMemory;
     combat?: CombatMemory;
     nextRole?: Role;
+    shipment?: Shipment;
 }
 
 interface Creep {
