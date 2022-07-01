@@ -68,6 +68,8 @@ interface OperationOpts {
 interface OriginOpts {
     minEnergyStatus?: EnergyStatus;
     maxLinearDistance?: number;
+    multipleSpawns?: boolean;
+    needsBoost?: boolean;
 }
 
 interface OriginResult {
@@ -89,6 +91,14 @@ interface SquadMembers {
     squadFollower?: Id<Creep>;
     squadSecondLeader?: Id<Creep>;
     squadSecondFollower?: Id<Creep>;
+}
+
+interface Shipment {
+    destinationRoom: string;
+    resource: ResourceConstant;
+    amount: number;
+    marketOrderId?: string;
+    ready: boolean;
 }
 
 const enum SquadType {

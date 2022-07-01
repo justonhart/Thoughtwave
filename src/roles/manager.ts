@@ -1,6 +1,8 @@
 import { posFromMem } from '../modules/memoryManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
+const MINERAL_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)];
+
 export class Manager extends WaveCreep {
     protected run() {
         if (posFromMem(this.room.memory?.managerPos)?.isEqualTo(this.pos) === false) {
@@ -53,6 +55,16 @@ export class Manager extends WaveCreep {
             return;
         }
 
+        if (terminal && (this.memory.shipment || this.room.memory.shipments?.some((shipment) => !shipment.ready))) {
+            if (!this.memory.shipment) {
+                let shipmentsToWorkIndex = this.room.memory.shipments.findIndex((shipment) => !shipment.ready);
+                this.memory.shipment = this.room.memory.shipments.splice(shipmentsToWorkIndex, 1).shift();
+            }
+
+            this.workShipment();
+            return;
+        }
+
         let spawnInNeed = spawns.find((spawn) => spawn.store[RESOURCE_ENERGY] < 300);
         if (spawnInNeed && storage.store.energy) {
             this.withdraw(storage, RESOURCE_ENERGY, 300 - spawnInNeed.store[RESOURCE_ENERGY]);
@@ -84,25 +96,87 @@ export class Manager extends WaveCreep {
             return;
         }
 
-        if (this.getResourceToMove()) {
-            let res = this.getResourceToMove();
+        let res = this.getResourceToTransferToTerminal();
+        if (res) {
             this.withdraw(storage, res, Math.min(storage.store[res], 5000 - terminal.store[res], this.store.getFreeCapacity()));
             this.memory.targetId = terminal.id;
             return;
         }
 
-        if (terminal?.store.getFreeCapacity() && storage.store.energy < storage.store.getUsedCapacity()) {
-            let resourceToWithdraw = Object.keys(storage.store)
-                .filter((res) => res !== RESOURCE_ENERGY && terminal.store[res] < 5000)
-                .shift();
-            this.withdraw(storage, resourceToWithdraw as ResourceConstant);
-            this.memory.targetId = terminal.id;
+        let remRes = this.getResourceToMoveToStorage();
+        if (remRes) {
+            let amount = MINERAL_COMPOUNDS.includes(remRes)
+                ? Math.min(terminal.store[remRes] - 5000, this.store.getFreeCapacity())
+                : Math.min(this.store.getFreeCapacity(), terminal.store[remRes]);
+            this.withdraw(terminal, remRes, amount);
+            this.memory.targetId = storage.id;
+            return;
         }
     }
 
-    private getResourceToMove(): MineralCompoundConstant {
+    private getResourceToTransferToTerminal(): MineralCompoundConstant {
         return Object.keys(this.room.storage?.store).find(
-            (res) => this.room.storage.store[res] && this.room.terminal?.store[res] < 5000
+            (res) => MINERAL_COMPOUNDS.includes(res) && this.room.terminal?.store[res] < 5000
         ) as MineralCompoundConstant;
+    }
+
+    private getResourceToMoveToStorage(): ResourceConstant {
+        if (this.room.terminal) {
+            let resources = Object.keys(this.room.terminal.store).filter((res) => res !== RESOURCE_ENERGY);
+            return resources.find(
+                (res) =>
+                    (MINERAL_COMPOUNDS.includes(res) ? this.room.terminal.store[res] > 5000 : true) &&
+                    !this.room.memory.shipments?.some((shipment) => shipment.resource === res)
+            ) as ResourceConstant;
+        }
+    }
+
+    private workShipment() {
+        let shipment = this.memory.shipment;
+        let energyNeeded =
+            Game.market.calcTransactionCost(shipment.amount, this.room.name, shipment.destinationRoom) +
+            (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
+        if (this.room.terminal.store[shipment.resource] < shipment.amount) {
+            if (!this.store[shipment.resource]) {
+                this.withdraw(
+                    this.room.storage,
+                    shipment.resource,
+                    Math.min(this.store.getFreeCapacity(), shipment.amount - this.room.terminal.store[shipment.resource])
+                );
+                this.memory.targetId = this.room.terminal.id;
+            } else {
+                this.transfer(this.room.terminal, shipment.resource);
+                if (
+                    this.store[shipment.resource] + this.room.terminal.store[shipment.resource] === shipment.amount &&
+                    this.room.terminal.store.energy >= energyNeeded
+                ) {
+                    shipment.ready = true;
+                    this.room.memory.shipments.push(shipment);
+                    delete this.memory.shipment;
+                }
+                delete this.memory.targetId;
+            }
+        } else if (this.room.terminal.store.energy < energyNeeded) {
+            if (!this.store.energy) {
+                this.withdraw(
+                    this.room.storage,
+                    RESOURCE_ENERGY,
+                    Math.min(this.store.getFreeCapacity(), energyNeeded - this.room.terminal.store.energy)
+                );
+                this.memory.targetId = this.room.terminal.id;
+            } else {
+                this.transfer(this.room.terminal, RESOURCE_ENERGY);
+                if (this.store.energy + this.room.terminal.store.energy >= energyNeeded) {
+                    shipment.ready = true;
+                    this.room.memory.shipments.push(shipment);
+                    delete this.memory.shipment;
+                }
+                delete this.memory.targetId;
+            }
+        } else {
+            shipment.ready = true;
+            this.room.memory.shipments.push(shipment);
+            delete this.memory.shipment;
+        }
     }
 }
