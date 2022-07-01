@@ -150,17 +150,17 @@ export class PopulationManagement {
 
     static needsMiner(room: Room): boolean {
         let roomNeedsMiner = Object.values(room.memory.miningAssignments).some((assignment) => assignment === AssignmentStatus.UNASSIGNED);
-        if (!roomNeedsMiner) {
-            // Check for TTL
-            roomNeedsMiner = room.creeps.some(
-                (creep) =>
-                    creep.memory.role === Role.MINER &&
-                    creep.memory.room === room.name &&
-                    !creep.memory.hasTTLReplacement &&
-                    creep.ticksToLive <
-                        PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), room.energyCapacityAvailable).length * 3
-            );
-        }
+        // if (!roomNeedsMiner) {
+        //     // Check for TTL
+        //     roomNeedsMiner = room.creeps.some(
+        //         (creep) =>
+        //             creep.memory.role === Role.MINER &&
+        //             creep.memory.room === room.name &&
+        //             !creep.memory.hasTTLReplacement &&
+        //             creep.ticksToLive <
+        //                 PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), room.energyCapacityAvailable).length * 3
+        //     );
+        // }
         return roomNeedsMiner;
     }
 
@@ -190,17 +190,17 @@ export class PopulationManagement {
         let assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
         let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
         let currentMiner: Creep;
-        if (!assigment) {
-            // Check for TTL
-            currentMiner = spawn.room.creeps.find(
-                (creep) =>
-                    creep.memory.role === Role.MINER &&
-                    creep.memory.room === spawn.room.name &&
-                    creep.ticksToLive <
-                        PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), spawn.room.energyCapacityAvailable).length * 3
-            );
-            assigment = currentMiner?.memory.assignment;
-        }
+        // if (!assigment) {
+        //     // Check for TTL
+        //     currentMiner = spawn.room.creeps.find(
+        //         (creep) =>
+        //             creep.memory.role === Role.MINER &&
+        //             creep.memory.room === spawn.room.name &&
+        //             creep.ticksToLive <
+        //                 PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), spawn.room.energyCapacityAvailable).length * 3
+        //     );
+        //     assigment = currentMiner?.memory.assignment;
+        // }
 
         let options: SpawnOptions = {
             memory: {
