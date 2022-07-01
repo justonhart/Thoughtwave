@@ -31,7 +31,7 @@ export class PopulationManagement {
             },
         };
 
-        let canSupportAnotherWorker = workerCount < spawn.room.workerCapacity && (spawn.room.controller.level < 8 || workers.length < 1);
+        let canSupportAnotherWorker = workerCount < spawn.room.workerCapacity;
 
         let spawnUpgrader =
             canSupportAnotherWorker &&
