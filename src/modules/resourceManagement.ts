@@ -123,6 +123,7 @@ export function manageEmpireResources() {
                         );
                     } else {
                         console.log(`${room.name} was unable to complete sale of ${shipment.resource}: ${result}`);
+                        room.memory.shipments.splice(readyShipmentIndex, 1);
                     }
                 } else {
                     result = room.terminal.send(shipment.resource, shipment.amount, shipment.destinationRoom);

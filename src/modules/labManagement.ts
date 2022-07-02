@@ -37,7 +37,6 @@ export function runLabs(room: Room) {
             while (amountToCreate % 5) {
                 amountToCreate--;
             }
-            console.log(resourceToMake + ' : ' + reagents);
             let result = room.addLabTask({
                 type: LabTaskType.REACT,
                 reagentsNeeded: reagents.map((r) => {
