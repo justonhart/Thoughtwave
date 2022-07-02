@@ -19,6 +19,10 @@ export function manageEmpire() {
         });
     }
 
+    if (!Memory.empire.priceMap || Game.time % 20000 === 0) {
+        Memory.empire.priceMap = getPriceMap();
+    }
+
     manageOperations();
     cleanSpawnAssignments();
 }
@@ -64,4 +68,14 @@ function cleanSpawnAssignments() {
     Memory.empire.spawnAssignments = Memory.empire.spawnAssignments.filter(
         (assignment) => Game.rooms[assignment.designee] && Game.rooms[assignment.designee].canSpawn()
     );
+}
+
+function getPriceMap(): { [resourceType: string]: number } {
+    let history = Game.market.getHistory();
+    let map: { [resourceType: string]: number } = {};
+    history.forEach((res) => {
+        map[res.resourceType] = res.avgPrice;
+    });
+
+    return map;
 }

@@ -162,7 +162,6 @@ Room.prototype.addShipment = function (
         destinationRoom: destination,
         resource: resource,
         amount: amount,
-        ready: false,
     };
 
     if (marketOrderId) {
