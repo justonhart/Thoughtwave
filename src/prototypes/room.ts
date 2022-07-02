@@ -1,4 +1,3 @@
-import { rearg } from 'lodash';
 import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
 import { posFromMem } from '../modules/memoryManagement';
 import { PopulationManagement } from '../modules/populationManagement';

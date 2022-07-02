@@ -37,6 +37,7 @@ export function runLabs(room: Room) {
             while (amountToCreate % 5) {
                 amountToCreate--;
             }
+            console.log(resourceToMake + ' : ' + reagents);
             let result = room.addLabTask({
                 type: LabTaskType.REACT,
                 reagentsNeeded: reagents.map((r) => {
@@ -427,9 +428,11 @@ export function getResourceBoostsAvailable(
 
 //find next needed resource that room can currently create
 export function getNextResourceToCreate(room: Room): MineralCompoundConstant {
-    return Object.keys(global.resourceNeeds).find(
-        (resource) => global.resourceNeeds[resource].length && hasNecessaryReagentsForReaction(room, resource as MineralCompoundConstant)
-    ) as MineralCompoundConstant;
+    return Object.keys(global.resourceNeeds)
+        .filter((res) => !['H', 'O', 'U', 'L', 'Z', 'K'].includes(res))
+        .find(
+            (resource) => global.resourceNeeds[resource].length && hasNecessaryReagentsForReaction(room, resource as MineralCompoundConstant)
+        ) as MineralCompoundConstant;
 }
 
 export function hasNecessaryReagentsForReaction(room: Room, compound: MineralCompoundConstant): boolean {
@@ -449,7 +452,7 @@ export function getReagents(compound: MineralCompoundConstant): ResourceConstant
         reagents = [compound.charAt(0) + 'H', 'OH'];
     } else if (compound.includes('O2')) {
         reagents = [compound.charAt(0) + 'O', 'OH'];
-    } else {
+    } else if (compound === 'G') {
         reagents = ['ZK', 'UL'];
     }
 
