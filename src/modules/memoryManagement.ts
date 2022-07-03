@@ -49,9 +49,6 @@ function handleDeadCreep(creepName: string) {
         if (deadCreepMemory.labRequests) {
             Memory.rooms[deadCreepMemory.room].labRequests.unshift(...deadCreepMemory.labRequests);
         }
-        if (deadCreepMemory.shipment) {
-            Memory.rooms[deadCreepMemory.room].shipments.unshift(deadCreepMemory.shipment);
-        }
     }
 
     if (deadCreepMemory.combat?.squadId) {

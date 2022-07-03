@@ -78,7 +78,7 @@ export function driveRoom(room: Room) {
                 (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
                 (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
                 Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-                room.find(FIND_MY_CONSTRUCTION_SITES).length < 25
+                room.find(FIND_MY_CONSTRUCTION_SITES).length < 15
             ) {
                 switch (room.controller.level) {
                     case 8:

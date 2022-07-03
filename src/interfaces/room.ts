@@ -18,6 +18,7 @@ interface RoomMemory {
     labTasks?: LabTask[];
     dontCheckConstructionsBefore?: number;
     shipments?: Shipment[];
+    factoryTask?: FactoryTask;
 }
 
 interface RemoteAssignment {
@@ -46,6 +47,8 @@ interface Room {
     getBoostResourcesAvailable(boostTypes: BoostType[]): { [type: number]: { resource: string; amount: number }[] };
     getNextNukeProtectionTask(): Id<Structure> | Id<ConstructionSite>;
     addShipment(destination: string, resource: ResourceConstant, amount: number, marketOrderId?: string): ScreepsReturnCode;
+    addFactoryTask(product: ResourceConstant, amount: number): ScreepsReturnCode;
+    factory: StructureFactory;
 }
 
 interface RoomPosition {

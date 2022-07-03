@@ -1,4 +1,30 @@
 export function manageEmpireResources() {
+    let factoryRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.factory?.isActive());
+    factoryRooms
+        .filter((room) => room.memory?.factoryTask)
+        .forEach((room) => {
+            let task = room.memory.factoryTask;
+            let factory = room.factory;
+            if (!task.started) {
+                if (factoryTaskReady(room)) {
+                    task.started = true;
+                }
+            }
+            if (task.started) {
+                if (factory.store[task.product] >= task.amount) {
+                    delete room.memory.factoryTask;
+                } else {
+                    if (!factory.cooldown) {
+                        let result = factory.produce(task.product as CommodityConstant);
+                        if (result !== OK) {
+                            console.log(`Removing factory task because of err: ${result}`);
+                            delete room.memory.factoryTask;
+                        }
+                    }
+                }
+            }
+        });
+
     let terminalRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.terminal?.isActive());
     let roomsInNeed = terminalRooms.filter((room) => room.energyStatus < EnergyStatus.STABLE).sort((a, b) => a.energyStatus - b.energyStatus);
     let roomsInProgress = terminalRooms.filter((room) => room.controller.level < 8 && room.energyStatus < EnergyStatus.SURPLUS);
@@ -6,103 +32,135 @@ export function manageEmpireResources() {
     terminalRooms
         .filter((room) => !room.terminal.cooldown)
         .forEach((room) => {
-            let readyShipmentIndex = room.memory.shipments?.findIndex((shipment) => shipment.ready);
+            if (!room.memory.shipments?.length) {
+                if (hasExtraEnergy(room) && room.terminal.store.energy >= 50000) {
+                    if (roomsInNeed.length) {
+                        let recipientName = findClosestRecipient(room, roomsInNeed);
+                        let amountToSend = calculateEnergyToSend(room.name, recipientName);
+                        let result = room.terminal.send(RESOURCE_ENERGY, amountToSend, recipientName);
+                        if (result === OK) {
+                            console.log(
+                                `${room.name} sent ${amountToSend} energy to ${recipientName}: Cost: ${Game.market.calcTransactionCost(
+                                    amountToSend,
+                                    room.name,
+                                    recipientName
+                                )}`
+                            );
+                            return;
+                        } else {
+                            console.log(
+                                `${room.name} was unable to send energy to ${recipientName}: ${result} Cost: ${Game.market.calcTransactionCost(
+                                    amountToSend,
+                                    room.name,
+                                    recipientName
+                                )}`
+                            );
+                        }
+                    } else if (roomsInProgress.length && hasTooMuchEnergy(room)) {
+                        let recipientName = findClosestRecipient(room, roomsInProgress);
+                        let amountToSend = calculateEnergyToSend(room.name, recipientName);
+                        let result = room.terminal.send(RESOURCE_ENERGY, amountToSend, recipientName);
+                        if (result === OK) {
+                            console.log(
+                                `${room.name} sent ${amountToSend} energy to ${recipientName}: Cost: ${Game.market.calcTransactionCost(
+                                    amountToSend,
+                                    room.name,
+                                    recipientName
+                                )}`
+                            );
+                            return;
+                        } else {
+                            console.log(
+                                `${room.name} was unable to send energy to ${recipientName}: ${result} Cost: ${Game.market.calcTransactionCost(
+                                    amountToSend,
+                                    room.name,
+                                    recipientName
+                                )}`
+                            );
+                        }
+                    }
+                }
+
+                let extraResources = getExtraResources(room);
+                if (extraResources.length) {
+                    let sent = false;
+                    extraResources.forEach((resource) => {
+                        let roomsInNeed = global.resourceNeeds[resource];
+                        let excessAmount = getResourceAmount(room, resource) - 10000;
+                        if (roomsInNeed?.length && !sent) {
+                            let recipient = findClosestRecipient(
+                                room,
+                                roomsInNeed.map((roomName) => Game.rooms[roomName])
+                            );
+                            let amountToSend = Math.max(2500, 5000 - getResourceAmount(Game.rooms[recipient], resource));
+                            let result = room.terminal.send(resource, amountToSend, recipient);
+                            if (result === OK) {
+                                console.log(
+                                    `${room.name} sent ${amountToSend} ${resource} to ${recipient}: Cost: ${Game.market.calcTransactionCost(
+                                        amountToSend,
+                                        room.name,
+                                        recipient
+                                    )}`
+                                );
+                                sent = true;
+                                return;
+                            } else {
+                                console.log(
+                                    `${room.name} was unable to send ${resource} to ${recipient}: ${result} Cost: ${Game.market.calcTransactionCost(
+                                        amountToSend,
+                                        room.name,
+                                        recipient
+                                    )}`
+                                );
+                            }
+                        } else if (!sent && Game.time % 50 === 0) {
+                            if (!global.qualifyingMarketOrders) {
+                                getQualifyingMarketOrders();
+                            }
+                            let buyRequest = Game.market.getOrderById(global.qualifyingMarketOrders[resource]);
+                            if (buyRequest?.amount) {
+                                let amountToSell = Math.min(excessAmount, buyRequest.amount, 75000);
+                                let result = room.addShipment(buyRequest.roomName, resource, amountToSell, buyRequest.id);
+                                if (result === OK) {
+                                    sent = true;
+                                    console.log(
+                                        `${room.name} added shipment of ${amountToSell} ${buyRequest.resourceType} to complete market order ${buyRequest.id}`
+                                    );
+                                    global.qualifyingMarketOrders[resource] = undefined;
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            let readyShipmentIndex = room.memory.shipments?.findIndex((shipment) => shipmentReady(room.terminal, shipment));
 
             if (readyShipmentIndex > -1) {
                 let shipment = room.memory.shipments[readyShipmentIndex];
                 let result: ScreepsReturnCode;
                 if (shipment.marketOrderId) {
+                    result = Game.market.deal(shipment.marketOrderId, shipment.amount, room.name);
+                    if (result === OK) {
+                        room.memory.shipments.splice(readyShipmentIndex, 1);
+                        console.log(
+                            `${room.name} completed sale of ${shipment.amount} ${shipment.resource} for ${
+                                shipment.amount * Game.market.getOrderById(shipment.marketOrderId).price
+                            } credits`
+                        );
+                    } else {
+                        console.log(`${room.name} was unable to complete sale of ${shipment.resource}: ${result}`);
+                        room.memory.shipments.splice(readyShipmentIndex, 1);
+                    }
                 } else {
                     result = room.terminal.send(shipment.resource, shipment.amount, shipment.destinationRoom);
-                }
-
-                if (result === OK) {
-                    room.memory.shipments.splice(readyShipmentIndex, 1);
-                    console.log(`${room.name} sent ${shipment.amount} ${shipment.resource} to ${shipment.destinationRoom}`);
-                } else {
-                    console.log(`${room.name} was unable to send ${shipment.resource} to ${shipment.destinationRoom}: ${result}`);
-                }
-            } else if (hasExtraEnergy(room) && room.terminal.store.energy >= 50000) {
-                if (roomsInNeed.length) {
-                    let recipientName = findClosestRecipient(room, roomsInNeed);
-                    let amountToSend = calculateEnergyToSend(room.name, recipientName);
-                    let result = room.terminal.send(RESOURCE_ENERGY, amountToSend, recipientName);
                     if (result === OK) {
-                        console.log(
-                            `${room.name} sent ${amountToSend} energy to ${recipientName}: Cost: ${Game.market.calcTransactionCost(
-                                amountToSend,
-                                room.name,
-                                recipientName
-                            )}`
-                        );
-                        return;
+                        room.memory.shipments.splice(readyShipmentIndex, 1);
+                        console.log(`${room.name} sent ${shipment.amount} ${shipment.resource} to ${shipment.destinationRoom}`);
                     } else {
-                        console.log(
-                            `${room.name} was unable to send energy to ${recipientName}: ${result} Cost: ${Game.market.calcTransactionCost(
-                                amountToSend,
-                                room.name,
-                                recipientName
-                            )}`
-                        );
-                    }
-                } else if (roomsInProgress.length && hasTooMuchEnergy(room)) {
-                    let recipientName = findClosestRecipient(room, roomsInProgress);
-                    let amountToSend = calculateEnergyToSend(room.name, recipientName);
-                    let result = room.terminal.send(RESOURCE_ENERGY, amountToSend, recipientName);
-                    if (result === OK) {
-                        console.log(
-                            `${room.name} sent ${amountToSend} energy to ${recipientName}: Cost: ${Game.market.calcTransactionCost(
-                                amountToSend,
-                                room.name,
-                                recipientName
-                            )}`
-                        );
-                        return;
-                    } else {
-                        console.log(
-                            `${room.name} was unable to send energy to ${recipientName}: ${result} Cost: ${Game.market.calcTransactionCost(
-                                amountToSend,
-                                room.name,
-                                recipientName
-                            )}`
-                        );
+                        console.log(`${room.name} was unable to send ${shipment.resource}: ${result}`);
                     }
                 }
-            }
-
-            let extraResources = getExtraResources(room);
-            if (extraResources.length) {
-                let sent = false;
-                extraResources.forEach((resource) => {
-                    let roomsInNeed = global.resourceNeeds[resource];
-                    if (roomsInNeed?.length && !sent) {
-                        let recipient = findClosestRecipient(
-                            room,
-                            roomsInNeed.map((roomName) => Game.rooms[roomName])
-                        );
-                        let amountToSend = Math.max(2500, 5000 - getResourceAmount(Game.rooms[recipient], resource));
-                        let result = room.terminal.send(resource, amountToSend, recipient);
-                        if (result === OK) {
-                            console.log(
-                                `${room.name} sent ${amountToSend} ${resource} to ${recipient}: Cost: ${Game.market.calcTransactionCost(
-                                    amountToSend,
-                                    room.name,
-                                    recipient
-                                )}`
-                            );
-                            sent = true;
-                            return;
-                        } else {
-                            console.log(
-                                `${room.name} was unable to send ${resource} to ${recipient}: ${result} Cost: ${Game.market.calcTransactionCost(
-                                    amountToSend,
-                                    room.name,
-                                    recipient
-                                )}`
-                            );
-                        }
-                    }
-                });
             }
         });
 }
@@ -170,10 +228,52 @@ export function getExtraResources(room: Room): ResourceConstant[] {
 
     const ALL_MINERALS_AND_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)] as ResourceConstant[];
     ALL_MINERALS_AND_COMPOUNDS.forEach((resource) => {
-        if (getResourceAmount(room, resource) >= 10000 && room.terminal.store[resource] >= 5000) {
+        if (getResourceAmount(room, resource) > 10000 && room.terminal.store[resource] >= 5000) {
             extraResources.push(resource);
         }
     });
 
     return extraResources;
+}
+
+export function shipmentReady(terminal: StructureTerminal, shipment: Shipment): boolean {
+    let energyNeeded =
+        Game.market.calcTransactionCost(shipment.amount, terminal.room.name, shipment.destinationRoom) +
+        (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
+
+    return terminal.store[shipment.resource] >= shipment.amount && terminal.store.energy >= energyNeeded;
+}
+
+function getQualifyingMarketOrders() {
+    let marketOrders = Game.market.getAllOrders().filter((o) => o.type === ORDER_BUY && o.price >= 0.85 * Memory.empire.priceMap[o.resourceType]);
+    global.qualifyingMarketOrders = {};
+    Object.keys(Memory.empire.priceMap).forEach((res) => {
+        let orderId = marketOrders.find((order) => order.resourceType === res)?.id;
+        if (orderId) {
+            global.qualifyingMarketOrders[res] = orderId;
+        }
+    });
+}
+
+export function factoryTaskReady(room: Room): boolean {
+    if (room.memory.factoryTask) {
+        let neededResources = getFactoryResourcesNeeded(room.memory.factoryTask);
+        return neededResources
+            .map((resourceNeed) => room.factory.store[resourceNeed.res] >= resourceNeed.amount)
+            .reduce((last, next) => last && next);
+    }
+}
+
+export function getFactoryResourcesNeeded(task: FactoryTask): { res: ResourceConstant; amount: number }[] {
+    let needs: { res: ResourceConstant; amount: number }[] = [];
+    let commodityEntry: { amount: number; cooldown: number; components: { [resource: string]: number } } = COMMODITIES[task.product];
+    let amountProduced = commodityEntry.amount;
+    let componentResources = Object.keys(commodityEntry.components);
+    let componentsAmounts = commodityEntry.components;
+
+    needs = componentResources.map((resource) => {
+        return { res: resource as ResourceConstant, amount: componentsAmounts[resource] * Math.floor(task.amount / amountProduced) };
+    });
+
+    return needs;
 }

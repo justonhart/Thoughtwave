@@ -3,6 +3,7 @@ interface Memory {
 }
 
 interface EmpireMemory {
+    priceMap?: { [resourceType: string]: number };
     logCPU?: boolean;
     spawnAssignments?: SpawnAssignment[];
     hostileRooms?: HostileRoom[];
@@ -98,7 +99,12 @@ interface Shipment {
     resource: ResourceConstant;
     amount: number;
     marketOrderId?: string;
-    ready: boolean;
+}
+
+interface FactoryTask {
+    product: ResourceConstant;
+    amount: number;
+    started?: boolean;
 }
 
 const enum SquadType {
