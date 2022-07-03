@@ -1,4 +1,30 @@
 export function manageEmpireResources() {
+    let factoryRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.factory?.isActive());
+    factoryRooms
+        .filter((room) => room.memory?.factoryTask)
+        .forEach((room) => {
+            let task = room.memory.factoryTask;
+            let factory = room.factory;
+            if (!task.started) {
+                if (factoryTaskReady(room)) {
+                    task.started = true;
+                }
+            }
+            if (task.started) {
+                if (factory.store[task.product] >= task.amount) {
+                    delete room.memory.factoryTask;
+                } else {
+                    if (!factory.cooldown) {
+                        let result = factory.produce(task.product as CommodityConstant);
+                        if (result !== OK) {
+                            console.log(`Removing factory task because of err: ${result}`);
+                            delete room.memory.factoryTask;
+                        }
+                    }
+                }
+            }
+        });
+
     let terminalRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.terminal?.isActive());
     let roomsInNeed = terminalRooms.filter((room) => room.energyStatus < EnergyStatus.STABLE).sort((a, b) => a.energyStatus - b.energyStatus);
     let roomsInProgress = terminalRooms.filter((room) => room.controller.level < 8 && room.energyStatus < EnergyStatus.SURPLUS);
@@ -100,6 +126,7 @@ export function manageEmpireResources() {
                                     console.log(
                                         `${room.name} added shipment of ${amountToSell} ${buyRequest.resourceType} to complete market order ${buyRequest.id}`
                                     );
+                                    global.qualifyingMarketOrders[resource] = undefined;
                                 }
                             }
                         }
@@ -226,4 +253,27 @@ function getQualifyingMarketOrders() {
             global.qualifyingMarketOrders[res] = orderId;
         }
     });
+}
+
+export function factoryTaskReady(room: Room): boolean {
+    if (room.memory.factoryTask) {
+        let neededResources = getFactoryResourcesNeeded(room.memory.factoryTask);
+        return neededResources
+            .map((resourceNeed) => room.factory.store[resourceNeed.res] >= resourceNeed.amount)
+            .reduce((last, next) => last && next);
+    }
+}
+
+export function getFactoryResourcesNeeded(task: FactoryTask): { res: ResourceConstant; amount: number }[] {
+    let needs: { res: ResourceConstant; amount: number }[] = [];
+    let commodityEntry: { amount: number; cooldown: number; components: { [resource: string]: number } } = COMMODITIES[task.product];
+    let amountProduced = commodityEntry.amount;
+    let componentResources = Object.keys(commodityEntry.components);
+    let componentsAmounts = commodityEntry.components;
+
+    needs = componentResources.map((resource) => {
+        return { res: resource as ResourceConstant, amount: componentsAmounts[resource] * Math.floor(task.amount / amountProduced) };
+    });
+
+    return needs;
 }

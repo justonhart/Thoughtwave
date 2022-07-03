@@ -101,6 +101,12 @@ interface Shipment {
     marketOrderId?: string;
 }
 
+interface FactoryTask {
+    product: ResourceConstant;
+    amount: number;
+    started?: boolean;
+}
+
 const enum SquadType {
     DUO,
     QUAD,

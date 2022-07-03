@@ -1,5 +1,5 @@
 import { posFromMem } from '../modules/memoryManagement';
-import { shipmentReady } from '../modules/resourceManagement';
+import { getFactoryResourcesNeeded, shipmentReady } from '../modules/resourceManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 const MINERAL_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)];
@@ -90,6 +90,17 @@ export class Manager extends WaveCreep {
             return;
         }
 
+        if (factory && this.room.memory?.factoryTask && !this.room.memory.factoryTask?.started) {
+            this.workFactoryTask(this.room.memory.factoryTask);
+            return;
+        }
+
+        if (!this.room.memory?.factoryTask && factory?.store.getUsedCapacity()) {
+            let res = Object.keys(factory.store).shift() as ResourceConstant;
+            this.withdraw(factory, res);
+            this.memory.targetId = storage.id;
+        }
+
         let res = this.getResourceToTransferToTerminal();
         if (res) {
             this.withdraw(storage, res, Math.min(storage.store[res], 5000 - terminal.store[res], this.store.getFreeCapacity()));
@@ -97,7 +108,7 @@ export class Manager extends WaveCreep {
             return;
         }
 
-        let remRes = this.getResourceToMoveToStorage();
+        let remRes = this.getResourceToRemoveFromTerminal();
         if (remRes) {
             let amount = MINERAL_COMPOUNDS.includes(remRes)
                 ? Math.min(terminal.store[remRes] - 5000, this.store.getFreeCapacity())
@@ -114,7 +125,7 @@ export class Manager extends WaveCreep {
         ) as MineralCompoundConstant;
     }
 
-    private getResourceToMoveToStorage(): ResourceConstant {
+    private getResourceToRemoveFromTerminal(): ResourceConstant {
         if (this.room.terminal) {
             let resources = Object.keys(this.room.terminal.store).filter((res) => res !== RESOURCE_ENERGY);
             return resources.find(
@@ -139,6 +150,19 @@ export class Manager extends WaveCreep {
                 (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
             this.withdraw(this.room.storage, RESOURCE_ENERGY, Math.min(this.store.getFreeCapacity(), energyNeeded - this.room.terminal.store.energy));
             this.memory.targetId = this.room.terminal.id;
+        }
+    }
+
+    private workFactoryTask(task: FactoryTask) {
+        let needs = getFactoryResourcesNeeded(task);
+        let nextNeed = needs.find((need) => this.room.factory.store[need.res] < need.amount);
+        if (nextNeed) {
+            this.withdraw(
+                this.room.storage,
+                nextNeed.res,
+                Math.min(this.store.getFreeCapacity(), nextNeed.amount - this.room.factory.store[nextNeed.res])
+            );
+            this.memory.targetId = this.room.factory.id;
         }
     }
 }

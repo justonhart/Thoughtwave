@@ -1,6 +1,7 @@
 import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
 import { posFromMem } from '../modules/memoryManagement';
 import { PopulationManagement } from '../modules/populationManagement';
+import { getFactoryResourcesNeeded } from '../modules/resourceManagement';
 import { findRepairTargets, getStructuresToProtect } from '../modules/roomManagement';
 
 RoomPosition.prototype.toMemSafe = function (this: RoomPosition): string {
@@ -104,6 +105,14 @@ Object.defineProperty(Room.prototype, 'labs', {
     configurable: true,
 });
 
+Object.defineProperty(Room.prototype, 'factory', {
+    get: function (this: Room) {
+        return this.find(FIND_MY_STRUCTURES).find((s) => s.structureType === STRUCTURE_FACTORY && s.isActive());
+    },
+    enumerable: false,
+    configurable: true,
+});
+
 Room.prototype.addLabTask = function (this: Room, opts: LabTaskOpts): ScreepsReturnCode {
     return addLabTask(this, opts);
 };
@@ -169,4 +178,26 @@ Room.prototype.addShipment = function (
 
     this.memory.shipments ? this.memory.shipments.push(shipment) : (this.memory.shipments = [shipment]);
     return OK;
+};
+
+Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant, amount: number): ScreepsReturnCode {
+    if (this.factory) {
+        if (this.memory.factoryTask) {
+            return ERR_BUSY;
+        } else {
+            let resourcesNeeded = getFactoryResourcesNeeded({ product: product, amount: amount });
+            let roomHasEnoughMaterials = resourcesNeeded
+                .map((need) => this.storage.store[need.res] >= need.amount)
+                .reduce((needsMet, nextNeedMet) => needsMet && nextNeedMet);
+            if (!roomHasEnoughMaterials) {
+                return ERR_NOT_ENOUGH_RESOURCES;
+            }
+            let resourceNeedAboveFactoryCapacity = resourcesNeeded.map((need) => need.amount).reduce((total, next) => total + next) > 50000;
+            if (amount < 50000 && !resourceNeedAboveFactoryCapacity) {
+                this.memory.factoryTask = { product: product, amount: amount };
+                return OK;
+            }
+            return ERR_FULL;
+        }
+    }
 };
