@@ -193,7 +193,7 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
                 return ERR_NOT_ENOUGH_RESOURCES;
             }
             let resourceNeedAboveFactoryCapacity = resourcesNeeded.map((need) => need.amount).reduce((total, next) => total + next) > 50000;
-            if (amount <= 50000 && !resourceNeedAboveFactoryCapacity) {
+            if (amount < 50000 && !resourceNeedAboveFactoryCapacity) {
                 this.memory.factoryTask = { product: product, amount: amount };
                 return OK;
             }
