@@ -16,7 +16,7 @@ export class Manager extends WaveCreep {
                 delete this.memory.targetId;
             } else if (this.store.getUsedCapacity() > 0 && this.room.storage?.store.getFreeCapacity()) {
                 this.transfer(this.room.storage, Object.keys(this.store).pop() as ResourceConstant);
-            } else {
+            } else if (this.ticksToLive > 1) {
                 this.startNewTask();
             }
         }
