@@ -23,7 +23,7 @@ export function manageEmpireResources() {
                     }
                 }
             }
-        } else {
+        } else if (!factory.store.getUsedCapacity()) {
             let batteryAmount = getResourceAmount(room, RESOURCE_BATTERY);
             if (batteryAmount && room.energyStatus < EnergyStatus.OVERFLOW && room.storage?.store.getFreeCapacity() > 100000) {
                 let result = room.addFactoryTask(RESOURCE_ENERGY, Math.min(50000, batteryAmount * 10));
