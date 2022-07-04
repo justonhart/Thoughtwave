@@ -95,10 +95,17 @@ export class Manager extends WaveCreep {
             return;
         }
 
+        if (this.room.memory.factoryTask && factory?.store[this.room.memory.factoryTask.product]) {
+            this.withdraw(factory, this.room.memory.factoryTask.product);
+            this.memory.targetId = storage.id;
+            return;
+        }
+
         if (!this.room.memory?.factoryTask && factory?.store.getUsedCapacity()) {
             let res = Object.keys(factory.store).shift() as ResourceConstant;
             this.withdraw(factory, res);
             this.memory.targetId = storage.id;
+            return;
         }
 
         let res = this.getResourceToTransferToTerminal();

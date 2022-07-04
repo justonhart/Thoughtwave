@@ -633,6 +633,10 @@ export class PopulationManagement {
             room.memory.mineralMiningAssignments = {};
         }
 
+        if (room.storage.store.getFreeCapacity() < 100000 || room.storage.store[room.mineral.mineralType] > 100000) {
+            return false;
+        }
+
         let mineralMiningAssignments = room.memory.mineralMiningAssignments;
         return Object.keys(mineralMiningAssignments).some(
             (k) =>
