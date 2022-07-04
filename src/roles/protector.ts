@@ -6,10 +6,14 @@ export class Protector extends CombatCreep {
             this.heal(this);
         }
 
+        if (!this.getActiveBodyparts(RANGED_ATTACK) && !this.getActiveBodyparts(ATTACK)) {
+            this.memory.combat.flee = true;
+        }
+
         if (this.fledToNewRoom()) {
             return; // Wait while creep is healing
         }
-        if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
+        if (this.travelToRoom(this.memory.assignment) === IN_ROOM || this.memory.targetId) {
             if (
                 !this.memory.targetId ||
                 !Game.getObjectById(this.memory.targetId) ||

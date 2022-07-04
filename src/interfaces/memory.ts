@@ -4,10 +4,12 @@ interface Memory {
 }
 
 interface EmpireMemory {
+    priceMap?: { [resourceType: string]: number };
     logCPU?: boolean;
     spawnAssignments?: SpawnAssignment[];
     operations?: Operation[];
     playersToIgnore?: string[];
+    squads?: { [squadId: string]: Squad };
 }
 
 interface EmpireIntershard {
@@ -42,6 +44,8 @@ interface Operation {
     resource?: ResourceConstant;
     expireAt?: number;
     portalLocations?: string[];
+    forcedDestinations?: string[];
+    pathCost?: number;
 }
 
 interface OperationOpts {
@@ -52,11 +56,54 @@ interface OperationOpts {
     resource?: ResourceConstant;
     expireAt?: number;
     portalLocations?: string[];
+    forcedDestinations?: string[];
+    pathCost?: number;
 }
 
 interface OriginOpts {
     minEnergyStatus?: EnergyStatus;
     maxLinearDistance?: number;
+    multipleSpawns?: boolean;
+    needsBoost?: boolean;
+}
+
+interface OriginResult {
+    roomName: string;
+    cost: number;
+}
+
+interface Squad {
+    squadType: SquadType;
+    members?: SquadMembers;
+    forcedDestinations?: string[];
+    assignment: string; // RoomName
+    orientation?: TOP | RIGHT | BOTTOM | LEFT;
+    anchor?: RIGHT | LEFT; // squadLeaders relative position (clockwise)
+}
+
+interface SquadMembers {
+    squadLeader?: Id<Creep>;
+    squadFollower?: Id<Creep>;
+    squadSecondLeader?: Id<Creep>;
+    squadSecondFollower?: Id<Creep>;
+}
+
+interface Shipment {
+    destinationRoom: string;
+    resource: ResourceConstant;
+    amount: number;
+    marketOrderId?: string;
+}
+
+interface FactoryTask {
+    product: ResourceConstant;
+    amount: number;
+    started?: boolean;
+}
+
+const enum SquadType {
+    DUO,
+    QUAD,
 }
 
 const enum OperationType {
@@ -65,6 +112,8 @@ const enum OperationType {
     COLLECTION,
     SECURE,
     ROOM_RECOVERY,
+    ATTACK,
+    QUAD_ATTACK,
     UPGRADE_BOOST,
     REMOTE_BUILD,
 }

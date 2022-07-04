@@ -9,8 +9,9 @@ export class Reserver extends WaveCreep {
         }
 
         if (!this.memory.destination) {
-            if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
-                this.memory.destination = this.room.controller.pos.toMemSafe();
+            const targetRoom = Game.rooms[this.memory.assignment];
+            if (targetRoom || this.travelToRoom(this.memory.assignment) === IN_ROOM) {
+                this.memory.destination = targetRoom.controller.pos.toMemSafe();
             }
         } else {
             let targetPos = posFromMem(this.memory.destination);

@@ -1,5 +1,6 @@
 import { getResourceBoostsAvailable } from './labManagement';
 import { posFromMem } from './memoryManagement';
+import { roomNeedsCoreStructures } from './roomDesign';
 
 const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
     1: ATTACK,
@@ -16,7 +17,12 @@ const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
 
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
-        let workers = Object.values(Game.creeps).filter((creep) => creep.memory.room === spawn.room.name && creep.memory.role === Role.WORKER);
+        let workers = spawn.room.creeps.filter((creep) => creep.memory.role === Role.WORKER);
+        let hasUpgrader = spawn.room.creeps.some((c) => c.memory.role === Role.UPGRADER);
+        let roomNeedsConstruction =
+            spawn.room.memory.repairQueue.length + spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length > 0 || spawn.room.memory.needsWallRepair;
+
+        let workerCount = workers.length + (hasUpgrader ? 1 : 0);
 
         let options: SpawnOptions = {
             memory: {
@@ -25,12 +31,33 @@ export class PopulationManagement {
             },
         };
 
-        let workerNeeded = workers.length < spawn.room.workerCapacity && (spawn.room.controller.level < 8 || workers.length < 1);
+        let canSupportAnotherWorker = workerCount < spawn.room.workerCapacity;
+
+        let spawnUpgrader =
+            canSupportAnotherWorker &&
+            !spawn.room.find(FIND_NUKES).length &&
+            !hasUpgrader &&
+            (!roomNeedsConstruction || workers.length > 0) &&
+            !roomNeedsCoreStructures(spawn.room);
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 15;
         let tag = 'w';
-        if (workerNeeded) {
+        if (spawnUpgrader) {
+            options.memory.role = Role.UPGRADER;
+            tag = 'u';
+            options.boosts = [BoostType.UPGRADE];
+            let result: ScreepsReturnCode;
+
+            if (spawn.room.upgraderLink) {
+                let body = this.createPartsArray([WORK, WORK, WORK, CARRY, MOVE, MOVE], spawn.room.energyCapacityAvailable, 5);
+                result = spawn.smartSpawn(body, this.getCreepTag(tag, spawn.name), options);
+            } else {
+                result = spawn.spawnMax([WORK, CARRY, MOVE], this.getCreepTag(tag, spawn.name), options);
+            }
+
+            return result;
+        } else if (canSupportAnotherWorker) {
             let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
             return result;
         } else {
@@ -87,8 +114,7 @@ export class PopulationManagement {
         let spawnCostPerCyclePerCreep = spawnCost / 5;
         let energyExpenditurePerCyclePerCreep = spawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
-        //remove one for dedicated upgrader
-        let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep - 1;
+        let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
 
         switch (room.energyStatus) {
             case EnergyStatus.CRITICAL:
@@ -124,17 +150,17 @@ export class PopulationManagement {
 
     static needsMiner(room: Room): boolean {
         let roomNeedsMiner = Object.values(room.memory.miningAssignments).some((assignment) => assignment === AssignmentStatus.UNASSIGNED);
-        if (!roomNeedsMiner) {
-            // Check for TTL
-            roomNeedsMiner = room.creeps.some(
-                (creep) =>
-                    creep.memory.role === Role.MINER &&
-                    creep.memory.room === room.name &&
-                    !creep.memory.hasTTLReplacement &&
-                    creep.ticksToLive <
-                        PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), room.energyCapacityAvailable).length * 3
-            );
-        }
+        // if (!roomNeedsMiner) {
+        //     // Check for TTL
+        //     roomNeedsMiner = room.creeps.some(
+        //         (creep) =>
+        //             creep.memory.role === Role.MINER &&
+        //             creep.memory.room === room.name &&
+        //             !creep.memory.hasTTLReplacement &&
+        //             creep.ticksToLive <
+        //                 PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), room.energyCapacityAvailable).length * 3
+        //     );
+        // }
         return roomNeedsMiner;
     }
 
@@ -164,17 +190,17 @@ export class PopulationManagement {
         let assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
         let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
         let currentMiner: Creep;
-        if (!assigment) {
-            // Check for TTL
-            currentMiner = spawn.room.creeps.find(
-                (creep) =>
-                    creep.memory.role === Role.MINER &&
-                    creep.memory.room === spawn.room.name &&
-                    creep.ticksToLive <
-                        PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), spawn.room.energyCapacityAvailable).length * 3
-            );
-            assigment = currentMiner?.pos?.toMemSafe();
-        }
+        // if (!assigment) {
+        //     // Check for TTL
+        //     currentMiner = spawn.room.creeps.find(
+        //         (creep) =>
+        //             creep.memory.role === Role.MINER &&
+        //             creep.memory.room === spawn.room.name &&
+        //             creep.ticksToLive <
+        //                 PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), spawn.room.energyCapacityAvailable).length * 3
+        //     );
+        //     assigment = currentMiner?.memory.assignment;
+        // }
 
         let options: SpawnOptions = {
             memory: {
@@ -224,7 +250,7 @@ export class PopulationManagement {
         let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
         let partsArray = [];
 
-        for (let i = 0; i < Math.floor(energyCapacityAvailable / partsBlockCost) && (i + 1) * partsBlock.length < 50 && i < levelCap; i++) {
+        for (let i = 0; i < Math.floor(energyCapacityAvailable / partsBlockCost) && (i + 1) * partsBlock.length <= 50 && i < levelCap; i++) {
             partsArray = partsArray.concat(partsBlock);
         }
 
@@ -292,7 +318,7 @@ export class PopulationManagement {
         for (
             let i = 0;
             i < Math.floor((spawn.room.energyAvailable - (spawn.room.memory.reservedEnergy ?? 0)) / partsBlockCost) &&
-            (i + 1) * partsBlock.length < 50 &&
+            (i + 1) * partsBlock.length <= 50 &&
             i < levelCap;
             i++
         ) {
@@ -319,7 +345,7 @@ export class PopulationManagement {
 
         for (
             let i = 0;
-            i < Math.floor(spawn.room.energyCapacityAvailable / partsBlockCost) && (i + 1) * partsBlock.length < 50 && i < levelCap;
+            i < Math.floor(spawn.room.energyCapacityAvailable / partsBlockCost) && (i + 1) * partsBlock.length <= 50 && i < levelCap;
             i++
         ) {
             partsArray = partsArray.concat(partsBlock);

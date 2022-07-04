@@ -57,6 +57,32 @@ export default function manageFlags() {
         Game.flags.recover.remove();
     }
 
+    if (Game.flags.attack) {
+        const flagName = 'squadMove';
+        let forcedDestinations = [];
+        let step = 1;
+        while (Game.flags[flagName + step]) {
+            forcedDestinations.push(Game.flags[flagName + step].pos.toMemSafe());
+            Game.flags[flagName + step].remove();
+            step++;
+        }
+        addOperation(OperationType.ATTACK, Game.flags.attack.pos.roomName, { forcedDestinations: forcedDestinations });
+        Game.flags.attack.remove();
+    }
+
+    if (Game.flags.quadAttack) {
+        const flagName = 'squadMove';
+        let forcedDestinations = [];
+        let step = 1;
+        while (Game.flags[flagName + step]) {
+            forcedDestinations.push(Game.flags[flagName + step].pos.toMemSafe());
+            Game.flags[flagName + step].remove();
+            step++;
+        }
+        addOperation(OperationType.QUAD_ATTACK, Game.flags.quadAttack.pos.roomName, { forcedDestinations: forcedDestinations });
+        Game.flags.quadAttack.remove();
+    }
+
     if (Game.flags.boost) {
         addOperation(OperationType.UPGRADE_BOOST, Game.flags.boost.pos.roomName, {
             operativeCount: 3,

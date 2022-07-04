@@ -55,6 +55,14 @@ interface TravelToOpts extends PathFinderOpts {
      * Prefer moving over ramparts. It will set the efficiency of creeps lower so they will avoid walking over plain.
      */
     preferRamparts?: boolean;
+    /**
+     * List of allowed rooms for path finding (by default this is set in the pathing by using the findRoute method ==> needed for longer distances).
+     */
+    allowedRooms?: string[];
+    /**
+     * Route will prefer Highway (by default enabled).
+     */
+    preferHighway?: boolean;
 }
 
 interface CustomMatrixCost {
@@ -74,6 +82,7 @@ interface TravelState {
     repath?: number;
     lastMove?: number;
     visibleRooms?: string[];
+    allowedRooms?: string[];
 }
 
 interface Destination {

@@ -325,10 +325,14 @@ export function placeBunkerOuterRamparts(room: Room) {
 
     if (anchor) {
         let topLeft = new RoomPosition(anchor.x - 6, anchor.y - 6, room.name);
-        for (let xDif = 0; xDif < 13; xDif++) {
-            for (let yDif = 0; yDif < 13; yDif++) {
+        let placed = 0;
+        for (let xDif = 0; xDif < 13 && placed < 5; xDif++) {
+            for (let yDif = 0; yDif < 13 && placed < 5; yDif++) {
                 if (yDif === 0 || xDif === 0 || yDif === 12 || xDif === 12) {
-                    room.createConstructionSite(topLeft.x + xDif, topLeft.y + yDif, STRUCTURE_RAMPART);
+                    let result = room.createConstructionSite(topLeft.x + xDif, topLeft.y + yDif, STRUCTURE_RAMPART);
+                    if (result === OK) {
+                        placed++;
+                    }
                 }
             }
         }
@@ -340,10 +344,14 @@ export function placeBunkerInnerRamparts(room: Room) {
 
     if (anchor) {
         let topLeft = new RoomPosition(anchor.x - 5, anchor.y - 5, room.name);
-        for (let xDif = 0; xDif <= 10; xDif++) {
-            for (let yDif = 0; yDif <= 10; yDif++) {
+        let placed = 0;
+        for (let xDif = 0; xDif <= 10 && placed < 5; xDif++) {
+            for (let yDif = 0; yDif <= 10 && placed < 5; yDif++) {
                 if (yDif <= 1 || xDif <= 1 || yDif >= 9 || xDif >= 9) {
-                    room.createConstructionSite(topLeft.x + xDif, topLeft.y + yDif, STRUCTURE_RAMPART);
+                    let result = room.createConstructionSite(topLeft.x + xDif, topLeft.y + yDif, STRUCTURE_RAMPART);
+                    if (result === OK) {
+                        placed++;
+                    }
                 }
             }
         }

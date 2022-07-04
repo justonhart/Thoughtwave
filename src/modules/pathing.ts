@@ -31,6 +31,7 @@ export class Pathing {
         reusePath: 50,
         avoidSourceKeepers: true,
         maxOps: 10000,
+        preferHighway: true,
         range: 0,
         pathColor: 'orange',
     };
@@ -280,6 +281,15 @@ export class Pathing {
         origin = Pathing.normalizePos(origin);
         destination = Pathing.normalizePos(destination);
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
+        if (origin.roomName !== destination.roomName && !options.allowedRooms) {
+            const roomDistance = Game.map.getRoomLinearDistance(origin.roomName, destination.roomName);
+            if (roomDistance > 2) {
+                const route = this.findRoute(origin.roomName, destination.roomName, options);
+                if (route !== ERR_NO_PATH) {
+                    options.allowedRooms = route;
+                }
+            }
+        }
         if (options.preferRoadConstruction || options.preferRamparts) {
             efficiency = 0.8; // Make other tiles cost more to avoid multiple roads
         }
@@ -309,6 +319,12 @@ export class Pathing {
      */
     static getRoomCallback(originRoom: string, destination: RoomPosition, options: TravelToOpts, creepName: string) {
         return (roomName: string) => {
+            if (options.allowedRooms) {
+                if (!options.allowedRooms.includes(roomName)) {
+                    return false;
+                }
+            }
+
             const room = Game.rooms[roomName];
             Pathing.addHostileRoom(room, destination.roomName, options.checkForHostilesAtDestination);
             if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination.roomName && Pathing.checkAvoid(roomName)) {
@@ -404,6 +420,36 @@ export class Pathing {
 
             return matrix;
         };
+    }
+
+    public static findRoute(originRoom: string, destination: string, options: TravelToOpts): string[] | ERR_NO_PATH {
+        let allowedRooms = [originRoom];
+        const route = Game.map.findRoute(originRoom, destination, {
+            routeCallback: (roomName) => {
+                if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination && Pathing.checkAvoid(roomName)) {
+                    return Infinity;
+                }
+                const isMyRoom = Game.rooms[roomName] && Game.rooms[roomName].controller && Game.rooms[roomName].controller.my;
+                if (isMyRoom) {
+                    return 1;
+                }
+                if (options.preferHighway) {
+                    const parsed = /^[WE]([0-9]+)[NS]([0-9]+)$/.exec(roomName) as unknown;
+                    const isHighway = parsed[1] % 10 === 0 || parsed[2] % 10 === 0;
+                    if (isHighway) {
+                        return 1;
+                    }
+                }
+                return 1.5;
+            },
+        });
+        if (route === ERR_NO_PATH) {
+            console.log(`Could not findRoute to ${destination}`);
+            return ERR_NO_PATH;
+        }
+        route.forEach((routeStep) => allowedRooms.push(routeStep.room));
+
+        return allowedRooms;
     }
 
     static ensureRangeIsInRoom(originRoom: string, destination: RoomPosition, range: number): number {
@@ -556,6 +602,7 @@ export class Pathing {
             //check if creep is in nextPos
             const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
             if (obstacleCreep?.memory?._m?.destination) {
+                obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
                 if (obstacleCreep.memory._m?.path?.length > 1) {
                     if (!obstacleCreep.fatigue && obstacleCreep.memory._m?.lastMove < Game.time - 2) {
                         // idle creep
@@ -591,6 +638,10 @@ export class Pathing {
                     return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
                 }
             } else if (obstacleCreep) {
+                if (!obstacleCreep.memory._m) {
+                    obstacleCreep.memory._m = { repath: 0 };
+                }
+                obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
                 return Pathing.moveObstacleCreep(obstacleCreep, nextDirection);
             }
         }
@@ -623,5 +674,16 @@ export class Pathing {
             return destination.pos;
         }
         return destination;
+    }
+
+    static positionAtDirection(origin: RoomPosition, direction: DirectionConstant): RoomPosition {
+        const offsetX = [0, 0, 1, 1, 1, 0, -1, -1, -1];
+        const offsetY = [0, -1, -1, 0, 1, 1, 1, 0, -1];
+        const x = origin.x + offsetX[direction];
+        const y = origin.y + offsetY[direction];
+        if (x > 49 || x < 0 || y > 49 || y < 0) {
+            return;
+        }
+        return new RoomPosition(x, y, origin.roomName);
     }
 }

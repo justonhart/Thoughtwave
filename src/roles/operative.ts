@@ -85,16 +85,17 @@ export class Operative extends WorkerCreep {
                 this.travelTo(storage);
             }
         } else if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
-            //@ts-expect-error
-            let target: Structure = Game.getObjectById(this.memory.targetId);
+            //cast target to storage for store property
+            let target: StructureStorage = Game.getObjectById(this.memory.targetId) as StructureStorage;
             if (!target) {
                 this.memory.targetId = this.findCollectionTarget();
-                target = Game.getObjectById(this.memory.targetId);
+                target = Game.getObjectById(this.memory.targetId) as StructureStorage;
             }
 
             if (target) {
                 if (this.pos.isNearTo(target)) {
-                    this.withdraw(target, this.operation.resource ?? RESOURCE_ENERGY);
+                    let resourceToWithdraw = this.operation.resource ?? (Object.keys(target.store)[0] as ResourceConstant);
+                    this.withdraw(target, resourceToWithdraw);
                 } else {
                     this.travelTo(target);
                 }
@@ -111,7 +112,7 @@ export class Operative extends WorkerCreep {
             .find(
                 (struct) =>
                     (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) &&
-                    struct.store[this.operation.resource ?? RESOURCE_ENERGY]
+                    (this.operation.resource ? struct.store[this.operation.resource] : struct.store.getUsedCapacity())
             )?.id;
     }
 

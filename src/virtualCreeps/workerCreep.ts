@@ -219,10 +219,6 @@ export class WorkerCreep extends WaveCreep {
         return this.store[RESOURCE_ENERGY] <= energyUsedPerWork;
     }
 
-    protected getDefenseHitpointTarget() {
-        return this.room.controller.level * this.room.controller.level * 50000;
-    }
-
     protected findConstructionSite(): Id<ConstructionSite> {
         let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
         if (constructionSites.length) {
