@@ -25,7 +25,7 @@ export function manageEmpireResources() {
             }
         } else if (!factory.store.getUsedCapacity()) {
             let batteryAmount = getResourceAmount(room, RESOURCE_BATTERY);
-            if (batteryAmount && room.energyStatus < EnergyStatus.OVERFLOW && room.storage?.store.getFreeCapacity() > 100000) {
+            if (batteryAmount >= 50 && room.energyStatus < EnergyStatus.OVERFLOW && room.storage?.store.getFreeCapacity() > 100000) {
                 let result = room.addFactoryTask(RESOURCE_ENERGY, Math.min(50000, batteryAmount * 10));
                 if (result === OK) {
                     console.log(`${room.name} added battery decompression task`);
