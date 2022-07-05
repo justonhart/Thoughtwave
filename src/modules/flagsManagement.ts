@@ -98,4 +98,12 @@ export default function manageFlags() {
         });
         Game.flags.build.remove();
     }
+
+    if (Game.flags.clean) {
+        addOperation(OperationType.CLEAN, Game.flags.clean.pos.roomName, {
+            operativeCount: 2,
+            originOpts: { minEnergyStatus: EnergyStatus.STABLE },
+        });
+        Game.flags.clean.remove();
+    }
 }
