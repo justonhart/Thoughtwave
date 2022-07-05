@@ -494,7 +494,7 @@ export class PopulationManagement {
     static smartSpawn(spawn: StructureSpawn, body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
         let partsArrayCost = body.length ? body.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost) : 0;
 
-        if (partsArrayCost - (spawn.room.memory.reservedEnergy ?? 0) > spawn.room.energyAvailable) {
+        if (partsArrayCost > spawn.room.energyAvailable - (spawn.room.memory.reservedEnergy ?? 0)) {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
