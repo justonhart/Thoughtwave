@@ -633,7 +633,7 @@ export class PopulationManagement {
             room.memory.mineralMiningAssignments = {};
         }
 
-        if (room.storage.store.getFreeCapacity() < 100000 || room.storage.store[room.mineral.mineralType] > 100000) {
+        if (room.storage?.store.getFreeCapacity() < 100000 || room.storage?.store[room.mineral.mineralType] > 100000) {
             return false;
         }
 
