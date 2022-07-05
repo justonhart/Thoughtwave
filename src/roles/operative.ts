@@ -131,6 +131,7 @@ export class Operative extends WorkerCreep {
                 if (this.pos.isNearTo(target)) {
                     let resourceToWithdraw = this.operation.resource ?? (Object.keys(target.store)[0] as ResourceConstant);
                     this.withdraw(target, resourceToWithdraw);
+                    delete this.memory.targetId;
                 } else {
                     this.travelTo(target);
                 }
