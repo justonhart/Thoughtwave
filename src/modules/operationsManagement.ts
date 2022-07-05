@@ -206,27 +206,18 @@ function manageSimpleOperation(op: Operation) {
             (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.operation === op.type
         ).length;
     if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1)) {
-        let availableOperatives = Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.OPERATIVE && !creep.memory.destination);
-
-        if (availableOperatives.length) {
-            let reassignedOperative = availableOperatives.pop();
-            reassignedOperative.memory.destination = op.targetRoom;
-
-            console.log(`Reassigned ${reassignedOperative.name} to operation targeting ${op.targetRoom}`);
-        } else {
-            Memory.empire.spawnAssignments.push({
-                designee: op.originRoom,
-                body: PopulationManagement.createPartsArray(OPERATOR_PARTS_MAP[op.type], Game.rooms[op.originRoom].energyCapacityAvailable),
-                spawnOpts: {
-                    memory: {
-                        role: Role.OPERATIVE,
-                        operation: op.type,
-                        destination: op.targetRoom,
-                    },
-                    boosts: OPERATION_BOOST_MAP[op.type],
+        Memory.empire.spawnAssignments.push({
+            designee: op.originRoom,
+            body: PopulationManagement.createPartsArray(OPERATOR_PARTS_MAP[op.type], Game.rooms[op.originRoom].energyCapacityAvailable),
+            spawnOpts: {
+                memory: {
+                    role: Role.OPERATIVE,
+                    operation: op.type,
+                    destination: op.targetRoom,
                 },
-            });
-        }
+                boosts: OPERATION_BOOST_MAP[op.type],
+            },
+        });
     }
 }
 
