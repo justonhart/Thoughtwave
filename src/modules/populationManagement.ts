@@ -550,6 +550,27 @@ export class PopulationManagement {
             }
         }
 
+        const getSortValue = (part: BodyPartConstant): number => {
+            switch (part) {
+                case TOUGH:
+                    return 5;
+                case RANGED_ATTACK:
+                case ATTACK:
+                    return 4;
+                case WORK:
+                    return 3;
+                case CARRY:
+                    return 2;
+                case MOVE:
+                    return 1;
+                case CLAIM:
+                case HEAL:
+                    return 0;
+            }
+        };
+
+        body = body.sort((a, b) => getSortValue(b) - getSortValue(a));
+
         let result = spawn.spawnCreep(body, name, opts);
 
         if (result !== OK) {
