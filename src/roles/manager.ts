@@ -16,7 +16,7 @@ export class Manager extends WaveCreep {
                 delete this.memory.targetId;
             } else if (this.store.getUsedCapacity() > 0 && this.room.storage?.store.getFreeCapacity()) {
                 this.transfer(this.room.storage, Object.keys(this.store).pop() as ResourceConstant);
-            } else {
+            } else if (this.ticksToLive > 1) {
                 this.startNewTask();
             }
         }
@@ -95,10 +95,17 @@ export class Manager extends WaveCreep {
             return;
         }
 
+        if (this.room.memory.factoryTask && factory?.store[this.room.memory.factoryTask.product]) {
+            this.withdraw(factory, this.room.memory.factoryTask.product);
+            this.memory.targetId = storage.id;
+            return;
+        }
+
         if (!this.room.memory?.factoryTask && factory?.store.getUsedCapacity()) {
             let res = Object.keys(factory.store).shift() as ResourceConstant;
             this.withdraw(factory, res);
             this.memory.targetId = storage.id;
+            return;
         }
 
         let res = this.getResourceToTransferToTerminal();

@@ -13,6 +13,23 @@ const OPERATION_STARTING_STAGE_MAP: Record<OperationType, OperationStage> = {
     7: OperationStage.ACTIVE,
     8: OperationStage.ACTIVE,
     9: OperationStage.ACTIVE,
+    10: OperationStage.ACTIVE,
+};
+
+const OPERATOR_PARTS_MAP: { [key in OperationType]?: BodyPartConstant[] } = {
+    [OperationType.CLEAN]: [WORK, MOVE],
+    [OperationType.COLLECTION]: [CARRY, CARRY, MOVE],
+    [OperationType.REMOTE_BUILD]: [WORK, CARRY, MOVE, MOVE],
+    [OperationType.UPGRADE_BOOST]: [WORK, CARRY, MOVE, MOVE],
+    [OperationType.STERILIZE]: [WORK, MOVE],
+};
+
+const OPERATION_BOOST_MAP: { [key in OperationType]?: BoostType[] } = {
+    [OperationType.CLEAN]: [BoostType.DISMANTLE],
+    [OperationType.COLLECTION]: [BoostType.CARRY],
+    [OperationType.REMOTE_BUILD]: [BoostType.BUILD],
+    [OperationType.UPGRADE_BOOST]: [BoostType.UPGRADE],
+    [OperationType.STERILIZE]: [BoostType.DISMANTLE],
 };
 
 export function manageOperations() {
@@ -29,12 +46,6 @@ export function manageOperations() {
                 case OperationType.COLONIZE:
                     manageColonizationOperation(op);
                     break;
-                case OperationType.STERILIZE:
-                    manageSterilizeOperation(op);
-                    break;
-                case OperationType.COLLECTION:
-                    manageCollectionOperation(op);
-                    break;
                 case OperationType.SECURE:
                     manageSecureRoomOperation(op);
                     break;
@@ -47,11 +58,12 @@ export function manageOperations() {
                 case OperationType.QUAD_ATTACK:
                     manageQuadAttackRoomOperation(op);
                     break;
+                case OperationType.COLLECTION:
                 case OperationType.UPGRADE_BOOST:
-                    manageUpgradeBoostOperation(op);
-                    break;
                 case OperationType.REMOTE_BUILD:
-                    manageRemoteBuildOperation(op);
+                case OperationType.STERILIZE:
+                case OperationType.CLEAN:
+                    manageSimpleOperation(op);
                     break;
             }
         });
@@ -183,7 +195,7 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
     return bestRoom;
 }
 
-function manageSterilizeOperation(op: Operation) {
+function manageSimpleOperation(op: Operation) {
     if (!Game.rooms[op.originRoom]) {
         op.originRoom = findOperationOrigin(op.targetRoom)?.roomName;
     }
@@ -194,62 +206,18 @@ function manageSterilizeOperation(op: Operation) {
             (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.operation === op.type
         ).length;
     if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1)) {
-        let availableOperatives = Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.OPERATIVE && !creep.memory.operation);
-
-        if (availableOperatives.length) {
-            let reassignedOperative = availableOperatives.pop();
-            reassignedOperative.memory.destination = op.targetRoom;
-            reassignedOperative.memory.operation = op.type;
-
-            console.log(`Reassigned ${reassignedOperative.name} to operation targeting ${op.targetRoom}`);
-        } else {
-            Memory.empire.spawnAssignments.push({
-                designee: op.originRoom,
-                body: PopulationManagement.createPartsArray([WORK, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
-                spawnOpts: {
-                    memory: {
-                        role: Role.OPERATIVE,
-                        operation: OperationType.STERILIZE,
-                        destination: op.targetRoom,
-                    },
+        Memory.empire.spawnAssignments.push({
+            designee: op.originRoom,
+            body: PopulationManagement.createPartsArray(OPERATOR_PARTS_MAP[op.type], Game.rooms[op.originRoom].energyCapacityAvailable),
+            spawnOpts: {
+                memory: {
+                    role: Role.OPERATIVE,
+                    operation: op.type,
+                    destination: op.targetRoom,
                 },
-            });
-        }
-    }
-}
-
-function manageCollectionOperation(op: Operation) {
-    if (!Game.rooms[op.originRoom]) {
-        op.originRoom = findOperationOrigin(op.targetRoom)?.roomName;
-    }
-
-    let assignedOperativesCount =
-        Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
-        Memory.empire.spawnAssignments.filter(
-            (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.operation === op.type
-        ).length;
-    if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1)) {
-        let availableOperatives = Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.OPERATIVE && !creep.memory.operation);
-
-        if (availableOperatives.length) {
-            let reassignedOperative = availableOperatives.pop();
-            reassignedOperative.memory.destination = op.targetRoom;
-            reassignedOperative.memory.operation = op.type;
-
-            console.log(`Reassigned ${reassignedOperative.name} to operation targeting ${op.targetRoom}`);
-        } else {
-            Memory.empire.spawnAssignments.push({
-                designee: op.originRoom,
-                body: PopulationManagement.createPartsArray([CARRY, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
-                spawnOpts: {
-                    memory: {
-                        role: Role.OPERATIVE,
-                        operation: OperationType.COLLECTION,
-                        destination: op.targetRoom,
-                    },
-                },
-            });
-        }
+                boosts: OPERATION_BOOST_MAP[op.type],
+            },
+        });
     }
 }
 
@@ -666,88 +634,4 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
             },
         },
     });
-}
-
-function manageUpgradeBoostOperation(op: Operation) {
-    let originRoom = Game.rooms[op.originRoom];
-
-    //consider operation done once room hits lvl 6
-    if (Game.rooms[op.targetRoom].controller.level >= 6) {
-        let opIndex = Memory.empire.operations.findIndex((findOp) => findOp.targetRoom === op.targetRoom && findOp.type === op.type);
-        if (opIndex > -1) {
-            Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
-        }
-        return;
-    }
-
-    let assignedOperativesCount =
-        Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
-        Memory.empire.spawnAssignments.filter(
-            (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.operation === op.type
-        ).length;
-    if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1) && originRoom.energyStatus >= EnergyStatus.STABLE) {
-        let availableOperatives = Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.OPERATIVE && !creep.memory.operation);
-
-        if (availableOperatives.length) {
-            let reassignedOperative = availableOperatives.pop();
-            reassignedOperative.memory.destination = op.targetRoom;
-            reassignedOperative.memory.operation = op.type;
-
-            console.log(`Reassigned ${reassignedOperative.name} to operation targeting ${op.targetRoom}`);
-        } else {
-            Memory.empire.spawnAssignments.push({
-                designee: op.originRoom,
-                body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
-                spawnOpts: {
-                    memory: {
-                        role: Role.OPERATIVE,
-                        operation: OperationType.UPGRADE_BOOST,
-                        destination: op.targetRoom,
-                    },
-                },
-            });
-        }
-    }
-}
-
-function manageRemoteBuildOperation(op: Operation) {
-    let originRoom = Game.rooms[op.originRoom];
-
-    //consider operation done once room has no construction sites
-    if (!Game.rooms[op.targetRoom].find(FIND_MY_CONSTRUCTION_SITES).length) {
-        let opIndex = Memory.empire.operations.findIndex((findOp) => findOp.targetRoom === op.targetRoom && findOp.type === op.type);
-        if (opIndex > -1) {
-            Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
-        }
-        return;
-    }
-
-    let assignedOperativesCount =
-        Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
-        Memory.empire.spawnAssignments.filter(
-            (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.operation === op.type
-        ).length;
-    if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1) && originRoom.energyStatus >= EnergyStatus.STABLE) {
-        let availableOperatives = Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.OPERATIVE && !creep.memory.operation);
-
-        if (availableOperatives.length) {
-            let reassignedOperative = availableOperatives.pop();
-            reassignedOperative.memory.destination = op.targetRoom;
-            reassignedOperative.memory.operation = op.type;
-
-            console.log(`Reassigned ${reassignedOperative.name} to operation targeting ${op.targetRoom}`);
-        } else {
-            Memory.empire.spawnAssignments.push({
-                designee: op.originRoom,
-                body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
-                spawnOpts: {
-                    memory: {
-                        role: Role.OPERATIVE,
-                        operation: op.type,
-                        destination: op.targetRoom,
-                    },
-                },
-            });
-        }
-    }
 }

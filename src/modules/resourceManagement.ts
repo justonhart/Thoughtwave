@@ -1,17 +1,17 @@
 export function manageEmpireResources() {
     let factoryRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.factory?.isActive());
-    factoryRooms
-        .filter((room) => room.memory?.factoryTask)
-        .forEach((room) => {
-            let task = room.memory.factoryTask;
-            let factory = room.factory;
+    factoryRooms.forEach((room) => {
+        let task = room.memory.factoryTask;
+        let factory = room.factory;
+        if (task) {
             if (!task.started) {
                 if (factoryTaskReady(room)) {
                     task.started = true;
                 }
             }
             if (task.started) {
-                if (factory.store[task.product] >= task.amount) {
+                let materialsUsedUp: boolean = getFactoryResourcesNeeded(task).some((need) => !factory.store[need.res]);
+                if (materialsUsedUp || factory.store[task.product] >= task.amount) {
                     delete room.memory.factoryTask;
                 } else {
                     if (!factory.cooldown) {
@@ -23,7 +23,16 @@ export function manageEmpireResources() {
                     }
                 }
             }
-        });
+        } else if (!factory.store.getUsedCapacity()) {
+            let batteryAmount = getResourceAmount(room, RESOURCE_BATTERY);
+            if (batteryAmount >= 50 && room.energyStatus < EnergyStatus.OVERFLOW && room.storage?.store.getFreeCapacity() > 100000) {
+                let result = room.addFactoryTask(RESOURCE_ENERGY, Math.min(50000, batteryAmount * 10));
+                if (result === OK) {
+                    console.log(`${room.name} added battery decompression task`);
+                }
+            }
+        }
+    });
 
     let terminalRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.terminal?.isActive());
     let roomsInNeed = terminalRooms.filter((room) => room.energyStatus < EnergyStatus.STABLE).sort((a, b) => a.energyStatus - b.energyStatus);
@@ -258,9 +267,7 @@ function getQualifyingMarketOrders() {
 export function factoryTaskReady(room: Room): boolean {
     if (room.memory.factoryTask) {
         let neededResources = getFactoryResourcesNeeded(room.memory.factoryTask);
-        return neededResources
-            .map((resourceNeed) => room.factory.store[resourceNeed.res] >= resourceNeed.amount)
-            .reduce((last, next) => last && next);
+        return neededResources.every((need) => room.factory.store[need.res] >= need.amount);
     }
 }
 
