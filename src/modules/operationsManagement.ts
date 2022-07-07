@@ -228,7 +228,10 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
     if (!originRoom) {
         const originResult = findOperationOrigin(posFromMem(opts?.portalLocations?.[0])?.roomName ?? targetRoom, opts?.originOpts);
         originRoom = originResult?.roomName;
-        if (!opts.pathCost) {
+        if (!opts?.pathCost) {
+            if (!opts) {
+                opts = {};
+            }
             opts.pathCost = originResult?.cost;
         }
         delete opts?.originOpts;
@@ -407,7 +410,7 @@ function manageAttackRoomOperation(op: Operation) {
             ),
             spawnOpts: {
                 memory: {
-                    role: Role.SQUAD_HEALER,
+                    role: Role.SQUAD_ATTACKER,
                     room: originRoom.name,
                     currentTaskPriority: Priority.MEDIUM,
                     combat: {
@@ -506,7 +509,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
             ),
             spawnOpts: {
                 memory: {
-                    role: Role.SQUAD_HEALER,
+                    role: Role.SQUAD_ATTACKER,
                     room: originRoom.name,
                     currentTaskPriority: Priority.MEDIUM,
                     combat: {
@@ -536,7 +539,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
             ),
             spawnOpts: {
                 memory: {
-                    role: Role.SQUAD_HEALER,
+                    role: Role.SQUAD_ATTACKER,
                     room: originRoom.name,
                     currentTaskPriority: Priority.MEDIUM,
                     combat: {

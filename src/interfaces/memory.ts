@@ -85,6 +85,7 @@ interface Squad {
     assignment: string; // RoomName
     orientation?: TOP | RIGHT | BOTTOM | LEFT;
     anchor?: RIGHT | LEFT; // squadLeaders relative position (clockwise)
+    targetStructure?: Id<Structure>;
 }
 
 interface SquadMembers {

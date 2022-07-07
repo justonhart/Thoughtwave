@@ -9,7 +9,7 @@ export class CombatCreep extends WaveCreep {
             if (
                 this.room
                     .lookForAtArea(LOOK_CREEPS, this.pos.y - 1, this.pos.x - 1, this.pos.y + 1, this.pos.x + 1, true)
-                    .filter((lookObject) => lookObject.creep.owner?.username !== this.owner.username).length
+                    .filter((lookObject) => lookObject.creep.owner?.username !== this.owner.username && !lookObject.creep?.spawning).length
             ) {
                 return this.rangedMassAttack();
             } else {
