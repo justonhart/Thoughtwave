@@ -357,7 +357,7 @@ export class PopulationManagement {
     static smartSpawn(spawn: StructureSpawn, body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
         let partsArrayCost = body.length ? body.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost) : 0;
 
-        if (partsArrayCost - (spawn.room.memory.reservedEnergy ?? 0) > spawn.room.energyAvailable) {
+        if (partsArrayCost > spawn.room.energyAvailable - (spawn.room.memory.reservedEnergy ?? 0)) {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
@@ -412,6 +412,27 @@ export class PopulationManagement {
                 }
             }
         }
+
+        const getSortValue = (part: BodyPartConstant): number => {
+            switch (part) {
+                case TOUGH:
+                    return 5;
+                case RANGED_ATTACK:
+                case ATTACK:
+                    return 4;
+                case WORK:
+                    return 3;
+                case CARRY:
+                    return 2;
+                case MOVE:
+                    return 1;
+                case CLAIM:
+                case HEAL:
+                    return 0;
+            }
+        };
+
+        body = body.sort((a, b) => getSortValue(b) - getSortValue(a));
 
         let result = spawn.spawnCreep(body, name, opts);
 
@@ -494,6 +515,10 @@ export class PopulationManagement {
     static needsMineralMiner(room: Room) {
         if (!room.memory.mineralMiningAssignments) {
             room.memory.mineralMiningAssignments = {};
+        }
+
+        if (room.storage?.store.getFreeCapacity() < 100000 || room.storage?.store[room.mineral.mineralType] > 100000) {
+            return false;
         }
 
         let mineralMiningAssignments = room.memory.mineralMiningAssignments;

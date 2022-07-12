@@ -181,7 +181,9 @@ export class TransportCreep extends WaveCreep {
                 let resourceToGather = Object.keys(resourceList).find((res) => resourceList[res] > this.store[res]) as ResourceConstant;
 
                 let target = [this.room.storage, this.room.terminal].find((struct) => struct.store[resourceToGather]);
-                if (!this.pos.isNearTo(target)) {
+                if (!target) {
+                    delete this.memory.labRequests;
+                } else if (!this.pos.isNearTo(target)) {
                     this.travelTo(target, { range: 1 });
                 } else {
                     let amountToWithdraw = Math.min(resourceList[resourceToGather] - this.store[resourceToGather], this.store.getFreeCapacity());

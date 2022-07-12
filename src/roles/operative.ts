@@ -20,19 +20,26 @@ export class Operative extends WorkerCreep {
             case OperationType.REMOTE_BUILD:
                 this.runRemoteBuild();
                 break;
+            case OperationType.CLEAN:
+                this.runClean();
+                break;
         }
     }
 
     private runUpgradeBoost() {
-        if (this.store.energy) {
-            let controller = Game.rooms[this.memory.destination].controller;
-            if (this.pos.inRangeTo(controller, 3)) {
-                this.upgradeController(controller);
+        if (Game.rooms[this.memory.destination].controller.level < 6) {
+            if (this.store.energy) {
+                let controller = Game.rooms[this.memory.destination].controller;
+                if (this.pos.inRangeTo(controller, 3)) {
+                    this.upgradeController(controller);
+                } else {
+                    this.travelTo(controller, { range: 3 });
+                }
             } else {
-                this.travelTo(controller, { range: 3 });
+                this.gatherResourceFromOrigin(RESOURCE_ENERGY);
             }
         } else {
-            this.gatherResourceFromOrigin(RESOURCE_ENERGY);
+            this.terminateOperation();
         }
     }
 
@@ -47,9 +54,37 @@ export class Operative extends WorkerCreep {
                 } else {
                     this.travelTo(constructionSite, { range: 3 });
                 }
+            } else {
+                this.terminateOperation();
             }
         } else {
             this.gatherResourceFromOrigin(RESOURCE_ENERGY);
+        }
+    }
+
+    private runClean() {
+        if (!this.memory.targetId) {
+            if (this.pos.roomName === this.memory.destination) {
+                let target = this.findCleanTarget();
+                if (!target) {
+                    this.terminateOperation();
+                } else {
+                    this.memory.targetId = target;
+                }
+            } else {
+                this.travelToRoom(this.memory.destination);
+            }
+        } else {
+            let target = Game.getObjectById(this.memory.targetId) as Structure;
+            if (target) {
+                if (this.pos.isNearTo(target)) {
+                    this.dismantle(target);
+                } else {
+                    this.travelTo(target, { range: 1 });
+                }
+            } else {
+                this.memory.targetId = this.findCleanTarget();
+            }
         }
     }
 
@@ -96,6 +131,7 @@ export class Operative extends WorkerCreep {
                 if (this.pos.isNearTo(target)) {
                     let resourceToWithdraw = this.operation.resource ?? (Object.keys(target.store)[0] as ResourceConstant);
                     this.withdraw(target, resourceToWithdraw);
+                    delete this.memory.targetId;
                 } else {
                     this.travelTo(target);
                 }
@@ -114,6 +150,19 @@ export class Operative extends WorkerCreep {
                     (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) &&
                     (this.operation.resource ? struct.store[this.operation.resource] : struct.store.getUsedCapacity())
             )?.id;
+    }
+
+    private findCleanTarget(): Id<Structure> {
+        let destinationRoom = Game.rooms[this.memory.destination];
+
+        let targets = destinationRoom.find(FIND_HOSTILE_STRUCTURES, {
+            filter: (struct) =>
+                !((struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) && struct.store.getUsedCapacity()) &&
+                !(struct.structureType === STRUCTURE_LAB && struct.mineralType) &&
+                !(struct.structureType === STRUCTURE_NUKER && (struct.store.energy || struct.store.G)),
+        });
+
+        return this.pos.findClosestByRange(targets)?.id;
     }
 
     private terminateOperation() {
