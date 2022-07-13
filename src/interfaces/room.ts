@@ -1,8 +1,4 @@
 interface RoomMemory {
-    roomStatus: RoomMemoryStatus;
-}
-
-interface OwnedRoomMemory extends RoomMemory {
     needsWallRepair?: boolean;
     upgraderLinkPos?: string;
     labRequests?: LabNeed[];
@@ -25,7 +21,7 @@ interface OwnedRoomMemory extends RoomMemory {
     factoryTask?: FactoryTask;
 }
 
-interface RemoteRoomMemory extends RoomMemory {
+interface RemoteData {
     reservationState?: RemoteRoomReservationStatus;
     miningPositions: string[];
     miner: AssignmentStatus;
@@ -35,8 +31,10 @@ interface RemoteRoomMemory extends RoomMemory {
     keeperExterminator?: AssignmentStatus;
 }
 
-interface ScoutedRoomMemory extends RoomMemory {
+interface RoomData {
+    roomStatus: RoomMemoryStatus;
     hostile?: boolean;
+    asOf: number;
 }
 
 const enum RoomMemoryStatus {
@@ -50,7 +48,6 @@ const enum RoomMemoryStatus {
 }
 
 interface Room {
-    memory: OwnedRoomMemory;
     removeFromRepairQueue(id: string): void;
     creeps: Creep[];
     energyStatus: EnergyStatus;

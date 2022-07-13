@@ -1,10 +1,7 @@
 interface Memory {
-    empire: EmpireMemory;
-    rooms: (OwnedRoomMemory | RemoteRoomMemory | ScoutedRoomMemory)[];
-}
-
-interface EmpireMemory {
-    priceMap?: { [resourceType: string]: number };
+    remoteData: { [roomName: string]: RemoteData };
+    roomData: { [roomName: string]: RoomData };
+    resourcePriceMap?: { [resourceType: string]: number };
     logCPU?: boolean;
     spawnAssignments?: SpawnAssignment[];
     operations?: Operation[];

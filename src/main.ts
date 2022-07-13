@@ -80,7 +80,7 @@ module.exports.loop = function () {
         Game.creeps[creepName].runPriorityQueueTask();
     });
 
-    if (Memory.empire.logCPU) {
+    if (Memory.logCPU) {
         console.log(cpuUsageString + `total: ${Game.cpu.getUsed().toFixed(2)}`);
     }
 

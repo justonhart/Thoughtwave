@@ -9,11 +9,11 @@ export class Scout extends WaveCreep {
             if (!this.memory.scout) {
                 this.memory.scout = { path: [this.room.name], spawn: this.pos.toMemSafe() };
             }
-            if (!Memory.empire.scoutAssignments) {
-                Memory.empire.scoutAssignments = {};
+            if (!Memory.scoutAssignments) {
+                Memory.scoutAssignments = {};
             }
-            if (!Memory.empire.scoutAssignments[this.memory.room]) {
-                Memory.empire.scoutAssignments[this.memory.room] = [];
+            if (!Memory.scoutAssignments[this.memory.room]) {
+                Memory.scoutAssignments[this.memory.room] = [];
             }
 
             nextTarget = this.findTarget();
@@ -32,7 +32,7 @@ export class Scout extends WaveCreep {
                 (!this.room.controller?.reservation?.username ||
                     this.room.controller?.reservation?.username === this.owner.username ||
                     this.room.controller?.reservation?.username === 'Invader') &&
-                !Memory.empire.hostileRooms.find((room) => room.room === this.room.name) &&
+                !Memory.hostileRooms.find((room) => room.room === this.room.name) &&
                 !this.room.find(FIND_HOSTILE_CREEPS, {
                     filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
                 }).length &&
@@ -87,18 +87,18 @@ export class Scout extends WaveCreep {
                 (adjacentRoom) =>
                     adjacentRoom !== undefined &&
                     !Game.rooms[adjacentRoom] &&
-                    ![].concat(...Object.values(Memory.empire.scoutAssignments)).includes(adjacentRoom) &&
+                    ![].concat(...Object.values(Memory.scoutAssignments)).includes(adjacentRoom) &&
                     Game.map.getRoomLinearDistance(this.memory.room, adjacentRoom) < 2
             );
 
             // Add rooms if scout hasn't been there yet
             if (adjacentRooms.length) {
-                Memory.empire.scoutAssignments[this.memory.room].push(...adjacentRooms);
+                Memory.scoutAssignments[this.memory.room].push(...adjacentRooms);
             }
         }
 
         // check empire memory against scout travelHistory to see if any rooms are left.
-        const nextRoom: string = Memory.empire.scoutAssignments[this.memory.room].find(
+        const nextRoom: string = Memory.scoutAssignments[this.memory.room].find(
             (roomToScout: string) => !this.memory.scout.path.includes(roomToScout)
         );
 

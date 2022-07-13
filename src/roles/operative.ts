@@ -166,9 +166,9 @@ export class Operative extends WorkerCreep {
     }
 
     private terminateOperation() {
-        let opIndex = Memory.empire.operations.findIndex((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
+        let opIndex = Memory.operations.findIndex((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
         if (opIndex > -1) {
-            Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
+            Memory.operations[opIndex].stage = OperationStage.COMPLETE;
         }
 
         delete this.memory.destination;

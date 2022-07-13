@@ -218,8 +218,8 @@ export class Pathing {
     }
     //check if room should be avoided
     static checkAvoid(roomName: string): boolean {
-        if (Memory.empire.hostileRooms) {
-            const hostileRoom = Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName);
+        if (Memory.hostileRooms) {
+            const hostileRoom = Memory.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName);
             if (
                 Memory.rooms &&
                 Object.values(Memory.rooms).find((room) => room.remoteAssignments?.[roomName]?.state === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS)
@@ -230,7 +230,7 @@ export class Pathing {
                 if (hostileRoom.expireAt > Game.time) {
                     return true;
                 }
-                Memory.empire.hostileRooms.splice(Memory.empire.hostileRooms.indexOf(hostileRoom), 1); // Cleanup expired rooms
+                Memory.hostileRooms.splice(Memory.hostileRooms.indexOf(hostileRoom), 1); // Cleanup expired rooms
             }
             return false;
         }
@@ -250,17 +250,17 @@ export class Pathing {
         if (!room) {
             return;
         }
-        if (!Memory.empire.hostileRooms) {
-            Memory.empire.hostileRooms = [];
+        if (!Memory.hostileRooms) {
+            Memory.hostileRooms = [];
         }
         // Find hostileRooms
         if (
             (ignoreDestination || room.name !== destinationRoom) &&
-            !Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === room.name) &&
+            !Memory.hostileRooms.find((hostileRoom) => hostileRoom.room === room.name) &&
             room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_TOWER })?.length &&
             room.controller?.owner
         ) {
-            Memory.empire.hostileRooms.push({ room: room.name, expireAt: Game.time + 8000 }); // valid for 8000 Ticks right now (can be changed depending on room situation ==> invaders or players controller level)
+            Memory.hostileRooms.push({ room: room.name, expireAt: Game.time + 8000 }); // valid for 8000 Ticks right now (can be changed depending on room situation ==> invaders or players controller level)
         }
     }
 

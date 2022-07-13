@@ -23,31 +23,31 @@ export class SquadManagement {
         this.isFleeing = false;
         this.squadId = creep.memory.combat.squadId;
         this.currentCreep = creep;
-        this.forcedDestinations = Memory.empire.squads[this.squadId].forcedDestinations;
-        this.assignment = Memory.empire.squads[this.squadId].assignment;
-        this.orientation = Memory.empire.squads[this.squadId].orientation;
-        this.anchor = Memory.empire.squads[this.squadId].anchor;
+        this.forcedDestinations = Memory.squads[this.squadId].forcedDestinations;
+        this.assignment = Memory.squads[this.squadId].assignment;
+        this.orientation = Memory.squads[this.squadId].orientation;
+        this.anchor = Memory.squads[this.squadId].anchor;
         if (!this.targetStructure) {
-            this.targetStructure = Memory.empire.squads[this.squadId].targetStructure;
+            this.targetStructure = Memory.squads[this.squadId].targetStructure;
         }
         // Memory Management
-        if (!Memory.empire.squads[this.squadId].members) {
-            Memory.empire.squads[this.squadId].members = {};
+        if (!Memory.squads[this.squadId].members) {
+            Memory.squads[this.squadId].members = {};
         }
-        Memory.empire.squads[this.squadId].members[creep.memory.combat.squadMemberType] = creep.name;
+        Memory.squads[this.squadId].members[creep.memory.combat.squadMemberType] = creep.name;
 
-        this.squadLeader = Game.creeps[Memory.empire.squads[this.squadId]?.members[SquadMemberType.SQUAD_LEADER]] as CombatCreep;
-        this.squadFollower = Game.creeps[Memory.empire.squads[this.squadId]?.members[SquadMemberType.SQUAD_FOLLOWER]] as CombatCreep;
-        this.squadSecondLeader = Game.creeps[Memory.empire.squads[this.squadId]?.members[SquadMemberType.SQUAD_SECOND_LEADER]] as CombatCreep;
-        this.squadSecondFollower = Game.creeps[Memory.empire.squads[this.squadId]?.members[SquadMemberType.SQUAD_SECOND_FOLLOWER]] as CombatCreep;
+        this.squadLeader = Game.creeps[Memory.squads[this.squadId]?.members[SquadMemberType.SQUAD_LEADER]] as CombatCreep;
+        this.squadFollower = Game.creeps[Memory.squads[this.squadId]?.members[SquadMemberType.SQUAD_FOLLOWER]] as CombatCreep;
+        this.squadSecondLeader = Game.creeps[Memory.squads[this.squadId]?.members[SquadMemberType.SQUAD_SECOND_LEADER]] as CombatCreep;
+        this.squadSecondFollower = Game.creeps[Memory.squads[this.squadId]?.members[SquadMemberType.SQUAD_SECOND_FOLLOWER]] as CombatCreep;
     }
 
     public static isPartOfDuo() {
-        return Memory.empire.squads[this.squadId].squadType === SquadType.DUO;
+        return Memory.squads[this.squadId].squadType === SquadType.DUO;
     }
 
     public static isPartOfQuad() {
-        return Memory.empire.squads[this.squadId].squadType === SquadType.QUAD;
+        return Memory.squads[this.squadId].squadType === SquadType.QUAD;
     }
 
     public static missingCreeps() {
@@ -177,7 +177,7 @@ export class SquadManagement {
         if (this.forcedDestinations?.length) {
             let nextDestination = this.forcedDestinations[0];
             if (this.squadLeader.pos.toMemSafe() === nextDestination) {
-                Memory.empire.squads[this.squadId].forcedDestinations = this.forcedDestinations.slice(1);
+                Memory.squads[this.squadId].forcedDestinations = this.forcedDestinations.slice(1);
                 nextDestination = this.forcedDestinations[0];
             }
             this.squadLeader.travelTo(posFromMem(nextDestination));
@@ -551,7 +551,7 @@ export class SquadManagement {
             if (this.forcedDestinations?.length) {
                 let nextDestination = this.forcedDestinations[0];
                 if (this.squadLeader.pos.toMemSafe() === nextDestination) {
-                    Memory.empire.squads[this.squadId].forcedDestinations = this.forcedDestinations.slice(1);
+                    Memory.squads[this.squadId].forcedDestinations = this.forcedDestinations.slice(1);
                     nextDestination = this.forcedDestinations[0];
                 }
                 this.squadLeader.travelTo(posFromMem(nextDestination));
@@ -702,9 +702,9 @@ export class SquadManagement {
             this.creepRunCount = 0;
             if (!this.missingCreeps() && this.isInFormation()) {
                 if (this.orientation) {
-                    Memory.empire.squads[this.squadId].orientation = this.orientation;
+                    Memory.squads[this.squadId].orientation = this.orientation;
                 }
-                Memory.empire.squads[this.squadId].targetStructure = this.targetStructure;
+                Memory.squads[this.squadId].targetStructure = this.targetStructure;
             }
         }
     }
@@ -727,7 +727,7 @@ export class SquadManagement {
                 } else {
                     this.anchor = LEFT;
                 }
-                Memory.empire.squads[this.squadId].anchor = this.anchor;
+                Memory.squads[this.squadId].anchor = this.anchor;
                 return new RoomPosition(x - 1, y, roomName);
             } else if (
                 terrain.get(x + 1, y) !== TERRAIN_MASK_WALL &&
@@ -739,7 +739,7 @@ export class SquadManagement {
                 } else {
                     this.anchor = RIGHT;
                 }
-                Memory.empire.squads[this.squadId].anchor = this.anchor;
+                Memory.squads[this.squadId].anchor = this.anchor;
                 return new RoomPosition(x + 1, y, roomName);
             }
         } else if (this.orientation === RIGHT || this.orientation === LEFT) {
@@ -753,7 +753,7 @@ export class SquadManagement {
                 } else {
                     this.anchor = LEFT;
                 }
-                Memory.empire.squads[this.squadId].anchor = this.anchor;
+                Memory.squads[this.squadId].anchor = this.anchor;
                 return new RoomPosition(x, y + 1, roomName);
             } else if (
                 terrain.get(x, y - 1) !== TERRAIN_MASK_WALL &&
@@ -765,7 +765,7 @@ export class SquadManagement {
                 } else {
                     this.anchor = LEFT;
                 }
-                Memory.empire.squads[this.squadId].anchor = this.anchor;
+                Memory.squads[this.squadId].anchor = this.anchor;
                 return new RoomPosition(x, y - 1, roomName);
             }
         }

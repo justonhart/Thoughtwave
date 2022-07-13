@@ -3,7 +3,7 @@ import { getStoragePos } from './roomDesign';
 export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: string) {
     let remoteRoom = Game.rooms[remoteRoomName];
     if (remoteRoom) {
-        Memory.rooms[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
+        Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
     }
 }
 
@@ -17,7 +17,7 @@ function monitorThreatLevel(room: Room) {
 }
 
 function spawnProtector(homeRoomName: string, remoteRoomName: string, body: BodyPartConstant[]) {
-    Memory.empire.spawnAssignments.push({
+    Memory.spawnAssignments.push({
         designee: homeRoomName,
         body: body,
         spawnOpts: {
@@ -50,49 +50,14 @@ function getMaxProtectorBodySize(hostileCreeps: Creep[], healerCreeps: Creep[]) 
     return maxBodySize;
 }
 
-/**
- * Reassign idle protectors to needed room. If there are none check if a room has more than one protector and reassign one of them.
- *
- * @param homeRoomName -
- * @param targetRoomName -
- * @returns Boolean to check if a reassignment was possible
- */
-function reassignIdleProtector(homeRoomName: string, targetRoomName: string): boolean {
-    const protectors = Object.values(Game.creeps).filter(
-        (creep) => creep.memory.room === homeRoomName && creep.memory.role === Role.PROTECTOR && creep.ticksToLive > 200
-    );
-
-    if (homeRoomName === targetRoomName) {
-        // Home Protection (reassign and still spawn default ones)
-        protectors.forEach((protector) => (protector.memory.assignment = targetRoomName));
-        return false;
-    }
-
-    const idleProtector = protectors.find(
-        (creep) => Memory.rooms[homeRoomName].remoteAssignments?.[creep.memory.assignment]?.state !== RemoteRoomThreatLevel.SAFE
-    );
-    if (idleProtector) {
-        idleProtector.memory.assignment = targetRoomName;
-        return true;
-    }
-
-    const duplicateProtector = protectors.find((protector, i) => protectors.indexOf(protector) !== i);
-    if (duplicateProtector) {
-        duplicateProtector.memory.assignment = targetRoomName;
-        return true;
-    }
-    return false;
-}
-
-function addRemoteRoomAssignment(controllingRoomName: string, remoteRoomName: string) {
+export function addRemoteRoomAssignment(controllingRoomName: string, remoteRoomName: string) {
     let remoteRoom = Game.rooms[remoteRoomName];
 
     if (remoteRoom) {
         let miningPositions = findMiningPositions(controllingRoomName, remoteRoomName);
 
         if (isCentralRoom(remoteRoomName)) {
-            let roomMemory: RemoteRoomMemory = {
-                roomStatus: RoomMemoryStatus.REMOTE_MINING,
+            let roomMemory: RemoteData = {
                 miningPositions: miningPositions,
                 threatLevel: RemoteRoomThreatLevel.SAFE,
                 miner: AssignmentStatus.UNASSIGNED,
@@ -103,11 +68,10 @@ function addRemoteRoomAssignment(controllingRoomName: string, remoteRoomName: st
                 roomMemory.keeperExterminator = AssignmentStatus.UNASSIGNED;
             }
 
-            Memory.rooms[remoteRoomName] = roomMemory;
+            Memory.remoteData[remoteRoomName] = roomMemory;
             Game.rooms[controllingRoomName].memory.remoteMiningRooms.push(remoteRoomName);
         } else {
-            let roomMemory: RemoteRoomMemory = {
-                roomStatus: RoomMemoryStatus.REMOTE_MINING,
+            let roomMemory: RemoteData = {
                 miningPositions: miningPositions,
                 threatLevel: RemoteRoomThreatLevel.SAFE,
                 miner: AssignmentStatus.UNASSIGNED,
@@ -116,7 +80,7 @@ function addRemoteRoomAssignment(controllingRoomName: string, remoteRoomName: st
                 reservationState: RemoteRoomReservationStatus.LOW,
             };
 
-            Memory.rooms[remoteRoomName] = roomMemory;
+            Memory.remoteData[remoteRoomName] = roomMemory;
             Game.rooms[controllingRoomName].memory.remoteMiningRooms.push(remoteRoomName);
         }
     } else {
