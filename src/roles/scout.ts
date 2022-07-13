@@ -9,12 +9,6 @@ export class Scout extends WaveCreep {
             if (!this.memory.scout) {
                 this.memory.scout = { path: [this.room.name], spawn: this.pos.toMemSafe() };
             }
-            if (!Memory.scoutAssignments) {
-                Memory.scoutAssignments = {};
-            }
-            if (!Memory.scoutAssignments[this.memory.room]) {
-                Memory.scoutAssignments[this.memory.room] = [];
-            }
 
             nextTarget = this.findTarget();
 
@@ -27,12 +21,12 @@ export class Scout extends WaveCreep {
             // Set Room memory
             if (
                 Game.shard.name !== 'shard3' &&
-                Object.keys(this.homeroom.memory.remoteAssignments).length < maxRemoteMiningRooms &&
+                Object.keys(this.homeroom.memory.remoteMiningRooms).length < maxRemoteMiningRooms &&
                 !this.room.controller?.owner?.username &&
                 (!this.room.controller?.reservation?.username ||
                     this.room.controller?.reservation?.username === this.owner.username ||
                     this.room.controller?.reservation?.username === 'Invader') &&
-                !Memory.hostileRooms.find((room) => room.room === this.room.name) &&
+                !Memory.roomData[this.room.name]?.hostile &&
                 !this.room.find(FIND_HOSTILE_CREEPS, {
                     filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
                 }).length &&
@@ -40,31 +34,7 @@ export class Scout extends WaveCreep {
                     filter: (struct) => struct.structureType === STRUCTURE_KEEPER_LAIR,
                 }).length
             ) {
-                this.room.find(FIND_SOURCES).forEach((source) => {
-                    const pathFinder = this.getPath(source.pos);
-                    if (
-                        !pathFinder.incomplete &&
-                        !Memory.rooms[this.memory.room].remoteAssignments[this.room.name]?.miners[
-                            pathFinder.path[pathFinder.path.length - 1].toMemSafe()
-                        ]
-                    ) {
-                        // Set Miner/Gatherer/Reserver
-                        if (!Memory.rooms[this.memory.room].remoteAssignments[this.room.name]) {
-                            Memory.rooms[this.memory.room].remoteAssignments[this.room.name] = {
-                                miners: new Map(),
-                                gatherer: AssignmentStatus.UNASSIGNED,
-                                reserver: AssignmentStatus.UNASSIGNED,
-                                needsConstruction: true,
-                                energyStatus: EnergyStatus.STABLE,
-                                state: RemoteRoomThreatLevel.SAFE,
-                                controllerState: RemoteRoomReservationStatus.LOW,
-                            };
-                        }
-                        Memory.rooms[this.memory.room].remoteAssignments[this.room.name].miners[
-                            pathFinder.path[pathFinder.path.length - 1].toMemSafe()
-                        ] = AssignmentStatus.UNASSIGNED;
-                    }
-                });
+                this.room.find(FIND_SOURCES).forEach((source) => {});
                 nextTarget = this.findTarget();
             } else {
                 nextTarget = this.findTarget(true);
@@ -81,35 +51,7 @@ export class Scout extends WaveCreep {
      * @returns new scoutTarget
      */
     private findTarget(ignoreCurrentRoom?: boolean): string {
-        // Find all exits but filter for those that are not yet in empire memory unless currentRoom has hostiles
-        if (!ignoreCurrentRoom) {
-            const adjacentRooms = Object.values(Game.map.describeExits(this.room.name)).filter(
-                (adjacentRoom) =>
-                    adjacentRoom !== undefined &&
-                    !Game.rooms[adjacentRoom] &&
-                    ![].concat(...Object.values(Memory.scoutAssignments)).includes(adjacentRoom) &&
-                    Game.map.getRoomLinearDistance(this.memory.room, adjacentRoom) < 2
-            );
-
-            // Add rooms if scout hasn't been there yet
-            if (adjacentRooms.length) {
-                Memory.scoutAssignments[this.memory.room].push(...adjacentRooms);
-            }
-        }
-
-        // check empire memory against scout travelHistory to see if any rooms are left.
-        const nextRoom: string = Memory.scoutAssignments[this.memory.room].find(
-            (roomToScout: string) => !this.memory.scout.path.includes(roomToScout)
-        );
-
-        // Exit Condition
-        if (!nextRoom) {
-            console.log(`${this.name} has finished scouting.`);
-            this.suicide();
-            return;
-        }
-
-        return nextRoom;
+        return undefined;
     }
 
     /**

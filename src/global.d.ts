@@ -10,6 +10,9 @@ declare global {
 
     //resource maps to first qualifying purchase order
     var qualifyingMarketOrders: { [resource: string]: string };
+
+    //array of room names identified as hostile
+    var hostileRooms: string[];
 }
 
 export {};

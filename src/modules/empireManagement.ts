@@ -8,9 +8,9 @@ export function manageEmpire() {
         InterShardMemory.setLocal(JSON.stringify({ outboundCreeps: { shard0: {}, shard1: {}, shard2: {}, shard3: {} } }));
     }
 
-    let hostileRooms = Object.keys(Memory.roomData).filter((roomName) => Memory.roomData[roomName].hostile);
-    if (hostileRooms.length) {
-        hostileRooms.forEach((hostileRoom) => {
+    global.hostileRooms = Object.keys(Memory.roomData).filter((roomName) => Memory.roomData[roomName].hostile);
+    if (global.hostileRooms.length) {
+        global.hostileRooms.forEach((hostileRoom) => {
             Game.map.visual.rect(new RoomPosition(0, 0, hostileRoom), 50, 50, { fill: '#8b0000', stroke: '#8b0000', strokeWidth: 2 });
         });
     }

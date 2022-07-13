@@ -218,21 +218,8 @@ export class Pathing {
     }
     //check if room should be avoided
     static checkAvoid(roomName: string): boolean {
-        if (Memory.hostileRooms) {
-            const hostileRoom = Memory.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName);
-            if (
-                Memory.rooms &&
-                Object.values(Memory.rooms).find((room) => room.remoteAssignments?.[roomName]?.state === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS)
-            ) {
-                return true; // avoid homeBases mining rooms with enemies in them
-            }
-            if (hostileRoom) {
-                if (hostileRoom.expireAt > Game.time) {
-                    return true;
-                }
-                Memory.hostileRooms.splice(Memory.hostileRooms.indexOf(hostileRoom), 1); // Cleanup expired rooms
-            }
-            return false;
+        if (Memory.roomData[roomName]?.hostile || Memory.remoteData[roomName]?.threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
+            return true;
         }
         return false;
     }
@@ -243,25 +230,6 @@ export class Pathing {
     //check two coordinates match
     static sameCoord(pos1: RoomPosition, pos2: RoomPosition): boolean {
         return pos1.x === pos2.x && pos1.y === pos2.y;
-    }
-
-    // add hostile rooms
-    static addHostileRoom(room: Room, destinationRoom: string, ignoreDestination?: boolean): void {
-        if (!room) {
-            return;
-        }
-        if (!Memory.hostileRooms) {
-            Memory.hostileRooms = [];
-        }
-        // Find hostileRooms
-        if (
-            (ignoreDestination || room.name !== destinationRoom) &&
-            !Memory.hostileRooms.find((hostileRoom) => hostileRoom.room === room.name) &&
-            room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_TOWER })?.length &&
-            room.controller?.owner
-        ) {
-            Memory.hostileRooms.push({ room: room.name, expireAt: Game.time + 8000 }); // valid for 8000 Ticks right now (can be changed depending on room situation ==> invaders or players controller level)
-        }
     }
 
     /**
@@ -326,7 +294,6 @@ export class Pathing {
             }
 
             const room = Game.rooms[roomName];
-            Pathing.addHostileRoom(room, destination.roomName, options.checkForHostilesAtDestination);
             if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination.roomName && Pathing.checkAvoid(roomName)) {
                 return false;
             }
