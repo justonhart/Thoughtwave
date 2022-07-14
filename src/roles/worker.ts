@@ -21,7 +21,7 @@ export class Worker extends WorkerCreep {
     }
 
     protected findTarget(): Id<Structure> | Id<ConstructionSite> {
-        if (this.homeroom.controller.level > 4) {
+        if (this.homeroom.controller.level >= 6) {
             let nukeShieldTarget = this.homeroom.getNextNukeProtectionTask();
             if (nukeShieldTarget) {
                 return nukeShieldTarget;
