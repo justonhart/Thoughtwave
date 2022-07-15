@@ -1,16 +1,16 @@
 interface Memory {
     empire: EmpireMemory;
-}
-
-interface EmpireMemory {
     priceMap?: { [resourceType: string]: number };
     logCPU?: boolean;
     spawnAssignments?: SpawnAssignment[];
-    hostileRooms?: HostileRoom[];
-    scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>
     operations?: Operation[];
     playersToIgnore?: string[];
     squads?: { [squadId: string]: Squad };
+}
+
+interface EmpireMemory {
+    hostileRooms?: HostileRoom[];
+    scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>
 }
 
 interface EmpireIntershard {

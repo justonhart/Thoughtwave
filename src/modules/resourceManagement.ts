@@ -254,9 +254,9 @@ export function shipmentReady(terminal: StructureTerminal, shipment: Shipment): 
 }
 
 function getQualifyingMarketOrders() {
-    let marketOrders = Game.market.getAllOrders().filter((o) => o.type === ORDER_BUY && o.price >= 0.85 * Memory.empire.priceMap[o.resourceType]);
+    let marketOrders = Game.market.getAllOrders().filter((o) => o.type === ORDER_BUY && o.price >= 0.85 * Memory.priceMap[o.resourceType]);
     global.qualifyingMarketOrders = {};
-    Object.keys(Memory.empire.priceMap).forEach((res) => {
+    Object.keys(Memory.priceMap).forEach((res) => {
         let orderId = marketOrders.find((order) => order.resourceType === res)?.id;
         if (orderId) {
             global.qualifyingMarketOrders[res] = orderId;

@@ -1,13 +1,6 @@
 import { manageOperations } from './operationsManagement';
 
 export function manageEmpire() {
-    if (!Memory.empire) {
-        Memory.empire = {
-            spawnAssignments: [],
-            scoutAssignments: {},
-        };
-    }
-
     let needToInitIntershard = !JSON.parse(InterShardMemory.getLocal())?.outboundCreeps;
     if (needToInitIntershard) {
         InterShardMemory.setLocal(JSON.stringify({ outboundCreeps: { shard0: {}, shard1: {}, shard2: {}, shard3: {} } }));
@@ -19,8 +12,8 @@ export function manageEmpire() {
         });
     }
 
-    if (!Memory.empire.priceMap || Game.time % 20000 === 0) {
-        Memory.empire.priceMap = getPriceMap();
+    if (!Memory.priceMap || Game.time % 20000 === 0) {
+        Memory.priceMap = getPriceMap();
     }
 
     manageOperations();
@@ -44,8 +37,8 @@ export function unclaimRoom(roomName: string) {
         room.find(FIND_MY_CONSTRUCTION_SITES).forEach((site) => site.remove());
     }
 
-    Memory.empire.operations = Memory.empire.operations.filter((op) => op.targetRoom !== roomName);
-    Memory.empire.spawnAssignments = Memory.empire.spawnAssignments.filter(
+    Memory.operations = Memory.operations.filter((op) => op.targetRoom !== roomName);
+    Memory.spawnAssignments = Memory.spawnAssignments.filter(
         (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
     );
 
@@ -65,7 +58,7 @@ export function unclaimRoom(roomName: string) {
 
 //remove assignments to rooms that cannot spawn
 function cleanSpawnAssignments() {
-    Memory.empire.spawnAssignments = Memory.empire.spawnAssignments.filter(
+    Memory.spawnAssignments = Memory.spawnAssignments.filter(
         (assignment) => Game.rooms[assignment.designee] && Game.rooms[assignment.designee].canSpawn()
     );
 }

@@ -401,8 +401,8 @@ export class PopulationManagement {
 
         let result = spawn.smartSpawn(assignment.body, this.getCreepTag('s', spawn.name), options);
         if (result === OK) {
-            const ASSIGNMENT_INDEX = Memory.empire.spawnAssignments.findIndex((a) => a === assignment);
-            Memory.empire.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);
+            const ASSIGNMENT_INDEX = Memory.spawnAssignments.findIndex((a) => a === assignment);
+            Memory.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);
         }
 
         return result;
@@ -628,7 +628,7 @@ export class PopulationManagement {
             !Object.values(Game.creeps).filter(
                 (creep) => creep.memory.role === Role.PROTECTOR && (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
             ).length &&
-            !Memory.empire.spawnAssignments.filter(
+            !Memory.spawnAssignments.filter(
                 (creep) => creep.spawnOpts.memory.role === Role.PROTECTOR && creep.spawnOpts.memory.assignment === roomName
             ).length
         );
@@ -637,7 +637,7 @@ export class PopulationManagement {
     static currentNumRampartProtectors(roomName: string): number {
         return (
             Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR && creep.pos.roomName === roomName).length +
-            Memory.empire.spawnAssignments.filter(
+            Memory.spawnAssignments.filter(
                 (creep) => creep.spawnOpts.memory.role === Role.RAMPART_PROTECTOR && creep.spawnOpts.memory.room === roomName
             ).length
         );

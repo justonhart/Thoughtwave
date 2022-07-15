@@ -21,6 +21,34 @@ interface RoomMemory {
     factoryTask?: FactoryTask;
 }
 
+interface RemoteData {
+    reservationState?: RemoteRoomReservationStatus;
+    miningPositions: string[];
+    miner: AssignmentStatus;
+    hauler: AssignmentStatus;
+    reserver?: AssignmentStatus;
+    threatLevel: RemoteRoomThreatLevel;
+    keeperExterminator?: AssignmentStatus;
+}
+
+interface RoomData {
+    asOf: number;
+    sourceCount?: number;
+    mineralType?: MineralConstant;
+    roomStatus?: RoomMemoryStatus;
+    hostile?: boolean;
+}
+
+const enum RoomMemoryStatus {
+    VACANT = 1,
+    RESERVED_OTHER,
+    RESERVED_INVADER,
+    OWNED_OTHER,
+    OWNED_INVADER,
+    REMOTE_MINING,
+    OWNED_ME,
+}
+
 interface RemoteAssignment {
     needsConstruction: boolean;
     energyStatus: EnergyStatus;
@@ -62,6 +90,36 @@ const enum PhaseShiftStatus {
 const enum AssignmentStatus {
     UNASSIGNED = 0,
     ASSIGNED,
+}
+
+/**
+ * The enums on the top overwrite the lower ones (for example if an attack unit is in the room and a structure it will set ENEMY_ATTACK_CREEPS)
+ */
+const enum RemoteRoomThreatLevel {
+    SAFE = 0,
+    /**
+     * Enemy Creeps with other body parts.
+     */
+    ENEMY_NON_COMBAT_CREEPS,
+    /**
+     * Enemy Creeps with attack body parts.
+     */
+    ENEMY_ATTTACK_CREEPS,
+}
+
+const enum RemoteRoomReservationStatus {
+    /**
+     * Controller reserve under 1000.
+     */
+    LOW,
+    /**
+     * Controller reserve above 4500.
+     */
+    STABLE,
+    /**
+     * Currently controlled by enemy.
+     */
+    ENEMY,
 }
 
 /**

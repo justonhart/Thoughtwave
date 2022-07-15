@@ -82,7 +82,7 @@ function runSecurity(homeRoom: Room, remoteRoomName: string) {
 }
 
 function spawnProtector(homeRoomName: string, remoteRoomName: string, body: BodyPartConstant[]) {
-    Memory.empire.spawnAssignments.push({
+    Memory.spawnAssignments.push({
         designee: homeRoomName,
         body: body,
         spawnOpts: {

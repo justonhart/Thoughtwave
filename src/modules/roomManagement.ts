@@ -32,7 +32,7 @@ export function driveRoom(room: Room) {
 
     if (!room.canSpawn()) {
         // fail state - if a room has unexpectedly lost all spawns
-        if (!Memory.empire.operations.find((op) => op.targetRoom === room.name && op.type === OperationType.COLONIZE)) {
+        if (!Memory.operations.find((op) => op.targetRoom === room.name && op.type === OperationType.COLONIZE)) {
         }
     } else {
         room.memory.reservedEnergy = 0;
@@ -156,13 +156,13 @@ function runTowers(room: Room) {
     }
 
     if (!room.controller.safeMode) {
-        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.empire.playersToIgnore?.includes(creep.owner.username) });
+        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.playersToIgnore?.includes(creep.owner.username) });
         towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
     }
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {
-    const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.empire.playersToIgnore?.includes(creep.owner.username) });
+    const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.playersToIgnore?.includes(creep.owner.username) });
     let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
 
     if (hostileCreeps.length >= minNumHostileCreeps) {
@@ -170,7 +170,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (!currentNumProtectors) {
             const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
-            Memory.empire.spawnAssignments.push({
+            Memory.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: body,
                 spawnOpts: {
@@ -187,7 +187,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
             console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
             const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
-            Memory.empire.spawnAssignments.push({
+            Memory.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: attackerBody,
                 spawnOpts: {
@@ -201,7 +201,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 },
             });
             const rangedBody = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
-            Memory.empire.spawnAssignments.push({
+            Memory.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: rangedBody,
                 spawnOpts: {
@@ -316,7 +316,7 @@ function runSpawning(room: Room) {
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
     let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER || creep.memory.role === Role.UPGRADER).length;
-    let assignments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
+    let assignments = Memory.spawnAssignments.filter((assignment) => assignment.designee === room.name);
     let roomContainsViolentHostiles =
         room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0 &&
         !room.controller.safeMode;
@@ -410,9 +410,9 @@ function runSpawning(room: Room) {
         // TODO remove set room and put in function
         if (
             Game.time % 8000 === 0 &&
-            !Memory.empire.spawnAssignments.filter((creep) => creep.spawnOpts.memory.role === Role.SCOUT && creep.designee === room.name).length
+            !Memory.spawnAssignments.filter((creep) => creep.spawnOpts.memory.role === Role.SCOUT && creep.designee === room.name).length
         ) {
-            Memory.empire.spawnAssignments.push({
+            Memory.spawnAssignments.push({
                 designee: room.name,
                 body: [MOVE],
                 spawnOpts: {

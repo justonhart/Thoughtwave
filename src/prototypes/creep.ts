@@ -42,7 +42,7 @@ Object.defineProperty(Creep.prototype, 'homeroom', {
 
 Object.defineProperty(Creep.prototype, 'operation', {
     get: function (this: Creep) {
-        return Memory.empire.operations.find((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
+        return Memory.operations.find((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
     },
     enumerable: false,
     configurable: true,
