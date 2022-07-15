@@ -37,6 +37,7 @@ interface RoomData {
     sourceCount?: number;
     mineralType?: MineralConstant;
     roomStatus?: RoomMemoryStatus;
+    owner?: string;
     hostile?: boolean;
 }
 
@@ -44,9 +45,9 @@ const enum RoomMemoryStatus {
     VACANT = 1,
     RESERVED_OTHER,
     RESERVED_INVADER,
+    RESERVED_ME,
     OWNED_OTHER,
     OWNED_INVADER,
-    REMOTE_MINING,
     OWNED_ME,
 }
 
