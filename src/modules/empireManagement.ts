@@ -1,6 +1,8 @@
 import { manageOperations } from './operationsManagement';
 
 export function manageEmpire() {
+    initMissingMemoryValues();
+
     let needToInitIntershard = !JSON.parse(InterShardMemory.getLocal())?.outboundCreeps;
     if (needToInitIntershard) {
         InterShardMemory.setLocal(JSON.stringify({ outboundCreeps: { shard0: {}, shard1: {}, shard2: {}, shard3: {} } }));
@@ -18,12 +20,6 @@ export function manageEmpire() {
 
     manageOperations();
     cleanSpawnAssignments();
-}
-
-export function addHostileRoom(roomName: string, expirationTicks: number = 8000) {
-    if (!Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName)) {
-        Memory.empire.hostileRooms.push({ room: roomName, expireAt: Game.time + expirationTicks });
-    }
 }
 
 export function unclaimRoom(roomName: string) {
@@ -71,4 +67,35 @@ function getPriceMap(): { [resourceType: string]: number } {
     });
 
     return map;
+}
+
+export function addHostileRoom(roomName: string) {
+    Memory.roomData[roomName].hostile = true;
+    Memory.roomData[roomName].asOf = Game.time;
+}
+
+function initMissingMemoryValues() {
+    if (!Memory.remoteData) {
+        Memory.remoteData = {};
+    }
+
+    if (!Memory.roomData) {
+        Memory.roomData = {};
+    }
+
+    if (!Memory.spawnAssignments) {
+        Memory.spawnAssignments = [];
+    }
+
+    if (!Memory.operations) {
+        Memory.operations = [];
+    }
+
+    if (!Memory.playersToIgnore) {
+        Memory.playersToIgnore = [];
+    }
+
+    if (!Memory.squads) {
+        Memory.squads = {};
+    }
 }

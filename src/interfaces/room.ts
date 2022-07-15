@@ -13,6 +13,7 @@ interface RoomMemory {
     miningAssignments: { [posString: string]: AssignmentStatus };
     mineralMiningAssignments: { [posString: string]: AssignmentStatus };
     remoteAssignments: { [roomName: string]: RemoteAssignment };
+    remoteMiningRooms?: string[];
     reservedEnergy?: number;
     layout?: RoomLayout;
     labTasks?: LabTask[];

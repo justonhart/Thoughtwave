@@ -233,6 +233,7 @@ export function initRoom(room: Room) {
         miningAssignments: {},
         mineralMiningAssignments: {},
         remoteAssignments: {},
+        remoteMiningRooms: [],
     };
 
     miningPostitions.forEach((pos) => {
