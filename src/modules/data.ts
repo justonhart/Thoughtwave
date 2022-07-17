@@ -25,6 +25,12 @@ export function addRoomData(room: Room) {
         }
     }
 
+    if (data.owner && data.roomStatus !== RoomMemoryStatus.OWNED_ME) {
+        if (room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_TOWER && s.isActive() }).length) {
+            data.hostile = true;
+        }
+    }
+
     Memory.roomData[room.name] = data;
 }
 
@@ -42,6 +48,7 @@ export function updateRoomData(room: Room) {
             data.roomStatus = RoomMemoryStatus.OWNED_OTHER;
         }
     } else if (room.controller?.reservation) {
+        delete data.owner;
         if (room.controller.reservation.username === getUsername()) {
             data.roomStatus = RoomMemoryStatus.RESERVED_ME;
         } else if (room.controller.reservation.username === 'Invader') {
@@ -50,7 +57,16 @@ export function updateRoomData(room: Room) {
             data.roomStatus = RoomMemoryStatus.RESERVED_OTHER;
         }
     } else if (room.controller) {
+        delete data.owner;
         data.roomStatus = RoomMemoryStatus.VACANT;
+    }
+
+    if (data.owner && data.roomStatus !== RoomMemoryStatus.OWNED_ME) {
+        if (room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_TOWER && s.isActive() }).length) {
+            data.hostile = true;
+        }
+    } else {
+        delete data.hostile;
     }
 
     Memory.roomData[room.name] = data;
