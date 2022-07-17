@@ -114,7 +114,7 @@ export class PopulationManagement {
         let spawnCostPerCyclePerCreep = spawnCost / 5;
         let energyExpenditurePerCyclePerCreep = spawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
-        let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
+        let creepCapacity = Math.max(Math.floor(totalIncomePerCycle / energyExpenditurePerCyclePerCreep), 1);
 
         switch (room.energyStatus) {
             case EnergyStatus.CRITICAL:
@@ -145,7 +145,7 @@ export class PopulationManagement {
                 }
         }
 
-        return Math.max(1, Math.floor(creepCapacity));
+        return creepCapacity;
     }
 
     static needsMiner(room: Room): boolean {
