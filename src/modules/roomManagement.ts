@@ -38,7 +38,7 @@ export function driveRoom(room: Room) {
         room.memory.reservedEnergy = 0;
 
         let nukes = room.find(FIND_NUKES);
-        if (nukes.length) {
+        if (room.controller.level >= 6 && nukes.length) {
             let structuresAtRisk = getStructuresToProtect(nukes);
             structuresAtRisk.forEach((structureId) => {
                 let structure = Game.getObjectById(structureId);
