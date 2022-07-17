@@ -393,7 +393,15 @@ export class Pathing {
                     Object.keys(room.memory.miningAssignments)
                         .map((pos) => posFromMem(pos))
                         .forEach((pos) => {
-                            matrix.set(pos.x, pos.y, 10);
+                            matrix.set(pos.x, pos.y, 50);
+                        });
+                }
+
+                if (Memory.remoteData[room.name]?.miningPositions) {
+                    Memory.remoteData[room.name].miningPositions
+                        .map((pos) => posFromMem(pos))
+                        .forEach((pos) => {
+                            matrix.set(pos.x, pos.y, 50);
                         });
                 }
 
