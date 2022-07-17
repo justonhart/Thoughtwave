@@ -72,6 +72,8 @@ function getPriceMap(): { [resourceType: string]: number } {
 export function addHostileRoom(roomName: string) {
     Memory.roomData[roomName].hostile = true;
     Memory.roomData[roomName].asOf = Game.time;
+
+    Memory.empire.hostileRooms.push({ room: roomName, expireAt: Game.time + 20000 });
 }
 
 function initMissingMemoryValues() {
