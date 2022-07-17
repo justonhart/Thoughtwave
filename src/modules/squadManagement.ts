@@ -174,6 +174,10 @@ export class SquadManagement {
             return;
         }
 
+        if (this.squadLeader.memory._m.path) {
+            this.nextDirection = parseInt(this.squadLeader.memory._m.path[0], 10) as DirectionConstant;
+        }
+
         if (this.forcedDestinations?.length) {
             let nextDestination = this.forcedDestinations[0];
             if (this.squadLeader.pos.toMemSafe() === nextDestination) {
