@@ -184,9 +184,12 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
     rooms = rooms.filter((room) => !room.path.incomplete);
 
     if (rooms.length) {
-        const closestRoom = rooms.reduce((best, next) => {
-            return next.path.cost <= best.path.cost ? next : best;
-        });
+        let highestLevel = Math.max(...rooms.map((room) => Game.rooms[room.name].controller.level));
+        const closestRoom = rooms
+            .filter((room) => Game.rooms[room.name].controller.level === highestLevel)
+            .reduce((best, next) => {
+                return next.path.cost <= best.path.cost ? next : best;
+            });
         bestRoom = { roomName: closestRoom.name, cost: closestRoom.path.cost };
     }
 
@@ -372,7 +375,7 @@ function manageAttackRoomOperation(op: Operation) {
     if (!hasSquadAttacker) {
         Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
+            body: PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(MOVE, bodyA, bodyB)
             ),
             spawnOpts: {
@@ -402,8 +405,8 @@ function manageAttackRoomOperation(op: Operation) {
     if (!hasSquadHealer) {
         Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-                sortByBodyPart(HEAL, bodyA, bodyB)
+            body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE, HEAL, MOVE], originRoom.energyCapacityAvailable, 12).sort(
+                (bodyA, bodyB) => sortByBodyPart(HEAL, bodyA, bodyB)
             ),
             spawnOpts: {
                 memory: {
