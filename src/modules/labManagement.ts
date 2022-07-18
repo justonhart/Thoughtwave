@@ -85,7 +85,7 @@ function runReactTask(task: LabTask): LabTask {
     let primaryLabs = task.reactionLabs.map((id) => Game.getObjectById(id));
     let auxillaryLabs = task.auxillaryLabs.map((id) => Game.getObjectById(id));
 
-    if (!auxillaryLabs.map((lab) => !lab.mineralType).reduce((anyEmpty, next) => anyEmpty || next)) {
+    if (!auxillaryLabs.map((lab) => !lab.mineralType || lab.store[lab.mineralType] < 5).reduce((anyEmpty, next) => anyEmpty || next)) {
         primaryLabs.forEach((lab) => {
             lab.runReaction(auxillaryLabs[0], auxillaryLabs[1]);
         });
