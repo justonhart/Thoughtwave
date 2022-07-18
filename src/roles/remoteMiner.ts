@@ -47,20 +47,20 @@ export class RemoteMiner extends WaveCreep {
             }
             this.travelTo(assignedPos, { preferRoadConstruction: true });
             // Create roads to the source if not already present and the remote miner did not have to repath
-            if (
-                !this.memory._m?.repath &&
-                (this.room !== this.homeroom || !posInsideBunker(this.pos)) &&
-                this.memory._m.visibleRooms.includes(this.room.name) &&
-                !this.pos
-                    .look()
-                    .filter(
-                        (object) =>
-                            (object.type === LOOK_STRUCTURES && object.structure.structureType !== STRUCTURE_RAMPART) ||
-                            object.type === LOOK_CONSTRUCTION_SITES
-                    ).length
-            ) {
-                this.pos.createConstructionSite(STRUCTURE_ROAD);
-            }
+            // if (
+            //     !this.memory._m?.repath &&
+            //     (this.room !== this.homeroom || !posInsideBunker(this.pos)) &&
+            //     this.memory._m.visibleRooms.includes(this.room.name) &&
+            //     !this.pos
+            //         .look()
+            //         .filter(
+            //             (object) =>
+            //                 (object.type === LOOK_STRUCTURES && object.structure.structureType !== STRUCTURE_RAMPART) ||
+            //                 object.type === LOOK_CONSTRUCTION_SITES
+            //         ).length
+            // ) {
+            //     this.pos.createConstructionSite(STRUCTURE_ROAD);
+            // }
         }
     }
 }

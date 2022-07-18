@@ -1,6 +1,6 @@
+import { getUsername } from '../modules/data';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
-// TODO: right now I just copied some of the worker functions over. Find a better way to reuse already existing methods
 export class Gatherer extends TransportCreep {
     protected run() {
         if (Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment]?.state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS) {
@@ -14,7 +14,6 @@ export class Gatherer extends TransportCreep {
                 // Find target is visibility exists
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
-                this.checkConstructionProgress();
                 this.checkEnergyStatus();
             }
         }
@@ -30,17 +29,15 @@ export class Gatherer extends TransportCreep {
                 this.runCollectionJob(target);
             }
         } else if (target instanceof StructureStorage) {
-            this.storeCargo();
-            this.maintainRoad();
-        }
-    }
-
-    private checkConstructionProgress() {
-        const constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
-        if (constructionSites.length > 4) {
-            Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].needsConstruction = true;
-        } else {
-            Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].needsConstruction = false;
+            if (this.store.energy) {
+                if (!this.shouldBuildRoad() || (this.shouldBuildRoad && this.roadIsFull())) {
+                    this.storeCargo();
+                } else {
+                    this.maintainRoad();
+                }
+            } else {
+                delete this.memory.targetId;
+            }
         }
     }
 
@@ -88,7 +85,7 @@ export class Gatherer extends TransportCreep {
     /**
      * Repair road on current creep position if necessary
      */
-    protected maintainRoad() {
+    private maintainRoad() {
         const site = this.pos
             .look()
             .filter(
@@ -101,6 +98,29 @@ export class Gatherer extends TransportCreep {
             } else if (site[0].type === LOOK_STRUCTURES && site[0].structure.hits < site[0].structure.hitsMax) {
                 this.repair(site[0].structure);
             }
+        } else {
+            this.room.createConstructionSite(this.pos, STRUCTURE_ROAD);
         }
+    }
+
+    private roadIsFull(): boolean {
+        const road = this.pos.lookFor(LOOK_STRUCTURES).find((structure) => structure.structureType === STRUCTURE_ROAD);
+        if (road && road.hits === road.hitsMax) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private shouldBuildRoad(): boolean {
+        return (
+            !this.onEdge() &&
+            (this.room.controller?.reservation?.username === getUsername() ||
+                (!this.room.controller?.reservation && this.room.controller?.owner?.username !== getUsername()))
+        );
+    }
+
+    protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> {
+        return undefined;
     }
 }
