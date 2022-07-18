@@ -1,5 +1,6 @@
 import { getUsername } from '../modules/data';
 import { posFromMem } from '../modules/memoryManagement';
+import { getStructureForPos, posInsideBunker } from '../modules/roomDesign';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
@@ -22,13 +23,7 @@ export class Gatherer extends TransportCreep {
         if (target instanceof Resource) {
             this.runPickupJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer) {
-            // Workaround for not leaving constructionsite close to target
-            if (this.pos.getRangeTo(target) === 2) {
-                delete this.memory._m.path;
-                this.travelTo(target, { range: 1, preferRoadConstruction: true });
-            } else {
-                this.runCollectionJob(target);
-            }
+            this.runCollectionJob(target);
         } else if (target instanceof StructureStorage) {
             if (this.store.energy) {
                 if (!this.shouldBuildRoad() || (this.shouldBuildRoad && this.roadIsFull())) {
@@ -116,8 +111,12 @@ export class Gatherer extends TransportCreep {
     private shouldBuildRoad(): boolean {
         return (
             !this.onEdge() &&
-            (this.room.controller?.reservation?.username === getUsername() ||
-                (!this.room.controller?.reservation && this.room.controller?.owner?.username !== getUsername()))
+            (!this.room.controller?.owner ||
+                this.room.controller?.reservation?.username === getUsername() ||
+                (this.room.controller?.owner?.username === getUsername() &&
+                    this.room.memory.layout === RoomLayout.BUNKER &&
+                    (!posInsideBunker(this.pos) ||
+                        getStructureForPos(this.room.memory.layout, this.pos, posFromMem(this.room.memory.anchorPoint)) === STRUCTURE_ROAD)))
         );
     }
 
