@@ -236,28 +236,26 @@ export class PopulationManagement {
             options.memory.link = link.id;
         }
 
-        let result = spawn.smartSpawn(
-            PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable),
-            this.generateName(options.memory.role, spawn.name),
-            options
-        );
+        let name = this.generateName(options.memory.role, spawn.name);
+
+        let result = spawn.smartSpawn(PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable), name, options);
         if (result === OK) {
             if (currentMiner) {
                 currentMiner.memory.hasTTLReplacement = true;
             }
-            spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
+            spawn.room.memory.miningAssignments[assigment] = name;
         } else if (
             result === ERR_NOT_ENOUGH_ENERGY &&
             !spawn.room.find(FIND_MY_CREEPS).filter((creep) => creep.memory.role === Role.MINER).length &&
             (!spawn.room.storage || spawn.room.storage?.store[RESOURCE_ENERGY] < 1000)
         ) {
             let emergencyMinerBody = [WORK, WORK, MOVE];
-            result = spawn.smartSpawn(emergencyMinerBody, this.generateName(options.memory.role, spawn.name), options);
+            result = spawn.smartSpawn(emergencyMinerBody, name, options);
             if (result === OK) {
                 if (currentMiner) {
                     currentMiner.memory.hasTTLReplacement = true;
                 }
-                spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
+                spawn.room.memory.miningAssignments[assigment] = name;
             }
         }
 
@@ -293,15 +291,16 @@ export class PopulationManagement {
         };
 
         let minerBody = [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
+        let name = this.generateName(options.memory.role, spawn.name);
 
-        let result = spawn.smartSpawn(minerBody, this.generateName(options.memory.role, spawn.name), options);
+        let result = spawn.smartSpawn(minerBody, name, options);
         if (result === OK) {
-            spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = AssignmentStatus.ASSIGNED;
+            spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = name;
         } else if (result === ERR_NOT_ENOUGH_ENERGY && spawn.room.storage?.store[RESOURCE_ENERGY] < 1000) {
             let emergencyMinerBody = [WORK, WORK, MOVE, MOVE];
-            result = spawn.smartSpawn(emergencyMinerBody, this.generateName(options.memory.role, spawn.name), options);
+            result = spawn.smartSpawn(emergencyMinerBody, name, options);
             if (result === OK) {
-                spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = AssignmentStatus.ASSIGNED;
+                spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = name;
             }
         }
 
@@ -329,20 +328,21 @@ export class PopulationManagement {
             },
         };
 
+        let name = this.generateName(options.memory.role, spawn.name);
         let maxLevel = 15;
         let PARTS = PopulationManagement.createPartsArray([CARRY, WORK, MOVE, MOVE], spawn.room.energyCapacityAvailable, maxLevel);
         if (!Memory.rooms[spawn.room.name].remoteAssignments[assignment].needsConstruction) {
             PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 250, 9);
             PARTS.push(WORK, WORK, MOVE); // One WORK so creep can repair
         }
-        let result = spawn.spawnMax(PARTS, this.generateName(options.memory.role, spawn.name), options, maxLevel);
+        let result = spawn.spawnMax(PARTS, name, options, maxLevel);
 
         if (result === ERR_NOT_ENOUGH_ENERGY) {
-            result = spawn.spawnFirst(PARTS, this.generateName(options.memory.role, spawn.name), options, maxLevel);
+            result = spawn.spawnFirst(PARTS, name, options, maxLevel);
         }
 
         if (result === OK) {
-            spawn.room.memory.remoteAssignments[assignment].gatherer = AssignmentStatus.ASSIGNED;
+            spawn.room.memory.remoteAssignments[assignment].gatherer = name;
         }
 
         return result;
@@ -372,10 +372,11 @@ export class PopulationManagement {
         }
 
         const PARTS = [CLAIM, MOVE];
-        let result = spawn.spawnMax(PARTS, this.generateName(options.memory.role, spawn.name), options, maxSize);
+        let name = this.generateName(options.memory.role, spawn.name);
+        let result = spawn.spawnMax(PARTS, name, options, maxSize);
 
         if (result === OK) {
-            spawn.room.memory.remoteAssignments[assigment].reserver = AssignmentStatus.ASSIGNED;
+            spawn.room.memory.remoteAssignments[assigment].reserver = name;
         }
 
         return result;
@@ -681,9 +682,10 @@ export class PopulationManagement {
             },
         };
 
-        let result = spawn.spawnMax([WORK, WORK, MOVE], this.generateName(options.memory.role, spawn.name), options);
+        let name = this.generateName(options.memory.role, spawn.name);
+        let result = spawn.spawnMax([WORK, WORK, MOVE], name, options);
         if (result === OK) {
-            spawn.room.memory.mineralMiningAssignments[nextAvailableAssignment] = AssignmentStatus.ASSIGNED;
+            spawn.room.memory.mineralMiningAssignments[nextAvailableAssignment] = name;
         }
         return result;
     }

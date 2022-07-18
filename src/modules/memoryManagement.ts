@@ -17,6 +17,66 @@ export function manageMemory() {
     // }
 }
 
+export function validateAssignments() {
+    Object.keys(Memory.rooms).forEach((roomName) => {
+        let miningAssignments = Object.keys(Memory.rooms[roomName].miningAssignments);
+        miningAssignments.forEach((a) => {
+            if (
+                Memory.rooms[roomName].miningAssignments[a] !== AssignmentStatus.ASSIGNED &&
+                !Game.creeps[Memory.rooms[roomName].miningAssignments[a]]
+            ) {
+                Memory.rooms[roomName].miningAssignments[a] = AssignmentStatus.UNASSIGNED;
+            }
+        });
+
+        let mineralMiningAssignments = Object.keys(Memory.rooms[roomName].mineralMiningAssignments);
+        mineralMiningAssignments.forEach((a) => {
+            if (
+                Memory.rooms[roomName].mineralMiningAssignments[a] !== AssignmentStatus.ASSIGNED &&
+                !Game.creeps[Memory.rooms[roomName].mineralMiningAssignments[a]]
+            ) {
+                Memory.rooms[roomName].mineralMiningAssignments[a] = AssignmentStatus.UNASSIGNED;
+            }
+        });
+
+        let remoteRooms = Object.keys(Memory.rooms[roomName].remoteAssignments);
+        remoteRooms.forEach((remoteRoomName) => {
+            if (!Game.creeps[Memory.rooms[roomName].remoteAssignments[remoteRoomName].gatherer]) {
+                Memory.rooms[roomName].remoteAssignments[remoteRoomName].gatherer = AssignmentStatus.UNASSIGNED;
+            }
+
+            if (!Game.creeps[Memory.rooms[roomName].remoteAssignments[remoteRoomName].reserver]) {
+                Memory.rooms[roomName].remoteAssignments[remoteRoomName].reserver = AssignmentStatus.UNASSIGNED;
+            }
+
+            let remoteMiningAssignments = Object.keys(Memory.rooms[roomName].remoteAssignments[remoteRoomName].miners);
+            remoteMiningAssignments.forEach((pos) => {
+                if (!Game.creeps[Memory.rooms[roomName].remoteAssignments[remoteRoomName].miners[pos]]) {
+                    Memory.rooms[roomName].remoteAssignments[remoteRoomName].miners[pos] = AssignmentStatus.UNASSIGNED;
+                }
+            });
+        });
+
+        // Memory.rooms[roomName].remoteMiningRooms.forEach(remoteRoomName => {
+        //     if(!Game.creeps[Memory.remoteData[remoteRoomName].gatherer]){
+        //         Memory.remoteData[remoteRoomName].gatherer = AssignmentStatus.UNASSIGNED;
+        //     }
+
+        //     if(!Game.creeps[Memory.remoteData[remoteRoomName].miner]){
+        //         Memory.remoteData[remoteRoomName].miner = AssignmentStatus.UNASSIGNED;
+        //     }
+
+        //     if(Memory.remoteData[remoteRoomName].reserver && !Game.creeps[Memory.remoteData[remoteRoomName].reserver]){
+        //         Memory.remoteData[remoteRoomName].reserver = AssignmentStatus.UNASSIGNED;
+        //     }
+
+        //     if(Memory.remoteData[remoteRoomName].keeperExterminator && !Game.creeps[Memory.remoteData[remoteRoomName].keeperExterminator]){
+        //         Memory.remoteData[remoteRoomName].keeperExterminator = AssignmentStatus.UNASSIGNED;
+        //     }
+        // });
+    });
+}
+
 function handleDeadCreep(creepName: string) {
     let deadCreepMemory = Memory.creeps[creepName];
 

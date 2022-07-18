@@ -10,8 +10,8 @@ interface RoomMemory {
     gates: Gate[];
     repairSearchCooldown: number;
     repairQueue: Id<Structure<StructureConstant>>[];
-    miningAssignments: { [posString: string]: AssignmentStatus };
-    mineralMiningAssignments: { [posString: string]: AssignmentStatus };
+    miningAssignments: { [posString: string]: string };
+    mineralMiningAssignments: { [posString: string]: string };
     remoteAssignments: { [roomName: string]: RemoteAssignment };
     remoteMiningRooms?: string[];
     reservedEnergy?: number;
@@ -25,11 +25,11 @@ interface RoomMemory {
 interface RemoteData {
     reservationState?: RemoteRoomReservationStatus;
     miningPositions: string[];
-    miner: AssignmentStatus;
-    hauler: AssignmentStatus;
-    reserver?: AssignmentStatus;
+    miner: string;
+    gatherer: string;
+    reserver?: string;
     threatLevel: RemoteRoomThreatLevel;
-    keeperExterminator?: AssignmentStatus;
+    keeperExterminator?: string;
 }
 
 interface RoomData {
@@ -56,9 +56,9 @@ interface RemoteAssignment {
     energyStatus: EnergyStatus;
     state: RemoteMiningRoomState;
     controllerState: RemoteMiningRoomControllerState;
-    reserver: AssignmentStatus;
-    gatherer: AssignmentStatus;
-    miners: Map<string, AssignmentStatus>;
+    reserver: string;
+    gatherer: string;
+    miners: Map<string, string>;
 }
 
 interface Room {
@@ -90,8 +90,8 @@ const enum PhaseShiftStatus {
 }
 
 const enum AssignmentStatus {
-    UNASSIGNED = 0,
-    ASSIGNED,
+    UNASSIGNED = '',
+    ASSIGNED = 'ASSIGNED',
 }
 
 /**
