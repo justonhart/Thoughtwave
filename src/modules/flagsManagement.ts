@@ -1,6 +1,5 @@
 import { addHostileRoom, unclaimRoom } from './empireManagement';
 import { addOperation, findOperationOrigin } from './operationsManagement';
-import { PopulationManagement } from './populationManagement';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
