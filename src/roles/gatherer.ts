@@ -1,4 +1,5 @@
 import { getUsername } from '../modules/data';
+import { posFromMem } from '../modules/memoryManagement';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
@@ -121,6 +122,27 @@ export class Gatherer extends TransportCreep {
     }
 
     protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> {
-        return undefined;
+        let miningPositions = Object.keys(Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].miners);
+
+        let targets: { id: Id<Resource> | Id<Structure>; amount: number }[] = [];
+
+        miningPositions.forEach((posString) => {
+            let pos = posFromMem(posString);
+            let target: Id<Resource> | Id<Structure>;
+
+            let resource = pos.lookFor(LOOK_RESOURCES).shift();
+            if (resource) {
+                targets.push({ id: resource.id, amount: resource.amount });
+            }
+
+            let container: StructureContainer = pos
+                .lookFor(LOOK_STRUCTURES)
+                .find((s) => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
+            if (container && container.store.getUsedCapacity()) {
+                targets.push({ id: container.id, amount: container.store.getUsedCapacity() });
+            }
+        });
+
+        return targets.length ? targets.reduce((highest, next) => (highest.amount > next.amount ? highest : next))?.id : undefined;
     }
 }
