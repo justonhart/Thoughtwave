@@ -15,6 +15,28 @@ const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
     10: TOUGH,
 };
 
+const ROLE_TAG_MAP: { [key in Role]: string } = {
+    [Role.CLAIMER]: 'cl',
+    [Role.COLONIZER]: 'col',
+    [Role.DISTRIBUTOR]: 'd',
+    [Role.GATHERER]: 'g',
+    [Role.WORKER]: 'w',
+    [Role.GO]: 'go',
+    [Role.INTERSHARD_TRAVELLER]: 'i',
+    [Role.MANAGER]: 'mg',
+    [Role.MINERAL_MINER]: 'mm',
+    [Role.MINER]: 'm',
+    [Role.OPERATIVE]: 'o',
+    [Role.PROTECTOR]: 'p',
+    [Role.RAMPART_PROTECTOR]: 'rp',
+    [Role.RESERVER]: 'rs',
+    [Role.SCOUT]: 'sc',
+    [Role.SQUAD_ATTACKER]: 'a',
+    [Role.TRANSPORTER]: 't',
+    [Role.UPGRADER]: 'u',
+    [Role.REMOTE_MINER]: 'rm',
+};
+
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
         let workers = spawn.room.creeps.filter((creep) => creep.memory.role === Role.WORKER);
@@ -42,30 +64,28 @@ export class PopulationManagement {
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 15;
-        let tag = 'w';
         if (spawnUpgrader) {
             options.memory.role = Role.UPGRADER;
-            tag = 'u';
             options.boosts = [BoostType.UPGRADE];
             let result: ScreepsReturnCode;
 
             if (spawn.room.upgraderLink) {
                 let body = this.createPartsArray([WORK, WORK, WORK, CARRY, MOVE, MOVE], spawn.room.energyCapacityAvailable, 5);
-                result = spawn.smartSpawn(body, this.getCreepTag(tag, spawn.name), options);
+                result = spawn.smartSpawn(body, options);
             } else {
-                result = spawn.spawnMax([WORK, CARRY, MOVE], this.getCreepTag(tag, spawn.name), options);
+                result = spawn.spawnMax([WORK, CARRY, MOVE], options);
             }
 
             return result;
         } else if (canSupportAnotherWorker) {
-            let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
+            let result = spawn.spawnMax(WORKER_PART_BLOCK, options, creepLevelCap);
             return result;
         } else {
             //check to see if there are any creeps to replace w/ stronger models
             let maxSize = this.createPartsArray(WORKER_PART_BLOCK, spawn.room.energyCapacityAvailable, creepLevelCap).length;
             let creepToReplace = workers.find((creep) => creep.getActiveBodyparts(WORK) < maxSize / 3);
             if (creepToReplace) {
-                let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
+                let result = spawn.spawnMax(WORKER_PART_BLOCK, options, creepLevelCap);
                 if (result === OK) {
                     creepToReplace.suicide();
                 }
@@ -210,19 +230,13 @@ export class PopulationManagement {
             },
         };
 
-        let tag = 'm';
-
         let assigmentPos = posFromMem(assigment);
         let link = assigmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((s) => s.structureType === STRUCTURE_LINK) as StructureLink;
         if (link) {
             options.memory.link = link.id;
         }
 
-        let result = spawn.smartSpawn(
-            PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable),
-            this.getCreepTag(tag, spawn.name),
-            options
-        );
+        let result = spawn.smartSpawn(PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable), options);
         if (result === OK) {
             if (currentMiner) {
                 currentMiner.memory.hasTTLReplacement = true;
@@ -234,7 +248,7 @@ export class PopulationManagement {
             (!spawn.room.storage || spawn.room.storage?.store[RESOURCE_ENERGY] < 1000)
         ) {
             let emergencyMinerBody = [WORK, WORK, MOVE];
-            result = spawn.smartSpawn(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
+            result = spawn.smartSpawn(emergencyMinerBody, options);
             if (result === OK) {
                 if (currentMiner) {
                     currentMiner.memory.hasTTLReplacement = true;
@@ -274,16 +288,14 @@ export class PopulationManagement {
             },
         };
 
-        let tag = 'rm';
-
         let minerBody = [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
 
-        let result = spawn.smartSpawn(minerBody, this.getCreepTag(tag, spawn.name), options);
+        let result = spawn.smartSpawn(minerBody, options);
         if (result === OK) {
             spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = AssignmentStatus.ASSIGNED;
         } else if (result === ERR_NOT_ENOUGH_ENERGY && spawn.room.storage?.store[RESOURCE_ENERGY] < 1000) {
             let emergencyMinerBody = [WORK, WORK, MOVE, MOVE];
-            result = spawn.smartSpawn(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
+            result = spawn.smartSpawn(emergencyMinerBody, options);
             if (result === OK) {
                 spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = AssignmentStatus.ASSIGNED;
             }
@@ -324,8 +336,6 @@ export class PopulationManagement {
             },
         };
 
-        let tag = 'g';
-
         let maxLevel = 15;
         let PARTS = PopulationManagement.createPartsArray([CARRY, WORK, MOVE, MOVE], spawn.room.energyCapacityAvailable, maxLevel);
         if (!Memory.rooms[spawn.room.name].remoteAssignments[assignment].needsConstruction) {
@@ -335,10 +345,10 @@ export class PopulationManagement {
             PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 200, maxLevel);
             PARTS.push(CARRY, WORK, MOVE); // One WORK so creep can repair
         }
-        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, maxLevel);
+        let result = spawn.spawnMax(PARTS, options, maxLevel);
 
         if (result === ERR_NOT_ENOUGH_ENERGY) {
-            result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, maxLevel);
+            result = spawn.spawnFirst(PARTS, options, maxLevel);
         }
 
         if (result === OK) {
@@ -366,15 +376,13 @@ export class PopulationManagement {
             },
         };
 
-        let tag = 'rs';
-
         let maxSize = 2;
         if (spawn.room.memory.remoteAssignments[assigment].controllerState === RemoteMiningRoomControllerState.STABLE) {
             maxSize = 1;
         }
 
         const PARTS = [CLAIM, MOVE];
-        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, maxSize);
+        let result = spawn.spawnMax(PARTS, options, maxSize);
 
         if (result === OK) {
             spawn.room.memory.remoteAssignments[assigment].reserver = AssignmentStatus.ASSIGNED;
@@ -399,7 +407,7 @@ export class PopulationManagement {
             ...assignment.spawnOpts,
         };
 
-        let result = spawn.smartSpawn(assignment.body, this.getCreepTag('s', spawn.name), options);
+        let result = spawn.smartSpawn(assignment.body, options);
         if (result === OK) {
             const ASSIGNMENT_INDEX = Memory.spawnAssignments.findIndex((a) => a === assignment);
             Memory.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);
@@ -417,10 +425,10 @@ export class PopulationManagement {
         };
 
         const PARTS = [CARRY, CARRY, MOVE];
-        let result = spawn.spawnMax(PARTS, this.getCreepTag('d', spawn.name), options, 10);
+        let result = spawn.spawnMax(PARTS, options, 10);
 
         if (result === ERR_NOT_ENOUGH_ENERGY) {
-            result = spawn.spawnFirst(PARTS, this.getCreepTag('d', spawn.name), options, 10);
+            result = spawn.spawnFirst(PARTS, options, 10);
         }
 
         return result;
@@ -437,18 +445,12 @@ export class PopulationManagement {
         return 0;
     }
 
-    static getCreepTag(tag: string, spawnName: string): string {
-        return tag + Game.shard.name.slice(-1) + spawnName.substring(5) + Game.time.toString().slice(-4);
+    static generateName(role: Role, spawnName: string): string {
+        return ROLE_TAG_MAP[role] + Game.shard.name.slice(-1) + spawnName.substring(5) + Game.time.toString().slice(-4);
     }
 
     // spawn the largest creep possible as calculated with spawn.energyAvailable
-    static spawnFirst(
-        spawn: StructureSpawn,
-        partsBlock: BodyPartConstant[],
-        name: string,
-        opts?: SpawnOptions,
-        levelCap: number = 15
-    ): ScreepsReturnCode {
+    static spawnFirst(spawn: StructureSpawn, partsBlock: BodyPartConstant[], opts?: SpawnOptions, levelCap: number = 15): ScreepsReturnCode {
         let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
         let partsArray = [];
 
@@ -466,17 +468,11 @@ export class PopulationManagement {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
-        return spawn.smartSpawn(partsArray, name, opts);
+        return spawn.smartSpawn(partsArray, opts);
     }
 
     // spawn the largest creep possible as calculated with spawn.energyCapacityAvailable
-    static spawnMax(
-        spawn: StructureSpawn,
-        partsBlock: BodyPartConstant[],
-        name: string,
-        opts?: SpawnOptions,
-        levelCap: number = 15
-    ): ScreepsReturnCode {
+    static spawnMax(spawn: StructureSpawn, partsBlock: BodyPartConstant[], opts?: SpawnOptions, levelCap: number = 15): ScreepsReturnCode {
         let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
         let partsArray = [];
 
@@ -488,10 +484,10 @@ export class PopulationManagement {
             partsArray = partsArray.concat(partsBlock);
         }
 
-        return spawn.smartSpawn(partsArray, name, opts);
+        return spawn.smartSpawn(partsArray, opts);
     }
 
-    static smartSpawn(spawn: StructureSpawn, body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
+    static smartSpawn(spawn: StructureSpawn, body: BodyPartConstant[], opts?: SpawnOptions) {
         let partsArrayCost = body.length ? body.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost) : 0;
 
         if (partsArrayCost > spawn.room.energyAvailable - (spawn.room.memory.reservedEnergy ?? 0)) {
@@ -571,6 +567,8 @@ export class PopulationManagement {
 
         body = body.sort((a, b) => getSortValue(b) - getSortValue(a));
 
+        let name = this.generateName(opts?.memory?.role, spawn.name);
+
         let result = spawn.spawnCreep(body, name, opts);
 
         if (result !== OK) {
@@ -607,13 +605,11 @@ export class PopulationManagement {
             immobile = true;
         }
 
-        let name = this.getCreepTag('mg', spawn.name);
-
         if (immobile) {
-            return spawn.spawnMax([CARRY, CARRY], name, options, 8);
+            return spawn.spawnMax([CARRY, CARRY], options, 8);
         } else {
             let body = this.createPartsArray([CARRY, CARRY], spawn.room.energyCapacityAvailable, 8).concat([MOVE]);
-            return spawn.smartSpawn(body, name, options);
+            return spawn.smartSpawn(body, options);
         }
     }
 
@@ -685,7 +681,7 @@ export class PopulationManagement {
             },
         };
 
-        let result = spawn.spawnMax([WORK, WORK, MOVE], this.getCreepTag('m', spawn.name), options);
+        let result = spawn.spawnMax([WORK, WORK, MOVE], options);
         if (result === OK) {
             spawn.room.memory.mineralMiningAssignments[nextAvailableAssignment] = AssignmentStatus.ASSIGNED;
         }
