@@ -8,9 +8,9 @@ interface StructureSpawn {
     spawnManager(): ScreepsReturnCode;
     spawnWorker(): ScreepsReturnCode;
     spawnAssignedCreep(assignment: SpawnAssignment): ScreepsReturnCode;
-    spawnFirst(partsBlock: BodyPartConstant[], opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;
-    spawnMax(partsBlock: BodyPartConstant[], opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;
-    smartSpawn(body: BodyPartConstant[], opts?: SpawnOptions): ScreepsReturnCode;
+    spawnFirst(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;
+    spawnMax(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;
+    smartSpawn(body: BodyPartConstant[], name: string, opts?: SpawnOptions): ScreepsReturnCode;
 }
 
 interface SpawnOptions {

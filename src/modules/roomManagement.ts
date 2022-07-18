@@ -356,7 +356,7 @@ function runSpawning(room: Room) {
             },
         };
         let spawn = availableSpawns.pop();
-        spawn?.spawnMax([CARRY, CARRY, MOVE], options, 10);
+        spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
     }
 
     if (PopulationManagement.needsMiner(room) && !roomContainsViolentHostiles) {

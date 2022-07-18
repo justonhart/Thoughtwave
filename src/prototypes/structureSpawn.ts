@@ -28,16 +28,16 @@ StructureSpawn.prototype.spawnAssignedCreep = function (assignment: SpawnAssignm
     return PopulationManagement.spawnAssignedCreep(this, assignment);
 };
 
-StructureSpawn.prototype.spawnFirst = function (partsBlock: BodyPartConstant[], opts?: SpawnOptions, levelCap: number = 15) {
-    return PopulationManagement.spawnFirst(this, partsBlock, opts, levelCap);
+StructureSpawn.prototype.spawnFirst = function (partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap: number = 15) {
+    return PopulationManagement.spawnFirst(this, partsBlock, name, opts, levelCap);
 };
 
-StructureSpawn.prototype.spawnMax = function (partsBlock: BodyPartConstant[], opts?: SpawnOptions, levelCap: number = 15) {
-    return PopulationManagement.spawnMax(this, partsBlock, opts, levelCap);
+StructureSpawn.prototype.spawnMax = function (partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap: number = 15) {
+    return PopulationManagement.spawnMax(this, partsBlock, name, opts, levelCap);
 };
 
-StructureSpawn.prototype.smartSpawn = function (body: BodyPartConstant[], opts?: SpawnOptions) {
-    return PopulationManagement.smartSpawn(this, body, opts);
+StructureSpawn.prototype.smartSpawn = function (body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
+    return PopulationManagement.smartSpawn(this, name, body, opts);
 };
 
 StructureSpawn.prototype.spawnManager = function () {
