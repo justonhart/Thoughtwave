@@ -1,4 +1,5 @@
 import { PopulationManagement } from './populationManagement';
+import { getStoragePos } from './roomDesign';
 
 export function driveRemoteRoom(room: Room) {
     if (room.memory.remoteAssignments) {
@@ -147,4 +148,54 @@ function reassignIdleProtector(homeRoomName: string, targetRoomName: string): bo
         return true;
     }
     return false;
+}
+
+export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: string) {
+    let remoteRoom = Game.rooms[remoteRoomName];
+    if (remoteRoom) {
+        Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
+    }
+}
+
+export function findMiningPositions(controllingRoomName: string, remoteRoomName: string): string[] {
+    let controllingRoom = Game.rooms[controllingRoomName];
+    let remoteRoom = Game.rooms[remoteRoomName];
+
+    let harvestTargets: Source[] = remoteRoom.find(FIND_SOURCES);
+    let miningPositions: string[] = [];
+
+    harvestTargets.forEach((target) => {
+        const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
+        if (!path.incomplete) {
+            miningPositions.push(path.path.pop().toMemSafe());
+        }
+    });
+
+    return miningPositions;
+}
+
+export function calculateRemoteMinerWorkNeeded(roomName: string) {
+    let data = Memory.roomData[roomName];
+    let energyPotential = isCentralRoom(roomName) ? 4000 * 3 : 3000 * data.sourceCount;
+    let workNeeded = energyPotential / (HARVEST_POWER * 300);
+
+    return workNeeded > 5 ? workNeeded * 1.2 : workNeeded;
+}
+
+function isCentralRoom(roomName: string) {
+    return roomName
+        .replace(/[EW]/, '')
+        .replace(/[NS]/, '.')
+        .split('.')
+        .map((num) => parseInt(num) % 10 >= 4 && parseInt(num) % 10 <= 6)
+        .reduce((last, next) => last && next);
+}
+
+function monitorThreatLevel(room: Room) {
+    let creeps = room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
+    return creeps.some((c) => c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0)
+        ? RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
+        : creeps.length
+        ? RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS
+        : RemoteRoomThreatLevel.SAFE;
 }
