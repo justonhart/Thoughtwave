@@ -184,13 +184,25 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
     rooms = rooms.filter((room) => !room.path.incomplete);
 
     if (rooms.length) {
-        let highestLevel = Math.max(...rooms.map((room) => Game.rooms[room.name].controller.level));
-        const closestRoom = rooms
-            .filter((room) => Game.rooms[room.name].controller.level === highestLevel)
-            .reduce((best, next) => {
-                return next.path.cost <= best.path.cost ? next : best;
-            });
-        bestRoom = { roomName: closestRoom.name, cost: closestRoom.path.cost };
+        let closestRoom: { name: string; path: PathFinderPath };
+        let highestLevel: number;
+        switch (opts?.selectionCriteria) {
+            case OriginCriteria.CLOSEST:
+                closestRoom = rooms.reduce((best, next) => {
+                    return next.path.cost <= best.path.cost ? next : best;
+                });
+                bestRoom = { roomName: closestRoom.name, cost: closestRoom.path.cost };
+                break;
+            case OriginCriteria.HIGHEST_LEVEL:
+            default:
+                highestLevel = Math.max(...rooms.map((room) => Game.rooms[room.name].controller.level));
+                closestRoom = rooms
+                    .filter((room) => Game.rooms[room.name].controller.level === highestLevel)
+                    .reduce((best, next) => {
+                        return next.path.cost <= best.path.cost ? next : best;
+                    });
+                bestRoom = { roomName: closestRoom.name, cost: closestRoom.path.cost };
+        }
     }
 
     return bestRoom;

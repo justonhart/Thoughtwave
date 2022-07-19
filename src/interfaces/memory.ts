@@ -73,11 +73,17 @@ interface OriginOpts {
     maxLinearDistance?: number;
     multipleSpawns?: boolean;
     needsBoost?: boolean;
+    selectionCriteria?: OriginCriteria;
 }
 
 interface OriginResult {
     roomName: string;
     cost: number;
+}
+
+const enum OriginCriteria {
+    HIGHEST_LEVEL,
+    CLOSEST,
 }
 
 interface Squad {
