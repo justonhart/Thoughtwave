@@ -170,32 +170,45 @@ export class SquadManagement {
     }
 
     public static duoPathing(range: number) {
-        if (this.isSquadFatigued()) {
-            return;
-        }
+        if (this.onFirstCreep()) {
+            if (this.isSquadFatigued()) {
+                return;
+            }
 
-        if (this.forcedDestinations?.length) {
-            let nextDestination = this.forcedDestinations[0];
-            if (this.squadLeader.pos.toMemSafe() === nextDestination) {
-                Memory.empire.squads[this.squadId].forcedDestinations = this.forcedDestinations.slice(1);
-                nextDestination = this.forcedDestinations[0];
+            const path = this.squadLeader.memory._m.path;
+            if (path) {
+                if (path.length > 1) {
+                    // Diretion is always consumed one tick later so nextDirection is the second element
+                    this.nextDirection = parseInt(path[1], 10) as DirectionConstant;
+                } else {
+                    // on its last move
+                    this.nextDirection = parseInt(path[0], 10) as DirectionConstant;
+                }
             }
-            this.squadLeader.travelTo(posFromMem(nextDestination));
-        } else if (Game.flags.moveSquad?.pos?.roomName === this.assignment) {
-            // Manual Pathing
-            this.squadLeader.travelTo(Game.flags.moveSquad.pos);
-        } else if (this.squadLeader.pos.roomName !== this.assignment || this.squadFollower.pos.roomName !== this.assignment) {
-            this.squadLeader.travelToRoom(this.assignment);
-        } else if (this.getObstacleStructure()) {
-            return;
-        } else {
-            const target = this.findPathingTarget();
-            if (target instanceof Creep) {
-                this.squadLeader.travelTo(target, { range: range });
+
+            if (this.forcedDestinations?.length) {
+                let nextDestination = this.forcedDestinations[0];
+                if (this.squadLeader.pos.toMemSafe() === nextDestination) {
+                    Memory.empire.squads[this.squadId].forcedDestinations = this.forcedDestinations.slice(1);
+                    nextDestination = this.forcedDestinations[0];
+                }
+                this.squadLeader.travelTo(posFromMem(nextDestination));
+            } else if (Game.flags.squadMove?.pos?.roomName === this.assignment) {
+                // Manual Pathing
+                this.squadLeader.travelTo(Game.flags.squadMove.pos);
+            } else if (this.squadLeader.pos.roomName !== this.assignment || this.squadFollower.pos.roomName !== this.assignment) {
+                this.squadLeader.travelToRoom(this.assignment);
+            } else if (this.getObstacleStructure()) {
+                return;
+            } else {
+                const target = this.findPathingTarget();
+                if (target instanceof Creep) {
+                    this.squadLeader.travelTo(target, { range: range });
+                }
+                this.squadLeader.travelTo(target, { range: 1, ignoreStructures: true, customMatrixCosts: this.getDuoMatrix(this.squadLeader) });
             }
-            this.squadLeader.travelTo(target, { range: 1, ignoreStructures: true });
+            this.squadFollower.move(this.squadFollower.pos.getDirectionTo(this.squadLeader));
         }
-        this.squadFollower.move(this.squadFollower.pos.getDirectionTo(this.squadLeader));
     }
 
     private static findPathingTarget(): Structure {
@@ -242,15 +255,15 @@ export class SquadManagement {
             if (enemyStructure.length) {
                 return enemyStructure[0];
             }
-            if (!this.squadFollower.onEdge()) {
-                enemyStructure = Pathing.positionAtDirection(this.squadFollower.pos, this.nextDirection)
-                    .lookFor(LOOK_STRUCTURES)
-                    .filter((struct) => struct.structureType !== STRUCTURE_ROAD && struct.structureType !== STRUCTURE_CONTAINER);
-                if (enemyStructure.length) {
-                    return enemyStructure[0];
-                }
-            }
             if (this.isPartOfQuad()) {
+                if (!this.squadFollower.onEdge()) {
+                    enemyStructure = Pathing.positionAtDirection(this.squadFollower.pos, this.nextDirection)
+                        .lookFor(LOOK_STRUCTURES)
+                        .filter((struct) => struct.structureType !== STRUCTURE_ROAD && struct.structureType !== STRUCTURE_CONTAINER);
+                    if (enemyStructure.length) {
+                        return enemyStructure[0];
+                    }
+                }
                 if (!this.squadSecondLeader.onEdge()) {
                     enemyStructure = Pathing.positionAtDirection(this.squadSecondLeader.pos, this.nextDirection)
                         .lookFor(LOOK_STRUCTURES)
@@ -385,6 +398,34 @@ export class SquadManagement {
         }
     }
 
+    public static getDuoMatrix(creep: Creep): CustomMatrixCost[] {
+        const roomName = creep.room.name;
+        if (!global.duoMatrix) {
+            global.duoMatrix = {};
+        }
+        if (global.duoMatrix[roomName]) {
+            return global.duoMatrix[roomName];
+        }
+
+        const customCostMatrix: CustomMatrixCost[] = [];
+
+        Game.rooms[roomName]
+            .find(FIND_STRUCTURES)
+            .filter((structure) => structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL)
+            .forEach((blockade) => {
+                let cost = 25;
+                if (blockade.hits < 15000000) {
+                    cost += Math.floor(blockade.hits / 200000);
+                } else {
+                    cost += 75 + Math.floor(blockade.hits / 3000000);
+                }
+                customCostMatrix.push({ x: blockade.pos.x, y: blockade.pos.y, cost: cost });
+            });
+
+        global.duoMatrix[roomName] = customCostMatrix;
+        return global.duoMatrix[roomName];
+    }
+
     public static getQuadMatrix(
         creep: Creep,
         assignment: string,
@@ -424,6 +465,20 @@ export class SquadManagement {
                 maxX = 3;
                 directionToExit = 7;
             }
+        } else {
+            // Structure Cost
+            Game.rooms[roomName]
+                .find(FIND_STRUCTURES)
+                .filter((structure) => structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL)
+                .forEach((blockade) => {
+                    let cost = 25;
+                    if (blockade.hits < 15000000) {
+                        cost += Math.floor(blockade.hits / 200000);
+                    } else {
+                        cost += 75 + Math.floor(blockade.hits / 3000000);
+                    }
+                    customCostMatrix.push({ x: blockade.pos.x, y: blockade.pos.y, cost: cost });
+                });
         }
         // Orientation based matrix stuff
         const enableVisuals = false;

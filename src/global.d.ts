@@ -8,6 +8,8 @@ declare global {
     //key is made out of roomName + orientation + anchor
     var quadMatrix: { [key: string]: CustomMatrixCost[] };
 
+    var duoMatrix: { [key: string]: CustomMatrixCost[] };
+
     //resource maps to first qualifying purchase order
     var qualifyingMarketOrders: { [resource: string]: string };
 }
