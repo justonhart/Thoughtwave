@@ -112,7 +112,9 @@ function handleDeadCreep(creepName: string) {
     }
 
     if (deadCreepMemory.combat?.squadId) {
-        delete Memory.squads[deadCreepMemory.combat.squadId].members[deadCreepMemory.combat.squadMemberType];
+        if (Memory.squads?.[deadCreepMemory.combat.squadId]?.members?.[deadCreepMemory.combat.squadMemberType]) {
+            delete Memory.squads?.[deadCreepMemory.combat.squadId]?.members?.[deadCreepMemory.combat.squadMemberType];
+        }
     }
 
     delete Memory.creeps[creepName];
