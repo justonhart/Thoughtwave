@@ -332,8 +332,8 @@ export class PopulationManagement {
         let maxLevel = 15;
         let PARTS = PopulationManagement.createPartsArray([CARRY, WORK, MOVE, MOVE], spawn.room.energyCapacityAvailable, maxLevel);
         if (!Memory.rooms[spawn.room.name].remoteAssignments[assignment].needsConstruction) {
-            PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 250, 9);
-            PARTS.push(WORK, WORK, MOVE); // One WORK so creep can repair
+            PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9);
+            PARTS.push(WORK, WORK, CARRY, CARRY, MOVE);
         }
         let result = spawn.spawnMax(PARTS, name, options, maxLevel);
 
@@ -575,6 +575,9 @@ export class PopulationManagement {
         if (result !== OK) {
             console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
         } else {
+            spawn.room.memory.reservedEnergy != undefined
+                ? (spawn.room.memory.reservedEnergy += partsArrayCost)
+                : (spawn.room.memory.reservedEnergy = partsArrayCost);
             labTasksToAdd.forEach((task) => {
                 spawn.room.addLabTask(task);
             });
