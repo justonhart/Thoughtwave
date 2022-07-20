@@ -1,5 +1,4 @@
-import { filter } from 'lodash';
-import { cpuUsage } from 'process';
+import { CombatIntel } from './combatIntel';
 import { runLabs } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
@@ -110,8 +109,8 @@ export function driveRoom(room: Room) {
             }
         }
 
-        runTowers(room);
         const isHomeUnderAttack = runHomeSecurity(room);
+        runTowers(room, isHomeUnderAttack);
         if (!isHomeUnderAttack) {
             // Prioritize home defense
             driveRemoteRoom(room);
@@ -144,12 +143,13 @@ export function driveRoom(room: Room) {
     }
 }
 
-function runTowers(room: Room) {
+function runTowers(room: Room, isRoomUnderAttack: boolean) {
     // @ts-ignore
     let towers: StructureTower[] = room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_TOWER);
 
-    // Heal creeps in baseroom. Can be optimized to check how many towers need to heal one creep but usually this should not be needed anyway if our "room under attack" logic works properly.
-    let myHurtCreep = room.find(FIND_MY_CREEPS).find((creep) => creep.hits < creep.hitsMax);
+    let myHurtCreep = room
+        .find(FIND_MY_CREEPS)
+        .find((creep) => creep.hits < creep.hitsMax && (!isRoomUnderAttack || creep.memory.role === Role.RAMPART_PROTECTOR));
     if (myHurtCreep) {
         towers.forEach((tower) => tower.heal(myHurtCreep));
         return;
@@ -162,10 +162,23 @@ function runTowers(room: Room) {
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {
-    const hostileCreeps = homeRoom.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.playersToIgnore?.includes(creep.owner.username) });
+    const towerData = CombatIntel.getTowerCombatData(homeRoom, false);
+    const hostileCreepData = CombatIntel.getCreepCombatData(homeRoom, true);
+
+    if (hostileCreepData.heal < towerData.minDmg * hostileCreepData.dmgMultiplier) {
+        return; // Towers can handle it for sure
+    }
+
+    if (
+        homeRoom.memory.layout === RoomLayout.BUNKER &&
+        hostileCreepData.heal < CombatIntel.towerDamageAtRange(towerData, 12) * hostileCreepData.dmgMultiplier
+    ) {
+        return; // Closest Creeps in BunkerLayout have to be in a range of 12 if they want to hit the ramparts in any way
+    }
+
     let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
 
-    if (hostileCreeps.length >= minNumHostileCreeps) {
+    if (hostileCreepData.count >= minNumHostileCreeps) {
         // Spawn multiple rampartProtectors based on the number of enemy hostiles
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (!currentNumProtectors) {
@@ -174,6 +187,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 designee: homeRoom.name,
                 body: body,
                 spawnOpts: {
+                    boosts: [BoostType.RANGED_ATTACK],
                     memory: {
                         role: Role.RAMPART_PROTECTOR,
                         room: homeRoom.name,
@@ -183,7 +197,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 },
             });
         }
-        if (hostileCreeps.length >= 4 && currentNumProtectors - Math.floor(hostileCreeps.length / 2) < 0) {
+        if (hostileCreepData.count >= 4 && currentNumProtectors - Math.floor(hostileCreepData.count / 2) < 0) {
             console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
             const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
@@ -191,6 +205,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 designee: homeRoom.name,
                 body: attackerBody,
                 spawnOpts: {
+                    boosts: [BoostType.ATTACK],
                     memory: {
                         role: Role.RAMPART_PROTECTOR,
                         room: homeRoom.name,
@@ -205,6 +220,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 designee: homeRoom.name,
                 body: rangedBody,
                 spawnOpts: {
+                    boosts: [BoostType.RANGED_ATTACK],
                     memory: {
                         role: Role.RAMPART_PROTECTOR,
                         room: homeRoom.name,
