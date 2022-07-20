@@ -26,7 +26,7 @@ export class Gatherer extends TransportCreep {
             this.runCollectionJob(target);
         } else if (target instanceof StructureStorage) {
             if (this.store.energy) {
-                if (!this.shouldBuildRoad() || (this.shouldBuildRoad && this.roadIsFull())) {
+                if (!this.shouldBuildRoad() || this.roadIsFull()) {
                     this.storeCargo();
                 } else {
                     this.maintainRoad();
