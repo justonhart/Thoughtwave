@@ -2,7 +2,7 @@ import { posFromMem } from '../modules/memoryManagement';
 
 export class WaveCreep extends Creep {
     private static priorityQueue: Map<string, (creep: Creep) => void> = new Map();
-
+    public previousTargetId: string;
     public drive() {
         if (this.memory.needsBoosted) {
             this.getNextBoost();
@@ -26,6 +26,10 @@ export class WaveCreep extends Creep {
             }
         } else {
             this.run();
+            if (this.previousTargetId) {
+                // For now simply for refillJob to enable instantly refill and move to the next target in the same tick
+                this.run();
+            }
         }
     }
 
@@ -44,6 +48,7 @@ export class WaveCreep extends Creep {
                     this.memory.gathering = true;
                 case OK:
                 case ERR_FULL:
+                    this.previousTargetId = this.memory.targetId; // TODO: can be added to "onTaskFinished" if all "findMethods" properly search for the new target
                     this.onTaskFinished();
                     break;
             }
