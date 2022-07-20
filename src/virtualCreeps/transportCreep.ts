@@ -36,6 +36,7 @@ export class TransportCreep extends WaveCreep {
 
     //gather energy to distribute
     protected gatherEnergy(): void {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         if (this.homeroom.storage?.store[RESOURCE_ENERGY]) {
             let result = this.withdraw(this.homeroom.storage, RESOURCE_ENERGY);
             switch (result) {
