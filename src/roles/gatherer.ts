@@ -111,6 +111,7 @@ export class Gatherer extends TransportCreep {
     private shouldBuildRoad(): boolean {
         return (
             !this.onEdge() &&
+            !this.memory._m?.repath &&
             (!this.room.controller?.owner ||
                 this.room.controller?.reservation?.username === getUsername() ||
                 (this.room.controller?.owner?.username === getUsername() &&
