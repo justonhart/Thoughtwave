@@ -91,6 +91,7 @@ export class Pathing {
 
         if (destination.toMemSafe() !== creep.memory._m.destination) {
             delete creep.memory._m.path;
+            creep.memory._m.repath = 0;
             creep.memory._m.destination = destination.toMemSafe();
         }
 
@@ -313,7 +314,7 @@ export class Pathing {
     /**
      * Create proper costMatrix for each room
      * @param originRoom -
-     * @param destionationRoom -
+     * @param destination -
      * @param options -
      * @returns -
      */
