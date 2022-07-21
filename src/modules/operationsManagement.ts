@@ -489,7 +489,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
     if (!hasSecondSquadLeader) {
         Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
+            body: PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(MOVE, bodyA, bodyB)
             ),
             spawnOpts: {
@@ -503,7 +503,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_SECOND_LEADER,
                     },
                 },
-                boosts: [BoostType.HEAL],
+                boosts: [BoostType.DISMANTLE],
             },
         });
     }
@@ -534,6 +534,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
                     },
                 },
+                boosts: [BoostType.HEAL],
             },
         });
     }
@@ -564,6 +565,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_SECOND_FOLLOWER,
                     },
                 },
+                boosts: [BoostType.HEAL],
             },
         });
     }
