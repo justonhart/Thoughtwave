@@ -579,7 +579,6 @@ export class SquadManagement {
             this.isFleeing = true;
         }
 
-        // --- QUADS
         const range = this.currentCreep.getActiveBodyparts(RANGED_ATTACK) ? 2 : 1;
         if (this.isPartOfQuad()) {
             if (!this.isFleeing && !this.closeToTargetRoom()) {
@@ -760,7 +759,7 @@ export class SquadManagement {
         ).length;
         if (this.creepRunCount === numSquadMembers) {
             this.creepRunCount = 0;
-            if (!this.missingCreeps() && this.isInFormation()) {
+            if (!this.missingCreeps() && (this.isInDuoFormation() || this.isInFormation())) {
                 if (this.orientation) {
                     Memory.empire.squads[this.squadId].orientation = this.orientation;
                 }
