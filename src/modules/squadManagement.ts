@@ -15,11 +15,10 @@ export class SquadManagement {
     private static orientation: TOP | RIGHT | BOTTOM | LEFT;
     private static anchor: RIGHT | LEFT; // relative position (clockwise)
     private static nextDirection: DirectionConstant;
-    private static creepRunCount: number = 0; // keep track of how many creeps in squad already ran this logic
+    private static creepRunCount: { [squadId: string]: number }; // keep track of how many creeps in squad already ran this logic
     private static targetStructure: Id<Structure>;
 
     public static setup(creep: CombatCreep) {
-        this.creepRunCount++;
         this.isFleeing = false;
         this.squadId = creep.memory.combat.squadId;
         this.currentCreep = creep;
@@ -30,7 +29,13 @@ export class SquadManagement {
         if (!this.targetStructure) {
             this.targetStructure = Memory.empire.squads[this.squadId].targetStructure;
         }
-        // Memory Management
+        if (!this.creepRunCount) {
+            this.creepRunCount = {};
+        }
+        if (!this.creepRunCount[this.squadId]) {
+            this.creepRunCount[this.squadId] = 0;
+        }
+        this.creepRunCount[this.squadId]++;
         if (!Memory.empire.squads[this.squadId].members) {
             Memory.empire.squads[this.squadId].members = {};
         }
@@ -58,7 +63,7 @@ export class SquadManagement {
     }
 
     private static onFirstCreep(): boolean {
-        return this.creepRunCount === 1;
+        return this.creepRunCount[this.squadId] === 1;
     }
 
     public static getInFormation(): boolean {
@@ -757,8 +762,7 @@ export class SquadManagement {
         const numSquadMembers = [this.squadLeader, this.squadFollower, this.squadSecondLeader, this.squadSecondFollower].filter(
             (member) => !!member
         ).length;
-        if (this.creepRunCount === numSquadMembers) {
-            this.creepRunCount = 0;
+        if (this.creepRunCount[this.squadId] === numSquadMembers) {
             if (!this.missingCreeps() && (this.isInDuoFormation() || this.isInFormation())) {
                 if (this.orientation) {
                     Memory.empire.squads[this.squadId].orientation = this.orientation;
