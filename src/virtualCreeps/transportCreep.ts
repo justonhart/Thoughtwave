@@ -23,6 +23,7 @@ export class TransportCreep extends WaveCreep {
             if (this.store.energy) {
                 this.runRefillJob(target);
             } else {
+                delete this.memory.targetId;
                 this.gatherEnergy();
             }
         } else if (target instanceof StructureStorage) {
