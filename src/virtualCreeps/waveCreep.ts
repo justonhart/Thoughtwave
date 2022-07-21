@@ -78,7 +78,7 @@ export class WaveCreep extends Creep {
     }
 
     protected onTaskFinished(): void {
-        this.memory.currentTaskPriority = Priority.LOW;
+        delete this.memory.currentTaskPriority;
         delete this.memory.targetId;
     }
 
