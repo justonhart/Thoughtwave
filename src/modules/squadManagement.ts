@@ -744,8 +744,13 @@ export class SquadManagement {
         });
 
         if (targetCreep.hits === targetCreep.hitsMax) {
+            const lastHealingTarget = Game.creeps[this.currentCreep.memory.combat.healingTarget];
+            if (lastHealingTarget) {
+                return lastHealingTarget;
+            }
             return this.currentCreep;
         }
+        this.currentCreep.memory.combat.healingTarget = targetCreep.name;
         return targetCreep;
     }
 
