@@ -14,7 +14,7 @@ export class SquadManagement {
     public static isFleeing: boolean;
     private static orientation: TOP | RIGHT | BOTTOM | LEFT;
     private static anchor: RIGHT | LEFT; // relative position (clockwise)
-    private static nextDirection: DirectionConstant;
+    private static nextDirection: { [squadId: string]: DirectionConstant };
     private static creepRunCount: { [squadId: string]: number }; // keep track of how many creeps in squad already ran this logic
     private static targetStructure: Id<Structure>;
 
@@ -28,6 +28,9 @@ export class SquadManagement {
         this.anchor = Memory.empire.squads[this.squadId].anchor;
         if (!this.targetStructure) {
             this.targetStructure = Memory.empire.squads[this.squadId].targetStructure;
+        }
+        if (!this.nextDirection) {
+            this.nextDirection = {};
         }
         if (!this.creepRunCount) {
             this.creepRunCount = {};
@@ -184,10 +187,10 @@ export class SquadManagement {
             if (path) {
                 if (path.length > 1) {
                     // Diretion is always consumed one tick later so nextDirection is the second element
-                    this.nextDirection = parseInt(path[1], 10) as DirectionConstant;
+                    this.nextDirection[this.squadId] = parseInt(path[1], 10) as DirectionConstant;
                 } else {
                     // on its last move
-                    this.nextDirection = parseInt(path[0], 10) as DirectionConstant;
+                    this.nextDirection[this.squadId] = parseInt(path[0], 10) as DirectionConstant;
                 }
             }
 
@@ -254,7 +257,7 @@ export class SquadManagement {
      */
     public static getObstacleStructure(): Structure {
         if (!this.currentCreep.onEdge() && this.nextDirection && !this.missingCreeps()) {
-            let enemyStructure = Pathing.positionAtDirection(this.squadLeader.pos, this.nextDirection)
+            let enemyStructure = Pathing.positionAtDirection(this.squadLeader.pos, this.nextDirection[this.squadId])
                 .lookFor(LOOK_STRUCTURES)
                 .filter((struct) => struct.structureType !== STRUCTURE_ROAD && struct.structureType !== STRUCTURE_CONTAINER);
             if (enemyStructure.length) {
@@ -262,7 +265,7 @@ export class SquadManagement {
             }
             if (this.isPartOfQuad()) {
                 if (!this.squadFollower.onEdge()) {
-                    enemyStructure = Pathing.positionAtDirection(this.squadFollower.pos, this.nextDirection)
+                    enemyStructure = Pathing.positionAtDirection(this.squadFollower.pos, this.nextDirection[this.squadId])
                         .lookFor(LOOK_STRUCTURES)
                         .filter((struct) => struct.structureType !== STRUCTURE_ROAD && struct.structureType !== STRUCTURE_CONTAINER);
                     if (enemyStructure.length) {
@@ -270,14 +273,14 @@ export class SquadManagement {
                     }
                 }
                 if (!this.squadSecondLeader.onEdge()) {
-                    enemyStructure = Pathing.positionAtDirection(this.squadSecondLeader.pos, this.nextDirection)
+                    enemyStructure = Pathing.positionAtDirection(this.squadSecondLeader.pos, this.nextDirection[this.squadId])
                         .lookFor(LOOK_STRUCTURES)
                         .filter((struct) => struct.structureType !== STRUCTURE_ROAD && struct.structureType !== STRUCTURE_CONTAINER);
                     if (enemyStructure.length) {
                         return enemyStructure[0];
                     }
                 }
-                enemyStructure = Pathing.positionAtDirection(this.squadSecondFollower.pos, this.nextDirection)
+                enemyStructure = Pathing.positionAtDirection(this.squadSecondFollower.pos, this.nextDirection[this.squadId])
                     .lookFor(LOOK_STRUCTURES)
                     .filter((struct) => struct.structureType !== STRUCTURE_ROAD && struct.structureType !== STRUCTURE_CONTAINER);
                 if (enemyStructure.length) {
@@ -346,8 +349,8 @@ export class SquadManagement {
     }
 
     private static moveSquad(): void {
-        this.nextDirection = parseInt(this.squadLeader.memory._m.path[0], 10) as DirectionConstant;
-        const directionDiff = Math.abs(this.orientation - this.nextDirection);
+        this.nextDirection[this.squadId] = parseInt(this.squadLeader.memory._m.path[0], 10) as DirectionConstant;
+        const directionDiff = Math.abs(this.orientation - this.nextDirection[this.squadId]);
         // swap in x shape to keep anchor in same location (180°)
         if (directionDiff === 5) {
             this.squadLeader.move(this.squadLeader.pos.getDirectionTo(this.squadSecondFollower));
@@ -362,7 +365,7 @@ export class SquadManagement {
         // rotate in new direction and recalculate path from new direction
         if (directionDiff >= 2) {
             if (directionDiff > 4 && 8 - directionDiff >= 2) {
-                if (this.orientation - this.nextDirection > 0) {
+                if (this.orientation - this.nextDirection[this.squadId] > 0) {
                     this.rotate('clockwise');
                 } else {
                     this.rotate('counterclockwise');
@@ -370,7 +373,7 @@ export class SquadManagement {
                 delete this.squadLeader.memory._m.path;
                 return;
             } else if (directionDiff < 4) {
-                if (this.orientation - this.nextDirection > 0) {
+                if (this.orientation - this.nextDirection[this.squadId] > 0) {
                     this.rotate('counterclockwise');
                 } else {
                     this.rotate('clockwise');
@@ -385,21 +388,21 @@ export class SquadManagement {
         }
 
         let lookObject = [];
-        let newRoomPos = Pathing.positionAtDirection(this.squadLeader.pos, this.nextDirection);
+        let newRoomPos = Pathing.positionAtDirection(this.squadLeader.pos, this.nextDirection[this.squadId]);
         if (newRoomPos) {
             lookObject.push(this.squadLeader.room.lookAt(newRoomPos.x, newRoomPos.y));
         }
-        newRoomPos = Pathing.positionAtDirection(this.squadSecondLeader.pos, this.nextDirection);
+        newRoomPos = Pathing.positionAtDirection(this.squadSecondLeader.pos, this.nextDirection[this.squadId]);
         if (newRoomPos) {
             lookObject.push(this.squadSecondLeader.room.lookAt(newRoomPos.x, newRoomPos.y));
         }
 
         if (!lookObject.some((look) => look.terrain === TERRAIN_MASK_WALL)) {
             this.squadLeader.memory._m.path = this.squadLeader.memory._m.path.slice(1);
-            this.squadLeader.move(this.nextDirection);
-            this.squadFollower.move(this.nextDirection);
-            this.squadSecondLeader.move(this.nextDirection);
-            this.squadSecondFollower.move(this.nextDirection);
+            this.squadLeader.move(this.nextDirection[this.squadId]);
+            this.squadFollower.move(this.nextDirection[this.squadId]);
+            this.squadSecondLeader.move(this.nextDirection[this.squadId]);
+            this.squadSecondFollower.move(this.nextDirection[this.squadId]);
         }
     }
 
