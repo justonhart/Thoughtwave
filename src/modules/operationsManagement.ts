@@ -401,6 +401,7 @@ function manageAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_LEADER,
                     },
                 },
+                boosts: [BoostType.DISMANTLE],
             },
         });
     }
@@ -417,8 +418,8 @@ function manageAttackRoomOperation(op: Operation) {
     if (!hasSquadHealer) {
         Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE, HEAL, MOVE], originRoom.energyCapacityAvailable, 12).sort(
-                (bodyA, bodyB) => sortByBodyPart(HEAL, bodyA, bodyB)
+            body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
+                sortByBodyPart(HEAL, bodyA, bodyB)
             ),
             spawnOpts: {
                 memory: {
@@ -431,6 +432,7 @@ function manageAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
                     },
                 },
+                boosts: [BoostType.HEAL],
             },
         });
     }
@@ -456,7 +458,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
     if (!hasSquadLeader) {
         Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
+            body: PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(MOVE, bodyA, bodyB)
             ),
             spawnOpts: {
@@ -470,6 +472,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_LEADER,
                     },
                 },
+                boosts: [BoostType.DISMANTLE],
             },
         });
     }
@@ -486,7 +489,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
     if (!hasSecondSquadLeader) {
         Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
+            body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(MOVE, bodyA, bodyB)
             ),
             spawnOpts: {
@@ -500,6 +503,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_SECOND_LEADER,
                     },
                 },
+                boosts: [BoostType.HEAL],
             },
         });
     }
