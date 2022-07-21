@@ -175,7 +175,7 @@ export class SquadManagement {
                 return;
             }
 
-            const path = this.squadLeader.memory._m.path;
+            const path = this.squadLeader.memory._m?.path;
             if (path) {
                 if (path.length > 1) {
                     // Diretion is always consumed one tick later so nextDirection is the second element

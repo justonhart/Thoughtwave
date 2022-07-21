@@ -129,7 +129,13 @@ export class SquadAttacker extends CombatCreep {
                 });
             }
             if (!target) {
-                target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES);
+                target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+                    filter: (s) =>
+                        s.structureType !== STRUCTURE_STORAGE &&
+                        s.structureType !== STRUCTURE_TERMINAL &&
+                        s.structureType !== STRUCTURE_LAB &&
+                        s.structureType !== STRUCTURE_NUKER,
+                });
             }
             return target;
         }
