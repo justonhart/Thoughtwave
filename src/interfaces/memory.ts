@@ -83,8 +83,11 @@ interface Squad {
     members?: SquadMembers;
     forcedDestinations?: string[];
     assignment: string; // RoomName
+    nextDirection?: DirectionConstant;
+    isFleeing?: boolean;
     orientation?: TOP | RIGHT | BOTTOM | LEFT;
     anchor?: RIGHT | LEFT; // squadLeaders relative position (clockwise)
+    lastRun?: number; // Game tick when squad logic was last executed (enables certain logic to only run once per squad)
     targetStructure?: Id<Structure>;
 }
 
