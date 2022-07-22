@@ -543,7 +543,7 @@ export class SquadManagement {
                             }
 
                             if (x < 49) {
-                                avoid = Pathing.positionAtDirection(new RoomPosition(x + 1, y, roomName), anchor === LEFT ? BOTTOM : TOP);
+                                avoid = Pathing.positionAtDirection(new RoomPosition(x + 1, y, roomName), anchor === RIGHT ? BOTTOM : TOP);
                                 if (avoid && terrain.get(avoid.x, avoid.y) !== TERRAIN_MASK_WALL) {
                                     customCostMatrix.push({ x: avoid.x, y: avoid.y, cost: 255 });
                                     SquadManagement.showVisuals(enableVisuals, new RoomPosition(avoid.x, avoid.y, roomName));
