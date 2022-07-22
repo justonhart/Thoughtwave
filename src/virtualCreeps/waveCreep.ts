@@ -2,7 +2,6 @@ import { posFromMem } from '../modules/memoryManagement';
 
 export class WaveCreep extends Creep {
     private static priorityQueue: Map<string, (creep: Creep) => void> = new Map();
-    public previousTargetId: string;
     public drive() {
         if (this.memory.needsBoosted) {
             this.getNextBoost();
@@ -26,35 +25,11 @@ export class WaveCreep extends Creep {
             }
         } else {
             this.run();
-            if (this.previousTargetId) {
-                // For now simply for refillJob to enable instantly refill and move to the next target in the same tick
-                this.run();
-            }
         }
     }
 
     protected run() {
         this.say(`Running ${this.name}`);
-    }
-
-    protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage | StructureLab) {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
-        if (target.store.getFreeCapacity(RESOURCE_ENERGY)) {
-            switch (this.transfer(target, RESOURCE_ENERGY)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { range: 1 });
-                    break;
-                case ERR_NOT_ENOUGH_RESOURCES:
-                    this.memory.gathering = true;
-                case OK:
-                case ERR_FULL:
-                    this.previousTargetId = this.memory.targetId; // TODO: can be added to "onTaskFinished" if all "findMethods" properly search for the new target
-                    this.onTaskFinished();
-                    break;
-            }
-        } else {
-            this.onTaskFinished();
-        }
     }
 
     protected storeCargo() {

@@ -75,7 +75,7 @@ export class WorkerCreep extends WaveCreep {
         }
     }
 
-    findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
+    protected findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
         if (this.room.storage?.store[RESOURCE_ENERGY]) {
             return this.room.storage.id;
         }
