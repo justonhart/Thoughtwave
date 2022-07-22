@@ -46,6 +46,7 @@ interface ScoutMemory {
 
 interface CombatMemory {
     flee?: boolean;
+    healingTarget?: string;
     squadId?: string;
     squadMemberType?: SquadMemberType;
 }
