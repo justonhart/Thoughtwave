@@ -207,9 +207,14 @@ export class SquadManagement {
             } else {
                 const target = this.findPathingTarget();
                 if (target instanceof Creep) {
-                    this.squadLeader.travelTo(target, { range: range });
+                    this.squadLeader.travelTo(target, { range: range, maxRooms: 1 });
                 } else {
-                    this.squadLeader.travelTo(target, { range: 1, ignoreStructures: true, customMatrixCosts: this.getDuoMatrix(this.squadLeader) });
+                    this.squadLeader.travelTo(target, {
+                        range: 1,
+                        ignoreStructures: true,
+                        maxRooms: 1,
+                        customMatrixCosts: this.getDuoMatrix(this.squadLeader),
+                    });
                 }
             }
             this.squadFollower.move(this.squadFollower.pos.getDirectionTo(this.squadLeader));
