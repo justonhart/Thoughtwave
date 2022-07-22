@@ -71,10 +71,7 @@ export class SquadAttacker extends CombatCreep {
                     return enemyStructure[0];
                 }
             }
-            const obstacleStructure = sq.getObstacleStructure();
-            if (obstacleStructure) {
-                return obstacleStructure;
-            }
+
             let target: any;
             if (!target) {
                 target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
@@ -86,6 +83,12 @@ export class SquadAttacker extends CombatCreep {
                     filter: (struct) => struct.structureType === STRUCTURE_SPAWN,
                 });
             }
+
+            const obstacleStructure = sq.getObstacleStructure();
+            if (obstacleStructure && (!target || this.pos.getRangeTo(target) > range)) {
+                return obstacleStructure;
+            }
+
             if (!target) {
                 target = this.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
             }
@@ -116,10 +119,6 @@ export class SquadAttacker extends CombatCreep {
                 }
             }
 
-            const obstacleStructure = sq.getObstacleStructure();
-            if (obstacleStructure) {
-                return obstacleStructure;
-            }
             let target: any;
             if (!target) {
                 target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
@@ -135,6 +134,11 @@ export class SquadAttacker extends CombatCreep {
                 target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
                     filter: (struct) => struct.structureType === STRUCTURE_KEEPER_LAIR,
                 });
+            }
+
+            const obstacleStructure = sq.getObstacleStructure();
+            if (obstacleStructure && (!target || this.pos.getRangeTo(target) > 1)) {
+                return obstacleStructure;
             }
             return target;
         }
