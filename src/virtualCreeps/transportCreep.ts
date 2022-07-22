@@ -1,7 +1,22 @@
 import { WaveCreep } from './waveCreep';
 
 export class TransportCreep extends WaveCreep {
+    private recursed: boolean = false;
+    private previousTargetId: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
     protected run() {
+        if (this.memory.gathering === true) {
+            this.gatherEnergy();
+        } else {
+            this.runTransporterTasks();
+        }
+
+        if (!this.recursed) {
+            this.recursed = true;
+            this.run();
+        }
+    }
+
+    private runTransporterTasks() {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (!target && !this.memory.labRequests?.length) {
             this.memory.targetId = this.findTarget();
@@ -20,12 +35,7 @@ export class TransportCreep extends WaveCreep {
             target instanceof StructureTower ||
             target instanceof StructureLab
         ) {
-            if (this.store.energy) {
-                this.runRefillJob(target);
-            } else {
-                delete this.memory.targetId;
-                this.gatherEnergy();
-            }
+            this.runRefillJob(target);
         } else if (target instanceof StructureStorage) {
             this.storeCargo();
         }
@@ -35,20 +45,124 @@ export class TransportCreep extends WaveCreep {
         this.say('targeting');
     }
 
+    protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage | StructureLab) {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
+        let targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
+        if (targetFreeCapacity) {
+            switch (this.transfer(target, RESOURCE_ENERGY)) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(target, { range: 1 });
+                    break;
+                case ERR_NOT_ENOUGH_RESOURCES:
+                    this.memory.gathering = true;
+                case ERR_FULL:
+                    this.onTaskFinished();
+                    break;
+                case OK:
+                    this.onTaskFinished();
+                    if (target.store.getFreeCapacity(RESOURCE_ENERGY) >= this.store.energy) {
+                        this.memory.gathering = true;
+                    }
+                    break;
+            }
+        } else {
+            this.onTaskFinished();
+        }
+    }
+
     //gather energy to distribute
     protected gatherEnergy(): void {
         this.memory.currentTaskPriority = Priority.MEDIUM;
-        if (this.homeroom.storage?.store[RESOURCE_ENERGY]) {
-            let result = this.withdraw(this.homeroom.storage, RESOURCE_ENERGY);
-            switch (result) {
+
+        let target = Game.getObjectById(this.memory.energySource);
+        if (!target) {
+            this.memory.energySource = this.findEnergySource();
+            target = Game.getObjectById(this.memory.energySource);
+        }
+
+        if (target instanceof StructureStorage) {
+            switch (this.withdraw(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(this.homeroom.storage, { range: 1 });
+                    this.travelTo(target, { range: 1 });
                     break;
                 case 0:
-                    this.memory.gathering = false;
+                    this.stopGathering();
                     break;
             }
+
+            return;
         }
+
+        if (target instanceof StructureContainer) {
+            switch (this.withdraw(target, RESOURCE_ENERGY)) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(target, { range: 1 });
+                    break;
+                case 0:
+                    this.stopGathering();
+                    break;
+            }
+
+            return;
+        }
+
+        if (target instanceof Ruin) {
+            switch (this.withdraw(target, RESOURCE_ENERGY)) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(target, { ignoreCreeps: true, range: 1 });
+                    break;
+                case 0:
+                    this.stopGathering();
+                    break;
+            }
+
+            return;
+        }
+
+        if (target instanceof Resource) {
+            switch (this.pickup(target)) {
+                case ERR_NOT_IN_RANGE:
+                    this.travelTo(target, { ignoreCreeps: true, range: 1 });
+                    break;
+                case 0:
+                    this.stopGathering();
+                    break;
+            }
+
+            return;
+        }
+    }
+
+    protected findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
+        if (this.room.storage?.store[RESOURCE_ENERGY]) {
+            return this.room.storage.id;
+        }
+
+        let nonStorageSources: (Ruin | Resource | Structure)[];
+
+        let ruins = this.room.find(FIND_RUINS, {
+            filter: (r) => {
+                return r.store[RESOURCE_ENERGY];
+            },
+        });
+
+        let looseEnergyStacks = this.room
+            .find(FIND_DROPPED_RESOURCES)
+            .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
+
+        let containers = this.room
+            .find(FIND_STRUCTURES)
+            .filter((str) => str.structureType === STRUCTURE_CONTAINER && str.store.energy >= this.store.getCapacity());
+
+        nonStorageSources = [...ruins, ...looseEnergyStacks, ...containers];
+        if (nonStorageSources.length) {
+            return this.pos.findClosestByRange(nonStorageSources).id;
+        }
+    }
+
+    protected stopGathering() {
+        this.memory.gathering = false;
+        delete this.memory.energySource;
     }
 
     protected findRefillTarget(): Id<Structure> {
@@ -242,5 +356,11 @@ export class TransportCreep extends WaveCreep {
 
         this.memory.labRequests = this.homeroom.memory.labRequests.splice(0, i);
         this.memory.gatheringLabResources = true;
+    }
+
+    protected onTaskFinished(): void {
+        this.previousTargetId = this.memory.targetId;
+        delete this.memory.currentTaskPriority;
+        delete this.memory.targetId;
     }
 }
