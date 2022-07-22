@@ -85,6 +85,7 @@ export class TransportCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1 });
                     break;
+                case ERR_FULL:
                 case 0:
                     this.stopGathering();
                     break;
@@ -98,6 +99,7 @@ export class TransportCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1 });
                     break;
+                case ERR_FULL:
                 case 0:
                     this.stopGathering();
                     break;
@@ -111,6 +113,7 @@ export class TransportCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { ignoreCreeps: true, range: 1 });
                     break;
+                case ERR_FULL:
                 case 0:
                     this.stopGathering();
                     break;
@@ -124,6 +127,7 @@ export class TransportCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { ignoreCreeps: true, range: 1 });
                     break;
+                case ERR_FULL:
                 case 0:
                     this.stopGathering();
                     break;
