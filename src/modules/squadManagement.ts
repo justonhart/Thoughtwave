@@ -231,7 +231,12 @@ export class SquadManagement {
             }
             if (!target) {
                 target = this.squadLeader.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
-                    filter: (struct) => struct.structureType !== STRUCTURE_KEEPER_LAIR,
+                    filter: (struct) =>
+                        struct.structureType !== STRUCTURE_KEEPER_LAIR &&
+                        struct.structureType !== STRUCTURE_LAB &&
+                        struct.structureType !== STRUCTURE_NUKER &&
+                        struct.structureType !== STRUCTURE_TERMINAL &&
+                        struct.structureType !== STRUCTURE_STORAGE,
                 }) as Structure;
             }
         }
