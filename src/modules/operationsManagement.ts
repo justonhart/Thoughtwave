@@ -418,9 +418,7 @@ function manageAttackRoomOperation(op: Operation) {
     if (!hasSquadHealer) {
         Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-                sortByBodyPart(HEAL, bodyA, bodyB)
-            ),
+            body: [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)],
             spawnOpts: {
                 memory: {
                     role: Role.SQUAD_ATTACKER,
@@ -520,9 +518,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
     if (!hasSquadFollower) {
         Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-                sortByBodyPart(HEAL, bodyA, bodyB)
-            ),
+            body: [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)],
             spawnOpts: {
                 memory: {
                     role: Role.SQUAD_ATTACKER,
@@ -551,9 +547,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
     if (!hasSecondSquadFollower) {
         Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-                sortByBodyPart(HEAL, bodyA, bodyB)
-            ),
+            body: [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)],
             spawnOpts: {
                 memory: {
                     role: Role.SQUAD_ATTACKER,

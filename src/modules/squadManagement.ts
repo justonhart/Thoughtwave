@@ -3,30 +3,31 @@ import { posFromMem } from './memoryManagement';
 import { Pathing } from './pathing';
 
 export class SquadManagement {
-    private static squadId: string;
-    private static currentCreep: CombatCreep;
-    private static squadLeader: CombatCreep;
-    private static squadFollower: CombatCreep;
-    private static squadSecondLeader: CombatCreep;
-    private static squadSecondFollower: CombatCreep;
-    private static forcedDestinations: string[];
-    public static assignment: string;
-    public static isFleeing: boolean;
-    private static orientation: TOP | RIGHT | BOTTOM | LEFT;
-    private static anchor: RIGHT | LEFT; // relative position (clockwise)
-    private static nextDirection: DirectionConstant;
-    private static creepRunCount: number = 0; // keep track of how many creeps in squad already ran this logic
-    private static targetStructure: Id<Structure>;
+    private squadId: string;
+    private currentCreep: CombatCreep;
+    private squadLeader: CombatCreep;
+    private squadFollower: CombatCreep;
+    private squadSecondLeader: CombatCreep;
+    private squadSecondFollower: CombatCreep;
+    private forcedDestinations: string[];
+    public assignment: string;
+    public isFleeing: boolean;
+    private orientation: TOP | RIGHT | BOTTOM | LEFT;
+    private anchor: RIGHT | LEFT; // relative position (clockwise)
+    private nextDirection: DirectionConstant;
+    private lastRun: number;
+    private targetStructure: Id<Structure>;
 
-    public static setup(creep: CombatCreep) {
-        this.creepRunCount++;
-        this.isFleeing = false;
+    public constructor(creep: CombatCreep) {
         this.squadId = creep.memory.combat.squadId;
         this.currentCreep = creep;
         this.forcedDestinations = Memory.squads[this.squadId].forcedDestinations;
         this.assignment = Memory.squads[this.squadId].assignment;
         this.orientation = Memory.squads[this.squadId].orientation;
         this.anchor = Memory.squads[this.squadId].anchor;
+        this.lastRun = Memory.squads[this.squadId].lastRun;
+        this.isFleeing = Memory.squads[this.squadId].isFleeing;
+        this.nextDirection = Memory.squads[this.squadId].nextDirection;
         if (!this.targetStructure) {
             this.targetStructure = Memory.squads[this.squadId].targetStructure;
         }
@@ -42,26 +43,29 @@ export class SquadManagement {
         this.squadSecondFollower = Game.creeps[Memory.squads[this.squadId]?.members[SquadMemberType.SQUAD_SECOND_FOLLOWER]] as CombatCreep;
     }
 
-    public static isPartOfDuo() {
+    public isPartOfDuo() {
         return Memory.squads[this.squadId].squadType === SquadType.DUO;
     }
 
-    public static isPartOfQuad() {
+    public isPartOfQuad() {
         return Memory.squads[this.squadId].squadType === SquadType.QUAD;
     }
 
-    public static missingCreeps() {
+    public missingCreeps() {
         if (this.isPartOfDuo()) {
             return !this.squadLeader || !this.squadFollower;
         }
         return !this.squadLeader || !this.squadFollower || !this.squadSecondFollower || !this.squadSecondLeader;
     }
 
-    private static onFirstCreep(): boolean {
-        return this.creepRunCount === 1;
+    private onFirstCreep(): boolean {
+        if (!this.lastRun) {
+            return true;
+        }
+        return Math.abs(this.lastRun - Game.time) > 0;
     }
 
-    public static getInFormation(): boolean {
+    public getInFormation(): boolean {
         if (this.isInFormation()) {
             return true;
         }
@@ -92,14 +96,14 @@ export class SquadManagement {
         return false;
     }
 
-    private static setTaskPriority() {
+    private setTaskPriority() {
         this.squadLeader.memory.currentTaskPriority = Priority.HIGH;
         this.squadSecondLeader.memory.currentTaskPriority = Priority.MEDIUM;
         this.squadFollower.memory.currentTaskPriority = Priority.LOW;
         this.squadSecondFollower.memory.currentTaskPriority = Priority.LOW;
     }
 
-    public static getInLineFormation(): boolean {
+    public getInLineFormation(): boolean {
         if (this.isInLineFormation()) {
             return true;
         }
@@ -113,7 +117,7 @@ export class SquadManagement {
         return this.isSquadOnExit(); // While on exit count as true so it wont get blocked by own creeps
     }
 
-    public static formationPathing(range: number): void {
+    public formationPathing(range: number): void {
         if (this.onFirstCreep()) {
             if (this.isSquadFatigued()) {
                 return;
@@ -169,7 +173,7 @@ export class SquadManagement {
         }
     }
 
-    public static duoPathing(range: number) {
+    public duoPathing(range: number) {
         if (this.onFirstCreep()) {
             if (this.isSquadFatigued()) {
                 return;
@@ -204,14 +208,15 @@ export class SquadManagement {
                 const target = this.findPathingTarget();
                 if (target instanceof Creep) {
                     this.squadLeader.travelTo(target, { range: range });
+                } else {
+                    this.squadLeader.travelTo(target, { range: 1, ignoreStructures: true, customMatrixCosts: this.getDuoMatrix(this.squadLeader) });
                 }
-                this.squadLeader.travelTo(target, { range: 1, ignoreStructures: true, customMatrixCosts: this.getDuoMatrix(this.squadLeader) });
             }
             this.squadFollower.move(this.squadFollower.pos.getDirectionTo(this.squadLeader));
         }
     }
 
-    private static findPathingTarget(): Structure {
+    private findPathingTarget(): Structure {
         let target;
         if (this.targetStructure && Game.getObjectById(this.targetStructure)) {
             target = Game.getObjectById(this.targetStructure);
@@ -225,7 +230,14 @@ export class SquadManagement {
                 }) as Structure;
             }
             if (!target) {
-                target = this.squadLeader.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES) as Structure;
+                target = this.squadLeader.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+                    filter: (struct) =>
+                        struct.structureType !== STRUCTURE_KEEPER_LAIR &&
+                        struct.structureType !== STRUCTURE_LAB &&
+                        struct.structureType !== STRUCTURE_NUKER &&
+                        struct.structureType !== STRUCTURE_TERMINAL &&
+                        struct.structureType !== STRUCTURE_STORAGE,
+                }) as Structure;
             }
         }
 
@@ -238,7 +250,7 @@ export class SquadManagement {
         return target;
     }
 
-    private static findHostileCreep() {
+    private findHostileCreep() {
         return this.squadLeader.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
     }
 
@@ -247,7 +259,7 @@ export class SquadManagement {
      * TODO: make it so that creeps dont go diagonally after getting through wall/rampart
      * @returns
      */
-    public static getObstacleStructure(): Structure {
+    public getObstacleStructure(): Structure {
         if (!this.currentCreep.onEdge() && this.nextDirection && !this.missingCreeps()) {
             let enemyStructure = Pathing.positionAtDirection(this.squadLeader.pos, this.nextDirection)
                 .lookFor(LOOK_STRUCTURES)
@@ -282,7 +294,7 @@ export class SquadManagement {
         }
     }
 
-    private static findPath(target: any, range: number): PathFinderPath {
+    private findPath(target: any, range: number): PathFinderPath {
         const matrix = SquadManagement.getQuadMatrix(this.squadLeader, this.assignment, this.orientation, this.anchor);
 
         if (Game.flags.squadMove?.pos?.roomName === this.assignment) {
@@ -323,7 +335,7 @@ export class SquadManagement {
         return;
     }
 
-    public static inTargetRoom(): boolean {
+    public inTargetRoom(): boolean {
         const targetRoom = this.assignment;
         return (
             this.squadLeader.pos.roomName === targetRoom ||
@@ -333,14 +345,14 @@ export class SquadManagement {
         );
     }
 
-    private static slideSquad(direction: DirectionConstant): void {
+    private slideSquad(direction: DirectionConstant): void {
         this.squadLeader.move(direction);
         this.squadSecondLeader.move(direction);
         this.squadFollower.move(direction);
         this.squadSecondFollower.move(direction);
     }
 
-    private static moveSquad(): void {
+    private moveSquad(): void {
         this.nextDirection = parseInt(this.squadLeader.memory._m.path[0], 10) as DirectionConstant;
         const directionDiff = Math.abs(this.orientation - this.nextDirection);
         // swap in x shape to keep anchor in same location (180°)
@@ -398,7 +410,7 @@ export class SquadManagement {
         }
     }
 
-    public static getDuoMatrix(creep: Creep): CustomMatrixCost[] {
+    public getDuoMatrix(creep: Creep): CustomMatrixCost[] {
         const roomName = creep.room.name;
         if (!global.duoMatrix) {
             global.duoMatrix = {};
@@ -443,7 +455,7 @@ export class SquadManagement {
 
         const customCostMatrix: CustomMatrixCost[] = [];
         const exits = Game.map.describeExits(creep.room.name);
-        let directionToExit;
+        let directionToExit: TOP | RIGHT | BOTTOM | LEFT;
         const roomName = creep.room.name;
         const terrain = new Room.Terrain(roomName);
         let minY = 0;
@@ -487,10 +499,26 @@ export class SquadManagement {
                 const tile = terrain.get(x, y);
                 if (tile === TERRAIN_MASK_WALL) {
                     if (inPreviousRoom) {
-                        let avoid = Pathing.positionAtDirection(new RoomPosition(x, y, roomName), directionToExit);
-                        if (avoid) {
-                            customCostMatrix.push({ x: avoid.x, y: avoid.y, cost: 255 });
-                            SquadManagement.showVisuals(enableVisuals, new RoomPosition(avoid.x, avoid.y, roomName));
+                        if (directionToExit === 1) {
+                            customCostMatrix.push({ x: x, y: 0, cost: 255 });
+                            customCostMatrix.push({ x: x, y: 1, cost: 255 });
+                            customCostMatrix.push({ x: x, y: 2, cost: 255 });
+                            SquadManagement.showVisuals(enableVisuals, new RoomPosition(x, 0, roomName));
+                        } else if (directionToExit === 3) {
+                            customCostMatrix.push({ x: 49, y: y, cost: 255 });
+                            customCostMatrix.push({ x: 48, y: y, cost: 255 });
+                            customCostMatrix.push({ x: 47, y: y, cost: 255 });
+                            SquadManagement.showVisuals(enableVisuals, new RoomPosition(49, y, roomName));
+                        } else if (directionToExit === 5) {
+                            customCostMatrix.push({ x: x, y: 49, cost: 255 });
+                            customCostMatrix.push({ x: x, y: 48, cost: 255 });
+                            customCostMatrix.push({ x: x, y: 47, cost: 255 });
+                            SquadManagement.showVisuals(enableVisuals, new RoomPosition(x, 49, roomName));
+                        } else {
+                            customCostMatrix.push({ x: 0, y: y, cost: 255 });
+                            customCostMatrix.push({ x: 1, y: y, cost: 255 });
+                            customCostMatrix.push({ x: 2, y: y, cost: 255 });
+                            SquadManagement.showVisuals(enableVisuals, new RoomPosition(0, y, roomName));
                         }
                     } else {
                         let avoid = Pathing.positionAtDirection(new RoomPosition(x, y, roomName), orientation);
@@ -520,7 +548,7 @@ export class SquadManagement {
                             }
 
                             if (x < 49) {
-                                avoid = Pathing.positionAtDirection(new RoomPosition(x + 1, y, roomName), anchor === LEFT ? BOTTOM : TOP);
+                                avoid = Pathing.positionAtDirection(new RoomPosition(x + 1, y, roomName), anchor === RIGHT ? BOTTOM : TOP);
                                 if (avoid && terrain.get(avoid.x, avoid.y) !== TERRAIN_MASK_WALL) {
                                     customCostMatrix.push({ x: avoid.x, y: avoid.y, cost: 255 });
                                     SquadManagement.showVisuals(enableVisuals, new RoomPosition(avoid.x, avoid.y, roomName));
@@ -573,13 +601,14 @@ export class SquadManagement {
         }
     }
 
-    public static pathing() {
+    public pathing() {
         if (this.missingCreeps()) {
             this.fleeing();
             this.isFleeing = true;
+        } else {
+            this.isFleeing = false;
         }
 
-        // --- QUADS
         const range = this.currentCreep.getActiveBodyparts(RANGED_ATTACK) ? 2 : 1;
         if (this.isPartOfQuad()) {
             if (!this.isFleeing && !this.closeToTargetRoom()) {
@@ -597,7 +626,7 @@ export class SquadManagement {
         this.cleanUp();
     }
 
-    public static linePathing(): void {
+    public linePathing(): void {
         if (this.onFirstCreep()) {
             if (this.isSquadFatigued()) {
                 return;
@@ -629,18 +658,18 @@ export class SquadManagement {
         }
     }
 
-    private static isSquadFatigued(): boolean {
+    private isSquadFatigued(): boolean {
         if (this.isPartOfDuo()) {
             return !!this.squadLeader?.fatigue || !!this.squadFollower?.fatigue;
         }
         return !!this.squadLeader.fatigue || !!this.squadFollower.fatigue || !!this.squadSecondFollower.fatigue || !!this.squadSecondLeader.fatigue;
     }
 
-    private static isSquadOnExit(): boolean {
+    private isSquadOnExit(): boolean {
         return this.squadLeader?.onEdge() || this.squadFollower?.onEdge() || this.squadSecondLeader?.onEdge() || this.squadSecondFollower?.onEdge();
     }
 
-    private static isInLineFormation(): boolean {
+    private isInLineFormation(): boolean {
         return (
             this.squadLeader.pos.isNearTo(this.squadFollower) &&
             this.squadFollower.pos.isNearTo(this.squadSecondLeader) &&
@@ -648,7 +677,7 @@ export class SquadManagement {
         );
     }
 
-    private static isInFormation(): boolean {
+    private isInFormation(): boolean {
         if (this.isSquadOnExit()) {
             // TODO: check for equivalent xy in other room
             // while going through exits
@@ -682,18 +711,18 @@ export class SquadManagement {
         return result;
     }
 
-    public static getInDuoFormation(): boolean {
+    public getInDuoFormation(): boolean {
         if (this.isInDuoFormation()) {
             return true;
         }
         this.squadFollower.travelTo(this.squadLeader, { range: 1, reusePath: 0 });
     }
 
-    private static isInDuoFormation(): boolean {
+    private isInDuoFormation(): boolean {
         return this.squadLeader.pos.isNearTo(this.squadFollower) || this.squadLeader.onEdge() || this.squadFollower.onEdge();
     }
 
-    public static closeToTargetRoom(): boolean {
+    public closeToTargetRoom(): boolean {
         if (this.forcedDestinations?.length) {
             return false;
         }
@@ -723,7 +752,7 @@ export class SquadManagement {
         return false;
     }
 
-    public static getSquadHealingTarget(): Creep {
+    public getSquadHealingTarget(): Creep {
         const squadMembers = [this.squadLeader, this.squadFollower, this.squadSecondLeader, this.squadSecondFollower].filter((member) => !!member);
         if (!squadMembers.length) {
             return this.currentCreep;
@@ -744,27 +773,31 @@ export class SquadManagement {
         });
 
         if (targetCreep.hits === targetCreep.hitsMax) {
+            const lastHealingTarget = Game.creeps[this.currentCreep.memory.combat.healingTarget];
+            if (lastHealingTarget) {
+                return lastHealingTarget;
+            }
             return this.currentCreep;
         }
+        this.currentCreep.memory.combat.healingTarget = targetCreep.name;
         return targetCreep;
     }
 
-    public static cleanUp() {
-        const numSquadMembers = [this.squadLeader, this.squadFollower, this.squadSecondLeader, this.squadSecondFollower].filter(
-            (member) => !!member
-        ).length;
-        if (this.creepRunCount === numSquadMembers) {
-            this.creepRunCount = 0;
-            if (!this.missingCreeps() && this.isInFormation()) {
+    public cleanUp() {
+        if (this.onFirstCreep()) {
+            Memory.squads[this.squadId].lastRun = Game.time;
+            Memory.squads[this.squadId].isFleeing = this.isFleeing;
+            if (!this.missingCreeps() && (this.isInDuoFormation() || this.isInFormation())) {
                 if (this.orientation) {
                     Memory.squads[this.squadId].orientation = this.orientation;
                 }
                 Memory.squads[this.squadId].targetStructure = this.targetStructure;
+                Memory.squads[this.squadId].nextDirection = this.nextDirection;
             }
         }
     }
 
-    private static findPositionNextToLeader(): RoomPosition {
+    private findPositionNextToLeader(): RoomPosition {
         const terrain = this.squadLeader.room.getTerrain();
         const { x, y, roomName } = this.squadLeader.pos;
         if (!this.orientation) {
@@ -827,7 +860,7 @@ export class SquadManagement {
         console.log(`Squad ${this.squadId} cannot find assemble positions in room ${roomName}.`);
     }
 
-    private static rotate(direction: 'clockwise' | 'counterclockwise') {
+    private rotate(direction: 'clockwise' | 'counterclockwise') {
         if ((direction === 'clockwise' && this.anchor === LEFT) || (direction === 'counterclockwise' && this.anchor === RIGHT)) {
             this.squadLeader.move(this.squadLeader.pos.getDirectionTo(this.squadSecondLeader));
             this.squadSecondLeader.move(this.squadSecondLeader.pos.getDirectionTo(this.squadSecondFollower));
@@ -841,7 +874,7 @@ export class SquadManagement {
         }
     }
 
-    public static fleeing(): void {
+    public fleeing(): void {
         if (this.currentCreep.pos.roomName === this.assignment) {
             // Creep died
             this.currentCreep.flee();

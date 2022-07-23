@@ -85,6 +85,7 @@ export class TransportCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1 });
                     break;
+                case ERR_FULL:
                 case 0:
                     this.stopGathering();
                     break;
@@ -98,6 +99,7 @@ export class TransportCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1 });
                     break;
+                case ERR_FULL:
                 case 0:
                     this.stopGathering();
                     break;
@@ -111,6 +113,7 @@ export class TransportCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { ignoreCreeps: true, range: 1 });
                     break;
+                case ERR_FULL:
                 case 0:
                     this.stopGathering();
                     break;
@@ -124,6 +127,7 @@ export class TransportCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { ignoreCreeps: true, range: 1 });
                     break;
+                case ERR_FULL:
                 case 0:
                     this.stopGathering();
                     break;
@@ -293,6 +297,11 @@ export class TransportCreep extends WaveCreep {
                 !resourceList[req.resource] ? (resourceList[req.resource] = req.amount) : (resourceList[req.resource] += req.amount);
             });
 
+            if (Object.keys(this.store).some((res) => !resourceList[res])) {
+                this.storeCargo();
+                return;
+            }
+
             let totalAmountToGather = Math.min(
                 this.store.getCapacity(),
                 Object.values(resourceList).reduce((sum, next) => sum + next)
@@ -321,7 +330,7 @@ export class TransportCreep extends WaveCreep {
                 }
             }
         } else {
-            if (this.store.getUsedCapacity()) {
+            if (this.store.getUsedCapacity(this.memory.labRequests[0]?.resource)) {
                 let deliveryTarget = Game.getObjectById(requests[0].lab);
                 if (!this.pos.isNearTo(deliveryTarget)) {
                     this.travelTo(deliveryTarget, { range: 1 });
