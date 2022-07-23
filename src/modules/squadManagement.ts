@@ -43,15 +43,15 @@ export class SquadManagement {
         this.squadSecondFollower = Game.creeps[Memory.empire.squads[this.squadId]?.members[SquadMemberType.SQUAD_SECOND_FOLLOWER]] as CombatCreep;
     }
 
-    public isPartOfDuo() {
+    private isPartOfDuo() {
         return Memory.empire.squads[this.squadId].squadType === SquadType.DUO;
     }
 
-    public isPartOfQuad() {
+    private isPartOfQuad() {
         return Memory.empire.squads[this.squadId].squadType === SquadType.QUAD;
     }
 
-    public missingCreeps() {
+    private missingCreeps() {
         if (this.isPartOfDuo()) {
             return !this.squadLeader || !this.squadFollower;
         }
@@ -65,7 +65,7 @@ export class SquadManagement {
         return Math.abs(this.lastRun - Game.time) > 0;
     }
 
-    public getInFormation(): boolean {
+    private getInFormation(): boolean {
         if (this.isInFormation()) {
             return true;
         }
@@ -103,7 +103,7 @@ export class SquadManagement {
         this.squadSecondFollower.memory.currentTaskPriority = Priority.LOW;
     }
 
-    public getInLineFormation(): boolean {
+    private getInLineFormation(): boolean {
         if (this.isInLineFormation()) {
             return true;
         }
@@ -117,7 +117,7 @@ export class SquadManagement {
         return this.isSquadOnExit(); // While on exit count as true so it wont get blocked by own creeps
     }
 
-    public formationPathing(range: number): void {
+    private formationPathing(range: number): void {
         if (this.onFirstCreep()) {
             if (this.isSquadFatigued()) {
                 return;
@@ -173,7 +173,26 @@ export class SquadManagement {
         }
     }
 
-    public duoPathing(range: number) {
+    public static splitQuadIntoDuos(squadId: string) {
+        const currentSquadMem = Memory.empire.squads[squadId];
+        const newSquadId = squadId + '2';
+
+        let newSquadMem = currentSquadMem;
+        newSquadMem.members.squadLeader = currentSquadMem.members.squadSecondLeader;
+        newSquadMem.members.squadFollower = currentSquadMem.members.squadSecondFollower;
+        delete newSquadMem.members.squadSecondLeader;
+        delete newSquadMem.members.squadSecondFollower;
+        newSquadMem.squadType = SquadType.DUO;
+        delete currentSquadMem.members.squadSecondLeader;
+        delete currentSquadMem.members.squadSecondFollower;
+        delete Game.creeps[currentSquadMem.members.squadLeader].memory._m.path;
+        currentSquadMem.squadType = SquadType.DUO;
+
+        Memory.empire.squads[newSquadId] = newSquadMem;
+        Memory.empire.squads[squadId] = currentSquadMem;
+    }
+
+    private duoPathing(range: number) {
         if (this.onFirstCreep()) {
             if (this.isSquadFatigued()) {
                 return;
@@ -335,7 +354,7 @@ export class SquadManagement {
         return;
     }
 
-    public inTargetRoom(): boolean {
+    private inTargetRoom(): boolean {
         const targetRoom = this.assignment;
         return (
             this.squadLeader.pos.roomName === targetRoom ||
@@ -410,7 +429,7 @@ export class SquadManagement {
         }
     }
 
-    public getDuoMatrix(creep: Creep): CustomMatrixCost[] {
+    private getDuoMatrix(creep: Creep): CustomMatrixCost[] {
         const roomName = creep.room.name;
         if (!global.duoMatrix) {
             global.duoMatrix = {};
@@ -438,7 +457,7 @@ export class SquadManagement {
         return global.duoMatrix[roomName];
     }
 
-    public static getQuadMatrix(
+    private static getQuadMatrix(
         creep: Creep,
         assignment: string,
         orientation: TOP | RIGHT | BOTTOM | LEFT,
@@ -626,7 +645,7 @@ export class SquadManagement {
         this.cleanUp();
     }
 
-    public linePathing(): void {
+    private linePathing(): void {
         if (this.onFirstCreep()) {
             if (this.isSquadFatigued()) {
                 return;
@@ -711,7 +730,7 @@ export class SquadManagement {
         return result;
     }
 
-    public getInDuoFormation(): boolean {
+    private getInDuoFormation(): boolean {
         if (this.isInDuoFormation()) {
             return true;
         }
@@ -722,7 +741,7 @@ export class SquadManagement {
         return this.squadLeader.pos.isNearTo(this.squadFollower) || this.squadLeader.onEdge() || this.squadFollower.onEdge();
     }
 
-    public closeToTargetRoom(): boolean {
+    private closeToTargetRoom(): boolean {
         if (this.forcedDestinations?.length) {
             return false;
         }
@@ -783,7 +802,7 @@ export class SquadManagement {
         return targetCreep;
     }
 
-    public cleanUp() {
+    private cleanUp() {
         if (this.onFirstCreep()) {
             Memory.empire.squads[this.squadId].lastRun = Game.time;
             Memory.empire.squads[this.squadId].isFleeing = this.isFleeing;
@@ -874,7 +893,7 @@ export class SquadManagement {
         }
     }
 
-    public fleeing(): void {
+    private fleeing(): void {
         if (this.currentCreep.pos.roomName === this.assignment) {
             // Creep died
             this.currentCreep.flee();
