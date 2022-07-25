@@ -5,7 +5,7 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
     protected run() {
-        if (Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment]?.state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS) {
+        if (Memory.remoteData[this.memory.assignment]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
         }
@@ -16,7 +16,6 @@ export class Gatherer extends TransportCreep {
                 // Find target is visibility exists
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
-                this.checkEnergyStatus();
             }
         }
 
@@ -35,18 +34,6 @@ export class Gatherer extends TransportCreep {
                 delete this.memory.targetId;
             }
         }
-    }
-
-    private checkEnergyStatus() {
-        let looseResources = this.room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
-        if (looseResources.length) {
-            const amount = looseResources.reduce((total, resource) => total + resource.amount, 0);
-            if (amount > 3000) {
-                Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].energyStatus = EnergyStatus.SURPLUS;
-                return;
-            }
-        }
-        Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].energyStatus = EnergyStatus.STABLE;
     }
 
     protected findTarget() {
@@ -122,7 +109,7 @@ export class Gatherer extends TransportCreep {
     }
 
     protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> {
-        let miningPositions = Object.keys(Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].miners);
+        let miningPositions = Memory.remoteData[roomName].miningPositions;
 
         let targets: { id: Id<Resource> | Id<Structure>; amount: number }[] = [];
 

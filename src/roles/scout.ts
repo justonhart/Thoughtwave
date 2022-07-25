@@ -3,75 +3,71 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Scout extends WaveCreep {
     protected run() {
-        let nextTarget = this.memory.scout?.path[this.memory.scout.path.length - 1];
-        if (!nextTarget) {
-            // Set memory
-            if (!this.memory.scout) {
-                this.memory.scout = { path: [this.room.name], spawn: this.pos.toMemSafe() };
-            }
-            if (!Memory.empire.scoutAssignments) {
-                Memory.empire.scoutAssignments = {};
-            }
-            if (!Memory.empire.scoutAssignments[this.memory.room]) {
-                Memory.empire.scoutAssignments[this.memory.room] = [];
-            }
-
-            nextTarget = this.findTarget();
-
-            this.memory.scout.path.push(nextTarget);
-        }
-
-        // Go to the target room
-        if (this.travelToRoom(nextTarget, { checkForHostilesAtDestination: true }) === IN_ROOM) {
-            const maxRemoteMiningRooms = this.homeroom.controller.level < 7 ? 3 : 6;
-            // Set Room memory
-            if (
-                Game.shard.name !== 'shard3' &&
-                Object.keys(this.homeroom.memory.remoteAssignments).length < maxRemoteMiningRooms &&
-                !this.room.controller?.owner?.username &&
-                (!this.room.controller?.reservation?.username ||
-                    this.room.controller?.reservation?.username === this.owner.username ||
-                    this.room.controller?.reservation?.username === 'Invader') &&
-                !Memory.empire.hostileRooms.find((room) => room.room === this.room.name) &&
-                !this.room.find(FIND_HOSTILE_CREEPS, {
-                    filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
-                }).length &&
-                !this.room.find(FIND_HOSTILE_STRUCTURES, {
-                    filter: (struct) => struct.structureType === STRUCTURE_KEEPER_LAIR,
-                }).length
-            ) {
-                this.room.find(FIND_SOURCES).forEach((source) => {
-                    const pathFinder = this.getPath(source.pos);
-                    if (
-                        !pathFinder.incomplete &&
-                        !Memory.rooms[this.memory.room].remoteAssignments[this.room.name]?.miners[
-                            pathFinder.path[pathFinder.path.length - 1].toMemSafe()
-                        ]
-                    ) {
-                        // Set Miner/Gatherer/Reserver
-                        if (!Memory.rooms[this.memory.room].remoteAssignments[this.room.name]) {
-                            Memory.rooms[this.memory.room].remoteAssignments[this.room.name] = {
-                                miners: new Map(),
-                                gatherer: AssignmentStatus.UNASSIGNED,
-                                reserver: AssignmentStatus.UNASSIGNED,
-                                needsConstruction: true,
-                                energyStatus: EnergyStatus.STABLE,
-                                state: RemoteMiningRoomState.SAFE,
-                                controllerState: RemoteMiningRoomControllerState.LOW,
-                            };
-                        }
-                        Memory.rooms[this.memory.room].remoteAssignments[this.room.name].miners[
-                            pathFinder.path[pathFinder.path.length - 1].toMemSafe()
-                        ] = AssignmentStatus.UNASSIGNED;
-                    }
-                });
-                nextTarget = this.findTarget();
-            } else {
-                nextTarget = this.findTarget(true);
-            }
-
-            this.memory.scout.path.push(nextTarget);
-        }
+        // let nextTarget = this.memory.scout?.path[this.memory.scout.path.length - 1];
+        // if (!nextTarget) {
+        //     // Set memory
+        //     if (!this.memory.scout) {
+        //         this.memory.scout = { path: [this.room.name], spawn: this.pos.toMemSafe() };
+        //     }
+        //     if (!Memory.empire.scoutAssignments) {
+        //         Memory.empire.scoutAssignments = {};
+        //     }
+        //     if (!Memory.empire.scoutAssignments[this.memory.room]) {
+        //         Memory.empire.scoutAssignments[this.memory.room] = [];
+        //     }
+        //     nextTarget = this.findTarget();
+        //     this.memory.scout.path.push(nextTarget);
+        // }
+        // // Go to the target room
+        // if (this.travelToRoom(nextTarget, { checkForHostilesAtDestination: true }) === IN_ROOM) {
+        //     const maxRemoteMiningRooms = this.homeroom.controller.level < 7 ? 3 : 6;
+        //     // Set Room memory
+        //     if (
+        //         Game.shard.name !== 'shard3' &&
+        //         Object.keys(this.homeroom.memory.remoteAssignments).length < maxRemoteMiningRooms &&
+        //         !this.room.controller?.owner?.username &&
+        //         (!this.room.controller?.reservation?.username ||
+        //             this.room.controller?.reservation?.username === this.owner.username ||
+        //             this.room.controller?.reservation?.username === 'Invader') &&
+        //         !Memory.empire.hostileRooms.find((room) => room.room === this.room.name) &&
+        //         !this.room.find(FIND_HOSTILE_CREEPS, {
+        //             filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
+        //         }).length &&
+        //         !this.room.find(FIND_HOSTILE_STRUCTURES, {
+        //             filter: (struct) => struct.structureType === STRUCTURE_KEEPER_LAIR,
+        //         }).length
+        //     ) {
+        //         this.room.find(FIND_SOURCES).forEach((source) => {
+        //             const pathFinder = this.getPath(source.pos);
+        //             if (
+        //                 !pathFinder.incomplete &&
+        //                 !Memory.rooms[this.memory.room].remoteAssignments[this.room.name]?.miners[
+        //                     pathFinder.path[pathFinder.path.length - 1].toMemSafe()
+        //                 ]
+        //             ) {
+        //                 // Set Miner/Gatherer/Reserver
+        //                 if (!Memory.rooms[this.memory.room].remoteAssignments[this.room.name]) {
+        //                     Memory.rooms[this.memory.room].remoteAssignments[this.room.name] = {
+        //                         miners: new Map(),
+        //                         gatherer: AssignmentStatus.UNASSIGNED,
+        //                         reserver: AssignmentStatus.UNASSIGNED,
+        //                         needsConstruction: true,
+        //                         energyStatus: EnergyStatus.STABLE,
+        //                         state: RemoteMiningRoomState.SAFE,
+        //                         controllerState: RemoteMiningRoomControllerState.LOW,
+        //                     };
+        //                 }
+        //                 Memory.rooms[this.memory.room].remoteAssignments[this.room.name].miners[
+        //                     pathFinder.path[pathFinder.path.length - 1].toMemSafe()
+        //                 ] = AssignmentStatus.UNASSIGNED;
+        //             }
+        //         });
+        //         nextTarget = this.findTarget();
+        //     } else {
+        //         nextTarget = this.findTarget(true);
+        //     }
+        //     this.memory.scout.path.push(nextTarget);
+        // }
     }
 
     /**

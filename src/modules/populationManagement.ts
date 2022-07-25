@@ -263,22 +263,17 @@ export class PopulationManagement {
     }
 
     static needsRemoteMiner(room: Room): boolean {
-        const assigmentKeys = Object.keys(room.memory.remoteAssignments);
-        return !!assigmentKeys.find(
+        return room.memory.remoteMiningRooms.some(
             (remoteRoom) =>
-                room.memory.remoteAssignments[remoteRoom].state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS &&
-                room.memory.remoteAssignments[remoteRoom].controllerState !== RemoteMiningRoomControllerState.ENEMY &&
-                Object.values(room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
+                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
+                Memory.remoteData[remoteRoom].miner === AssignmentStatus.UNASSIGNED
         );
     }
 
     static spawnRemoteMiner(spawn: StructureSpawn): ScreepsReturnCode {
-        const remoteRooms = Object.keys(spawn.room.memory.remoteAssignments);
-        const assigmentKey = remoteRooms.find((remoteRoom) =>
-            Object.values(spawn.room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
-        );
-        const assignment = Object.keys(spawn.room.memory.remoteAssignments[assigmentKey].miners).find(
-            (assignment) => spawn.room.memory.remoteAssignments[assigmentKey].miners[assignment] === AssignmentStatus.UNASSIGNED
+        const assignment = spawn.room.memory.remoteMiningRooms.find(
+            (assignment) => Memory.remoteData[assignment].miner === AssignmentStatus.UNASSIGNED
         );
 
         let options: SpawnOptions = {
@@ -290,35 +285,30 @@ export class PopulationManagement {
             },
         };
 
-        let minerBody = [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
+        let maxLevel = Memory.remoteData[assignment].miningPositions.length;
+
+        let minerBody = [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
         let name = this.generateName(options.memory.role, spawn.name);
 
-        let result = spawn.smartSpawn(minerBody, name, options);
+        let result = spawn.spawnFirst(minerBody, name, options, maxLevel);
         if (result === OK) {
-            spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = name;
-        } else if (result === ERR_NOT_ENOUGH_ENERGY && spawn.room.storage?.store[RESOURCE_ENERGY] < 1000) {
-            let emergencyMinerBody = [WORK, WORK, MOVE, MOVE];
-            result = spawn.smartSpawn(emergencyMinerBody, name, options);
-            if (result === OK) {
-                spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = name;
-            }
+            Memory.remoteData[assignment].miner = name;
         }
 
         return result;
     }
 
     static needsGatherer(room: Room): boolean {
-        return Object.entries(room.memory.remoteAssignments).some(
-            ([roomName, assignment]) =>
-                assignment.state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS &&
-                assignment.controllerState !== RemoteMiningRoomControllerState.ENEMY &&
-                assignment.gatherer === AssignmentStatus.UNASSIGNED
+        return room.memory.remoteMiningRooms.some(
+            (remoteRoom) =>
+                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
+                Memory.remoteData[remoteRoom].gatherer === AssignmentStatus.UNASSIGNED
         );
     }
 
     static spawnGatherer(spawn: StructureSpawn): ScreepsReturnCode {
-        let assignmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
-        let assignment = assignmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].gatherer === AssignmentStatus.UNASSIGNED);
+        let assignment = spawn.room.memory.remoteMiningRooms.find((roomName) => Memory.remoteData[roomName].gatherer === AssignmentStatus.UNASSIGNED);
 
         let options: SpawnOptions = {
             memory: {
@@ -329,34 +319,27 @@ export class PopulationManagement {
         };
 
         let name = this.generateName(options.memory.role, spawn.name);
-        let maxLevel = 15;
-        let PARTS = PopulationManagement.createPartsArray([CARRY, WORK, MOVE, MOVE], spawn.room.energyCapacityAvailable, maxLevel);
-        if (!Memory.rooms[spawn.room.name].remoteAssignments[assignment].needsConstruction) {
-            PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9);
-            PARTS.push(WORK, WORK, CARRY, CARRY, MOVE);
-        }
-        let result = spawn.spawnMax(PARTS, name, options, maxLevel);
-
-        if (result === ERR_NOT_ENOUGH_ENERGY) {
-            result = spawn.spawnFirst(PARTS, name, options, maxLevel);
-        }
+        let PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9);
+        PARTS.push(WORK, WORK, CARRY, CARRY, MOVE);
+        let result = spawn.smartSpawn(PARTS, name, options);
 
         if (result === OK) {
-            spawn.room.memory.remoteAssignments[assignment].gatherer = name;
+            Memory.remoteData[assignment].gatherer = name;
         }
 
         return result;
     }
 
     static needsReserver(room: Room): boolean {
-        return Object.values(room.memory.remoteAssignments).some(
-            (assignment) => assignment.state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS && assignment.reserver === AssignmentStatus.UNASSIGNED
+        return Object.values(room.memory.remoteMiningRooms).some(
+            (remoteRoom) =>
+                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[remoteRoom].reserver === AssignmentStatus.UNASSIGNED
         );
     }
 
     static spawnReserver(spawn: StructureSpawn): ScreepsReturnCode {
-        let assigmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
-        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].reserver === AssignmentStatus.UNASSIGNED);
+        let assigment = spawn.room.memory.remoteMiningRooms.find((roomName) => Memory.remoteData[roomName].reserver === AssignmentStatus.UNASSIGNED);
 
         let options: SpawnOptions = {
             memory: {
@@ -366,8 +349,8 @@ export class PopulationManagement {
             },
         };
 
-        let maxSize = 2;
-        if (spawn.room.memory.remoteAssignments[assigment].controllerState === RemoteMiningRoomControllerState.STABLE) {
+        let maxSize = 5;
+        if (Memory.remoteData[assigment].reservationState === RemoteRoomReservationStatus.STABLE) {
             maxSize = 1;
         }
 
@@ -376,7 +359,7 @@ export class PopulationManagement {
         let result = spawn.spawnMax(PARTS, name, options, maxSize);
 
         if (result === OK) {
-            spawn.room.memory.remoteAssignments[assigment].reserver = name;
+            Memory.remoteData[assigment].reserver = name;
         }
 
         return result;
@@ -623,14 +606,12 @@ export class PopulationManagement {
         return room.controller?.level >= 5 && (room.memory.layout !== undefined || !!room.memory.managerPos) && !manager;
     }
 
-    static needsProtector(roomName: string): boolean {
+    static hasProtector(roomName: string): boolean {
         return (
-            !Object.values(Game.creeps).filter(
+            Object.values(Game.creeps).some(
                 (creep) => creep.memory.role === Role.PROTECTOR && (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
-            ).length &&
-            !Memory.spawnAssignments.filter(
-                (creep) => creep.spawnOpts.memory.role === Role.PROTECTOR && creep.spawnOpts.memory.assignment === roomName
-            ).length
+            ) ||
+            Memory.spawnAssignments.some((creep) => creep.spawnOpts.memory.role === Role.PROTECTOR && creep.spawnOpts.memory.assignment === roomName)
         );
     }
 

@@ -12,7 +12,6 @@ interface RoomMemory {
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: { [posString: string]: string };
     mineralMiningAssignments: { [posString: string]: string };
-    remoteAssignments: { [roomName: string]: RemoteAssignment };
     remoteMiningRooms?: string[];
     reservedEnergy?: number;
     layout?: RoomLayout;
@@ -49,16 +48,6 @@ const enum RoomMemoryStatus {
     OWNED_OTHER,
     OWNED_INVADER,
     OWNED_ME,
-}
-
-interface RemoteAssignment {
-    needsConstruction: boolean;
-    energyStatus: EnergyStatus;
-    state: RemoteMiningRoomState;
-    controllerState: RemoteMiningRoomControllerState;
-    reserver: string;
-    gatherer: string;
-    miners: Map<string, string>;
 }
 
 interface Room {
@@ -118,40 +107,6 @@ const enum RemoteRoomReservationStatus {
      * Controller reserve above 4500.
      */
     STABLE,
-    /**
-     * Currently controlled by enemy.
-     */
-    ENEMY,
-}
-
-/**
- * The enums on the top overwrite the lower ones (for example if an attack unit is in the room and a structure it will set ENEMY_ATTACK_CREEPS)
- */
-const enum RemoteMiningRoomState {
-    /**
-     * Enemy Creeps with attack body parts.
-     */
-    ENEMY_ATTTACK_CREEPS,
-    /**
-     * Enemy Creeps with other body parts.
-     */
-    ENEMY_NON_COMBAT_CREEPS,
-    /**
-     * Enemy structures (includes invader cores).
-     */
-    ENEMY_STRUCTS,
-    SAFE,
-}
-
-const enum RemoteMiningRoomControllerState {
-    /**
-     * Controller reserve above 4500.
-     */
-    STABLE,
-    /**
-     * Controller reserve under 1000.
-     */
-    LOW,
     /**
      * Currently controlled by enemy.
      */

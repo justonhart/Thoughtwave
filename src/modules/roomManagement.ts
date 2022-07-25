@@ -2,7 +2,7 @@ import { CombatIntel } from './combatIntel';
 import { runLabs } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
-import { driveRemoteRoom } from './remoteRoomManagement';
+import { manageRemoteRoom } from './remoteRoomManagement';
 import {
     findBunkerLocation,
     placeBunkerOuterRamparts,
@@ -111,10 +111,6 @@ export function driveRoom(room: Room) {
 
         const isHomeUnderAttack = runHomeSecurity(room);
         runTowers(room, isHomeUnderAttack);
-        if (!isHomeUnderAttack) {
-            // Prioritize home defense
-            driveRemoteRoom(room);
-        }
 
         if (room.memory.anchorPoint) {
             let anchorPoint = posFromMem(room.memory.anchorPoint);
@@ -138,6 +134,8 @@ export function driveRoom(room: Room) {
         runSpawning(room);
 
         runLabs(room);
+
+        runRemoteRooms(room);
 
         delete room.memory.reservedEnergy;
     }
@@ -248,7 +246,6 @@ export function initRoom(room: Room) {
         repairQueue: [],
         miningAssignments: {},
         mineralMiningAssignments: {},
-        remoteAssignments: {},
         remoteMiningRooms: [],
     };
 
@@ -407,7 +404,7 @@ function runSpawning(room: Room) {
             }
         });
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING && Object.keys(room.memory.remoteAssignments).length && !roomContainsViolentHostiles) {
+        if (room.energyStatus >= EnergyStatus.RECOVERING && room.memory.remoteMiningRooms?.length && !roomContainsViolentHostiles) {
             if (PopulationManagement.needsRemoteMiner(room)) {
                 let spawn = availableSpawns.pop();
                 spawn?.spawnRemoteMiner();
@@ -422,23 +419,6 @@ function runSpawning(room: Room) {
                 let spawn = availableSpawns.pop();
                 spawn?.spawnReserver();
             }
-        }
-
-        // TODO remove set room and put in function
-        if (
-            Game.time % 8000 === 0 &&
-            !Memory.spawnAssignments.filter((creep) => creep.spawnOpts.memory.role === Role.SCOUT && creep.designee === room.name).length
-        ) {
-            Memory.spawnAssignments.push({
-                designee: room.name,
-                body: [MOVE],
-                spawnOpts: {
-                    memory: {
-                        role: Role.SCOUT,
-                        room: room.name,
-                    },
-                },
-            });
         }
     }
 
@@ -552,4 +532,15 @@ export function getStructuresToProtect(nukes: Nuke[]) {
     );
 
     return filteredStructuresToProtect;
+}
+
+function runRemoteRooms(room: Room) {
+    let remoteRooms = room.memory.remoteMiningRooms;
+    remoteRooms?.forEach((remoteRoomName) => {
+        try {
+            manageRemoteRoom(room.name, remoteRoomName);
+        } catch (e) {
+            console.log(`Error caught running remote room ${remoteRoomName}: \n${e}`);
+        }
+    });
 }
