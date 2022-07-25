@@ -49,16 +49,17 @@ export class SquadAttacker extends CombatCreep {
 
     private findPriorityAttackTarget(range: number, sq: SquadManagement) {
         const areaInRange = Pathing.getArea(this.pos, range);
-        const unprotectedHostileCreep = this.room
-            .lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true)
-            .filter(
-                (lookObject) =>
-                    lookObject.type === LOOK_CREEPS &&
-                    lookObject.creep?.owner?.username !== this.owner.username &&
-                    !lookObject.creep?.spawning &&
-                    lookObject.structure?.structureType !== STRUCTURE_RAMPART &&
-                    lookObject.structure?.structureType !== STRUCTURE_KEEPER_LAIR
-            );
+        const lookAtArea = this.room.lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);
+        const hostileCreep = lookAtArea.filter(
+            (lookObject) =>
+                lookObject.type === LOOK_CREEPS && lookObject.creep?.owner?.username !== this.owner.username && !lookObject.creep?.spawning
+        );
+        const unprotectedHostileCreep = lookAtArea.filter(
+            (lookObject) =>
+                lookObject.type === LOOK_STRUCTURES &&
+                lookObject.structure.structureType !== STRUCTURE_RAMPART &&
+                hostileCreep.some((look) => look.creep.pos.x === lookObject.structure.pos.x && look.creep.pos.y === lookObject.structure.pos.y)
+        );
         if (unprotectedHostileCreep.length) {
             return unprotectedHostileCreep[0].creep;
         }
@@ -94,7 +95,7 @@ export class SquadAttacker extends CombatCreep {
             }
             if (!target) {
                 target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
-                    filter: (struct) => struct.structureType === STRUCTURE_KEEPER_LAIR,
+                    filter: (struct) => struct.structureType !== STRUCTURE_KEEPER_LAIR && struct.structureType !== STRUCTURE_CONTROLLER,
                 });
             }
             return target;
@@ -119,6 +120,16 @@ export class SquadAttacker extends CombatCreep {
                 }
             }
 
+            const targetStructure = sq.targetStructure ? Game.getObjectById(sq.targetStructure) : undefined;
+            if (targetStructure && this.pos.getRangeTo(targetStructure) === 1) {
+                return targetStructure;
+            } else if (targetStructure) {
+                const obstacleStructure = sq.getObstacleStructure();
+                if (obstacleStructure) {
+                    return obstacleStructure;
+                }
+            }
+
             let target: any;
             if (!target) {
                 target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
@@ -132,14 +143,15 @@ export class SquadAttacker extends CombatCreep {
             }
             if (!target) {
                 target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
-                    filter: (struct) => struct.structureType === STRUCTURE_KEEPER_LAIR,
+                    filter: (struct) => struct.hits > 0 && struct.hits < 50000,
+                });
+            }
+            if (!target) {
+                target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+                    filter: (struct) => struct.hits > 0,
                 });
             }
 
-            const obstacleStructure = sq.getObstacleStructure();
-            if (obstacleStructure && (!target || this.pos.getRangeTo(target) > 1)) {
-                return obstacleStructure;
-            }
             return target;
         }
     }
