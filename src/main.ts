@@ -1,5 +1,5 @@
 import driveCreep from './modules/creepDriver';
-import { addRoomData, updateRoomData } from './modules/data';
+import { addRoomData, deleteExpiredRoomData, updateRoomData } from './modules/data';
 import { manageEmpire } from './modules/empireManagement';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
@@ -31,6 +31,8 @@ module.exports.loop = function () {
     global.resourceNeeds = getAllRoomNeeds();
 
     global.roomConstructionsChecked = false;
+
+    deleteExpiredRoomData();
 
     try {
         manageEmpire();

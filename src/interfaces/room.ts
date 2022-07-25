@@ -38,6 +38,7 @@ interface RoomData {
     roomStatus?: RoomMemoryStatus;
     owner?: string;
     hostile?: boolean;
+    roomLevel?: number;
 }
 
 const enum RoomMemoryStatus {

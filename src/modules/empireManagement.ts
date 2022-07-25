@@ -8,11 +8,9 @@ export function manageEmpire() {
         InterShardMemory.setLocal(JSON.stringify({ outboundCreeps: { shard0: {}, shard1: {}, shard2: {}, shard3: {} } }));
     }
 
-    if (Memory.empire.hostileRooms.length) {
-        Memory.empire.hostileRooms.forEach((hostileRoom) => {
-            Game.map.visual.rect(new RoomPosition(0, 0, hostileRoom.room), 50, 50, { fill: '#8b0000', stroke: '#8b0000', strokeWidth: 2 });
-        });
-    }
+    Object.keys(Memory.roomData).forEach((roomName) => {
+        Game.map.visual.rect(new RoomPosition(0, 0, roomName), 50, 50, { fill: '#8b0000', stroke: '#8b0000', strokeWidth: 2 });
+    });
 
     if (!Memory.priceMap || Game.time % 20000 === 0) {
         Memory.priceMap = getPriceMap();
@@ -37,8 +35,6 @@ export function unclaimRoom(roomName: string) {
     Memory.spawnAssignments = Memory.spawnAssignments.filter(
         (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
     );
-
-    delete Memory.empire.scoutAssignments[roomName];
 
     let roomCreeps = Object.values(Game.creeps).filter((c) => c.memory.room === roomName);
     roomCreeps.forEach((creep) => {
@@ -72,8 +68,6 @@ function getPriceMap(): { [resourceType: string]: number } {
 export function addHostileRoom(roomName: string) {
     Memory.roomData[roomName].hostile = true;
     Memory.roomData[roomName].asOf = Game.time;
-
-    Memory.empire.hostileRooms.push({ room: roomName, expireAt: Game.time + 20000 });
 }
 
 function initMissingMemoryValues() {

@@ -76,37 +76,37 @@ export class Scout extends WaveCreep {
      * @param ignoreCurrentRoom Avoid looking for new exits from current room
      * @returns new scoutTarget
      */
-    private findTarget(ignoreCurrentRoom?: boolean): string {
-        // Find all exits but filter for those that are not yet in empire memory unless currentRoom has hostiles
-        if (!ignoreCurrentRoom) {
-            const adjacentRooms = Object.values(Game.map.describeExits(this.room.name)).filter(
-                (adjacentRoom) =>
-                    adjacentRoom !== undefined &&
-                    !Game.rooms[adjacentRoom] &&
-                    ![].concat(...Object.values(Memory.empire.scoutAssignments)).includes(adjacentRoom) &&
-                    Game.map.getRoomLinearDistance(this.memory.room, adjacentRoom) < 2
-            );
+    // private findTarget(ignoreCurrentRoom?: boolean): string {
+    //     // Find all exits but filter for those that are not yet in empire memory unless currentRoom has hostiles
+    //     if (!ignoreCurrentRoom) {
+    //         const adjacentRooms = Object.values(Game.map.describeExits(this.room.name)).filter(
+    //             (adjacentRoom) =>
+    //                 adjacentRoom !== undefined &&
+    //                 !Game.rooms[adjacentRoom] &&
+    //                 ![].concat(...Object.values(Memory.empire.scoutAssignments)).includes(adjacentRoom) &&
+    //                 Game.map.getRoomLinearDistance(this.memory.room, adjacentRoom) < 2
+    //         );
 
-            // Add rooms if scout hasn't been there yet
-            if (adjacentRooms.length) {
-                Memory.empire.scoutAssignments[this.memory.room].push(...adjacentRooms);
-            }
-        }
+    //         // Add rooms if scout hasn't been there yet
+    //         if (adjacentRooms.length) {
+    //             Memory.empire.scoutAssignments[this.memory.room].push(...adjacentRooms);
+    //         }
+    //     }
 
-        // check empire memory against scout travelHistory to see if any rooms are left.
-        const nextRoom: string = Memory.empire.scoutAssignments[this.memory.room].find(
-            (roomToScout: string) => !this.memory.scout.path.includes(roomToScout)
-        );
+    //     // check empire memory against scout travelHistory to see if any rooms are left.
+    //     const nextRoom: string = Memory.empire.scoutAssignments[this.memory.room].find(
+    //         (roomToScout: string) => !this.memory.scout.path.includes(roomToScout)
+    //     );
 
-        // Exit Condition
-        if (!nextRoom) {
-            console.log(`${this.name} has finished scouting.`);
-            this.suicide();
-            return;
-        }
+    //     // Exit Condition
+    //     if (!nextRoom) {
+    //         console.log(`${this.name} has finished scouting.`);
+    //         this.suicide();
+    //         return;
+    //     }
 
-        return nextRoom;
-    }
+    //     return nextRoom;
+    // }
 
     /**
      * Calculate path to target from homeBase. Set higher maxCost to let the scout go further from his base ==> costOutsideOfBase = maxCost - 25

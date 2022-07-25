@@ -1,5 +1,4 @@
 interface Memory {
-    empire: EmpireMemory;
     remoteData: { [roomName: string]: RemoteData };
     roomData: { [roomName: string]: RoomData };
     priceMap?: { [resourceType: string]: number };
@@ -8,11 +7,6 @@ interface Memory {
     operations?: Operation[];
     playersToIgnore?: string[];
     squads?: { [squadId: string]: Squad };
-}
-
-interface EmpireMemory {
-    hostileRooms?: HostileRoom[];
-    scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>
 }
 
 interface EmpireIntershard {
