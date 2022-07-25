@@ -419,6 +419,11 @@ function runSpawning(room: Room) {
                 let spawn = availableSpawns.pop();
                 spawn?.spawnReserver();
             }
+
+            if (PopulationManagement.needsKeeperExterminator(room)) {
+                let spawn = availableSpawns.pop();
+                spawn?.spawnKeeperExterminator();
+            }
         }
     }
 

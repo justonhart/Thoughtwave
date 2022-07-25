@@ -35,6 +35,7 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
     [Role.TRANSPORTER]: 't',
     [Role.UPGRADER]: 'u',
     [Role.REMOTE_MINER]: 'rm',
+    [Role.KEEPER_EXTERMINATOR]: 'e',
 };
 
 export class PopulationManagement {
@@ -285,12 +286,21 @@ export class PopulationManagement {
             },
         };
 
-        let maxLevel = Memory.remoteData[assignment].miningPositions.length;
+        let workNeeded = this.calculateRemoteMinerWorkNeeded(assignment);
+        let work = [];
+        while (work.length < workNeeded) {
+            work.push(WORK);
+        }
 
-        let minerBody = [WORK, WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
+        let move = [];
+        while (move.length < workNeeded / 2) {
+            move.push(MOVE);
+        }
+
+        let minerBody = [...work, ...move, CARRY, MOVE];
         let name = this.generateName(options.memory.role, spawn.name);
 
-        let result = spawn.spawnFirst(minerBody, name, options, maxLevel);
+        let result = spawn.smartSpawn(minerBody, name, options);
         if (result === OK) {
             Memory.remoteData[assignment].miner = name;
         }
@@ -532,26 +542,28 @@ export class PopulationManagement {
             }
         }
 
-        const getSortValue = (part: BodyPartConstant): number => {
-            switch (part) {
-                case TOUGH:
-                    return 5;
-                case RANGED_ATTACK:
-                case ATTACK:
-                    return 4;
-                case WORK:
-                    return 3;
-                case CARRY:
-                    return 2;
-                case MOVE:
-                    return 1;
-                case CLAIM:
-                case HEAL:
-                    return 0;
-            }
-        };
+        if (!opts.disableSort) {
+            const getSortValue = (part: BodyPartConstant): number => {
+                switch (part) {
+                    case TOUGH:
+                        return 5;
+                    case RANGED_ATTACK:
+                    case ATTACK:
+                        return 4;
+                    case WORK:
+                        return 3;
+                    case CARRY:
+                        return 2;
+                    case MOVE:
+                        return 1;
+                    case CLAIM:
+                    case HEAL:
+                        return 0;
+                }
+            };
 
-        body = body.sort((a, b) => getSortValue(b) - getSortValue(a));
+            body = body.sort((a, b) => getSortValue(b) - getSortValue(a));
+        }
 
         let result = spawn.spawnCreep(body, name, opts);
 
@@ -673,4 +685,119 @@ export class PopulationManagement {
         }
         return result;
     }
+
+    static needsKeeperExterminator(room: Room) {
+        return Object.values(room.memory.remoteMiningRooms).some(
+            (remoteRoom) =>
+                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[remoteRoom].keeperExterminator === AssignmentStatus.UNASSIGNED
+        );
+    }
+
+    static spawnKeeperExterminator(spawn: StructureSpawn): ScreepsReturnCode {
+        let roomInNeed = spawn.room.memory.remoteMiningRooms.find(
+            (remoteName) =>
+                Memory.remoteData[remoteName].keeperExterminator === AssignmentStatus.UNASSIGNED &&
+                Memory.remoteData[remoteName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
+        );
+
+        let options: SpawnOptions = {
+            memory: {
+                assignment: roomInNeed,
+                room: spawn.room.name,
+                role: Role.KEEPER_EXTERMINATOR,
+            },
+            disableSort: true,
+        };
+
+        let body = [
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            HEAL,
+            HEAL,
+            HEAL,
+            HEAL,
+            HEAL,
+            HEAL,
+        ];
+
+        let name = this.generateName(options.memory.role, spawn.name);
+        let result = spawn.smartSpawn(body, name, options);
+
+        if (result === OK) {
+            Memory.remoteData[roomInNeed].keeperExterminator = name;
+        }
+
+        return result;
+
+        return;
+    }
+
+    static calculateRemoteMinerWorkNeeded(roomName: string) {
+        let data = Memory.roomData[roomName];
+        let energyPotential = isCentralRoom(roomName) ? 4000 * 3 : 3000 * data.sourceCount;
+        let workNeeded = energyPotential / (HARVEST_POWER * 300);
+
+        return workNeeded > 5 ? workNeeded * 1.2 : workNeeded;
+    }
+}
+
+function isCentralRoom(roomName: string) {
+    return roomName
+        .replace(/[EW]/, '')
+        .replace(/[NS]/, '.')
+        .split('.')
+        .map((num) => parseInt(num) % 10 >= 4 && parseInt(num) % 10 <= 6)
+        .reduce((last, next) => last && next);
+}
+
+function isCenterRoom(roomName: string) {
+    return roomName
+        .replace(/[EW]/, '')
+        .replace(/[NS]/, '.')
+        .split('.')
+        .map((num) => parseInt(num) % 10 === 5)
+        .reduce((last, next) => last && next);
 }

@@ -47,3 +47,7 @@ StructureSpawn.prototype.spawnManager = function () {
 StructureSpawn.prototype.spawnMineralMiner = function () {
     return PopulationManagement.spawnMineralMiner(this);
 };
+
+StructureSpawn.prototype.spawnKeeperExterminator = function () {
+    return PopulationManagement.spawnKeeperExterminator(this);
+};

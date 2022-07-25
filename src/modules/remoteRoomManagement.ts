@@ -1,4 +1,3 @@
-import { validateAssignments } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
 import { getStoragePos } from './roomDesign';
 

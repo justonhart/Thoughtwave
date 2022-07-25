@@ -18,6 +18,7 @@ import { SquadAttacker } from '../roles/squadAttacker';
 import { MineralMiner } from '../roles/mineralMiner';
 import { IntershardTraveler } from '../roles/intershardTraveller';
 import { Upgrader } from '../roles/upgrader';
+import { KeeperExterminator } from '../roles/keeperExterminator';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -83,6 +84,9 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.UPGRADER:
             waveCreep = new Upgrader(creep.id);
+            break;
+        case Role.KEEPER_EXTERMINATOR:
+            waveCreep = new KeeperExterminator(creep.id);
             break;
         default:
             waveCreep = new WaveCreep(creep.id);

@@ -115,7 +115,9 @@ export class Gatherer extends TransportCreep {
 
         miningPositions.forEach((posString) => {
             let pos = posFromMem(posString);
-            let target: Id<Resource> | Id<Structure>;
+            if (pos.findInRange(FIND_HOSTILE_CREEPS, 3, { filter: (c) => c.owner.username === 'Source Keeper' }).length) {
+                return;
+            }
 
             let resource = pos.lookFor(LOOK_RESOURCES).shift();
             if (resource) {
