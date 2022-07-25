@@ -88,6 +88,7 @@ const enum AssignmentStatus {
  */
 const enum RemoteRoomThreatLevel {
     SAFE = 0,
+    INVADER_CORE,
     /**
      * Enemy Creeps with other body parts.
      */

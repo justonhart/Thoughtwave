@@ -9,7 +9,28 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
     }
 
     if (
-        Memory.remoteData[remoteRoomName].threatLevel > RemoteRoomThreatLevel.SAFE &&
+        Memory.remoteData[remoteRoomName].threatLevel === RemoteRoomThreatLevel.INVADER_CORE &&
+        !PopulationManagement.hasProtector(remoteRoomName) &&
+        !reassignIdleProtector(controllingRoomName, remoteRoomName)
+    ) {
+        const maxSize = 10;
+        const body = PopulationManagement.createPartsArray([ATTACK, MOVE], Game.rooms[controllingRoomName].energyCapacityAvailable - 300, maxSize);
+        body.push(HEAL, MOVE);
+        Memory.spawnAssignments.push({
+            designee: controllingRoomName,
+            body: body,
+            spawnOpts: {
+                memory: {
+                    role: Role.PROTECTOR,
+                    room: controllingRoomName,
+                    assignment: remoteRoomName,
+                    currentTaskPriority: Priority.MEDIUM,
+                    combat: { flee: false },
+                },
+            },
+        });
+    } else if (
+        Memory.remoteData[remoteRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS &&
         !PopulationManagement.hasProtector(remoteRoomName) &&
         !reassignIdleProtector(controllingRoomName, remoteRoomName)
     ) {
@@ -81,10 +102,13 @@ function isCenterRoom(roomName: string) {
 
 function monitorThreatLevel(room: Room) {
     let creeps = room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
+    let hasInvaderCore = !!room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_INVADER_CORE }).length;
     return creeps.some((c) => c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0)
         ? RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
         : creeps.length
         ? RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS
+        : hasInvaderCore
+        ? RemoteRoomThreatLevel.INVADER_CORE
         : RemoteRoomThreatLevel.SAFE;
 }
 
