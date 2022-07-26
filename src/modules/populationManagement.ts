@@ -1,3 +1,4 @@
+import { isKeeperRoom as isKeeperRoom } from './data';
 import { getResourceBoostsAvailable } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { roomNeedsCoreStructures } from './roomDesign';
@@ -777,27 +778,9 @@ export class PopulationManagement {
 
     static calculateRemoteMinerWorkNeeded(roomName: string) {
         let data = Memory.roomData[roomName];
-        let energyPotential = isCentralRoom(roomName) ? 4000 * 3 : 3000 * data.sourceCount;
+        let energyPotential = isKeeperRoom(roomName) ? 4000 * 3 : 3000 * data.sourceCount;
         let workNeeded = energyPotential / (HARVEST_POWER * 300);
 
         return workNeeded > 5 ? workNeeded * 1.2 : workNeeded;
     }
-}
-
-function isCentralRoom(roomName: string) {
-    return roomName
-        .replace(/[EW]/, '')
-        .replace(/[NS]/, '.')
-        .split('.')
-        .map((num) => parseInt(num) % 10 >= 4 && parseInt(num) % 10 <= 6)
-        .reduce((last, next) => last && next);
-}
-
-function isCenterRoom(roomName: string) {
-    return roomName
-        .replace(/[EW]/, '')
-        .replace(/[NS]/, '.')
-        .split('.')
-        .map((num) => parseInt(num) % 10 === 5)
-        .reduce((last, next) => last && next);
 }
