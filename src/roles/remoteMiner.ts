@@ -17,6 +17,7 @@ export class RemoteMiner extends WaveCreep {
             if (targetPos) {
                 if (this.destinationSpawningKeeper()) {
                     this.say('🚨KEEPER🚨');
+                    delete this.memory.destination;
                 }
                 if (!this.pos.isEqualTo(targetPos)) {
                     this.travelTo(targetPos);
@@ -48,7 +49,7 @@ export class RemoteMiner extends WaveCreep {
                 }
             } else {
                 if (Memory.remoteData[this.memory.assignment].gatherer) {
-                    this.say(`🚚 is SLOW!`);
+                    this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
                 }
             }
         } else {
