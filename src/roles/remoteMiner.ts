@@ -44,7 +44,7 @@ export class RemoteMiner extends WaveCreep {
                         }
                     }
 
-                    if (isKeeperRoom(this.memory.assignment) && this.destinationSpawningKeeper()) {
+                    if (isKeeperRoom(this.memory.assignment) && container && this.destinationSpawningKeeper()) {
                         this.say('🚨KEEPER🚨');
                         delete this.memory.destination;
                     }

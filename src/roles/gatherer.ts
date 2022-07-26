@@ -5,7 +5,7 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
     protected run() {
-        if (Memory.remoteData[this.memory.assignment]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
+        if (this.damaged() || Memory.remoteData[this.memory.assignment]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
         }
@@ -33,6 +33,8 @@ export class Gatherer extends TransportCreep {
             } else {
                 delete this.memory.targetId;
             }
+        } else {
+            delete this.memory.targetId;
         }
     }
 
@@ -133,5 +135,9 @@ export class Gatherer extends TransportCreep {
         });
 
         return targets.length ? targets.reduce((highest, next) => (highest.amount > next.amount ? highest : next))?.id : undefined;
+    }
+
+    private damaged() {
+        return this.hits < this.hitsMax * 0.8;
     }
 }

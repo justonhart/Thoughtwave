@@ -12,7 +12,7 @@ export class KeeperExterminator extends CombatCreep {
             }
 
             if (target instanceof ConstructionSite) {
-                let miner = Game.getObjectById(Memory.remoteData[this.memory.assignment].miner as Id<Creep>);
+                let miner = Game.creeps[Memory.remoteData[this.memory.assignment].miner];
                 if (miner?.memory.destination !== target.pos.toMemSafe() || !miner?.pos.isNearTo(target.pos)) {
                     this.travelTo(target.pos, { avoidSourceKeepers: false });
                     //scan area for keeper
