@@ -116,4 +116,8 @@ export class WaveCreep extends Creep {
             delete this.memory.currentTaskPriority;
         }
     }
+
+    protected damaged() {
+        return this.hits < this.hitsMax;
+    }
 }

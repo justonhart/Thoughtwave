@@ -136,8 +136,4 @@ export class Gatherer extends TransportCreep {
 
         return targets.length ? targets.reduce((highest, next) => (highest.amount > next.amount ? highest : next))?.id : undefined;
     }
-
-    private damaged() {
-        return this.hits < this.hitsMax * 0.8;
-    }
 }
