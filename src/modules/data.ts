@@ -45,7 +45,7 @@ export function updateRoomData(room: Room) {
     }
 
     if (data.roomStatus !== RoomMemoryStatus.OWNED_ME) {
-        if (room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_TOWER && s.isActive() }).length) {
+        if (room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_TOWER && s.isActive() }).length || data.roomLevel) {
             data.hostile = true;
         }
     } else {
