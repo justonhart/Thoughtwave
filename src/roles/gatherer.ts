@@ -71,15 +71,18 @@ export class Gatherer extends TransportCreep {
     private maintainRoad() {
         const site = this.pos
             .look()
-            .filter(
+            .find(
                 (object) =>
-                    (object.type === LOOK_STRUCTURES && object.structure.hits < object.structure.hitsMax) || object.type === LOOK_CONSTRUCTION_SITES
+                    (object.type === LOOK_STRUCTURES &&
+                        object.structure.structureType === STRUCTURE_ROAD &&
+                        object.structure.hits < object.structure.hitsMax) ||
+                    (object.type === LOOK_CONSTRUCTION_SITES && object.constructionSite.structureType === STRUCTURE_ROAD)
             );
-        if (site.length) {
-            if (site[0].type === LOOK_CONSTRUCTION_SITES) {
-                this.build(site[0].constructionSite);
-            } else if (site[0].type === LOOK_STRUCTURES && site[0].structure.hits < site[0].structure.hitsMax) {
-                this.repair(site[0].structure);
+        if (site) {
+            if (site.type === LOOK_CONSTRUCTION_SITES) {
+                this.build(site.constructionSite);
+            } else if (site.type === LOOK_STRUCTURES && site.structure.hits < site.structure.hitsMax) {
+                this.repair(site.structure);
             }
         } else {
             this.room.createConstructionSite(this.pos, STRUCTURE_ROAD);
