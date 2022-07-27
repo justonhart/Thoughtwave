@@ -1,8 +1,9 @@
+import { isKeeperRoom } from '../modules/data';
 import { posFromMem } from '../modules/memoryManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class RemoteMiner extends WaveCreep {
     protected run() {
-        if (Memory.remoteData[this.memory.assignment]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
+        if (this.damaged() || Memory.remoteData[this.memory.assignment]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
         }
@@ -15,10 +16,6 @@ export class RemoteMiner extends WaveCreep {
 
             let targetPos = posFromMem(this.memory.destination);
             if (targetPos) {
-                if (this.destinationSpawningKeeper()) {
-                    this.say('🚨KEEPER🚨');
-                    delete this.memory.destination;
-                }
                 if (!this.pos.isEqualTo(targetPos)) {
                     this.travelTo(targetPos);
                 } else {
@@ -46,11 +43,17 @@ export class RemoteMiner extends WaveCreep {
                             delete this.memory.destination;
                         }
                     }
+
+                    if (isKeeperRoom(this.memory.assignment) && container && this.destinationSpawningKeeper()) {
+                        this.say('🚨KEEPER🚨');
+                        delete this.memory.destination;
+                    }
                 }
+            } else if (isKeeperRoom(this.memory.assignment)) {
+                //travel out of danger-zone
+                this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             } else {
-                if (Memory.remoteData[this.memory.assignment].gatherer) {
-                    this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
-                }
+                this.say('🚚 is SLOW!');
             }
         } else {
             this.travelToRoom(this.memory.assignment);

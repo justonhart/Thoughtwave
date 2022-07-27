@@ -369,6 +369,14 @@ export class Pathing {
                         });
                 }
 
+                if (Memory.rooms[room.name]?.mineralMiningAssignments) {
+                    Object.keys(room.memory.mineralMiningAssignments)
+                        .map((pos) => posFromMem(pos))
+                        .forEach((pos) => {
+                            matrix.set(pos.x, pos.y, 50);
+                        });
+                }
+
                 if (Memory.remoteData[room.name]?.miningPositions) {
                     Memory.remoteData[room.name].miningPositions
                         .map((pos) => posFromMem(pos))

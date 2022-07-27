@@ -76,3 +76,21 @@ export function deleteExpiredRoomData() {
             delete Memory.roomData[roomName].asOf;
         });
 }
+
+export function isKeeperRoom(roomName: string) {
+    return roomName
+        .replace(/[EW]/, '')
+        .replace(/[NS]/, '.')
+        .split('.')
+        .map((num) => [4, 6].includes(parseInt(num) % 10))
+        .reduce((last, next) => last && next);
+}
+
+export function isCenterRoom(roomName: string) {
+    return roomName
+        .replace(/[EW]/, '')
+        .replace(/[NS]/, '.')
+        .split('.')
+        .map((num) => parseInt(num) % 10 === 5)
+        .reduce((last, next) => last && next);
+}

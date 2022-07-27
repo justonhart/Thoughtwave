@@ -1,3 +1,4 @@
+import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { PopulationManagement } from './populationManagement';
 import { getStoragePos } from './roomDesign';
 
@@ -75,28 +76,10 @@ export function findMiningPositions(controllingRoomName: string, remoteRoomName:
 
 export function calculateRemoteMinerWorkNeeded(roomName: string) {
     let data = Memory.roomData[roomName];
-    let energyPotential = isCentralRoom(roomName) ? 4000 * 3 : 3000 * data.sourceCount;
+    let energyPotential = isKeeperRoom(roomName) ? 4000 * 3 : 3000 * data.sourceCount;
     let workNeeded = energyPotential / (HARVEST_POWER * 300);
 
     return workNeeded > 5 ? workNeeded * 1.2 : workNeeded;
-}
-
-function isCentralRoom(roomName: string) {
-    return roomName
-        .replace(/[EW]/, '')
-        .replace(/[NS]/, '.')
-        .split('.')
-        .map((num) => parseInt(num) % 10 >= 4 && parseInt(num) % 10 <= 6)
-        .reduce((last, next) => last && next);
-}
-
-function isCenterRoom(roomName: string) {
-    return roomName
-        .replace(/[EW]/, '')
-        .replace(/[NS]/, '.')
-        .split('.')
-        .map((num) => parseInt(num) % 10 === 5)
-        .reduce((last, next) => last && next);
 }
 
 function monitorThreatLevel(room: Room) {
@@ -132,7 +115,7 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
         miningPositions: miningPositions,
     };
 
-    if (isCentralRoom(remoteRoomName) && !isCenterRoom(remoteRoomName)) {
+    if (isKeeperRoom(remoteRoomName) && !isCenterRoom(remoteRoomName)) {
         remoteData.keeperExterminator = AssignmentStatus.UNASSIGNED;
     } else {
         remoteData.reservationState = RemoteRoomReservationStatus.LOW;

@@ -5,7 +5,7 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
     protected run() {
-        if (Memory.remoteData[this.memory.assignment]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
+        if (this.damaged() || Memory.remoteData[this.memory.assignment]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
         }
@@ -25,7 +25,7 @@ export class Gatherer extends TransportCreep {
             this.runCollectionJob(target);
         } else if (target instanceof StructureStorage) {
             if (this.store.energy) {
-                if (!this.shouldBuildRoad() || this.roadIsFull()) {
+                if (!this.getActiveBodyparts(WORK) || !this.shouldBuildRoad() || this.roadIsFull()) {
                     this.storeCargo();
                 } else {
                     this.maintainRoad();
@@ -33,6 +33,8 @@ export class Gatherer extends TransportCreep {
             } else {
                 delete this.memory.targetId;
             }
+        } else {
+            delete this.memory.targetId;
         }
     }
 
@@ -81,7 +83,7 @@ export class Gatherer extends TransportCreep {
         if (site) {
             if (site.type === LOOK_CONSTRUCTION_SITES) {
                 this.build(site.constructionSite);
-            } else if (site.type === LOOK_STRUCTURES && site.structure.hits < site.structure.hitsMax) {
+            } else if (site.type === LOOK_STRUCTURES) {
                 this.repair(site.structure);
             }
         } else {
