@@ -40,7 +40,7 @@ export class Gatherer extends TransportCreep {
 
     protected findTarget() {
         // Gather
-        if (this.store.getUsedCapacity() < this.store.getCapacity() / 2) {
+        if (this.store.getUsedCapacity() < this.store.getCapacity() * 0.8) {
             return this.findCollectionTarget(this.memory.assignment);
         }
 

@@ -1,4 +1,4 @@
-import { isKeeperRoom as isKeeperRoom } from './data';
+import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { getResourceBoostsAvailable } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { roomNeedsCoreStructures } from './roomDesign';
@@ -328,6 +328,10 @@ export class PopulationManagement {
                 role: Role.GATHERER,
             },
         };
+
+        if (isKeeperRoom(assignment) || isCenterRoom(assignment)) {
+            options.boosts = [BoostType.CARRY];
+        }
 
         let name = this.generateName(options.memory.role, spawn.name);
         let PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9);
