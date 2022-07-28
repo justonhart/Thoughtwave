@@ -1,4 +1,3 @@
-import { posFromMem } from '../modules/memoryManagement';
 import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class KeeperExterminator extends CombatCreep {
@@ -68,21 +67,21 @@ export class KeeperExterminator extends CombatCreep {
 
     private findTarget(): Id<Creep> | Id<Structure> | Id<ConstructionSite> {
         let containerConstructionSite = Game.rooms[this.memory.assignment]
-            .find(FIND_MY_CONSTRUCTION_SITES, { filter: (site) => site.structureType === STRUCTURE_CONTAINER })
+            ?.find(FIND_MY_CONSTRUCTION_SITES, { filter: (site) => site.structureType === STRUCTURE_CONTAINER })
             .shift();
         if (containerConstructionSite) {
             return containerConstructionSite.id;
         }
 
-        let keepers = Game.rooms[this.memory.assignment].find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username === 'Source Keeper' });
-        if (keepers.length) {
+        let keepers = Game.rooms[this.memory.assignment]?.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username === 'Source Keeper' });
+        if (keepers?.length) {
             return this.pos.findClosestByPath(keepers)?.id;
         }
 
-        let lairs = Game.rooms[this.memory.assignment].find(FIND_HOSTILE_STRUCTURES, {
+        let lairs = Game.rooms[this.memory.assignment]?.find(FIND_HOSTILE_STRUCTURES, {
             filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR,
         }) as StructureKeeperLair[];
-        let nextSpawn = lairs.reduce((lowestTimer, next) => (lowestTimer.ticksToSpawn <= next.ticksToSpawn ? lowestTimer : next));
+        let nextSpawn = lairs?.reduce((lowestTimer, next) => (lowestTimer.ticksToSpawn <= next.ticksToSpawn ? lowestTimer : next));
         if (nextSpawn) {
             return nextSpawn.id;
         }
