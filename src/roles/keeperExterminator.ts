@@ -1,7 +1,7 @@
 import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class KeeperExterminator extends CombatCreep {
-    private shouldRangedHeal: boolean = false;
+    private attacked: boolean = false;
     protected run() {
         if (this.room.name === this.memory.assignment || this.memory.targetId) {
             let target = Game.getObjectById(this.memory.targetId);
@@ -49,15 +49,13 @@ export class KeeperExterminator extends CombatCreep {
             if (target instanceof Creep) {
                 if (this.pos.isNearTo(target)) {
                     this.attackCreep(target as Creep);
-                    this.shouldRangedHeal = true;
+                    this.attacked = true;
                 } else {
                     this.travelTo(target, { range: 1, avoidSourceKeepers: false });
                 }
             }
 
-            if (this.shouldRangedHeal) {
-                this.rangedHeal(this);
-            } else {
+            if (!this.attacked) {
                 this.heal(this);
             }
         } else {
@@ -71,6 +69,15 @@ export class KeeperExterminator extends CombatCreep {
             .shift();
         if (containerConstructionSite) {
             return containerConstructionSite.id;
+        }
+
+        let invaders = Game.rooms[this.memory.assignment]?.find(FIND_HOSTILE_CREEPS, {
+            filter: (c) =>
+                c.getActiveBodyparts(ATTACK) > 0 ||
+                ((c.getActiveBodyparts(RANGED_ATTACK) || c.getActiveBodyparts(HEAL) > 0) && c.owner.username !== 'Source Keeper'),
+        });
+        if (invaders?.length) {
+            return this.pos.findClosestByPath(invaders).id;
         }
 
         let keepers = Game.rooms[this.memory.assignment]?.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username === 'Source Keeper' });
