@@ -21,7 +21,7 @@ export class Distributor extends TransportCreep {
             }
         }
 
-        if (!target && this.store.getFreeCapacity()) {
+        if (!target && this.store.getFreeCapacity() + this.incomingResourceAmount >= this.store.getCapacity() * 0.9) {
             target = this.findCollectionTarget();
         }
 
