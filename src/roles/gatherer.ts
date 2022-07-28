@@ -25,10 +25,11 @@ export class Gatherer extends TransportCreep {
             this.runCollectionJob(target);
         } else if (target instanceof StructureStorage) {
             if (this.store.energy) {
-                if (!this.getActiveBodyparts(WORK) || !this.shouldBuildRoad() || this.roadIsFull()) {
+                if (!this.getActiveBodyparts(WORK) || !this.shouldBuildRoad() || this.roadIsServicable()) {
                     this.storeCargo();
+                    this.repairRoad();
                 } else {
-                    this.maintainRoad();
+                    this.workOnRoad();
                 }
             } else {
                 delete this.memory.targetId;
@@ -70,7 +71,7 @@ export class Gatherer extends TransportCreep {
     /**
      * Repair road on current creep position if necessary
      */
-    private maintainRoad() {
+    private workOnRoad() {
         const site = this.pos
             .look()
             .find(
@@ -91,9 +92,9 @@ export class Gatherer extends TransportCreep {
         }
     }
 
-    private roadIsFull(): boolean {
+    private roadIsServicable(): boolean {
         const road = this.pos.lookFor(LOOK_STRUCTURES).find((structure) => structure.structureType === STRUCTURE_ROAD);
-        if (road && road.hits === road.hitsMax) {
+        if (road && road.hits > road.hitsMax * 0.75) {
             return true;
         } else {
             return false;
@@ -138,5 +139,12 @@ export class Gatherer extends TransportCreep {
         });
 
         return targets.length ? targets.reduce((highest, next) => (highest.amount > next.amount ? highest : next))?.id : undefined;
+    }
+
+    private repairRoad(): void {
+        const road = this.pos.lookFor(LOOK_STRUCTURES).find((structure) => structure.structureType === STRUCTURE_ROAD);
+        if (road?.hits < road?.hitsMax) {
+            this.repair(road);
+        }
     }
 }
