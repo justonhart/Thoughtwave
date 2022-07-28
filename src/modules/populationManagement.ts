@@ -330,7 +330,7 @@ export class PopulationManagement {
         };
 
         if (isKeeperRoom(assignment) || isCenterRoom(assignment)) {
-            options.boosts = [BoostType.CARRY];
+            options.boosts = [BoostType.CARRY, BoostType.MOVE];
         }
 
         let name = this.generateName(options.memory.role, spawn.name);
