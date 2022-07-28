@@ -1,18 +1,21 @@
 import { WaveCreep } from './waveCreep';
 
 export class TransportCreep extends WaveCreep {
-    private recursed: boolean = false;
     private previousTargetId: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
+    protected incomingResourceAmount: number = 0;
     protected run() {
         if (this.memory.gathering === true) {
             this.gatherEnergy();
+
+            if (!this.memory.gathering) {
+                this.runTransporterTasks();
+            }
         } else {
             this.runTransporterTasks();
-        }
 
-        if (!this.recursed) {
-            this.recursed = true;
-            this.run();
+            if (this.memory.gathering) {
+                this.gatherEnergy();
+            }
         }
     }
 
@@ -25,7 +28,26 @@ export class TransportCreep extends WaveCreep {
 
         if (this.memory.labRequests?.length) {
             this.prepareLabs();
-        } else if (target instanceof Resource) {
+        } else {
+            this.runNonLabPrepTasks();
+
+            //round 2
+            if (!this.memory.targetId) {
+                this.memory.targetId = this.findTarget();
+                target = Game.getObjectById(this.memory.targetId);
+
+                if (this.memory.labRequests?.length) {
+                    this.prepareLabs();
+                } else {
+                    this.runNonLabPrepTasks();
+                }
+            }
+        }
+    }
+
+    private runNonLabPrepTasks() {
+        let target: any = Game.getObjectById(this.memory.targetId);
+        if (target instanceof Resource) {
             this.runPickupJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer || target?.status === LabStatus.NEEDS_EMPTYING) {
             this.runCollectionJob(target);
@@ -268,6 +290,7 @@ export class TransportCreep extends WaveCreep {
                 if (target.store[nextResource] >= this.store.getFreeCapacity() || target instanceof StructureLab) {
                     this.onTaskFinished();
                 }
+                this.incomingResourceAmount += Math.min(this.store.getFreeCapacity(), target.store[nextResource]);
                 break;
             default:
                 this.onTaskFinished();
@@ -282,6 +305,7 @@ export class TransportCreep extends WaveCreep {
                 this.travelTo(resource, { range: 1 });
                 break;
             case 0:
+                this.incomingResourceAmount += resource.amount;
             case ERR_FULL:
                 this.onTaskFinished();
         }
