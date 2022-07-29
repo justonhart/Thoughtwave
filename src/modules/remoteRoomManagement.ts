@@ -115,9 +115,9 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
         miningPositions: miningPositions,
     };
 
-    if (isKeeperRoom(remoteRoomName) && !isCenterRoom(remoteRoomName)) {
+    if (isKeeperRoom(remoteRoomName)) {
         remoteData.keeperExterminator = AssignmentStatus.UNASSIGNED;
-    } else {
+    } else if (!isCenterRoom(remoteRoomName)) {
         remoteData.reservationState = RemoteRoomReservationStatus.LOW;
         remoteData.reserver = AssignmentStatus.UNASSIGNED;
     }

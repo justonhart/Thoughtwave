@@ -78,12 +78,15 @@ export function deleteExpiredRoomData() {
 }
 
 export function isKeeperRoom(roomName: string) {
-    return roomName
-        .replace(/[EW]/, '')
-        .replace(/[NS]/, '.')
-        .split('.')
-        .map((num) => [4, 6].includes(parseInt(num) % 10))
-        .reduce((last, next) => last && next);
+    return (
+        !isCenterRoom(roomName) &&
+        roomName
+            .replace(/[EW]/, '')
+            .replace(/[NS]/, '.')
+            .split('.')
+            .map((num) => [4, 5, 6].includes(parseInt(num) % 10))
+            .reduce((last, next) => last && next)
+    );
 }
 
 export function isCenterRoom(roomName: string) {
