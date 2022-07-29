@@ -7,7 +7,7 @@ interface CreepMemory {
     link?: Id<StructureLink>;
     destination?: string;
     assignment?: string;
-    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone>;
+    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
     miningPos?: string;
     hasTTLReplacement?: boolean;
     gathering?: boolean;
@@ -67,7 +67,6 @@ const enum Priority {
 const enum Role {
     WORKER = 'Worker',
     UPGRADER = 'Upgrader',
-    MAINTAINTER = 'MAINTAINTER',
     DISTRIBUTOR = 'DISTRIBUTOR',
     REMOTE_MINER = 'REMOTE_MINER',
     GATHERER = 'GATHERER',
@@ -75,7 +74,6 @@ const enum Role {
     MINER = 'MINER',
     CLAIMER = 'CLAIMER',
     COLONIZER = 'COLONIZER',
-    BUILDER = 'BUILDER',
     SCOUT = 'SCOUT',
     PROTECTOR = 'PROTECTOR',
     RAMPART_PROTECTOR = 'RAMPART_PROTECTOR',
@@ -86,4 +84,5 @@ const enum Role {
     SQUAD_ATTACKER = 'SQUAD_ATTACKER',
     MINERAL_MINER = 'MINERAL_MINER',
     INTERSHARD_TRAVELLER = 'INTERSHARD_TRAVELLER',
+    KEEPER_EXTERMINATOR = 'KEEPER_EXTERMINATOR',
 }

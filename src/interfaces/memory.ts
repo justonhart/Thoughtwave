@@ -1,13 +1,9 @@
 interface Memory {
-    empire: EmpireMemory;
-}
-
-interface EmpireMemory {
+    remoteData: { [roomName: string]: RemoteData };
+    roomData: { [roomName: string]: RoomData };
     priceMap?: { [resourceType: string]: number };
     logCPU?: boolean;
     spawnAssignments?: SpawnAssignment[];
-    hostileRooms?: HostileRoom[];
-    scoutAssignments?: { [roomName: string]: string[] }; //Map<roomName, targetRoomNames>
     operations?: Operation[];
     playersToIgnore?: string[];
     squads?: { [squadId: string]: Squad };
@@ -71,11 +67,17 @@ interface OriginOpts {
     maxLinearDistance?: number;
     multipleSpawns?: boolean;
     needsBoost?: boolean;
+    selectionCriteria?: OriginCriteria;
 }
 
 interface OriginResult {
     roomName: string;
     cost: number;
+}
+
+const enum OriginCriteria {
+    HIGHEST_LEVEL,
+    CLOSEST,
 }
 
 interface Squad {

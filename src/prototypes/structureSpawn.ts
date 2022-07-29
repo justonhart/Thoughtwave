@@ -37,7 +37,7 @@ StructureSpawn.prototype.spawnMax = function (partsBlock: BodyPartConstant[], na
 };
 
 StructureSpawn.prototype.smartSpawn = function (body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
-    return PopulationManagement.smartSpawn(this, body, name, opts);
+    return PopulationManagement.smartSpawn(this, name, body, opts);
 };
 
 StructureSpawn.prototype.spawnManager = function () {
@@ -46,4 +46,8 @@ StructureSpawn.prototype.spawnManager = function () {
 
 StructureSpawn.prototype.spawnMineralMiner = function () {
     return PopulationManagement.spawnMineralMiner(this);
+};
+
+StructureSpawn.prototype.spawnKeeperExterminator = function () {
+    return PopulationManagement.spawnKeeperExterminator(this);
 };

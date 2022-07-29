@@ -1,4 +1,5 @@
 import driveCreep from './modules/creepDriver';
+import { addRoomData, deleteExpiredRoomData, updateRoomData } from './modules/data';
 import { manageEmpire } from './modules/empireManagement';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
@@ -31,6 +32,8 @@ module.exports.loop = function () {
 
     global.roomConstructionsChecked = false;
 
+    deleteExpiredRoomData();
+
     try {
         manageEmpire();
     } catch (e) {
@@ -40,15 +43,25 @@ module.exports.loop = function () {
     cpuUsageString += `empire CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
     cpuUsed = Game.cpu.getUsed();
 
-    Object.values(Game.rooms)
-        .filter((r) => r.controller?.my)
-        .forEach((room) => {
+    Object.values(Game.rooms).forEach((room) => {
+        if (!Memory.roomData[room.name]) {
+            try {
+                addRoomData(room);
+            } catch (e) {
+                console.log(`Error caught adding data for ${room.name}: \n${e}`);
+            }
+        } else {
+            updateRoomData(room);
+        }
+
+        if (room.controller?.my) {
             try {
                 driveRoom(room);
             } catch (e) {
                 console.log(`Error caught in ${room.name}: \n${e}`);
             }
-        });
+        }
+    });
 
     cpuUsageString += `rooms CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
     cpuUsed = Game.cpu.getUsed();
@@ -80,7 +93,7 @@ module.exports.loop = function () {
         Game.creeps[creepName].runPriorityQueueTask();
     });
 
-    if (Memory.empire.logCPU) {
+    if (Memory.logCPU) {
         console.log(cpuUsageString + `total: ${Game.cpu.getUsed().toFixed(2)}`);
     }
 

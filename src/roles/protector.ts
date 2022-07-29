@@ -45,7 +45,7 @@ export class Protector extends CombatCreep {
     }
 
     private findTarget() {
-        const hostileCreeps = this.room.find(FIND_HOSTILE_CREEPS);
+        const hostileCreeps = this.room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
         if (hostileCreeps.length) {
             // Find closest Enemy and attack it to avoid stepping off ramparts as ATTACK creeps (include worker creeps as dangerous since they can dismantle)
             if (this.pos.roomName === this.homeroom?.name) {

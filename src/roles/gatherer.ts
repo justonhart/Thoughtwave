@@ -1,9 +1,11 @@
+import { getUsername } from '../modules/data';
+import { posFromMem } from '../modules/memoryManagement';
+import { getStructureForPos, posInsideBunker } from '../modules/roomDesign';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
-// TODO: right now I just copied some of the worker functions over. Find a better way to reuse already existing methods
 export class Gatherer extends TransportCreep {
     protected run() {
-        if (Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment]?.state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS) {
+        if (this.damaged() || Memory.remoteData[this.memory.assignment]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
         }
@@ -14,51 +16,32 @@ export class Gatherer extends TransportCreep {
                 // Find target is visibility exists
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
-                this.checkConstructionProgress();
-                this.checkEnergyStatus();
             }
         }
 
         if (target instanceof Resource) {
             this.runPickupJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer) {
-            // Workaround for not leaving constructionsite close to target
-            if (this.pos.getRangeTo(target) === 2) {
-                delete this.memory._m.path;
-                this.travelTo(target, { range: 1, preferRoadConstruction: true });
-            } else {
-                this.runCollectionJob(target);
-            }
+            this.runCollectionJob(target);
         } else if (target instanceof StructureStorage) {
-            this.storeCargo();
-            this.maintainRoad();
-        }
-    }
-
-    private checkConstructionProgress() {
-        const constructionSites = this.room.find(FIND_MY_CONSTRUCTION_SITES);
-        if (constructionSites.length > 4) {
-            Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].needsConstruction = true;
-        } else {
-            Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].needsConstruction = false;
-        }
-    }
-
-    private checkEnergyStatus() {
-        let looseResources = this.room.find(FIND_DROPPED_RESOURCES).filter((r) => r.amount > 100);
-        if (looseResources.length) {
-            const amount = looseResources.reduce((total, resource) => total + resource.amount, 0);
-            if (amount > 3000) {
-                Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].energyStatus = EnergyStatus.SURPLUS;
-                return;
+            if (this.store.energy) {
+                if (!this.getActiveBodyparts(WORK) || !this.shouldBuildRoad() || this.roadIsServicable()) {
+                    this.storeCargo();
+                    this.repairRoad();
+                } else {
+                    this.workOnRoad();
+                }
+            } else {
+                delete this.memory.targetId;
             }
+        } else {
+            delete this.memory.targetId;
         }
-        Memory.rooms[this.memory.room].remoteAssignments[this.memory.assignment].energyStatus = EnergyStatus.STABLE;
     }
 
     protected findTarget() {
         // Gather
-        if (this.store.getUsedCapacity() < this.store.getCapacity() / 2) {
+        if (this.store.getUsedCapacity() < this.store.getCapacity() * 0.8) {
             return this.findCollectionTarget(this.memory.assignment);
         }
 
@@ -88,19 +71,80 @@ export class Gatherer extends TransportCreep {
     /**
      * Repair road on current creep position if necessary
      */
-    protected maintainRoad() {
+    private workOnRoad() {
         const site = this.pos
             .look()
-            .filter(
+            .find(
                 (object) =>
-                    (object.type === LOOK_STRUCTURES && object.structure.hits < object.structure.hitsMax) || object.type === LOOK_CONSTRUCTION_SITES
+                    (object.type === LOOK_STRUCTURES &&
+                        object.structure.structureType === STRUCTURE_ROAD &&
+                        object.structure.hits < object.structure.hitsMax) ||
+                    (object.type === LOOK_CONSTRUCTION_SITES && object.constructionSite.structureType === STRUCTURE_ROAD)
             );
-        if (site.length) {
-            if (site[0].type === LOOK_CONSTRUCTION_SITES) {
-                this.build(site[0].constructionSite);
-            } else if (site[0].type === LOOK_STRUCTURES && site[0].structure.hits < site[0].structure.hitsMax) {
-                this.repair(site[0].structure);
+        if (site) {
+            if (site.type === LOOK_CONSTRUCTION_SITES) {
+                this.build(site.constructionSite);
+            } else if (site.type === LOOK_STRUCTURES) {
+                this.repair(site.structure);
             }
+        } else {
+            this.room.createConstructionSite(this.pos, STRUCTURE_ROAD);
+        }
+    }
+
+    private roadIsServicable(): boolean {
+        const road = this.pos.lookFor(LOOK_STRUCTURES).find((structure) => structure.structureType === STRUCTURE_ROAD);
+        if (road && road.hits > road.hitsMax * 0.75) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private shouldBuildRoad(): boolean {
+        return (
+            !this.onEdge() &&
+            !this.memory._m?.repath &&
+            (!this.room.controller?.owner ||
+                this.room.controller?.reservation?.username === getUsername() ||
+                (this.room.controller?.owner?.username === getUsername() &&
+                    this.room.memory.layout === RoomLayout.BUNKER &&
+                    (!posInsideBunker(this.pos) ||
+                        getStructureForPos(this.room.memory.layout, this.pos, posFromMem(this.room.memory.anchorPoint)) === STRUCTURE_ROAD)))
+        );
+    }
+
+    protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> {
+        let miningPositions = Memory.remoteData[roomName].miningPositions;
+
+        let targets: { id: Id<Resource> | Id<Structure>; amount: number }[] = [];
+
+        miningPositions.forEach((posString) => {
+            let pos = posFromMem(posString);
+            if (pos.findInRange(FIND_HOSTILE_CREEPS, 3, { filter: (c) => c.owner.username === 'Source Keeper' }).length) {
+                return;
+            }
+
+            let resource = pos.lookFor(LOOK_RESOURCES).shift();
+            if (resource) {
+                targets.push({ id: resource.id, amount: resource.amount });
+            }
+
+            let container: StructureContainer = pos
+                .lookFor(LOOK_STRUCTURES)
+                .find((s) => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
+            if (container && container.store.getUsedCapacity()) {
+                targets.push({ id: container.id, amount: container.store.getUsedCapacity() });
+            }
+        });
+
+        return targets.length ? targets.reduce((highest, next) => (highest.amount > next.amount ? highest : next))?.id : undefined;
+    }
+
+    private repairRoad(): void {
+        const road = this.pos.lookFor(LOOK_STRUCTURES).find((structure) => structure.structureType === STRUCTURE_ROAD);
+        if (road?.hits < road?.hitsMax) {
+            this.repair(road);
         }
     }
 }

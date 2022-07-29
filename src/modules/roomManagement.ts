@@ -2,7 +2,7 @@ import { CombatIntel } from './combatIntel';
 import { runLabs } from './labManagement';
 import { posFromMem } from './memoryManagement';
 import { PopulationManagement } from './populationManagement';
-import { driveRemoteRoom } from './remoteRoomManagement';
+import { manageRemoteRoom } from './remoteRoomManagement';
 import {
     findBunkerLocation,
     placeBunkerOuterRamparts,
@@ -31,13 +31,13 @@ export function driveRoom(room: Room) {
 
     if (!room.canSpawn()) {
         // fail state - if a room has unexpectedly lost all spawns
-        if (!Memory.empire.operations.find((op) => op.targetRoom === room.name && op.type === OperationType.COLONIZE)) {
+        if (!Memory.operations.find((op) => op.targetRoom === room.name && op.type === OperationType.COLONIZE)) {
         }
     } else {
         room.memory.reservedEnergy = 0;
 
         let nukes = room.find(FIND_NUKES);
-        if (nukes.length) {
+        if (room.controller.level >= 6 && nukes.length) {
             let structuresAtRisk = getStructuresToProtect(nukes);
             structuresAtRisk.forEach((structureId) => {
                 let structure = Game.getObjectById(structureId);
@@ -111,10 +111,6 @@ export function driveRoom(room: Room) {
 
         const isHomeUnderAttack = runHomeSecurity(room);
         runTowers(room, isHomeUnderAttack);
-        if (!isHomeUnderAttack) {
-            // Prioritize home defense
-            driveRemoteRoom(room);
-        }
 
         if (room.memory.anchorPoint) {
             let anchorPoint = posFromMem(room.memory.anchorPoint);
@@ -139,6 +135,8 @@ export function driveRoom(room: Room) {
 
         runLabs(room);
 
+        runRemoteRooms(room);
+
         delete room.memory.reservedEnergy;
     }
 }
@@ -156,7 +154,7 @@ function runTowers(room: Room, isRoomUnderAttack: boolean) {
     }
 
     if (!room.controller.safeMode) {
-        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.empire.playersToIgnore?.includes(creep.owner.username) });
+        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.playersToIgnore?.includes(creep.owner.username) });
         towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
     }
 }
@@ -183,7 +181,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (!currentNumProtectors) {
             const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
-            Memory.empire.spawnAssignments.push({
+            Memory.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: body,
                 spawnOpts: {
@@ -201,7 +199,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
             console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
             const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
-            Memory.empire.spawnAssignments.push({
+            Memory.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: attackerBody,
                 spawnOpts: {
@@ -216,7 +214,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 },
             });
             const rangedBody = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
-            Memory.empire.spawnAssignments.push({
+            Memory.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: rangedBody,
                 spawnOpts: {
@@ -248,7 +246,7 @@ export function initRoom(room: Room) {
         repairQueue: [],
         miningAssignments: {},
         mineralMiningAssignments: {},
-        remoteAssignments: {},
+        remoteMiningRooms: [],
     };
 
     miningPostitions.forEach((pos) => {
@@ -332,7 +330,7 @@ function runSpawning(room: Room) {
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
     let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER || creep.memory.role === Role.UPGRADER).length;
-    let assignments = Memory.empire.spawnAssignments.filter((assignment) => assignment.designee === room.name);
+    let assignments = Memory.spawnAssignments.filter((assignment) => assignment.designee === room.name);
     let roomContainsViolentHostiles =
         room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0 &&
         !room.controller.safeMode;
@@ -371,7 +369,7 @@ function runSpawning(room: Room) {
             },
         };
         let spawn = availableSpawns.pop();
-        spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.getCreepTag('t', spawn.name), options, 10);
+        spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
     }
 
     if (PopulationManagement.needsMiner(room) && !roomContainsViolentHostiles) {
@@ -406,7 +404,17 @@ function runSpawning(room: Room) {
             }
         });
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING && Object.keys(room.memory.remoteAssignments).length && !roomContainsViolentHostiles) {
+        if (room.energyStatus >= EnergyStatus.RECOVERING && room.memory.remoteMiningRooms?.length && !roomContainsViolentHostiles) {
+            if (PopulationManagement.needsKeeperExterminator(room)) {
+                let spawn = availableSpawns.pop();
+                spawn?.spawnKeeperExterminator();
+            }
+
+            if (PopulationManagement.needsReserver(room)) {
+                let spawn = availableSpawns.pop();
+                spawn?.spawnReserver();
+            }
+
             if (PopulationManagement.needsRemoteMiner(room)) {
                 let spawn = availableSpawns.pop();
                 spawn?.spawnRemoteMiner();
@@ -416,28 +424,6 @@ function runSpawning(room: Room) {
                 let spawn = availableSpawns.pop();
                 spawn?.spawnGatherer();
             }
-
-            if (PopulationManagement.needsReserver(room)) {
-                let spawn = availableSpawns.pop();
-                spawn?.spawnReserver();
-            }
-        }
-
-        // TODO remove set room and put in function
-        if (
-            Game.time % 8000 === 0 &&
-            !Memory.empire.spawnAssignments.filter((creep) => creep.spawnOpts.memory.role === Role.SCOUT && creep.designee === room.name).length
-        ) {
-            Memory.empire.spawnAssignments.push({
-                designee: room.name,
-                body: [MOVE],
-                spawnOpts: {
-                    memory: {
-                        role: Role.SCOUT,
-                        room: room.name,
-                    },
-                },
-            });
         }
     }
 
@@ -551,4 +537,15 @@ export function getStructuresToProtect(nukes: Nuke[]) {
     );
 
     return filteredStructuresToProtect;
+}
+
+function runRemoteRooms(room: Room) {
+    let remoteRooms = room.memory.remoteMiningRooms;
+    remoteRooms?.forEach((remoteRoomName) => {
+        try {
+            manageRemoteRoom(room.name, remoteRoomName);
+        } catch (e) {
+            console.log(`Error caught running remote room ${remoteRoomName}: \n${e}`);
+        }
+    });
 }

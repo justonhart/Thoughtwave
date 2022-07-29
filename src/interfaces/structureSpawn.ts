@@ -7,6 +7,7 @@ interface StructureSpawn {
     spawnReserver(): ScreepsReturnCode;
     spawnManager(): ScreepsReturnCode;
     spawnWorker(): ScreepsReturnCode;
+    spawnKeeperExterminator(): ScreepsReturnCode;
     spawnAssignedCreep(assignment: SpawnAssignment): ScreepsReturnCode;
     spawnFirst(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;
     spawnMax(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;
@@ -15,6 +16,7 @@ interface StructureSpawn {
 
 interface SpawnOptions {
     boosts?: BoostType[];
+    disableSort?: boolean;
 }
 
 const enum BoostType {

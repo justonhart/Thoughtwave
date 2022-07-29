@@ -17,6 +17,28 @@ export function manageMemory() {
     // }
 }
 
+export function validateAssignments() {
+    Object.keys(Memory.rooms).forEach((roomName) => {
+        Memory.rooms[roomName].remoteMiningRooms?.forEach((remoteRoomName) => {
+            if (!Game.creeps[Memory.remoteData[remoteRoomName]?.gatherer]) {
+                Memory.remoteData[remoteRoomName].gatherer = AssignmentStatus.UNASSIGNED;
+            }
+
+            if (!Game.creeps[Memory.remoteData[remoteRoomName]?.miner]) {
+                Memory.remoteData[remoteRoomName].miner = AssignmentStatus.UNASSIGNED;
+            }
+
+            if (Memory.remoteData[remoteRoomName]?.reserver && !Game.creeps[Memory.remoteData[remoteRoomName].reserver]) {
+                Memory.remoteData[remoteRoomName].reserver = AssignmentStatus.UNASSIGNED;
+            }
+
+            if (Memory.remoteData[remoteRoomName]?.keeperExterminator && !Game.creeps[Memory.remoteData[remoteRoomName].keeperExterminator]) {
+                Memory.remoteData[remoteRoomName].keeperExterminator = AssignmentStatus.UNASSIGNED;
+            }
+        });
+    });
+}
+
 function handleDeadCreep(creepName: string) {
     let deadCreepMemory = Memory.creeps[creepName];
 
@@ -26,25 +48,27 @@ function handleDeadCreep(creepName: string) {
         }
         if (
             deadCreepMemory.role === Role.REMOTE_MINER &&
-            Memory.rooms[deadCreepMemory.room].remoteAssignments[posFromMem(deadCreepMemory.assignment).roomName]
+            Memory.rooms[deadCreepMemory.room].remoteMiningRooms?.includes(deadCreepMemory.assignment)
         ) {
-            Memory.rooms[deadCreepMemory.room].remoteAssignments[posFromMem(deadCreepMemory.assignment).roomName].miners[deadCreepMemory.assignment] =
-                AssignmentStatus.UNASSIGNED;
+            Memory.remoteData[deadCreepMemory.assignment].miner = AssignmentStatus.UNASSIGNED;
         }
         if (
             deadCreepMemory.role === Role.GATHERER &&
-            Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment] &&
+            Memory.rooms[deadCreepMemory.room].remoteMiningRooms?.includes(deadCreepMemory.assignment) &&
             Object.values(Memory.creeps).filter(
                 (creep) => creep.room === deadCreepMemory.room && creep.role === Role.GATHERER && creep.assignment === deadCreepMemory.assignment
             ).length === 1
         ) {
-            Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment].gatherer = AssignmentStatus.UNASSIGNED;
+            Memory.remoteData[deadCreepMemory.assignment].gatherer = AssignmentStatus.UNASSIGNED;
         }
-        if (deadCreepMemory.role === Role.RESERVER && Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment]) {
-            Memory.rooms[deadCreepMemory.room].remoteAssignments[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;
+        if (deadCreepMemory.role === Role.RESERVER && Memory.rooms[deadCreepMemory.room].remoteMiningRooms?.includes(deadCreepMemory.assignment)) {
+            Memory.remoteData[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.role === Role.MINERAL_MINER) {
             Memory.rooms[deadCreepMemory.room].mineralMiningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
+        }
+        if (deadCreepMemory.role === Role.KEEPER_EXTERMINATOR) {
+            Memory.remoteData[deadCreepMemory.assignment].keeperExterminator = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.labRequests) {
             Memory.rooms[deadCreepMemory.room].labRequests.unshift(...deadCreepMemory.labRequests);
@@ -52,17 +76,19 @@ function handleDeadCreep(creepName: string) {
     }
 
     if (deadCreepMemory.combat?.squadId) {
-        delete Memory.empire.squads[deadCreepMemory.combat.squadId].members[deadCreepMemory.combat.squadMemberType];
+        if (Memory.squads?.[deadCreepMemory.combat.squadId]?.members?.[deadCreepMemory.combat.squadMemberType]) {
+            delete Memory.squads?.[deadCreepMemory.combat.squadId]?.members?.[deadCreepMemory.combat.squadMemberType];
+        }
     }
 
     delete Memory.creeps[creepName];
 }
 
 function handleDeadSquads() {
-    if (Memory.empire.squads) {
-        for (const squadId in Memory.empire.squads) {
-            if (Memory.empire.squads[squadId].members && !Object.keys(Memory.empire.squads[squadId].members)?.length) {
-                delete Memory.empire.squads[squadId];
+    if (Memory.squads) {
+        for (const squadId in Memory.squads) {
+            if (Memory.squads[squadId].members && !Object.keys(Memory.squads[squadId].members)?.length) {
+                delete Memory.squads[squadId];
             }
         }
     }
