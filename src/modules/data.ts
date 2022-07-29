@@ -10,6 +10,11 @@ export function addRoomData(room: Room) {
     updateRoomData(room);
 }
 
+export function posFromMem(memPos: string): RoomPosition {
+    let split = memPos?.split('.');
+    return split ? new RoomPosition(Number(split[0]), Number(split[1]), split[2]) : null;
+}
+
 export function updateRoomData(room: Room) {
     let data = Memory.roomData[room.name];
 

@@ -1,4 +1,4 @@
-import { posFromMem } from './memoryManagement';
+import { posFromMem } from './data';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
 import { getSpawnPos, placeBunkerConstructionSites, roomNeedsCoreStructures } from './roomDesign';

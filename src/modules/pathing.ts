@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from '../modules/data';
 
 //@ts-ignore
 global.IN_ROOM = -20;

@@ -1,6 +1,6 @@
 import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { getResourceBoostsAvailable } from './labManagement';
-import { posFromMem } from './memoryManagement';
+import { posFromMem } from './data';
 import { roomNeedsCoreStructures } from './roomDesign';
 
 const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {

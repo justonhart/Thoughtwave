@@ -1,6 +1,5 @@
 import driveCreep from './modules/creepDriver';
-import { addRoomData, deleteExpiredRoomData, updateRoomData } from './modules/data';
-import { manageEmpire } from './modules/empireManagement';
+import { addRoomData, updateRoomData } from './modules/data';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
 import { getAllRoomNeeds, manageEmpireResources } from './modules/resourceManagement';
@@ -26,22 +25,6 @@ module.exports.loop = function () {
     } catch (e) {
         console.log(`Error caught in flag management: \n${e}`);
     }
-
-    //set map of all room resource needs
-    global.resourceNeeds = getAllRoomNeeds();
-
-    global.roomConstructionsChecked = false;
-
-    deleteExpiredRoomData();
-
-    try {
-        manageEmpire();
-    } catch (e) {
-        console.log(`Error caught in empire management: \n${e}`);
-    }
-
-    cpuUsageString += `empire CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
-    cpuUsed = Game.cpu.getUsed();
 
     Object.values(Game.rooms).forEach((room) => {
         if (!Memory.roomData[room.name]) {

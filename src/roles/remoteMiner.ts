@@ -1,5 +1,5 @@
 import { isKeeperRoom } from '../modules/data';
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class RemoteMiner extends WaveCreep {
     protected run() {

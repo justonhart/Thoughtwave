@@ -1,5 +1,5 @@
 import { getUsername } from '../modules/data';
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from '../modules/data';
 import { getStructureForPos, posInsideBunker } from '../modules/roomDesign';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 

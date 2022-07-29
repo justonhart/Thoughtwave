@@ -1,6 +1,6 @@
 import { CombatIntel } from './combatIntel';
 import { runLabs } from './labManagement';
-import { posFromMem } from './memoryManagement';
+import { posFromMem } from './data';
 import { PopulationManagement } from './populationManagement';
 import { manageRemoteRoom } from './remoteRoomManagement';
 import {
@@ -407,7 +407,7 @@ function runSpawning(room: Room) {
         if (room.energyStatus >= EnergyStatus.RECOVERING && room.memory.remoteMiningRooms?.length && !roomContainsViolentHostiles) {
             if (PopulationManagement.needsKeeperExterminator(room)) {
                 let spawn = availableSpawns.pop();
-                spawn?.spawnKeeperExterminator();
+                console.log(spawn?.spawnKeeperExterminator());
             }
 
             if (PopulationManagement.needsReserver(room)) {

@@ -1,5 +1,5 @@
 import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from '../modules/data';
 import { PopulationManagement } from '../modules/populationManagement';
 import { getFactoryResourcesNeeded } from '../modules/resourceManagement';
 import { findRepairTargets, getStructuresToProtect } from '../modules/roomManagement';

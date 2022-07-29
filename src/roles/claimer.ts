@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from '../modules/data';
 import { PopulationManagement } from '../modules/populationManagement';
 import { posInsideBunker } from '../modules/roomDesign';
 import { WaveCreep } from '../virtualCreeps/waveCreep';

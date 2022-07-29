@@ -1,6 +1,6 @@
 import { isThisTypeNode, updateFor } from 'typescript';
 import { CombatCreep } from '../virtualCreeps/combatCreep';
-import { posFromMem } from './memoryManagement';
+import { posFromMem } from './data';
 import { Pathing } from './pathing';
 
 export class SquadManagement {

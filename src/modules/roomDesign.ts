@@ -1,4 +1,4 @@
-import { posFromMem } from './memoryManagement';
+import { posFromMem } from './data';
 
 export function calculateRoomSpace(room: Room) {
     let totalWorkableSpace = 46 * 46;
