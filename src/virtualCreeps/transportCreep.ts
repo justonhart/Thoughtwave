@@ -3,6 +3,7 @@ import { WaveCreep } from './waveCreep';
 export class TransportCreep extends WaveCreep {
     private previousTargetId: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
     protected incomingResourceAmount: number = 0;
+    protected actionTaken: boolean = false;
     protected run() {
         if (this.memory.gathering === true) {
             this.gatherEnergy();
@@ -67,31 +68,6 @@ export class TransportCreep extends WaveCreep {
         this.say('targeting');
     }
 
-    protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage | StructureLab) {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
-        let targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
-        if (targetFreeCapacity) {
-            switch (this.transfer(target, RESOURCE_ENERGY)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { range: 1 });
-                    break;
-                case ERR_NOT_ENOUGH_RESOURCES:
-                    this.memory.gathering = true;
-                case ERR_FULL:
-                    this.onTaskFinished();
-                    break;
-                case OK:
-                    this.onTaskFinished();
-                    if (target.store.getFreeCapacity(RESOURCE_ENERGY) >= this.store.energy) {
-                        this.memory.gathering = true;
-                    }
-                    break;
-            }
-        } else {
-            this.onTaskFinished();
-        }
-    }
-
     //gather energy to distribute
     protected gatherEnergy(): void {
         this.memory.currentTaskPriority = Priority.MEDIUM;
@@ -102,57 +78,34 @@ export class TransportCreep extends WaveCreep {
             target = Game.getObjectById(this.memory.energySource);
         }
 
-        if (target instanceof StructureStorage) {
-            switch (this.withdraw(target, RESOURCE_ENERGY)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { range: 1 });
-                    break;
-                case ERR_FULL:
-                case 0:
-                    this.stopGathering();
-                    break;
-            }
-
-            return;
-        }
-
-        if (target instanceof StructureContainer) {
-            switch (this.withdraw(target, RESOURCE_ENERGY)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { range: 1 });
-                    break;
-                case ERR_FULL:
-                case 0:
-                    this.stopGathering();
-                    break;
-            }
-
-            return;
-        }
-
-        if (target instanceof Ruin) {
-            switch (this.withdraw(target, RESOURCE_ENERGY)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { ignoreCreeps: true, range: 1 });
-                    break;
-                case ERR_FULL:
-                case 0:
-                    this.stopGathering();
-                    break;
+        if (target instanceof Structure || target instanceof Ruin) {
+            if (!this.pos.isNearTo(target)) {
+                this.travelTo(target, { ignoreCreeps: true, range: 1 });
+            } else if (!this.actionTaken) {
+                let result = this.withdraw(target, RESOURCE_ENERGY);
+                switch (result) {
+                    case 0:
+                        this.actionTaken = true;
+                    case ERR_FULL:
+                        this.stopGathering();
+                        break;
+                }
             }
 
             return;
         }
 
         if (target instanceof Resource) {
-            switch (this.pickup(target)) {
-                case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { ignoreCreeps: true, range: 1 });
-                    break;
-                case ERR_FULL:
-                case 0:
-                    this.stopGathering();
-                    break;
+            if (!this.pos.isNearTo(target)) {
+                this.travelTo(target, { ignoreCreeps: true, range: 1 });
+            } else if (!this.actionTaken) {
+                switch (this.pickup(target)) {
+                    case 0:
+                        this.actionTaken = true;
+                    case ERR_FULL:
+                        this.stopGathering();
+                        break;
+                }
             }
 
             return;
@@ -189,6 +142,29 @@ export class TransportCreep extends WaveCreep {
     protected stopGathering() {
         this.memory.gathering = false;
         delete this.memory.energySource;
+    }
+
+    protected storeCargo() {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
+        let resourceToStore: any = Object.keys(this.store).shift();
+        if (!this.pos.isNearTo(this.homeroom.storage)) {
+            this.travelTo(this.homeroom.storage, { ignoreCreeps: true, range: 1 });
+        } else if (!this.actionTaken) {
+            let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
+            switch (storeResult) {
+                case ERR_NOT_IN_RANGE:
+                    break;
+                case 0:
+                    if (this.store[resourceToStore] === this.store.getUsedCapacity()) {
+                        this.onTaskFinished();
+                    }
+                    break;
+                case ERR_FULL:
+                default:
+                    this.onTaskFinished();
+                    break;
+            }
+        }
     }
 
     protected findRefillTarget(): Id<Structure> {
@@ -275,39 +251,70 @@ export class TransportCreep extends WaveCreep {
         }
     }
 
+    protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage | StructureLab) {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
+        let targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
+        if (targetFreeCapacity) {
+            if (!this.pos.isNearTo(target)) {
+                this.travelTo(target, { range: 1 });
+            } else if (!this.actionTaken) {
+                let result = this.transfer(target, RESOURCE_ENERGY);
+                switch (result) {
+                    case ERR_NOT_ENOUGH_RESOURCES:
+                        this.memory.gathering = true;
+                    case ERR_FULL:
+                        this.onTaskFinished();
+                        break;
+                    case OK:
+                        this.actionTaken = true;
+                        this.onTaskFinished();
+                        if (target.store.getFreeCapacity(RESOURCE_ENERGY) >= this.store.energy) {
+                            this.memory.gathering = true;
+                        }
+                        break;
+                }
+            }
+        } else {
+            this.onTaskFinished();
+        }
+    }
+
     //gather resources for the purpose of storing
     protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone | StructureLab): void {
         this.memory.currentTaskPriority = Priority.MEDIUM;
 
         let resourcesToWithdraw = target instanceof StructureLab ? [target.mineralType] : (Object.keys(target.store) as ResourceConstant[]);
         let nextResource: ResourceConstant = resourcesToWithdraw.shift();
-        let result = this.withdraw(target, nextResource);
-        switch (result) {
-            case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { range: 1 });
-                break;
-            case 0:
-                if (target.store[nextResource] >= this.store.getFreeCapacity() || target instanceof StructureLab) {
+        if (!this.pos.isNearTo(target)) {
+            this.travelTo(target, { range: 1 });
+        } else if (!this.actionTaken) {
+            let result = this.withdraw(target, nextResource);
+            switch (result) {
+                case 0:
+                    if (target.store[nextResource] >= this.store.getFreeCapacity() || target instanceof StructureLab) {
+                        this.onTaskFinished();
+                    }
+                    this.incomingResourceAmount += Math.min(this.store.getFreeCapacity(), target.store[nextResource]);
+                    break;
+                default:
                     this.onTaskFinished();
-                }
-                this.incomingResourceAmount += Math.min(this.store.getFreeCapacity(), target.store[nextResource]);
-                break;
-            default:
-                this.onTaskFinished();
-                break;
+                    break;
+            }
         }
     }
 
     protected runPickupJob(resource: Resource): void {
         this.memory.currentTaskPriority = Priority.MEDIUM;
-        switch (this.pickup(resource)) {
-            case ERR_NOT_IN_RANGE:
-                this.travelTo(resource, { range: 1 });
-                break;
-            case 0:
-                this.incomingResourceAmount += resource.amount;
-            case ERR_FULL:
-                this.onTaskFinished();
+        if (!this.pos.isNearTo(resource)) {
+            this.travelTo(resource, { range: 1 });
+        } else if (!this.actionTaken) {
+            let result = this.pickup(resource);
+            switch (result) {
+                case 0:
+                    this.incomingResourceAmount += resource.amount;
+                case ERR_FULL:
+                    this.onTaskFinished();
+            }
         }
     }
 

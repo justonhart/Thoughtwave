@@ -63,6 +63,10 @@ interface TravelToOpts extends PathFinderOpts {
      * Route will prefer Highway (by default enabled).
      */
     preferHighway?: boolean;
+    /**
+     * Creep efficiency to determine best pathing options
+     */
+    efficiency?: number;
 }
 
 interface CustomMatrixCost {
