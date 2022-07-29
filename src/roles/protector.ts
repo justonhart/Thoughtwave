@@ -79,7 +79,9 @@ export class Protector extends CombatCreep {
             .find(FIND_HOSTILE_STRUCTURES)
             .filter(
                 (struct) =>
-                    struct.structureType !== STRUCTURE_CONTROLLER && !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity())
+                    struct.structureType !== STRUCTURE_KEEPER_LAIR &&
+                    struct.structureType !== STRUCTURE_CONTROLLER &&
+                    !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity())
             );
         if (hostileStructures.length) {
             return hostileStructures[0].id;
