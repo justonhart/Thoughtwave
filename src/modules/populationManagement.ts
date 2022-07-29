@@ -496,39 +496,41 @@ export class PopulationManagement {
         }
 
         let labTasksToAdd = [];
-        if (opts.boosts?.length) {
-            //get total requested boosts available by type
-            let boostMap = getResourceBoostsAvailable(spawn.room, Array.from(opts.boosts));
+        if (spawn.room.labs.length) {
+            if (opts.boosts?.length) {
+                //get total requested boosts available by type
+                let boostMap = getResourceBoostsAvailable(spawn.room, Array.from(opts.boosts));
 
-            //calculate number of boosts needed
-            opts.boosts.forEach((boostType) => {
-                let boostsAvailable = boostMap[boostType];
-                let boostsAvailableCount = boostsAvailable?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
-                let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
+                //calculate number of boosts needed
+                opts.boosts.forEach((boostType) => {
+                    let boostsAvailable = boostMap[boostType];
+                    let boostsAvailableCount = boostsAvailable?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
+                    let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
 
-                let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
+                    let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
 
-                let resourcesNeeded: { [resource: string]: number } = {};
+                    let resourcesNeeded: { [resource: string]: number } = {};
 
-                for (let i = 0; i < numberOfBoosts; i++) {
-                    let nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
-                    boostMap[nextAvailableBoostResource] -= 1;
-                    !resourcesNeeded[nextAvailableBoostResource]
-                        ? (resourcesNeeded[nextAvailableBoostResource] = 30)
-                        : (resourcesNeeded[nextAvailableBoostResource] += 30);
-                }
+                    for (let i = 0; i < numberOfBoosts; i++) {
+                        let nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
+                        boostMap[nextAvailableBoostResource] -= 1;
+                        !resourcesNeeded[nextAvailableBoostResource]
+                            ? (resourcesNeeded[nextAvailableBoostResource] = 30)
+                            : (resourcesNeeded[nextAvailableBoostResource] += 30);
+                    }
 
-                Object.keys(resourcesNeeded).forEach((resource) => {
-                    labTasksToAdd.push({
-                        type: LabTaskType.BOOST,
-                        reagentsNeeded: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
-                        targetCreepName: name,
+                    Object.keys(resourcesNeeded).forEach((resource) => {
+                        labTasksToAdd.push({
+                            type: LabTaskType.BOOST,
+                            reagentsNeeded: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
+                            targetCreepName: name,
+                        });
                     });
                 });
-            });
 
-            if (labTasksToAdd.length) {
-                opts.memory.needsBoosted = true;
+                if (labTasksToAdd.length) {
+                    opts.memory.needsBoosted = true;
+                }
             }
         }
 
@@ -776,8 +778,6 @@ export class PopulationManagement {
         }
 
         return result;
-
-        return;
     }
 
     static calculateRemoteMinerWorkNeeded(roomName: string) {

@@ -78,13 +78,13 @@ export class SquadManagement {
                 return false;
             }
             const followerPos = Pathing.positionAtDirection(this.squadLeader.pos, Pathing.inverseDirection(this.orientation));
-            if (followerPos.lookFor(LOOK_TERRAIN).some((terrain) => terrain === 'wall')) {
+            if (followerPos?.lookFor(LOOK_TERRAIN).some((terrain) => terrain === 'wall')) {
                 this.linePathing();
                 return false;
             }
 
             const secondFollowerPos = Pathing.positionAtDirection(squadSecondLeaderTargetPos, Pathing.inverseDirection(this.orientation));
-            if (secondFollowerPos.lookFor(LOOK_TERRAIN).some((terrain) => terrain === 'wall')) {
+            if (secondFollowerPos?.lookFor(LOOK_TERRAIN).some((terrain) => terrain === 'wall')) {
                 this.linePathing();
                 return false;
             }
@@ -413,7 +413,7 @@ export class SquadManagement {
     public getObstacleStructure(): Structure {
         if (!this.currentCreep.onEdge() && this.nextDirection && !this.missingCreeps()) {
             let enemyStructure = Pathing.positionAtDirection(this.squadLeader.pos, this.nextDirection)
-                .lookFor(LOOK_STRUCTURES)
+                ?.lookFor(LOOK_STRUCTURES)
                 .filter((struct) => struct.structureType !== STRUCTURE_ROAD && struct.structureType !== STRUCTURE_CONTAINER);
             if (enemyStructure.length) {
                 return enemyStructure[0];
@@ -421,7 +421,7 @@ export class SquadManagement {
             if (this.isPartOfQuad()) {
                 if (!this.squadFollower.onEdge()) {
                     enemyStructure = Pathing.positionAtDirection(this.squadFollower.pos, this.nextDirection)
-                        .lookFor(LOOK_STRUCTURES)
+                        ?.lookFor(LOOK_STRUCTURES)
                         .filter((struct) => struct.structureType !== STRUCTURE_ROAD && struct.structureType !== STRUCTURE_CONTAINER);
                     if (enemyStructure.length) {
                         return enemyStructure[0];
@@ -429,14 +429,14 @@ export class SquadManagement {
                 }
                 if (!this.squadSecondLeader.onEdge()) {
                     enemyStructure = Pathing.positionAtDirection(this.squadSecondLeader.pos, this.nextDirection)
-                        .lookFor(LOOK_STRUCTURES)
+                        ?.lookFor(LOOK_STRUCTURES)
                         .filter((struct) => struct.structureType !== STRUCTURE_ROAD && struct.structureType !== STRUCTURE_CONTAINER);
                     if (enemyStructure.length) {
                         return enemyStructure[0];
                     }
                 }
                 enemyStructure = Pathing.positionAtDirection(this.squadSecondFollower.pos, this.nextDirection)
-                    .lookFor(LOOK_STRUCTURES)
+                    ?.lookFor(LOOK_STRUCTURES)
                     .filter((struct) => struct.structureType !== STRUCTURE_ROAD && struct.structureType !== STRUCTURE_CONTAINER);
                 if (enemyStructure.length) {
                     return enemyStructure[0];

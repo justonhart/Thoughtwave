@@ -45,6 +45,20 @@ export function manageMemory() {
 
 export function validateAssignments() {
     Object.keys(Memory.rooms).forEach((roomName) => {
+        let miningAssignments = Object.keys(Memory.rooms[roomName].miningAssignments);
+        miningAssignments?.forEach((pos) => {
+            if (!Game.creeps[Memory.rooms[roomName].miningAssignments[pos]]) {
+                Memory.rooms[roomName].miningAssignments[pos] = AssignmentStatus.UNASSIGNED;
+            }
+        });
+
+        let mineralMiningAssignments = Object.keys(Memory.rooms[roomName].mineralMiningAssignments);
+        mineralMiningAssignments?.forEach((pos) => {
+            if (!Game.creeps[Memory.rooms[roomName].mineralMiningAssignments[pos]]) {
+                Memory.rooms[roomName].mineralMiningAssignments[pos] = AssignmentStatus.UNASSIGNED;
+            }
+        });
+
         Memory.rooms[roomName].remoteMiningRooms?.forEach((remoteRoomName) => {
             if (!Game.creeps[Memory.remoteData[remoteRoomName]?.gatherer]) {
                 Memory.remoteData[remoteRoomName].gatherer = AssignmentStatus.UNASSIGNED;
