@@ -190,6 +190,12 @@ export function getStoragePos(room: Room) {
         case RoomLayout.BUNKER:
             let anchorPoint = posFromMem(room.memory.anchorPoint);
             return new RoomPosition(anchorPoint.x + 1, anchorPoint.y - 1, room.name);
+        default:
+            return (
+                room.find(FIND_MY_STRUCTURES, {
+                    filter: (struct) => struct.structureType === STRUCTURE_STORAGE,
+                }) as StructureStorage[]
+            )[0].pos;
     }
 }
 
