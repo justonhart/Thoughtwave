@@ -1,4 +1,5 @@
 interface CreepMemory {
+    shouldBuildRoad?: boolean;
     gatheringLabResources?: boolean;
     needsBoosted?: boolean;
     labRequests?: LabNeed[];

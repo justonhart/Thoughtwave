@@ -1,5 +1,6 @@
 import { getUsername } from '../modules/data';
 import { posFromMem } from '../modules/data';
+import { Pathing } from '../modules/pathing';
 import { getStructureForPos, posInsideBunker } from '../modules/roomDesign';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
@@ -61,6 +62,7 @@ export class Gatherer extends TransportCreep {
                 if (this.store[resourceToStore] === this.store.getUsedCapacity()) {
                     this.onTaskFinished();
                 }
+                this.memory.shouldBuildRoad = true;
                 break;
             default:
                 this.onTaskFinished();
@@ -103,6 +105,7 @@ export class Gatherer extends TransportCreep {
 
     private shouldBuildRoad(): boolean {
         return (
+            this.memory.shouldBuildRoad &&
             !this.onEdge() &&
             !this.memory._m?.repath &&
             (!this.room.controller?.owner ||
@@ -117,28 +120,34 @@ export class Gatherer extends TransportCreep {
     protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> {
         let miningPositions = Memory.remoteData[roomName].miningPositions;
 
-        let targets: { id: Id<Resource> | Id<Structure>; amount: number }[] = [];
+        let targets: { id: Id<Resource> | Id<Structure>; amount: number; shouldBuildRoad?: boolean }[] = [];
 
         miningPositions.forEach((posString) => {
             let pos = posFromMem(posString);
-            if (pos.findInRange(FIND_HOSTILE_CREEPS, 3, { filter: (c) => c.owner.username === 'Source Keeper' }).length) {
+            const areaInRange = Pathing.getArea(pos, 3);
+            let lookArea = this.room.lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);
+            if (lookArea.some((look) => look.creep?.owner?.username === 'Source Keeper')) {
                 return;
             }
 
-            let resource = pos.lookFor(LOOK_RESOURCES).shift();
-            if (resource) {
-                targets.push({ id: resource.id, amount: resource.amount });
-            }
+            lookArea
+                .filter((look) => look.resource?.resourceType === RESOURCE_ENERGY)
+                .forEach((resource) => targets.push({ id: resource.resource.id, amount: resource.resource.amount, shouldBuildRoad: false }));
 
             let container: StructureContainer = pos
                 .lookFor(LOOK_STRUCTURES)
                 .find((s) => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
             if (container && container.store.getUsedCapacity()) {
-                targets.push({ id: container.id, amount: container.store.getUsedCapacity() });
+                targets.push({ id: container.id, amount: container.store.getUsedCapacity(), shouldBuildRoad: true });
             }
         });
 
-        return targets.length ? targets.reduce((highest, next) => (highest.amount > next.amount ? highest : next))?.id : undefined;
+        const selectedTarget = targets.length ? targets.reduce((highest, next) => (highest.amount > next.amount ? highest : next)) : undefined;
+
+        if (selectedTarget?.shouldBuildRoad === false) {
+            this.memory.shouldBuildRoad = false;
+        }
+        return selectedTarget?.id;
     }
 
     private repairRoad(): void {

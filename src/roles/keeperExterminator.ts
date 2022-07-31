@@ -18,6 +18,8 @@ export class KeeperExterminator extends CombatCreep {
                     let keeper = target.pos.findInRange(FIND_HOSTILE_CREEPS, 5, { filter: (c) => c.owner.username === 'Source Keeper' }).shift();
                     if (keeper && this.pos.isNearTo(keeper)) {
                         this.attackCreep(keeper);
+                    } else if (keeper) {
+                        this.travelTo(keeper, { range: 1 });
                     }
                 } else {
                     this.travelTo(

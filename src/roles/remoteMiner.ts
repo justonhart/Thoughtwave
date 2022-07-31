@@ -86,7 +86,7 @@ export class RemoteMiner extends WaveCreep {
 
     private destinationSpawningKeeper(): boolean {
         let pos = posFromMem(this.memory.destination);
-        let lair = pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+        let lair = pos?.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
             filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR,
         }) as StructureKeeperLair;
         return lair?.ticksToSpawn < 20;
