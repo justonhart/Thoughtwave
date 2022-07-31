@@ -407,7 +407,7 @@ function runSpawning(room: Room) {
         if (room.energyStatus >= EnergyStatus.RECOVERING && room.memory.remoteMiningRooms?.length && !roomContainsViolentHostiles) {
             if (PopulationManagement.needsKeeperExterminator(room)) {
                 let spawn = availableSpawns.pop();
-                console.log(spawn?.spawnKeeperExterminator());
+                spawn?.spawnKeeperExterminator();
             }
 
             if (PopulationManagement.needsReserver(room)) {
