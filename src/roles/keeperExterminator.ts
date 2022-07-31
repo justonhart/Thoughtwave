@@ -13,19 +13,16 @@ export class KeeperExterminator extends CombatCreep {
             if (target instanceof ConstructionSite) {
                 let miner = Game.creeps[Memory.remoteData[this.memory.assignment].miner];
                 if (miner?.memory.destination !== target.pos.toMemSafe() || !miner?.pos.isNearTo(target.pos)) {
-                    this.travelTo(target.pos, { avoidSourceKeepers: false });
                     //scan area for keeper
                     let keeper = target.pos.findInRange(FIND_HOSTILE_CREEPS, 5, { filter: (c) => c.owner.username === 'Source Keeper' }).shift();
                     if (keeper && this.pos.isNearTo(keeper)) {
                         this.attackCreep(keeper);
                     } else if (keeper) {
                         this.travelTo(keeper, { range: 1 });
+                    } else {
+                        this.travelTo(target.pos, { avoidSourceKeepers: false });
                     }
                 } else {
-                    this.travelTo(
-                        target.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR }),
-                        { range: 1 }
-                    );
                     //scan area for keeper
                     let keeper = target.pos.findInRange(FIND_HOSTILE_CREEPS, 5, { filter: (c) => c.owner.username === 'Source Keeper' }).shift();
                     if (keeper) {
@@ -34,6 +31,11 @@ export class KeeperExterminator extends CombatCreep {
                         } else {
                             this.travelTo(keeper, { range: 1 });
                         }
+                    } else {
+                        this.travelTo(
+                            target.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR }),
+                            { range: 1 }
+                        );
                     }
                 }
             } else if (target instanceof Structure) {
@@ -46,9 +48,7 @@ export class KeeperExterminator extends CombatCreep {
                 if (keeper) {
                     this.memory.targetId = keeper.id;
                 }
-            }
-
-            if (target instanceof Creep) {
+            } else if (target instanceof Creep) {
                 if (this.pos.isNearTo(target)) {
                     this.attackCreep(target as Creep);
                     this.attacked = true;
