@@ -52,9 +52,8 @@ export class KeeperExterminator extends CombatCreep {
                 if (this.pos.isNearTo(target)) {
                     this.attackCreep(target as Creep);
                     this.attacked = true;
-                } else {
-                    this.travelTo(target, { range: 1, avoidSourceKeepers: false });
                 }
+                this.travelTo(target, { avoidSourceKeepers: false }); // Even when nearTo in order to stay in range if the enemy creep moves
             }
 
             if (!this.attacked) {

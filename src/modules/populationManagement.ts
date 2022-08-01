@@ -289,13 +289,18 @@ export class PopulationManagement {
 
         let workNeeded = this.calculateRemoteMinerWorkNeeded(assignment);
         let work = [];
-        while (work.length < workNeeded) {
-            work.push(WORK);
-        }
-
         let move = [];
-        while (move.length < workNeeded / 2) {
-            move.push(MOVE);
+        let energyLeft = spawn.room.energyCapacityAvailable - 100;
+        let needMove = 1;
+        while (work.length < workNeeded && energyLeft >= (needMove === 1 ? 150 : 100)) {
+            work.push(WORK);
+            energyLeft -= 100;
+            needMove++;
+            if (needMove === 2) {
+                move.push(MOVE);
+                energyLeft -= 50;
+                needMove = 0;
+            }
         }
 
         let minerBody = [...work, ...move, CARRY, MOVE];
