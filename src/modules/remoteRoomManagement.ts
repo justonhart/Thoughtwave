@@ -9,6 +9,7 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
     }
 
     if (
+        Memory.roomData[remoteRoomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
         Memory.remoteData[remoteRoomName].threatLevel === RemoteRoomThreatLevel.INVADER_CORE &&
         !PopulationManagement.hasProtector(remoteRoomName) &&
         !reassignIdleProtector(controllingRoomName, remoteRoomName)
@@ -30,6 +31,7 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
             },
         });
     } else if (
+        Memory.roomData[remoteRoomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
         Memory.remoteData[remoteRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS &&
         !PopulationManagement.hasProtector(remoteRoomName) &&
         !reassignIdleProtector(controllingRoomName, remoteRoomName)
