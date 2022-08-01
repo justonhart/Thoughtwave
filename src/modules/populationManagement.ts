@@ -1,5 +1,6 @@
+import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { getResourceBoostsAvailable } from './labManagement';
-import { posFromMem } from './memoryManagement';
+import { posFromMem } from './data';
 import { roomNeedsCoreStructures } from './roomDesign';
 
 const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
@@ -13,6 +14,29 @@ const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
     8: MOVE,
     9: CARRY,
     10: TOUGH,
+};
+
+const ROLE_TAG_MAP: { [key in Role]: string } = {
+    [Role.CLAIMER]: 'cl',
+    [Role.COLONIZER]: 'col',
+    [Role.DISTRIBUTOR]: 'd',
+    [Role.GATHERER]: 'g',
+    [Role.WORKER]: 'w',
+    [Role.GO]: 'go',
+    [Role.INTERSHARD_TRAVELLER]: 'i',
+    [Role.MANAGER]: 'mg',
+    [Role.MINERAL_MINER]: 'mm',
+    [Role.MINER]: 'm',
+    [Role.OPERATIVE]: 'o',
+    [Role.PROTECTOR]: 'p',
+    [Role.RAMPART_PROTECTOR]: 'rp',
+    [Role.RESERVER]: 'rs',
+    [Role.SCOUT]: 'sc',
+    [Role.SQUAD_ATTACKER]: 'a',
+    [Role.TRANSPORTER]: 't',
+    [Role.UPGRADER]: 'u',
+    [Role.REMOTE_MINER]: 'rm',
+    [Role.KEEPER_EXTERMINATOR]: 'e',
 };
 
 export class PopulationManagement {
@@ -42,30 +66,28 @@ export class PopulationManagement {
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 15;
-        let tag = 'w';
         if (spawnUpgrader) {
             options.memory.role = Role.UPGRADER;
-            tag = 'u';
             options.boosts = [BoostType.UPGRADE];
             let result: ScreepsReturnCode;
 
             if (spawn.room.upgraderLink) {
                 let body = this.createPartsArray([WORK, WORK, WORK, CARRY, MOVE, MOVE], spawn.room.energyCapacityAvailable, 5);
-                result = spawn.smartSpawn(body, this.getCreepTag(tag, spawn.name), options);
+                result = spawn.smartSpawn(body, this.generateName(options.memory.role, spawn.name), options);
             } else {
-                result = spawn.spawnMax([WORK, CARRY, MOVE], this.getCreepTag(tag, spawn.name), options);
+                result = spawn.spawnMax([WORK, CARRY, MOVE], this.generateName(options.memory.role, spawn.name), options);
             }
 
             return result;
         } else if (canSupportAnotherWorker) {
-            let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
+            let result = spawn.spawnMax(WORKER_PART_BLOCK, this.generateName(options.memory.role, spawn.name), options, creepLevelCap);
             return result;
         } else {
             //check to see if there are any creeps to replace w/ stronger models
             let maxSize = this.createPartsArray(WORKER_PART_BLOCK, spawn.room.energyCapacityAvailable, creepLevelCap).length;
             let creepToReplace = workers.find((creep) => creep.getActiveBodyparts(WORK) < maxSize / 3);
             if (creepToReplace) {
-                let result = spawn.spawnMax(WORKER_PART_BLOCK, this.getCreepTag(tag, spawn.name), options, creepLevelCap);
+                let result = spawn.spawnMax(WORKER_PART_BLOCK, this.generateName(options.memory.role, spawn.name), options, creepLevelCap);
                 if (result === OK) {
                     creepToReplace.suicide();
                 }
@@ -114,7 +136,7 @@ export class PopulationManagement {
         let spawnCostPerCyclePerCreep = spawnCost / 5;
         let energyExpenditurePerCyclePerCreep = spawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
 
-        let creepCapacity = totalIncomePerCycle / energyExpenditurePerCyclePerCreep;
+        let creepCapacity = Math.max(Math.floor(totalIncomePerCycle / energyExpenditurePerCyclePerCreep), 1);
 
         switch (room.energyStatus) {
             case EnergyStatus.CRITICAL:
@@ -145,7 +167,7 @@ export class PopulationManagement {
                 }
         }
 
-        return Math.max(1, Math.floor(creepCapacity));
+        return creepCapacity;
     }
 
     static needsMiner(room: Room): boolean {
@@ -210,174 +232,149 @@ export class PopulationManagement {
             },
         };
 
-        let tag = 'm';
-
         let assigmentPos = posFromMem(assigment);
         let link = assigmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((s) => s.structureType === STRUCTURE_LINK) as StructureLink;
         if (link) {
             options.memory.link = link.id;
         }
 
-        let result = spawn.smartSpawn(
-            PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable),
-            this.getCreepTag(tag, spawn.name),
-            options
-        );
+        let name = this.generateName(options.memory.role, spawn.name);
+
+        let result = spawn.smartSpawn(PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable), name, options);
         if (result === OK) {
             if (currentMiner) {
                 currentMiner.memory.hasTTLReplacement = true;
             }
-            spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
+            spawn.room.memory.miningAssignments[assigment] = name;
         } else if (
             result === ERR_NOT_ENOUGH_ENERGY &&
             !spawn.room.find(FIND_MY_CREEPS).filter((creep) => creep.memory.role === Role.MINER).length &&
             (!spawn.room.storage || spawn.room.storage?.store[RESOURCE_ENERGY] < 1000)
         ) {
             let emergencyMinerBody = [WORK, WORK, MOVE];
-            result = spawn.smartSpawn(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
+            result = spawn.smartSpawn(emergencyMinerBody, name, options);
             if (result === OK) {
                 if (currentMiner) {
                     currentMiner.memory.hasTTLReplacement = true;
                 }
-                spawn.room.memory.miningAssignments[assigment] = AssignmentStatus.ASSIGNED;
+                spawn.room.memory.miningAssignments[assigment] = name;
             }
         }
 
         return result;
     }
 
-    static needsRemoteMiner(room: Room): boolean {
-        const assigmentKeys = Object.keys(room.memory.remoteAssignments);
-        return !!assigmentKeys.find(
+    static findRemoteMinerNeed(room: Room): string {
+        return room.memory.remoteMiningRooms.find(
             (remoteRoom) =>
-                room.memory.remoteAssignments[remoteRoom].state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS &&
-                room.memory.remoteAssignments[remoteRoom].controllerState !== RemoteMiningRoomControllerState.ENEMY &&
-                Object.values(room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
+                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
+                Memory.remoteData[remoteRoom].miner === AssignmentStatus.UNASSIGNED
         );
     }
 
-    static spawnRemoteMiner(spawn: StructureSpawn): ScreepsReturnCode {
-        const remoteRooms = Object.keys(spawn.room.memory.remoteAssignments);
-        const assigmentKey = remoteRooms.find((remoteRoom) =>
-            Object.values(spawn.room.memory.remoteAssignments[remoteRoom].miners).some((assignment) => assignment === AssignmentStatus.UNASSIGNED)
-        );
-        const assignment = Object.keys(spawn.room.memory.remoteAssignments[assigmentKey].miners).find(
-            (assignment) => spawn.room.memory.remoteAssignments[assigmentKey].miners[assignment] === AssignmentStatus.UNASSIGNED
-        );
-
+    static spawnRemoteMiner(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
         let options: SpawnOptions = {
             memory: {
-                assignment: assignment,
+                assignment: remoteRoomName,
                 room: spawn.room.name,
                 role: Role.REMOTE_MINER,
                 currentTaskPriority: Priority.HIGH,
             },
         };
 
-        let tag = 'rm';
-
-        let minerBody = [WORK, WORK, WORK, WORK, WORK, CARRY, MOVE, MOVE, MOVE];
-
-        let result = spawn.smartSpawn(minerBody, this.getCreepTag(tag, spawn.name), options);
-        if (result === OK) {
-            spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = AssignmentStatus.ASSIGNED;
-        } else if (result === ERR_NOT_ENOUGH_ENERGY && spawn.room.storage?.store[RESOURCE_ENERGY] < 1000) {
-            let emergencyMinerBody = [WORK, WORK, MOVE, MOVE];
-            result = spawn.smartSpawn(emergencyMinerBody, this.getCreepTag(tag, spawn.name), options);
-            if (result === OK) {
-                spawn.room.memory.remoteAssignments[posFromMem(assignment).roomName].miners[assignment] = AssignmentStatus.ASSIGNED;
+        let workNeeded = this.calculateRemoteMinerWorkNeeded(remoteRoomName);
+        let work = [];
+        let move = [];
+        let energyLeft = spawn.room.energyCapacityAvailable - 100;
+        let needMove = 1;
+        while (work.length < workNeeded && energyLeft >= (needMove === 1 ? 150 : 100)) {
+            work.push(WORK);
+            energyLeft -= 100;
+            needMove++;
+            if (needMove === 2) {
+                move.push(MOVE);
+                energyLeft -= 50;
+                needMove = 0;
             }
+        }
+
+        let minerBody = [...work, ...move, CARRY, MOVE];
+        let name = this.generateName(options.memory.role, spawn.name);
+
+        let result = spawn.smartSpawn(minerBody, name, options);
+        if (result === OK) {
+            Memory.remoteData[remoteRoomName].miner = name;
         }
 
         return result;
     }
 
-    static needsGatherer(room: Room): boolean {
-        return Object.entries(room.memory.remoteAssignments).some(
-            ([roomName, assignment]) =>
-                assignment.state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS &&
-                assignment.controllerState !== RemoteMiningRoomControllerState.ENEMY &&
-                (assignment.gatherer === AssignmentStatus.UNASSIGNED ||
-                    (assignment.energyStatus === EnergyStatus.SURPLUS &&
-                        Object.values(Memory.creeps).filter(
-                            (creep) => creep.room === room.name && creep.role === Role.GATHERER && creep.assignment === roomName
-                        ).length === 1))
+    static findGathererNeed(room: Room): string {
+        return room.memory.remoteMiningRooms.find(
+            (remoteRoom) =>
+                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
+                Memory.remoteData[remoteRoom].gatherer === AssignmentStatus.UNASSIGNED
         );
     }
 
-    static spawnGatherer(spawn: StructureSpawn): ScreepsReturnCode {
-        let assignmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
-        let assignment = assignmentKeys.find(
-            (roomName) =>
-                spawn.room.memory.remoteAssignments[roomName].gatherer === AssignmentStatus.UNASSIGNED ||
-                (spawn.room.memory.remoteAssignments[roomName].energyStatus === EnergyStatus.SURPLUS &&
-                    Object.values(Memory.creeps).filter(
-                        (creep) => creep.room === spawn.room.name && creep.role === Role.GATHERER && creep.assignment === roomName
-                    ).length === 1)
-        );
-
+    static spawnGatherer(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
         let options: SpawnOptions = {
             memory: {
-                assignment: assignment,
+                assignment: remoteRoomName,
                 room: spawn.room.name,
                 role: Role.GATHERER,
             },
         };
 
-        let tag = 'g';
-
-        let maxLevel = 15;
-        let PARTS = PopulationManagement.createPartsArray([CARRY, WORK, MOVE, MOVE], spawn.room.energyCapacityAvailable, maxLevel);
-        if (!Memory.rooms[spawn.room.name].remoteAssignments[assignment].needsConstruction) {
-            if (Object.keys(Memory.rooms[spawn.room.name].remoteAssignments[assignment].miners).length == 1) {
-                maxLevel = 8; // Rooms with only one source
-            }
-            PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 200, maxLevel);
-            PARTS.push(CARRY, WORK, MOVE); // One WORK so creep can repair
+        if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
+            options.boosts = [BoostType.CARRY, BoostType.MOVE];
         }
-        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, maxLevel);
 
-        if (result === ERR_NOT_ENOUGH_ENERGY) {
-            result = spawn.spawnFirst(PARTS, this.getCreepTag(tag, spawn.name), options, maxLevel);
-        }
+        let name = this.generateName(options.memory.role, spawn.name);
+        let PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9);
+        PARTS.push(WORK, WORK, CARRY, CARRY, MOVE);
+        let result = spawn.smartSpawn(PARTS, name, options);
 
         if (result === OK) {
-            spawn.room.memory.remoteAssignments[assignment].gatherer = AssignmentStatus.ASSIGNED;
+            Memory.remoteData[remoteRoomName].gatherer = name;
         }
 
         return result;
     }
 
-    static needsReserver(room: Room): boolean {
-        return Object.values(room.memory.remoteAssignments).some(
-            (assignment) => assignment.state !== RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS && assignment.reserver === AssignmentStatus.UNASSIGNED
+    static findReserverNeed(room: Room): string {
+        return Object.values(room.memory.remoteMiningRooms).find(
+            (remoteRoom) =>
+                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[remoteRoom].reserver === AssignmentStatus.UNASSIGNED
         );
     }
 
-    static spawnReserver(spawn: StructureSpawn): ScreepsReturnCode {
-        let assigmentKeys = Object.keys(spawn.room.memory.remoteAssignments);
-        let assigment = assigmentKeys.find((roomName) => spawn.room.memory.remoteAssignments[roomName].reserver === AssignmentStatus.UNASSIGNED);
-
+    static spawnReserver(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
         let options: SpawnOptions = {
             memory: {
-                assignment: assigment,
+                assignment: remoteRoomName,
                 room: spawn.room.name,
                 role: Role.RESERVER,
             },
         };
 
-        let tag = 'rs';
-
-        let maxSize = 2;
-        if (spawn.room.memory.remoteAssignments[assigment].controllerState === RemoteMiningRoomControllerState.STABLE) {
+        let maxSize = 5;
+        if (Memory.remoteData[remoteRoomName].reservationState === RemoteRoomReservationStatus.STABLE) {
             maxSize = 1;
         }
 
         const PARTS = [CLAIM, MOVE];
-        let result = spawn.spawnMax(PARTS, this.getCreepTag(tag, spawn.name), options, maxSize);
+        let name = this.generateName(options.memory.role, spawn.name);
+        let result = spawn.spawnMax(PARTS, name, options, maxSize);
 
         if (result === OK) {
-            spawn.room.memory.remoteAssignments[assigment].reserver = AssignmentStatus.ASSIGNED;
+            Memory.remoteData[remoteRoomName].reserver = name;
         }
 
         return result;
@@ -399,10 +396,10 @@ export class PopulationManagement {
             ...assignment.spawnOpts,
         };
 
-        let result = spawn.smartSpawn(assignment.body, this.getCreepTag('s', spawn.name), options);
+        let result = spawn.smartSpawn(assignment.body, this.generateName(options.memory.role, spawn.name), options);
         if (result === OK) {
-            const ASSIGNMENT_INDEX = Memory.empire.spawnAssignments.findIndex((a) => a === assignment);
-            Memory.empire.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);
+            const ASSIGNMENT_INDEX = Memory.spawnAssignments.findIndex((a) => a === assignment);
+            Memory.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);
         }
 
         return result;
@@ -417,10 +414,10 @@ export class PopulationManagement {
         };
 
         const PARTS = [CARRY, CARRY, MOVE];
-        let result = spawn.spawnMax(PARTS, this.getCreepTag('d', spawn.name), options, 10);
+        let result = spawn.spawnMax(PARTS, this.generateName(options.memory.role, spawn.name), options, 10);
 
         if (result === ERR_NOT_ENOUGH_ENERGY) {
-            result = spawn.spawnFirst(PARTS, this.getCreepTag('d', spawn.name), options, 10);
+            result = spawn.spawnFirst(PARTS, this.generateName(options.memory.role, spawn.name), options, 10);
         }
 
         return result;
@@ -437,8 +434,8 @@ export class PopulationManagement {
         return 0;
     }
 
-    static getCreepTag(tag: string, spawnName: string): string {
-        return tag + Game.shard.name.slice(-1) + spawnName.substring(5) + Game.time.toString().slice(-4);
+    static generateName(role: Role, spawnName: string): string {
+        return ROLE_TAG_MAP[role] + Game.shard.name.slice(-1) + spawnName.substring(5) + Game.time.toString().slice(-4);
     }
 
     // spawn the largest creep possible as calculated with spawn.energyAvailable
@@ -466,7 +463,7 @@ export class PopulationManagement {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
-        return spawn.smartSpawn(partsArray, name, opts);
+        return spawn.smartSpawn(partsArray, this.generateName(opts.memory.role, spawn.name), opts);
     }
 
     // spawn the largest creep possible as calculated with spawn.energyCapacityAvailable
@@ -488,10 +485,10 @@ export class PopulationManagement {
             partsArray = partsArray.concat(partsBlock);
         }
 
-        return spawn.smartSpawn(partsArray, name, opts);
+        return spawn.smartSpawn(partsArray, this.generateName(opts.memory.role, spawn.name), opts);
     }
 
-    static smartSpawn(spawn: StructureSpawn, body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
+    static smartSpawn(spawn: StructureSpawn, name: string, body: BodyPartConstant[], opts?: SpawnOptions) {
         let partsArrayCost = body.length ? body.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost) : 0;
 
         if (partsArrayCost > spawn.room.energyAvailable - (spawn.room.memory.reservedEnergy ?? 0)) {
@@ -499,39 +496,41 @@ export class PopulationManagement {
         }
 
         let labTasksToAdd = [];
-        if (opts.boosts?.length) {
-            //get total requested boosts available by type
-            let boostMap = getResourceBoostsAvailable(spawn.room, Array.from(opts.boosts));
+        if (spawn.room.labs.length) {
+            if (opts.boosts?.length) {
+                //get total requested boosts available by type
+                let boostMap = getResourceBoostsAvailable(spawn.room, Array.from(opts.boosts));
 
-            //calculate number of boosts needed
-            opts.boosts.forEach((boostType) => {
-                let boostsAvailable = boostMap[boostType];
-                let boostsAvailableCount = boostsAvailable?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
-                let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
+                //calculate number of boosts needed
+                opts.boosts.forEach((boostType) => {
+                    let boostsAvailable = boostMap[boostType];
+                    let boostsAvailableCount = boostsAvailable?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
+                    let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
 
-                let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
+                    let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
 
-                let resourcesNeeded: { [resource: string]: number } = {};
+                    let resourcesNeeded: { [resource: string]: number } = {};
 
-                for (let i = 0; i < numberOfBoosts; i++) {
-                    let nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
-                    boostMap[nextAvailableBoostResource] -= 1;
-                    !resourcesNeeded[nextAvailableBoostResource]
-                        ? (resourcesNeeded[nextAvailableBoostResource] = 30)
-                        : (resourcesNeeded[nextAvailableBoostResource] += 30);
-                }
+                    for (let i = 0; i < numberOfBoosts; i++) {
+                        let nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
+                        boostMap[nextAvailableBoostResource] -= 1;
+                        !resourcesNeeded[nextAvailableBoostResource]
+                            ? (resourcesNeeded[nextAvailableBoostResource] = 30)
+                            : (resourcesNeeded[nextAvailableBoostResource] += 30);
+                    }
 
-                Object.keys(resourcesNeeded).forEach((resource) => {
-                    labTasksToAdd.push({
-                        type: LabTaskType.BOOST,
-                        reagentsNeeded: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
-                        targetCreepName: name,
+                    Object.keys(resourcesNeeded).forEach((resource) => {
+                        labTasksToAdd.push({
+                            type: LabTaskType.BOOST,
+                            reagentsNeeded: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
+                            targetCreepName: name,
+                        });
                     });
                 });
-            });
 
-            if (labTasksToAdd.length) {
-                opts.memory.needsBoosted = true;
+                if (labTasksToAdd.length) {
+                    opts.memory.needsBoosted = true;
+                }
             }
         }
 
@@ -550,32 +549,37 @@ export class PopulationManagement {
             }
         }
 
-        const getSortValue = (part: BodyPartConstant): number => {
-            switch (part) {
-                case TOUGH:
-                    return 5;
-                case RANGED_ATTACK:
-                case ATTACK:
-                    return 4;
-                case WORK:
-                    return 3;
-                case CARRY:
-                    return 2;
-                case MOVE:
-                    return 1;
-                case CLAIM:
-                case HEAL:
-                    return 0;
-            }
-        };
+        if (!opts.disableSort) {
+            const getSortValue = (part: BodyPartConstant): number => {
+                switch (part) {
+                    case TOUGH:
+                        return 5;
+                    case RANGED_ATTACK:
+                    case ATTACK:
+                        return 4;
+                    case WORK:
+                        return 3;
+                    case CARRY:
+                        return 2;
+                    case MOVE:
+                        return 1;
+                    case CLAIM:
+                    case HEAL:
+                        return 0;
+                }
+            };
 
-        body = body.sort((a, b) => getSortValue(b) - getSortValue(a));
+            body = body.sort((a, b) => getSortValue(b) - getSortValue(a));
+        }
 
         let result = spawn.spawnCreep(body, name, opts);
 
         if (result !== OK) {
             console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
         } else {
+            spawn.room.memory.reservedEnergy != undefined
+                ? (spawn.room.memory.reservedEnergy += partsArrayCost)
+                : (spawn.room.memory.reservedEnergy = partsArrayCost);
             labTasksToAdd.forEach((task) => {
                 spawn.room.addLabTask(task);
             });
@@ -607,13 +611,11 @@ export class PopulationManagement {
             immobile = true;
         }
 
-        let name = this.getCreepTag('mg', spawn.name);
-
         if (immobile) {
-            return spawn.spawnMax([CARRY, CARRY], name, options, 8);
+            return spawn.spawnMax([CARRY, CARRY], this.generateName(options.memory.role, spawn.name), options, 8);
         } else {
             let body = this.createPartsArray([CARRY, CARRY], spawn.room.energyCapacityAvailable, 8).concat([MOVE]);
-            return spawn.smartSpawn(body, name, options);
+            return spawn.smartSpawn(body, this.generateName(options.memory.role, spawn.name), options);
         }
     }
 
@@ -623,21 +625,19 @@ export class PopulationManagement {
         return room.controller?.level >= 5 && (room.memory.layout !== undefined || !!room.memory.managerPos) && !manager;
     }
 
-    static needsProtector(roomName: string): boolean {
+    static hasProtector(roomName: string): boolean {
         return (
-            !Object.values(Game.creeps).filter(
+            Object.values(Game.creeps).some(
                 (creep) => creep.memory.role === Role.PROTECTOR && (creep.memory.assignment === roomName || creep.pos.roomName === roomName)
-            ).length &&
-            !Memory.empire.spawnAssignments.filter(
-                (creep) => creep.spawnOpts.memory.role === Role.PROTECTOR && creep.spawnOpts.memory.assignment === roomName
-            ).length
+            ) ||
+            Memory.spawnAssignments.some((creep) => creep.spawnOpts.memory.role === Role.PROTECTOR && creep.spawnOpts.memory.assignment === roomName)
         );
     }
 
     static currentNumRampartProtectors(roomName: string): number {
         return (
             Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR && creep.pos.roomName === roomName).length +
-            Memory.empire.spawnAssignments.filter(
+            Memory.spawnAssignments.filter(
                 (creep) => creep.spawnOpts.memory.role === Role.RAMPART_PROTECTOR && creep.spawnOpts.memory.room === roomName
             ).length
         );
@@ -685,10 +685,101 @@ export class PopulationManagement {
             },
         };
 
-        let result = spawn.spawnMax([WORK, WORK, MOVE], this.getCreepTag('m', spawn.name), options);
+        let name = this.generateName(options.memory.role, spawn.name);
+        let result = spawn.spawnMax([WORK, WORK, MOVE], name, options);
         if (result === OK) {
-            spawn.room.memory.mineralMiningAssignments[nextAvailableAssignment] = AssignmentStatus.ASSIGNED;
+            spawn.room.memory.mineralMiningAssignments[nextAvailableAssignment] = name;
         }
         return result;
+    }
+
+    static findExterminatorNeed(room: Room): string {
+        return Object.values(room.memory.remoteMiningRooms).find(
+            (remoteRoom) =>
+                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[remoteRoom].keeperExterminator === AssignmentStatus.UNASSIGNED
+        );
+    }
+
+    static spawnKeeperExterminator(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
+        let options: SpawnOptions = {
+            memory: {
+                assignment: remoteRoomName,
+                room: spawn.room.name,
+                role: Role.KEEPER_EXTERMINATOR,
+            },
+            disableSort: true,
+        };
+
+        let body = [
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            MOVE,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            ATTACK,
+            HEAL,
+            HEAL,
+            HEAL,
+            HEAL,
+            HEAL,
+            HEAL,
+        ];
+
+        let name = this.generateName(options.memory.role, spawn.name);
+        let result = spawn.smartSpawn(body, name, options);
+
+        if (result === OK) {
+            Memory.remoteData[remoteRoomName].keeperExterminator = name;
+        }
+
+        return result;
+    }
+
+    static calculateRemoteMinerWorkNeeded(roomName: string) {
+        let data = Memory.roomData[roomName];
+        let energyPotential = isKeeperRoom(roomName) ? 4000 * 3 : 3000 * data.sourceCount;
+        let workNeeded = energyPotential / (HARVEST_POWER * 300);
+
+        return workNeeded > 5 ? workNeeded * 1.2 : workNeeded;
     }
 }

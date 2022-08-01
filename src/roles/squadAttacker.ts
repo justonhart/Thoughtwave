@@ -132,26 +132,36 @@ export class SquadAttacker extends CombatCreep {
 
             let target: any;
             if (!target) {
-                target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
+                const structuresToSearch = this.room.find(FIND_HOSTILE_STRUCTURES, {
+                    filter: (struct) =>
+                        struct.structureType !== STRUCTURE_STORAGE &&
+                        struct.structureType !== STRUCTURE_TERMINAL &&
+                        struct.structureType !== STRUCTURE_LAB &&
+                        struct.structureType !== STRUCTURE_NUKER &&
+                        struct.structureType !== STRUCTURE_KEEPER_LAIR &&
+                        struct.structureType !== STRUCTURE_CONTROLLER,
+                });
+
+                target = this.pos.findClosestByRange(structuresToSearch, {
                     filter: (struct) => struct.structureType === STRUCTURE_TOWER,
                 });
-            }
-            if (!target) {
-                target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
-                    filter: (struct) => struct.structureType === STRUCTURE_SPAWN,
-                });
-            }
-            if (!target) {
-                target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
-                    filter: (struct) => struct.hits > 0 && struct.hits < 50000,
-                });
-            }
-            if (!target) {
-                target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
-                    filter: (struct) => struct.hits > 0,
-                });
-            }
 
+                if (!target) {
+                    target = this.pos.findClosestByRange(structuresToSearch, {
+                        filter: (struct) => struct.structureType === STRUCTURE_SPAWN,
+                    });
+                }
+                if (!target) {
+                    target = this.pos.findClosestByRange(structuresToSearch, {
+                        filter: (s) => s.hits > 0 && s.hits < 50000,
+                    });
+                }
+                if (!target) {
+                    target = this.pos.findClosestByRange(structuresToSearch, {
+                        filter: (struct) => struct.hits > 0,
+                    });
+                }
+            }
             return target;
         }
     }

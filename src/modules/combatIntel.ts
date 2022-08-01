@@ -48,7 +48,7 @@ export class CombatIntel {
     public static getCreepCombatData(room: Room, forHostile: boolean, pos?: RoomPosition): CreepCombatData {
         const hostileCreeps = room.find(forHostile ? FIND_HOSTILE_CREEPS : FIND_MY_CREEPS, {
             filter: (creep: Creep) =>
-                (!Memory.empire.playersToIgnore?.includes(creep.owner.username) && creep.getActiveBodyparts(RANGED_ATTACK)) ||
+                (!Memory.playersToIgnore?.includes(creep.owner.username) && creep.getActiveBodyparts(RANGED_ATTACK)) ||
                 creep.getActiveBodyparts(ATTACK) ||
                 creep.getActiveBodyparts(HEAL),
         }) as Creep[];

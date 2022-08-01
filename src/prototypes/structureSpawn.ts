@@ -8,16 +8,16 @@ StructureSpawn.prototype.spawnDistributor = function () {
     return PopulationManagement.spawnDistributor(this);
 };
 
-StructureSpawn.prototype.spawnRemoteMiner = function () {
-    return PopulationManagement.spawnRemoteMiner(this);
+StructureSpawn.prototype.spawnRemoteMiner = function (remoteRoomName: string) {
+    return PopulationManagement.spawnRemoteMiner(this, remoteRoomName);
 };
 
-StructureSpawn.prototype.spawnGatherer = function () {
-    return PopulationManagement.spawnGatherer(this);
+StructureSpawn.prototype.spawnGatherer = function (remoteRoomName: string) {
+    return PopulationManagement.spawnGatherer(this, remoteRoomName);
 };
 
-StructureSpawn.prototype.spawnReserver = function () {
-    return PopulationManagement.spawnReserver(this);
+StructureSpawn.prototype.spawnReserver = function (remoteRoomName: string) {
+    return PopulationManagement.spawnReserver(this, remoteRoomName);
 };
 
 StructureSpawn.prototype.spawnWorker = function () {
@@ -37,7 +37,7 @@ StructureSpawn.prototype.spawnMax = function (partsBlock: BodyPartConstant[], na
 };
 
 StructureSpawn.prototype.smartSpawn = function (body: BodyPartConstant[], name: string, opts?: SpawnOptions) {
-    return PopulationManagement.smartSpawn(this, body, name, opts);
+    return PopulationManagement.smartSpawn(this, name, body, opts);
 };
 
 StructureSpawn.prototype.spawnManager = function () {
@@ -46,4 +46,8 @@ StructureSpawn.prototype.spawnManager = function () {
 
 StructureSpawn.prototype.spawnMineralMiner = function () {
     return PopulationManagement.spawnMineralMiner(this);
+};
+
+StructureSpawn.prototype.spawnKeeperExterminator = function (remoteRoomName: string) {
+    return PopulationManagement.spawnKeeperExterminator(this, remoteRoomName);
 };

@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from '../modules/data';
 
 export class WaveCreep extends Creep {
     private static priorityQueue: Map<string, (creep: Creep) => void> = new Map();
@@ -115,5 +115,9 @@ export class WaveCreep extends Creep {
             delete this.memory.needsBoosted;
             delete this.memory.currentTaskPriority;
         }
+    }
+
+    protected damaged() {
+        return this.hits < this.hitsMax;
     }
 }

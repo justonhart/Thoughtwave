@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from '../modules/data';
 import { getFactoryResourcesNeeded, shipmentReady } from '../modules/resourceManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 

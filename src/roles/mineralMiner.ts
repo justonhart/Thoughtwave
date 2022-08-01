@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class MineralMiner extends WaveCreep {

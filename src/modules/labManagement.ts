@@ -85,7 +85,7 @@ function runReactTask(task: LabTask): LabTask {
     let primaryLabs = task.reactionLabs.map((id) => Game.getObjectById(id));
     let auxillaryLabs = task.auxillaryLabs.map((id) => Game.getObjectById(id));
 
-    if (!auxillaryLabs.map((lab) => !lab.mineralType).reduce((anyEmpty, next) => anyEmpty || next)) {
+    if (!auxillaryLabs.map((lab) => !lab.mineralType || lab.store[lab.mineralType] < 5).reduce((anyEmpty, next) => anyEmpty || next)) {
         primaryLabs.forEach((lab) => {
             lab.runReaction(auxillaryLabs[0], auxillaryLabs[1]);
         });
@@ -276,7 +276,7 @@ export function getResourceBoostsAvailable(
     if (boostNeeds.includes(BoostType.ATTACK)) {
         Object.keys(BOOSTS[ATTACK]).forEach((resource) => {
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount) {
+            if (amount && resource.length > 2) {
                 availableResources[BoostType.ATTACK] = [
                     ...(availableResources[BoostType.ATTACK as number] ?? []),
                     { resource: resource as ResourceConstant, amount },
@@ -293,7 +293,7 @@ export function getResourceBoostsAvailable(
     if (boostNeeds.includes(BoostType.RANGED_ATTACK)) {
         Object.keys(BOOSTS[RANGED_ATTACK]).forEach((resource) => {
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount) {
+            if (amount && resource.length > 2) {
                 availableResources[BoostType.RANGED_ATTACK] = [
                     ...(availableResources[BoostType.RANGED_ATTACK as number] ?? []),
                     { resource: resource as ResourceConstant, amount },
@@ -309,7 +309,7 @@ export function getResourceBoostsAvailable(
     if (boostNeeds.includes(BoostType.HEAL)) {
         Object.keys(BOOSTS[HEAL]).forEach((resource) => {
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount) {
+            if (amount && resource.length > 2) {
                 availableResources[BoostType.HEAL] = [
                     ...(availableResources[BoostType.HEAL as number] ?? []),
                     { resource: resource as ResourceConstant, amount },
@@ -325,7 +325,7 @@ export function getResourceBoostsAvailable(
     if (boostNeeds.includes(BoostType.CARRY)) {
         Object.keys(BOOSTS[CARRY]).forEach((resource) => {
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount) {
+            if (amount && resource.length > 2) {
                 availableResources[BoostType.CARRY] = [
                     ...(availableResources[BoostType.CARRY as number] ?? []),
                     { resource: resource as ResourceConstant, amount },
@@ -341,7 +341,7 @@ export function getResourceBoostsAvailable(
     if (boostNeeds.includes(BoostType.MOVE)) {
         Object.keys(BOOSTS[MOVE]).forEach((resource) => {
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount) {
+            if (amount && resource.length > 2) {
                 availableResources[BoostType.MOVE] = [
                     ...(availableResources[BoostType.MOVE as number] ?? []),
                     { resource: resource as ResourceConstant, amount },
@@ -357,7 +357,7 @@ export function getResourceBoostsAvailable(
     if (boostNeeds.includes(BoostType.TOUGH)) {
         Object.keys(BOOSTS[TOUGH]).forEach((resource) => {
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount) {
+            if (amount && resource.length > 2) {
                 availableResources[BoostType.TOUGH] = [
                     ...(availableResources[BoostType.TOUGH as number] ?? []),
                     { resource: resource as ResourceConstant, amount },
@@ -373,7 +373,7 @@ export function getResourceBoostsAvailable(
     if (boostNeeds.includes(BoostType.UPGRADE)) {
         [RESOURCE_GHODIUM_HYDRIDE, RESOURCE_GHODIUM_ACID, RESOURCE_CATALYZED_GHODIUM_ACID].forEach((resource) => {
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount) {
+            if (amount && resource.length > 2) {
                 availableResources[BoostType.UPGRADE] = [...(availableResources[BoostType.UPGRADE as number] ?? []), { resource, amount }];
             }
         });
@@ -386,7 +386,7 @@ export function getResourceBoostsAvailable(
     if (boostNeeds.includes(BoostType.BUILD)) {
         [RESOURCE_LEMERGIUM_HYDRIDE, RESOURCE_LEMERGIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ACID].forEach((resource) => {
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount) {
+            if (amount && resource.length > 2) {
                 availableResources[BoostType.BUILD] = [...(availableResources[BoostType.BUILD as number] ?? []), { resource, amount }];
             }
         });
@@ -399,7 +399,7 @@ export function getResourceBoostsAvailable(
     if (boostNeeds.includes(BoostType.DISMANTLE)) {
         [RESOURCE_ZYNTHIUM_HYDRIDE, RESOURCE_ZYNTHIUM_ACID, RESOURCE_CATALYZED_ZYNTHIUM_ACID].forEach((resource) => {
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount) {
+            if (amount && resource.length > 2) {
                 availableResources[BoostType.DISMANTLE] = [...(availableResources[BoostType.DISMANTLE as number] ?? []), { resource, amount }];
             }
         });
@@ -412,7 +412,7 @@ export function getResourceBoostsAvailable(
     if (boostNeeds.includes(BoostType.HARVEST)) {
         [RESOURCE_UTRIUM_OXIDE, RESOURCE_UTRIUM_ALKALIDE, RESOURCE_CATALYZED_UTRIUM_ALKALIDE].forEach((resource) => {
             let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount) {
+            if (amount && resource.length > 2) {
                 availableResources[BoostType.HARVEST] = [...(availableResources[BoostType.HARVEST as number] ?? []), { resource, amount }];
             }
         });

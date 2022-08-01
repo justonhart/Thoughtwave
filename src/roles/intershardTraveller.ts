@@ -32,7 +32,7 @@ export class IntershardTraveler extends WaveCreep {
             (k) => this.room.memory.miningAssignments[k] === AssignmentStatus.UNASSIGNED
         );
         if (assignment) {
-            this.room.memory.miningAssignments[assignment] = AssignmentStatus.ASSIGNED;
+            this.room.memory.miningAssignments[assignment] = this.name;
             this.memory.assignment = assignment;
         }
 

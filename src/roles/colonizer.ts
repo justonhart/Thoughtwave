@@ -42,11 +42,9 @@ export class Colonizer extends WorkerCreep {
                 } else {
                     let spawnCreated = this.room.find(FIND_MY_STRUCTURES).filter((struct) => struct.structureType === STRUCTURE_SPAWN).length > 0;
                     if (spawnCreated) {
-                        let opIndex = Memory.empire.operations.findIndex(
-                            (op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name
-                        );
-                        if (Memory.empire.operations[opIndex]) {
-                            Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
+                        let opIndex = Memory.operations.findIndex((op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name);
+                        if (Memory.operations[opIndex]) {
+                            Memory.operations[opIndex].stage = OperationStage.COMPLETE;
                             console.log(`${this.room.name} spawn has been build!`);
                         }
                         this.convertToWorker();

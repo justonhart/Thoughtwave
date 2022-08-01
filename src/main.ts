@@ -1,5 +1,5 @@
 import driveCreep from './modules/creepDriver';
-import { manageEmpire } from './modules/empireManagement';
+import { addRoomData, updateRoomData } from './modules/data';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
 import { getAllRoomNeeds, manageEmpireResources } from './modules/resourceManagement';
@@ -26,29 +26,25 @@ module.exports.loop = function () {
         console.log(`Error caught in flag management: \n${e}`);
     }
 
-    //set map of all room resource needs
-    global.resourceNeeds = getAllRoomNeeds();
+    Object.values(Game.rooms).forEach((room) => {
+        if (!Memory.roomData[room.name]) {
+            try {
+                addRoomData(room);
+            } catch (e) {
+                console.log(`Error caught adding data for ${room.name}: \n${e}`);
+            }
+        } else {
+            updateRoomData(room);
+        }
 
-    global.roomConstructionsChecked = false;
-
-    try {
-        manageEmpire();
-    } catch (e) {
-        console.log(`Error caught in empire management: \n${e}`);
-    }
-
-    cpuUsageString += `empire CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
-    cpuUsed = Game.cpu.getUsed();
-
-    Object.values(Game.rooms)
-        .filter((r) => r.controller?.my)
-        .forEach((room) => {
+        if (room.controller?.my) {
             try {
                 driveRoom(room);
             } catch (e) {
                 console.log(`Error caught in ${room.name}: \n${e}`);
             }
-        });
+        }
+    });
 
     cpuUsageString += `rooms CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
     cpuUsed = Game.cpu.getUsed();
@@ -80,7 +76,7 @@ module.exports.loop = function () {
         Game.creeps[creepName].runPriorityQueueTask();
     });
 
-    if (Memory.empire.logCPU) {
+    if (Memory.logCPU) {
         console.log(cpuUsageString + `total: ${Game.cpu.getUsed().toFixed(2)}`);
     }
 

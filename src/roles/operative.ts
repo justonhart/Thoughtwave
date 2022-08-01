@@ -121,19 +121,41 @@ export class Operative extends WorkerCreep {
             }
         } else if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
             //cast target to storage for store property
-            let target: StructureStorage = Game.getObjectById(this.memory.targetId) as StructureStorage;
+            let target = Game.getObjectById(this.memory.targetId);
             if (!target) {
                 this.memory.targetId = this.findCollectionTarget();
-                target = Game.getObjectById(this.memory.targetId) as StructureStorage;
+                target = Game.getObjectById(this.memory.targetId);
             }
 
-            if (target) {
+            if (target instanceof Resource) {
+                if (this.pos.isNearTo(target)) {
+                    this.pickup(target);
+                    delete this.memory.targetId;
+                } else {
+                    this.travelTo(target);
+                }
+            } else if (target instanceof StructureLab) {
+                if (this.pos.isNearTo(target)) {
+                    this.withdraw(target, target.mineralType);
+                    delete this.memory.targetId;
+                } else {
+                    this.travelTo(target, { range: 1 });
+                }
+            } else if (target instanceof StructureNuker) {
+                if (this.pos.isNearTo(target)) {
+                    let resourceToWithdraw = target.store.G ? RESOURCE_GHODIUM : RESOURCE_ENERGY;
+                    this.withdraw(target, resourceToWithdraw);
+                    delete this.memory.targetId;
+                } else {
+                    this.travelTo(target, { range: 1 });
+                }
+            } else if (target instanceof StructureStorage || target instanceof StructureTerminal || target instanceof Ruin) {
                 if (this.pos.isNearTo(target)) {
                     let resourceToWithdraw = this.operation.resource ?? (Object.keys(target.store)[0] as ResourceConstant);
                     this.withdraw(target, resourceToWithdraw);
                     delete this.memory.targetId;
                 } else {
-                    this.travelTo(target);
+                    this.travelTo(target, { range: 1 });
                 }
             } else {
                 delete this.memory.targetId;
@@ -142,14 +164,45 @@ export class Operative extends WorkerCreep {
         }
     }
 
-    private findCollectionTarget(): Id<Structure> {
-        return this.room
-            .find(FIND_STRUCTURES)
+    private findCollectionTarget(): Id<Structure> | Id<Ruin> | Id<Resource> {
+        let resource = this.room
+            .find(FIND_DROPPED_RESOURCES, {
+                filter: (r) =>
+                    (this.operation.resource ? r.resourceType === this.operation.resource : true) && r.amount > this.store.getFreeCapacity() / 2,
+            })
+            ?.shift();
+        if (resource) {
+            return resource.id;
+        }
+
+        let ruin = this.room
+            .find(FIND_RUINS)
             .find(
-                (struct) =>
-                    (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) &&
-                    (this.operation.resource ? struct.store[this.operation.resource] : struct.store.getUsedCapacity())
-            )?.id;
+                (r) =>
+                    (r.structure.structureType === STRUCTURE_STORAGE ||
+                        r.structure.structureType === STRUCTURE_TERMINAL ||
+                        r.structure.structureType === STRUCTURE_LAB ||
+                        r.structure.structureType === STRUCTURE_NUKER) &&
+                    r.store.getUsedCapacity()
+            );
+        if (ruin) {
+            return ruin.id;
+        }
+
+        let structure = this.room
+            .find(FIND_STRUCTURES, {
+                filter: (s) =>
+                    (s.structureType === STRUCTURE_STORAGE ||
+                        s.structureType === STRUCTURE_TERMINAL ||
+                        (s.structureType === STRUCTURE_LAB && s.mineralType && s.store[s.mineralType]) ||
+                        (s.structureType === STRUCTURE_NUKER && (s.store.energy || s.store.G))) &&
+                    (this.operation.resource ? s.store[this.operation.resource] : s.store.getUsedCapacity()),
+            })
+            .shift();
+
+        if (structure) {
+            return structure.id;
+        }
     }
 
     private findCleanTarget(): Id<Structure> {
@@ -166,9 +219,9 @@ export class Operative extends WorkerCreep {
     }
 
     private terminateOperation() {
-        let opIndex = Memory.empire.operations.findIndex((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
+        let opIndex = Memory.operations.findIndex((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
         if (opIndex > -1) {
-            Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
+            Memory.operations[opIndex].stage = OperationStage.COMPLETE;
         }
 
         delete this.memory.destination;

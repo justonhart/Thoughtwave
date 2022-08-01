@@ -1,4 +1,4 @@
-import { posFromMem } from './memoryManagement';
+import { posFromMem } from './data';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
 import { getSpawnPos, placeBunkerConstructionSites, roomNeedsCoreStructures } from './roomDesign';
@@ -33,15 +33,13 @@ const OPERATION_BOOST_MAP: { [key in OperationType]?: BoostType[] } = {
 };
 
 export function manageOperations() {
-    if (!Memory.empire.operations) {
-        Memory.empire.operations = [];
+    if (!Memory.operations) {
+        Memory.operations = [];
     }
 
-    Memory.empire.operations = Memory.empire.operations.filter(
-        (op) => op.stage !== OperationStage.COMPLETE && (op?.expireAt ?? Game.time + 1) >= Game.time
-    );
-    if (Memory.empire.operations.length) {
-        Memory.empire.operations.forEach((op) => {
+    Memory.operations = Memory.operations.filter((op) => op.stage !== OperationStage.COMPLETE && (op?.expireAt ?? Game.time + 1) >= Game.time);
+    if (Memory.operations.length) {
+        Memory.operations.forEach((op) => {
             switch (op.type) {
                 case OperationType.COLONIZE:
                     manageColonizationOperation(op);
@@ -79,12 +77,12 @@ function manageColonizationOperation(op: Operation) {
         case OperationStage.CLAIM:
             let claimerExistsOrAssigned: boolean =
                 Object.values(Memory.creeps).filter((creep) => creep.role === Role.CLAIMER && creep.destination === op.targetRoom).length +
-                    Memory.empire.spawnAssignments.filter(
+                    Memory.spawnAssignments.filter(
                         (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.role === Role.CLAIMER
                     ).length >
                 0;
             if (op.originRoom && !claimerExistsOrAssigned) {
-                Memory.empire.spawnAssignments.push({
+                Memory.spawnAssignments.push({
                     designee: op.originRoom,
                     body: [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM],
                     spawnOpts: {
@@ -103,12 +101,12 @@ function manageColonizationOperation(op: Operation) {
             miningAssignments.forEach((key) => {
                 if (
                     Memory.rooms[op.targetRoom]?.miningAssignments?.[key] === AssignmentStatus.UNASSIGNED &&
-                    !Memory.empire.spawnAssignments.filter(
+                    !Memory.spawnAssignments.filter(
                         (creep) => creep.spawnOpts.memory.room === op.targetRoom && creep.spawnOpts.memory.assignment === key
                     ).length
                 ) {
                     Memory.rooms[op.targetRoom].miningAssignments[key] = AssignmentStatus.ASSIGNED;
-                    Memory.empire.spawnAssignments.push({
+                    Memory.spawnAssignments.push({
                         designee: op.originRoom,
                         body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
                         spawnOpts: {
@@ -125,11 +123,11 @@ function manageColonizationOperation(op: Operation) {
 
             let numberOfColonizersFound =
                 Object.values(Memory.creeps).filter((creep) => creep.role === Role.COLONIZER && creep.destination === op.targetRoom).length +
-                Memory.empire.spawnAssignments.filter(
+                Memory.spawnAssignments.filter(
                     (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.role === Role.COLONIZER
                 ).length;
             if (op.originRoom && numberOfColonizersFound < 2) {
-                Memory.empire.spawnAssignments.push({
+                Memory.spawnAssignments.push({
                     designee: op.originRoom,
                     body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
                     spawnOpts: {
@@ -186,10 +184,25 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
     rooms = rooms.filter((room) => !room.path.incomplete);
 
     if (rooms.length) {
-        const closestRoom = rooms.reduce((best, next) => {
-            return next.path.cost <= best.path.cost ? next : best;
-        });
-        bestRoom = { roomName: closestRoom.name, cost: closestRoom.path.cost };
+        let closestRoom: { name: string; path: PathFinderPath };
+        let highestLevel: number;
+        switch (opts?.selectionCriteria) {
+            case OriginCriteria.CLOSEST:
+                closestRoom = rooms.reduce((best, next) => {
+                    return next.path.cost <= best.path.cost ? next : best;
+                });
+                bestRoom = { roomName: closestRoom.name, cost: closestRoom.path.cost };
+                break;
+            case OriginCriteria.HIGHEST_LEVEL:
+            default:
+                highestLevel = Math.max(...rooms.map((room) => Game.rooms[room.name].controller.level));
+                closestRoom = rooms
+                    .filter((room) => Game.rooms[room.name].controller.level === highestLevel)
+                    .reduce((best, next) => {
+                        return next.path.cost <= best.path.cost ? next : best;
+                    });
+                bestRoom = { roomName: closestRoom.name, cost: closestRoom.path.cost };
+        }
     }
 
     return bestRoom;
@@ -202,11 +215,11 @@ function manageSimpleOperation(op: Operation) {
 
     let assignedOperativesCount =
         Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
-        Memory.empire.spawnAssignments.filter(
+        Memory.spawnAssignments.filter(
             (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.operation === op.type
         ).length;
     if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1)) {
-        Memory.empire.spawnAssignments.push({
+        Memory.spawnAssignments.push({
             designee: op.originRoom,
             body: PopulationManagement.createPartsArray(OPERATOR_PARTS_MAP[op.type], Game.rooms[op.originRoom].energyCapacityAvailable),
             spawnOpts: {
@@ -248,7 +261,7 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
 
         console.log(`${originRoom} selected for operation targeting ${targetRoom}`);
 
-        Memory.empire.operations.push(newOp);
+        Memory.operations.push(newOp);
     } else {
         console.log('No suitable origin found');
     }
@@ -263,7 +276,7 @@ function manageSecureRoomOperation(op: Operation) {
 
     const origin = Game.rooms[op.originRoom];
 
-    const targetIsColonizeTarget = !!Memory.empire.operations.find(
+    const targetIsColonizeTarget = !!Memory.operations.find(
         (otherOperation) => op.targetRoom === otherOperation.targetRoom && otherOperation.type === OperationType.COLONIZE
     );
     const bodyParts =
@@ -281,12 +294,12 @@ function manageSecureRoomOperation(op: Operation) {
                 creep.memory.role === Role.PROTECTOR &&
                 (creep.spawning || creep.ticksToLive > op.pathCost + body.length * 3)
         ).length +
-        Memory.empire.spawnAssignments.filter(
+        Memory.spawnAssignments.filter(
             (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.PROTECTOR
         ).length;
 
     if (Game.rooms[op.originRoom] && assignedProtectorCount < op.operativeCount) {
-        Memory.empire.spawnAssignments.push({
+        Memory.spawnAssignments.push({
             designee: op.originRoom,
             body: body,
             spawnOpts: {
@@ -314,12 +327,11 @@ function manageRoomRecoveryOperation(op: Operation) {
     miningAssignments.forEach((key) => {
         if (
             Memory.rooms[op.targetRoom]?.miningAssignments?.[key] === AssignmentStatus.UNASSIGNED &&
-            !Memory.empire.spawnAssignments.filter(
-                (creep) => creep.spawnOpts.memory.room === op.targetRoom && creep.spawnOpts.memory.assignment === key
-            ).length
+            !Memory.spawnAssignments.filter((creep) => creep.spawnOpts.memory.room === op.targetRoom && creep.spawnOpts.memory.assignment === key)
+                .length
         ) {
             Memory.rooms[op.targetRoom].miningAssignments[key] = AssignmentStatus.ASSIGNED;
-            Memory.empire.spawnAssignments.push({
+            Memory.spawnAssignments.push({
                 designee: op.originRoom,
                 body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
                 spawnOpts: {
@@ -336,14 +348,14 @@ function manageRoomRecoveryOperation(op: Operation) {
     let numberOfRecoveryWorkers =
         Object.values(Memory.creeps).filter((creep) => creep.role === Role.WORKER && creep.room === op.targetRoom && creep.operation === op.type)
             .length +
-        Memory.empire.spawnAssignments.filter(
+        Memory.spawnAssignments.filter(
             (creep) =>
                 creep.spawnOpts.memory.room === op.targetRoom &&
                 creep.spawnOpts.memory.role === Role.WORKER &&
                 creep.spawnOpts.memory.operation === op.type
         ).length;
     if (op.originRoom && numberOfRecoveryWorkers < (op.operativeCount ?? miningAssignments.length)) {
-        Memory.empire.spawnAssignments.push({
+        Memory.spawnAssignments.push({
             designee: op.originRoom,
             body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[op.originRoom].energyCapacityAvailable),
             spawnOpts: {
@@ -357,8 +369,8 @@ function manageRoomRecoveryOperation(op: Operation) {
     }
 
     if (!roomNeedsCoreStructures(targetRoom)) {
-        let opIndex = Memory.empire.operations.findIndex((operation) => op === operation);
-        Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE;
+        let opIndex = Memory.operations.findIndex((operation) => op === operation);
+        Memory.operations[opIndex].stage = OperationStage.COMPLETE;
 
         placeBunkerConstructionSites(targetRoom);
     }
@@ -369,13 +381,13 @@ function manageAttackRoomOperation(op: Operation) {
     const squadId = 's2' + Game.shard.name.slice(-1) + originRoom.name + Game.time.toString().slice(-4);
     const hasSquadAttacker =
         originRoom.creeps.find((creep) => creep.memory.role === Role.SQUAD_ATTACKER && creep.memory.assignment === op.targetRoom) ||
-        Memory.empire.spawnAssignments.find(
+        Memory.spawnAssignments.find(
             (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.SQUAD_ATTACKER
         );
     if (!hasSquadAttacker) {
-        Memory.empire.spawnAssignments.push({
+        Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
+            body: PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(MOVE, bodyA, bodyB)
             ),
             spawnOpts: {
@@ -389,6 +401,7 @@ function manageAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_LEADER,
                     },
                 },
+                boosts: [BoostType.DISMANTLE],
             },
         });
     }
@@ -397,17 +410,15 @@ function manageAttackRoomOperation(op: Operation) {
         originRoom.creeps.find(
             (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER && creep.memory.assignment === op.targetRoom
         ) ||
-        Memory.empire.spawnAssignments.find(
+        Memory.spawnAssignments.find(
             (creep) =>
                 creep.spawnOpts.memory.assignment === op.targetRoom &&
                 creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER
         );
     if (!hasSquadHealer) {
-        Memory.empire.spawnAssignments.push({
+        Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-                sortByBodyPart(HEAL, bodyA, bodyB)
-            ),
+            body: [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)],
             spawnOpts: {
                 memory: {
                     role: Role.SQUAD_ATTACKER,
@@ -419,15 +430,16 @@ function manageAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
                     },
                 },
+                boosts: [BoostType.HEAL],
             },
         });
     }
-    if (!Memory.empire.squads) {
-        Memory.empire.squads = {};
+    if (!Memory.squads) {
+        Memory.squads = {};
     }
-    Memory.empire.squads[squadId] = { squadType: SquadType.DUO, forcedDestinations: op.forcedDestinations, assignment: op.targetRoom };
-    const opIndex = Memory.empire.operations.findIndex((operation) => op === operation);
-    Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
+    Memory.squads[squadId] = { squadType: SquadType.DUO, forcedDestinations: op.forcedDestinations, assignment: op.targetRoom };
+    const opIndex = Memory.operations.findIndex((operation) => op === operation);
+    Memory.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
 }
 
 function manageQuadAttackRoomOperation(op: Operation) {
@@ -437,14 +449,14 @@ function manageQuadAttackRoomOperation(op: Operation) {
         originRoom.creeps.filter(
             (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_LEADER && creep.memory.assignment === op.targetRoom
         ).length +
-        Memory.empire.spawnAssignments.filter(
+        Memory.spawnAssignments.filter(
             (creep) =>
                 creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_LEADER
         ).length;
     if (!hasSquadLeader) {
-        Memory.empire.spawnAssignments.push({
+        Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
+            body: PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(MOVE, bodyA, bodyB)
             ),
             spawnOpts: {
@@ -458,6 +470,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_LEADER,
                     },
                 },
+                boosts: [BoostType.DISMANTLE],
             },
         });
     }
@@ -466,15 +479,15 @@ function manageQuadAttackRoomOperation(op: Operation) {
         originRoom.creeps.filter(
             (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_LEADER && creep.memory.assignment === op.targetRoom
         ).length +
-        Memory.empire.spawnAssignments.filter(
+        Memory.spawnAssignments.filter(
             (creep) =>
                 creep.spawnOpts.memory.assignment === op.targetRoom &&
                 creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_LEADER
         ).length;
     if (!hasSecondSquadLeader) {
-        Memory.empire.spawnAssignments.push({
+        Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
+            body: PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
                 sortByBodyPart(MOVE, bodyA, bodyB)
             ),
             spawnOpts: {
@@ -488,6 +501,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_SECOND_LEADER,
                     },
                 },
+                boosts: [BoostType.DISMANTLE],
             },
         });
     }
@@ -496,17 +510,15 @@ function manageQuadAttackRoomOperation(op: Operation) {
         originRoom.creeps.filter(
             (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER && creep.memory.assignment === op.targetRoom
         ).length +
-        Memory.empire.spawnAssignments.filter(
+        Memory.spawnAssignments.filter(
             (creep) =>
                 creep.spawnOpts.memory.assignment === op.targetRoom &&
                 creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER
         ).length;
     if (!hasSquadFollower) {
-        Memory.empire.spawnAssignments.push({
+        Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-                sortByBodyPart(HEAL, bodyA, bodyB)
-            ),
+            body: [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)],
             spawnOpts: {
                 memory: {
                     role: Role.SQUAD_ATTACKER,
@@ -518,6 +530,7 @@ function manageQuadAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
                     },
                 },
+                boosts: [BoostType.HEAL],
             },
         });
     }
@@ -526,17 +539,15 @@ function manageQuadAttackRoomOperation(op: Operation) {
         originRoom.creeps.filter(
             (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_FOLLOWER && creep.memory.assignment === op.targetRoom
         ).length +
-        Memory.empire.spawnAssignments.filter(
+        Memory.spawnAssignments.filter(
             (creep) =>
                 creep.spawnOpts.memory.assignment === op.targetRoom &&
                 creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_FOLLOWER
         ).length;
     if (!hasSecondSquadFollower) {
-        Memory.empire.spawnAssignments.push({
+        Memory.spawnAssignments.push({
             designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-                sortByBodyPart(HEAL, bodyA, bodyB)
-            ),
+            body: [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)],
             spawnOpts: {
                 memory: {
                     role: Role.SQUAD_ATTACKER,
@@ -548,15 +559,16 @@ function manageQuadAttackRoomOperation(op: Operation) {
                         squadMemberType: SquadMemberType.SQUAD_SECOND_FOLLOWER,
                     },
                 },
+                boosts: [BoostType.HEAL],
             },
         });
     }
-    if (!Memory.empire.squads) {
-        Memory.empire.squads = {};
+    if (!Memory.squads) {
+        Memory.squads = {};
     }
-    Memory.empire.squads[squadId] = { squadType: SquadType.QUAD, forcedDestinations: op.forcedDestinations, assignment: op.targetRoom };
-    const opIndex = Memory.empire.operations.findIndex((operation) => op === operation);
-    Memory.empire.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
+    Memory.squads[squadId] = { squadType: SquadType.QUAD, forcedDestinations: op.forcedDestinations, assignment: op.targetRoom };
+    const opIndex = Memory.operations.findIndex((operation) => op === operation);
+    Memory.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
 }
 
 function sortByBodyPart(prioritizedBodyPart: BodyPartConstant, bodyA: BodyPartConstant, bodyB: BodyPartConstant) {
@@ -574,7 +586,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
 
     console.log(`launching intershard from ${origin}`);
 
-    Memory.empire.spawnAssignments.push({
+    Memory.spawnAssignments.push({
         designee: origin,
         body: [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM],
         spawnOpts: {
@@ -586,7 +598,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
         },
     });
 
-    Memory.empire.spawnAssignments.push({
+    Memory.spawnAssignments.push({
         designee: origin,
         body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
         spawnOpts: {
@@ -599,7 +611,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
         },
     });
 
-    Memory.empire.spawnAssignments.push({
+    Memory.spawnAssignments.push({
         designee: origin,
         body: [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE, MOVE, MOVE],
         spawnOpts: {
@@ -612,7 +624,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
         },
     });
 
-    Memory.empire.spawnAssignments.push({
+    Memory.spawnAssignments.push({
         designee: origin,
         body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[origin].energyCapacityAvailable),
         spawnOpts: {
@@ -625,7 +637,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
         },
     });
 
-    Memory.empire.spawnAssignments.push({
+    Memory.spawnAssignments.push({
         designee: origin,
         body: PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], Game.rooms[origin].energyCapacityAvailable),
         spawnOpts: {

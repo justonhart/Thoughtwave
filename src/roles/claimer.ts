@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from '../modules/data';
 import { PopulationManagement } from '../modules/populationManagement';
 import { posInsideBunker } from '../modules/roomDesign';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
@@ -25,12 +25,12 @@ export class Claimer extends WaveCreep {
                             creep.memory.role === Role.PROTECTOR &&
                             (creep.pos.roomName === this.room.name || creep.memory.assignment === this.room.name)
                     ).length &&
-                    !Memory.empire.spawnAssignments.filter(
+                    !Memory.spawnAssignments.filter(
                         (creep) => creep.spawnOpts.memory.role === Role.PROTECTOR && creep.designee === this.homeroom.name
                     ).length &&
                     this.homeroom.canSpawn()
                 ) {
-                    Memory.empire.spawnAssignments.push({
+                    Memory.spawnAssignments.push({
                         designee: this.homeroom.name,
                         body: PopulationManagement.createPartsArray([ATTACK, MOVE], this.homeroom.energyCapacityAvailable, 8),
                         spawnOpts: {
@@ -50,9 +50,9 @@ export class Claimer extends WaveCreep {
             } else {
                 if (Game.rooms[this.memory.destination]?.controller?.my) {
                     console.log(`${this.room.name} has been claimed!`);
-                    let opIndex = Memory.empire.operations.findIndex((op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name);
+                    let opIndex = Memory.operations.findIndex((op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name);
                     if (opIndex > -1) {
-                        Memory.empire.operations[opIndex].stage = this.room.canSpawn() ? OperationStage.COMPLETE : OperationStage.BUILD;
+                        Memory.operations[opIndex].stage = this.room.canSpawn() ? OperationStage.COMPLETE : OperationStage.BUILD;
                     }
 
                     let preexistingStructures = this.room.find(FIND_STRUCTURES).filter(

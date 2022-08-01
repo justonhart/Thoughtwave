@@ -1,5 +1,5 @@
-import { addHostileRoom, unclaimRoom } from './empireManagement';
-import { addOperation, findOperationOrigin } from './operationsManagement';
+import { addHostileRoom, unclaimRoom } from './memoryManagement';
+import { addOperation } from './operationsManagement';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
@@ -10,7 +10,20 @@ export default function manageFlags() {
             Game.flags.portal.remove();
         }
 
-        addOperation(OperationType.COLONIZE, Game.flags.colonize.pos.roomName, { portalLocations: portalLocations });
+        let opts: OperationOpts = {
+            portalLocations: portalLocations,
+        };
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                selectionCriteria: OriginCriteria.CLOSEST,
+            };
+        }
+
+        addOperation(OperationType.COLONIZE, Game.flags.colonize.pos.roomName, opts);
         Game.flags.colonize.remove();
     }
 
@@ -31,15 +44,44 @@ export default function manageFlags() {
     }
 
     if (Game.flags.sterilize) {
-        addOperation(OperationType.STERILIZE, Game.flags.sterilize.pos.roomName);
+        let portalLocations = [];
+        if (Game.flags.portal) {
+            portalLocations.push(Game.flags.portal.pos.toMemSafe());
+            Game.flags.portal.remove();
+        }
+        let opts: OperationOpts = {
+            portalLocations: portalLocations,
+        };
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                selectionCriteria: OriginCriteria.CLOSEST,
+            };
+        }
+
+        addOperation(OperationType.STERILIZE, Game.flags.sterilize.pos.roomName, opts);
         Game.flags.sterilize.remove();
     }
 
     if (Game.flags.collect) {
-        addOperation(OperationType.COLLECTION, Game.flags.collect.pos.roomName, {
-            originOpts: { minEnergyStatus: EnergyStatus.CRITICAL },
+        let opts: OperationOpts = {
             operativeCount: 2,
-        });
+        };
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                minEnergyStatus: EnergyStatus.CRITICAL,
+                selectionCriteria: OriginCriteria.CLOSEST,
+            };
+        }
+
+        addOperation(OperationType.COLLECTION, Game.flags.collect.pos.roomName, opts);
         Game.flags.collect.remove();
     }
 
@@ -52,57 +94,121 @@ export default function manageFlags() {
     }
 
     if (Game.flags.recover) {
-        addOperation(OperationType.ROOM_RECOVERY, Game.flags.recover.pos.roomName);
+        let opts: OperationOpts = {};
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                selectionCriteria: OriginCriteria.HIGHEST_LEVEL,
+            };
+        }
+        addOperation(OperationType.ROOM_RECOVERY, Game.flags.recover.pos.roomName, opts);
         Game.flags.recover.remove();
     }
 
     if (Game.flags.attack) {
-        const flagName = 'squadMove';
         let forcedDestinations = [];
+        const flagName = 'squadMove';
         let step = 1;
         while (Game.flags[flagName + step]) {
             forcedDestinations.push(Game.flags[flagName + step].pos.toMemSafe());
             Game.flags[flagName + step].remove();
             step++;
         }
-        addOperation(OperationType.ATTACK, Game.flags.attack.pos.roomName, { forcedDestinations: forcedDestinations });
+        let opts: OperationOpts = {
+            forcedDestinations: forcedDestinations,
+        };
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                selectionCriteria: OriginCriteria.HIGHEST_LEVEL,
+            };
+        }
+        addOperation(OperationType.ATTACK, Game.flags.attack.pos.roomName, opts);
         Game.flags.attack.remove();
     }
 
     if (Game.flags.quadAttack) {
-        const flagName = 'squadMove';
         let forcedDestinations = [];
+        const flagName = 'squadMove';
         let step = 1;
         while (Game.flags[flagName + step]) {
             forcedDestinations.push(Game.flags[flagName + step].pos.toMemSafe());
             Game.flags[flagName + step].remove();
             step++;
         }
-        addOperation(OperationType.QUAD_ATTACK, Game.flags.quadAttack.pos.roomName, { forcedDestinations: forcedDestinations });
+        let opts: OperationOpts = {
+            forcedDestinations: forcedDestinations,
+        };
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                selectionCriteria: OriginCriteria.HIGHEST_LEVEL,
+            };
+        }
+        addOperation(OperationType.QUAD_ATTACK, Game.flags.quadAttack.pos.roomName, opts);
         Game.flags.quadAttack.remove();
     }
 
     if (Game.flags.boost) {
-        addOperation(OperationType.UPGRADE_BOOST, Game.flags.boost.pos.roomName, {
+        let opts: OperationOpts = {
             operativeCount: 3,
-            originOpts: { minEnergyStatus: EnergyStatus.STABLE },
-        });
+        };
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                minEnergyStatus: EnergyStatus.STABLE,
+                selectionCriteria: OriginCriteria.CLOSEST,
+            };
+        }
+        addOperation(OperationType.UPGRADE_BOOST, Game.flags.boost.pos.roomName, opts);
         Game.flags.boost.remove();
     }
 
     if (Game.flags.build) {
-        addOperation(OperationType.REMOTE_BUILD, Game.flags.build.pos.roomName, {
+        let opts: OperationOpts = {
             operativeCount: 3,
-            originOpts: { minEnergyStatus: EnergyStatus.STABLE },
-        });
+        };
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                minEnergyStatus: EnergyStatus.STABLE,
+                selectionCriteria: OriginCriteria.CLOSEST,
+            };
+        }
+        addOperation(OperationType.REMOTE_BUILD, Game.flags.build.pos.roomName, opts);
         Game.flags.build.remove();
     }
 
     if (Game.flags.clean) {
-        addOperation(OperationType.CLEAN, Game.flags.clean.pos.roomName, {
+        let opts: OperationOpts = {
             operativeCount: 2,
-            originOpts: { minEnergyStatus: EnergyStatus.STABLE },
-        });
+        };
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                minEnergyStatus: EnergyStatus.STABLE,
+                selectionCriteria: OriginCriteria.CLOSEST,
+            };
+        }
+        addOperation(OperationType.CLEAN, Game.flags.clean.pos.roomName, opts);
         Game.flags.clean.remove();
     }
 }

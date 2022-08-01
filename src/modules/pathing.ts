@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/memoryManagement';
+import { posFromMem } from '../modules/data';
 
 //@ts-ignore
 global.IN_ROOM = -20;
@@ -91,6 +91,7 @@ export class Pathing {
 
         if (destination.toMemSafe() !== creep.memory._m.destination) {
             delete creep.memory._m.path;
+            creep.memory._m.repath = 0;
             creep.memory._m.destination = destination.toMemSafe();
         }
 
@@ -222,21 +223,12 @@ export class Pathing {
     }
     //check if room should be avoided
     static checkAvoid(roomName: string): boolean {
-        if (Memory.empire.hostileRooms) {
-            const hostileRoom = Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === roomName);
-            if (
-                Memory.rooms &&
-                Object.values(Memory.rooms).find((room) => room.remoteAssignments?.[roomName]?.state === RemoteMiningRoomState.ENEMY_ATTTACK_CREEPS)
-            ) {
-                return true; // avoid homeBases mining rooms with enemies in them
-            }
-            if (hostileRoom) {
-                if (hostileRoom.expireAt > Game.time) {
-                    return true;
-                }
-                Memory.empire.hostileRooms.splice(Memory.empire.hostileRooms.indexOf(hostileRoom), 1); // Cleanup expired rooms
-            }
-            return false;
+        if (Memory.roomData[roomName]?.hostile && Memory.roomData[roomName].asOf < Game.time + 10000) {
+            return true;
+        }
+
+        if (Memory.remoteData[roomName]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
+            return true;
         }
         return false;
     }
@@ -247,25 +239,6 @@ export class Pathing {
     //check two coordinates match
     static sameCoord(pos1: RoomPosition, pos2: RoomPosition): boolean {
         return pos1.x === pos2.x && pos1.y === pos2.y;
-    }
-
-    // add hostile rooms
-    static addHostileRoom(room: Room, destinationRoom: string, ignoreDestination?: boolean): void {
-        if (!room) {
-            return;
-        }
-        if (!Memory.empire.hostileRooms) {
-            Memory.empire.hostileRooms = [];
-        }
-        // Find hostileRooms
-        if (
-            (ignoreDestination || room.name !== destinationRoom) &&
-            !Memory.empire.hostileRooms.find((hostileRoom) => hostileRoom.room === room.name) &&
-            room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_TOWER })?.length &&
-            room.controller?.owner
-        ) {
-            Memory.empire.hostileRooms.push({ room: room.name, expireAt: Game.time + 8000 }); // valid for 8000 Ticks right now (can be changed depending on room situation ==> invaders or players controller level)
-        }
     }
 
     /**
@@ -311,7 +284,7 @@ export class Pathing {
     /**
      * Create proper costMatrix for each room
      * @param originRoom -
-     * @param destionationRoom -
+     * @param destination -
      * @param options -
      * @returns -
      */
@@ -324,7 +297,6 @@ export class Pathing {
             }
 
             const room = Game.rooms[roomName];
-            Pathing.addHostileRoom(room, destination.roomName, options.checkForHostilesAtDestination);
             if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination.roomName && Pathing.checkAvoid(roomName)) {
                 return false;
             }
@@ -391,7 +363,23 @@ export class Pathing {
                     Object.keys(room.memory.miningAssignments)
                         .map((pos) => posFromMem(pos))
                         .forEach((pos) => {
-                            matrix.set(pos.x, pos.y, 10);
+                            matrix.set(pos.x, pos.y, 50);
+                        });
+                }
+
+                if (Memory.rooms[room.name]?.mineralMiningAssignments) {
+                    Object.keys(room.memory.mineralMiningAssignments)
+                        .map((pos) => posFromMem(pos))
+                        .forEach((pos) => {
+                            matrix.set(pos.x, pos.y, 50);
+                        });
+                }
+
+                if (Memory.remoteData[room.name]?.miningPositions) {
+                    Memory.remoteData[room.name].miningPositions
+                        .map((pos) => posFromMem(pos))
+                        .forEach((pos) => {
+                            matrix.set(pos.x, pos.y, 50);
                         });
                 }
 
