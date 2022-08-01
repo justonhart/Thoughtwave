@@ -106,6 +106,8 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
 
     if (Memory.rooms[controllingRoomName].remoteMiningRooms[remoteRoomName]) {
         return ERR_NAME_EXISTS;
+    } else {
+        Memory.rooms[controllingRoomName].remoteMiningRooms.push(remoteRoomName);
     }
 
     let miningPositions = findMiningPositions(controllingRoomName, remoteRoomName);
