@@ -2,12 +2,12 @@ interface StructureSpawn {
     spawnMineralMiner(): ScreepsReturnCode;
     spawnMiner(): ScreepsReturnCode;
     spawnDistributor(): ScreepsReturnCode;
-    spawnRemoteMiner: () => ScreepsReturnCode;
-    spawnGatherer(): ScreepsReturnCode;
-    spawnReserver(): ScreepsReturnCode;
+    spawnRemoteMiner: (remoteRoomName: string) => ScreepsReturnCode;
+    spawnGatherer(remoteRoomName: string): ScreepsReturnCode;
+    spawnReserver(remoteRoomName: string): ScreepsReturnCode;
     spawnManager(): ScreepsReturnCode;
     spawnWorker(): ScreepsReturnCode;
-    spawnKeeperExterminator(): ScreepsReturnCode;
+    spawnKeeperExterminator(remoteRoomName: string): ScreepsReturnCode;
     spawnAssignedCreep(assignment: SpawnAssignment): ScreepsReturnCode;
     spawnFirst(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;
     spawnMax(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;

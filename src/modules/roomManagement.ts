@@ -405,24 +405,28 @@ function runSpawning(room: Room) {
         });
 
         if (room.energyStatus >= EnergyStatus.RECOVERING && room.memory.remoteMiningRooms?.length && !roomContainsViolentHostiles) {
-            if (PopulationManagement.needsKeeperExterminator(room)) {
+            let exterminatorNeed = PopulationManagement.findExterminatorNeed(room);
+            if (exterminatorNeed) {
                 let spawn = availableSpawns.pop();
-                spawn?.spawnKeeperExterminator();
+                spawn?.spawnKeeperExterminator(exterminatorNeed);
             }
 
-            if (PopulationManagement.needsReserver(room)) {
+            let reserverNeed = PopulationManagement.findReserverNeed(room);
+            if (reserverNeed) {
                 let spawn = availableSpawns.pop();
-                spawn?.spawnReserver();
+                spawn?.spawnReserver(reserverNeed);
             }
 
-            if (PopulationManagement.needsRemoteMiner(room)) {
+            let remoteMinerNeed = PopulationManagement.findRemoteMinerNeed(room);
+            if (remoteMinerNeed) {
                 let spawn = availableSpawns.pop();
-                spawn?.spawnRemoteMiner();
+                spawn?.spawnRemoteMiner(remoteMinerNeed);
             }
 
-            if (PopulationManagement.needsGatherer(room)) {
+            let gathererNeed = PopulationManagement.findGathererNeed(room);
+            if (gathererNeed) {
                 let spawn = availableSpawns.pop();
-                spawn?.spawnGatherer();
+                spawn?.spawnGatherer(gathererNeed);
             }
         }
     }

@@ -264,30 +264,27 @@ export class PopulationManagement {
         return result;
     }
 
-    static needsRemoteMiner(room: Room): boolean {
-        return room.memory.remoteMiningRooms.some(
+    static findRemoteMinerNeed(room: Room): string {
+        return room.memory.remoteMiningRooms.find(
             (remoteRoom) =>
+                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
                 Memory.remoteData[remoteRoom].miner === AssignmentStatus.UNASSIGNED
         );
     }
 
-    static spawnRemoteMiner(spawn: StructureSpawn): ScreepsReturnCode {
-        const assignment = spawn.room.memory.remoteMiningRooms.find(
-            (assignment) => Memory.remoteData[assignment].miner === AssignmentStatus.UNASSIGNED
-        );
-
+    static spawnRemoteMiner(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
         let options: SpawnOptions = {
             memory: {
-                assignment: assignment,
+                assignment: remoteRoomName,
                 room: spawn.room.name,
                 role: Role.REMOTE_MINER,
                 currentTaskPriority: Priority.HIGH,
             },
         };
 
-        let workNeeded = this.calculateRemoteMinerWorkNeeded(assignment);
+        let workNeeded = this.calculateRemoteMinerWorkNeeded(remoteRoomName);
         let work = [];
         let move = [];
         let energyLeft = spawn.room.energyCapacityAvailable - 100;
@@ -308,33 +305,32 @@ export class PopulationManagement {
 
         let result = spawn.smartSpawn(minerBody, name, options);
         if (result === OK) {
-            Memory.remoteData[assignment].miner = name;
+            Memory.remoteData[remoteRoomName].miner = name;
         }
 
         return result;
     }
 
-    static needsGatherer(room: Room): boolean {
-        return room.memory.remoteMiningRooms.some(
+    static findGathererNeed(room: Room): string {
+        return room.memory.remoteMiningRooms.find(
             (remoteRoom) =>
+                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
                 Memory.remoteData[remoteRoom].gatherer === AssignmentStatus.UNASSIGNED
         );
     }
 
-    static spawnGatherer(spawn: StructureSpawn): ScreepsReturnCode {
-        let assignment = spawn.room.memory.remoteMiningRooms.find((roomName) => Memory.remoteData[roomName].gatherer === AssignmentStatus.UNASSIGNED);
-
+    static spawnGatherer(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
         let options: SpawnOptions = {
             memory: {
-                assignment: assignment,
+                assignment: remoteRoomName,
                 room: spawn.room.name,
                 role: Role.GATHERER,
             },
         };
 
-        if (isKeeperRoom(assignment) || isCenterRoom(assignment)) {
+        if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
             options.boosts = [BoostType.CARRY, BoostType.MOVE];
         }
 
@@ -344,33 +340,32 @@ export class PopulationManagement {
         let result = spawn.smartSpawn(PARTS, name, options);
 
         if (result === OK) {
-            Memory.remoteData[assignment].gatherer = name;
+            Memory.remoteData[remoteRoomName].gatherer = name;
         }
 
         return result;
     }
 
-    static needsReserver(room: Room): boolean {
-        return Object.values(room.memory.remoteMiningRooms).some(
+    static findReserverNeed(room: Room): string {
+        return Object.values(room.memory.remoteMiningRooms).find(
             (remoteRoom) =>
+                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[remoteRoom].reserver === AssignmentStatus.UNASSIGNED
         );
     }
 
-    static spawnReserver(spawn: StructureSpawn): ScreepsReturnCode {
-        let assigment = spawn.room.memory.remoteMiningRooms.find((roomName) => Memory.remoteData[roomName].reserver === AssignmentStatus.UNASSIGNED);
-
+    static spawnReserver(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
         let options: SpawnOptions = {
             memory: {
-                assignment: assigment,
+                assignment: remoteRoomName,
                 room: spawn.room.name,
                 role: Role.RESERVER,
             },
         };
 
         let maxSize = 5;
-        if (Memory.remoteData[assigment].reservationState === RemoteRoomReservationStatus.STABLE) {
+        if (Memory.remoteData[remoteRoomName].reservationState === RemoteRoomReservationStatus.STABLE) {
             maxSize = 1;
         }
 
@@ -379,7 +374,7 @@ export class PopulationManagement {
         let result = spawn.spawnMax(PARTS, name, options, maxSize);
 
         if (result === OK) {
-            Memory.remoteData[assigment].reserver = name;
+            Memory.remoteData[remoteRoomName].reserver = name;
         }
 
         return result;
@@ -698,24 +693,19 @@ export class PopulationManagement {
         return result;
     }
 
-    static needsKeeperExterminator(room: Room) {
-        return Object.values(room.memory.remoteMiningRooms).some(
+    static findExterminatorNeed(room: Room): string {
+        return Object.values(room.memory.remoteMiningRooms).find(
             (remoteRoom) =>
+                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[remoteRoom].keeperExterminator === AssignmentStatus.UNASSIGNED
         );
     }
 
-    static spawnKeeperExterminator(spawn: StructureSpawn): ScreepsReturnCode {
-        let roomInNeed = spawn.room.memory.remoteMiningRooms.find(
-            (remoteName) =>
-                Memory.remoteData[remoteName].keeperExterminator === AssignmentStatus.UNASSIGNED &&
-                Memory.remoteData[remoteName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
-        );
-
+    static spawnKeeperExterminator(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
         let options: SpawnOptions = {
             memory: {
-                assignment: roomInNeed,
+                assignment: remoteRoomName,
                 room: spawn.room.name,
                 role: Role.KEEPER_EXTERMINATOR,
             },
@@ -779,7 +769,7 @@ export class PopulationManagement {
         let result = spawn.smartSpawn(body, name, options);
 
         if (result === OK) {
-            Memory.remoteData[roomInNeed].keeperExterminator = name;
+            Memory.remoteData[remoteRoomName].keeperExterminator = name;
         }
 
         return result;
