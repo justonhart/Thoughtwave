@@ -178,7 +178,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
     if (hostileCreepData.count && homeRoom.controller.level === 2) {
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (!currentNumProtectors) {
-            Memory.empire.spawnAssignments.push({
+            Memory.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: [RANGED_ATTACK, MOVE, MOVE, HEAL],
                 spawnOpts: {
