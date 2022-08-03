@@ -177,7 +177,9 @@ export class CombatIntel {
                 if (range <= 3) {
                     roomCreepsCombatData.totalDmg += combatData.ranged;
                     roomCreepsCombatData.totalRanged += combatData.ranged;
-                    roomCreepsCombatData.totalHeal += combatData.heal / 3; // Ranged Heal
+                    if (range > 1) {
+                        roomCreepsCombatData.totalHeal += combatData.heal / 3; // Ranged Heal
+                    }
                     const creepHP = creep.body.length * 100;
                     roomCreepsCombatData.highestHP = creepHP > roomCreepsCombatData.highestHP ? creepHP : roomCreepsCombatData.highestHP;
                 }
