@@ -391,6 +391,138 @@ export class PopulationManagement {
         return partsArray;
     }
 
+    /**
+     * Create a creep body until damage needed is reached up to max body size. It will boost all creep parts if possible.
+     * Supports: ATTACK, RANGED_ATTACK, HEAL, TOUGH, MOVE
+     *
+     * @param room room which will be used to spawn creep
+     * @param parts Unique Body parts (method will determine how much you need of each for you)
+     * @param damageNeeded damage creep should be able to output
+     * @param opts normal spawnOptions
+     * @returns Creep Body Part Array
+     */
+    public static createDynamicCreepBody(room: Room, parts: BodyPartConstant[], damageNeeded: number, healNeeded: number, opts?: SpawnOptions) {
+        const getSortValue = (part: BodyPartConstant): number => (part === MOVE ? 2 : part === TOUGH ? 1 : 0);
+        parts = parts.filter((part, index) => parts.indexOf(part) === index).sort((a, b) => getSortValue(b) - getSortValue(a));
+        let energyAvailable = room.energyCapacityAvailable;
+        let hasEnergyLeft = true;
+        let partsArray = [];
+
+        const needed: BodyPartsNeeded = { damage: damageNeeded, move: 0, heal: 0, tough: 0, calculatedTough: false, boostedTough: false };
+        if (parts.some((part) => part === HEAL)) {
+            needed.heal = healNeeded;
+        }
+        // ToughNeeded is calculated after knowing which boost is used
+        if (parts.some((part) => part === TOUGH) && healNeeded > 0) {
+            needed.tough = 1;
+        }
+
+        if (opts?.boosts) {
+            var boostMap = getResourceBoostsAvailable(room, Array.from(opts.boosts));
+        }
+
+        while (hasEnergyLeft && partsArray.length < 50 && (needed.damage > 0 || needed.heal > 0 || needed.tough > 0 || needed.move > 0)) {
+            parts = parts.filter(
+                (part) =>
+                    ((part === ATTACK || part === RANGED_ATTACK) && needed.damage > 0) ||
+                    (part === HEAL && needed.heal > 0) ||
+                    (part === TOUGH && needed.tough > 0) ||
+                    part === MOVE
+            );
+            parts.forEach((part) => {
+                if (partsArray.length === 50) {
+                    return;
+                }
+                if (energyAvailable < BODYPART_COST[part]) {
+                    hasEnergyLeft = false;
+                    return; // no more energy
+                }
+
+                if (part !== MOVE && needed.move > -1) {
+                    return; // First add a MOVE part
+                }
+                if (part === MOVE && needed.move < 0) {
+                    return; // Move not currently needed
+                }
+
+                if (part !== MOVE) {
+                    needed.move++;
+                }
+
+                let boostFound = false;
+                if (opts?.boosts?.length) {
+                    opts.boosts
+                        .filter((boostType) => part === BODY_TO_BOOST_MAP[boostType])
+                        .forEach((boostType) => {
+                            let boostsAvailableCount = boostMap[boostType]?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
+                            if (boostsAvailableCount) {
+                                const nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
+                                boostMap[nextAvailableBoostResource] -= 1;
+                                const tierBoost =
+                                    nextAvailableBoostResource.length > 2 ? nextAvailableBoostResource.length - 1 : nextAvailableBoostResource.length;
+                                this.updateNeededValues(part, needed, tierBoost);
+                                boostFound = true;
+                            }
+                        });
+                }
+                if (!boostFound) {
+                    this.updateNeededValues(part, needed);
+                }
+                if (part === TOUGH && !needed.boostedTough) {
+                    // Do not allow nonBoosted TOUGH parts
+                    needed.tough = 0;
+                    return;
+                }
+                energyAvailable -= BODYPART_COST[part];
+                partsArray.push(part);
+            });
+        }
+
+        return partsArray;
+    }
+
+    private static updateNeededValues(part: BodyPartConstant, needed: BodyPartsNeeded, tierBoost: number = 1) {
+        needed.damage -= this.getDamage(part, tierBoost);
+        needed.heal -= this.getHeal(part, tierBoost);
+        needed.move -= this.getMove(part, tierBoost);
+        if (part === TOUGH) {
+            if (!needed.calculatedTough) {
+                needed.calculatedTough = true;
+                needed.boostedTough = tierBoost > 1;
+                needed.heal *= this.getTough(part, tierBoost);
+                needed.tough = Math.ceil(needed.heal / 100);
+            }
+            needed.tough--;
+        }
+    }
+
+    private static getDamage(part: BodyPartConstant, boostTier: number) {
+        if (part === RANGED_ATTACK) {
+            return RANGED_ATTACK_POWER * boostTier;
+        } else if (part === ATTACK) {
+            return ATTACK_POWER * boostTier;
+        }
+        return 0;
+    }
+
+    private static getHeal(part: BodyPartConstant, boostTier: number) {
+        if (part === HEAL) {
+            return HEAL_POWER * boostTier;
+        }
+        return 0;
+    }
+
+    private static getTough(part: BodyPartConstant, boostTier: number) {
+        return boostTier === 2 ? 0.7 : boostTier === 3 ? 0.5 : boostTier === 4 ? 0.3 : 1;
+    }
+
+    private static getMove(part: BodyPartConstant, boostTier: number) {
+        if (part === MOVE) {
+            return 1 * boostTier;
+        }
+        return 0;
+    }
+
     static spawnAssignedCreep(spawn: StructureSpawn, assignment: SpawnAssignment): ScreepsReturnCode {
         let options: SpawnOptions = {
             ...assignment.spawnOpts,

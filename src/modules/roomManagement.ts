@@ -163,19 +163,19 @@ function runHomeSecurity(homeRoom: Room): boolean {
     const towerData = CombatIntel.getTowerCombatData(homeRoom, false);
     const hostileCreepData = CombatIntel.getCreepCombatData(homeRoom, true);
 
-    if (hostileCreepData.heal < towerData.minDmg * hostileCreepData.dmgMultiplier) {
+    if (hostileCreepData.totalHeal < towerData.minDmg * hostileCreepData.highestDmgMultiplier) {
         return; // Towers can handle it for sure
     }
 
     if (
         homeRoom.memory.layout === RoomLayout.BUNKER &&
-        hostileCreepData.heal < CombatIntel.towerDamageAtRange(towerData, 12) * hostileCreepData.dmgMultiplier
+        hostileCreepData.totalHeal < CombatIntel.towerDamageAtRange(towerData, 12) * hostileCreepData.highestDmgMultiplier
     ) {
         return; // Closest Creeps in BunkerLayout have to be in a range of 12 if they want to hit the ramparts in any way
     }
 
     // No Towers yet so spawn a protector with heal which can then kite the invader around
-    if (hostileCreepData.count && homeRoom.controller.level === 2) {
+    if (hostileCreepData.creeps.length && homeRoom.controller.level === 2) {
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (!currentNumProtectors) {
             Memory.spawnAssignments.push({
@@ -196,7 +196,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
 
     let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
 
-    if (hostileCreepData.count >= minNumHostileCreeps) {
+    if (hostileCreepData.creeps.length >= minNumHostileCreeps) {
         // Spawn multiple rampartProtectors based on the number of enemy hostiles
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (!currentNumProtectors) {
@@ -215,7 +215,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 },
             });
         }
-        if (hostileCreepData.count >= 4 && currentNumProtectors - Math.floor(hostileCreepData.count / 2) < 0) {
+        if (hostileCreepData.creeps.length >= 4 && currentNumProtectors - Math.floor(hostileCreepData.creeps.length / 2) < 0) {
             console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
             const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);

@@ -7,6 +7,42 @@ export class CombatIntel {
     private static towerMinHeal = 100;
 
     /**
+     * Calculate actual damage done against creeps with tough parts
+     * @param damage
+     * @param damageMultiplier
+     * @param toughHits
+     * @returns
+     */
+    public static getPredictedDamage(damage: number, damageMultiplier: number, toughHits: number): number {
+        if (damage * damageMultiplier < toughHits) {
+            // Damage is not enough to go through all of the tough parts
+            return damage * damageMultiplier;
+        } else {
+            // Damage exceeds tough parts
+            damage -= toughHits / damageMultiplier;
+            return toughHits + damage;
+        }
+    }
+
+    /**
+     * Calculate actual damage needed against creeps with tough parts
+     * @param damageNeeded
+     * @param damageMultiplier
+     * @param toughHits
+     * @returns
+     */
+    public static getPredictedDamageNeeded(damageNeeded: number, damageMultiplier: number, toughHits: number): number {
+        if (damageMultiplier === 1 || damageNeeded === 0) {
+            return damageNeeded;
+        }
+        // Damage will break through tough parts
+        if (damageNeeded > toughHits / damageMultiplier) {
+            return damageNeeded + toughHits / damageMultiplier;
+        }
+        return damageNeeded / damageMultiplier;
+    }
+
+    /**
      * Get tower combat data by room.
      * @param room Targetroom
      * @param forHostile Get hostile or own tower combat data
@@ -45,12 +81,12 @@ export class CombatIntel {
      * @param pos
      * @returns
      */
-    public static getCreepCombatData(room: Room, forHostile: boolean, pos?: RoomPosition): CreepCombatData {
+    public static getCreepCombatData(room: Room, forHostile: boolean, pos?: RoomPosition): RoomCreepsCombatData {
         const hostileCreeps = room.find(forHostile ? FIND_HOSTILE_CREEPS : FIND_MY_CREEPS, {
             filter: (creep: Creep) =>
-                (!Memory.playersToIgnore?.includes(creep.owner.username) && creep.getActiveBodyparts(RANGED_ATTACK)) ||
-                creep.getActiveBodyparts(ATTACK) ||
-                creep.getActiveBodyparts(HEAL),
+                !Memory.playersToIgnore?.includes(creep.owner.username) &&
+                creep.owner.username !== 'Source Keeper' &&
+                (creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(HEAL)),
         }) as Creep[];
 
         if (!hostileCreeps) {
@@ -108,24 +144,56 @@ export class CombatIntel {
      * @param pos
      * @returns
      */
-    private static calculateCreepsCombatData(creeps: Creep[], pos?: RoomPosition): CreepCombatData {
-        let combatData = { totalDmg: 0, attack: 0, ranged: 0, heal: 0, dmgMultiplier: 1, count: creeps.length };
-        creeps.forEach((creep: Creep) => {
-            combatData = this.getTotalDamagePerCreepBody(creep.body, combatData);
+    private static calculateCreepsCombatData(creeps: Creep[], pos?: RoomPosition): RoomCreepsCombatData {
+        let roomCreepsCombatData = {
+            totalDmg: 0,
+            totalAttack: 0,
+            totalRanged: 0,
+            totalHeal: 0,
+            highestHP: 0,
+            highestDmgMultiplier: 1,
+            highestToughHits: 0,
+            creeps: [],
+        };
+        creeps.map((creep: Creep) => {
+            const combatData = this.getTotalDamagePerCreepBody(creep.body);
+            roomCreepsCombatData.creeps.push(combatData);
+            // Only count tough parts on heal units since they are the once that need to be outdamaged
+            if (
+                combatData.heal &&
+                roomCreepsCombatData.highestToughHits / roomCreepsCombatData.highestDmgMultiplier < combatData.toughHits / combatData.dmgMultiplier
+            ) {
+                roomCreepsCombatData.highestDmgMultiplier = combatData.dmgMultiplier;
+                roomCreepsCombatData.highestToughHits = combatData.toughHits;
+            }
+
             if (pos) {
                 const range = creep.pos.getRangeTo(pos);
                 if (range === 1) {
-                    combatData.totalDmg += combatData.attack;
+                    roomCreepsCombatData.totalDmg += combatData.attack;
+                    roomCreepsCombatData.totalAttack += combatData.attack;
+                    roomCreepsCombatData.totalHeal += combatData.heal;
                 }
                 if (range <= 3) {
-                    combatData.totalDmg += combatData.ranged;
+                    roomCreepsCombatData.totalDmg += combatData.ranged;
+                    roomCreepsCombatData.totalRanged += combatData.ranged;
+                    roomCreepsCombatData.totalHeal += combatData.heal / 3; // Ranged Heal
+                    const creepHP = creep.body.length * 100;
+                    roomCreepsCombatData.highestHP = creepHP > roomCreepsCombatData.highestHP ? creepHP : roomCreepsCombatData.highestHP;
                 }
             } else {
-                combatData.totalDmg += combatData.attack + combatData.ranged;
+                roomCreepsCombatData.totalDmg += combatData.attack + combatData.ranged;
+                roomCreepsCombatData.totalAttack += combatData.attack;
+                roomCreepsCombatData.totalRanged += combatData.ranged;
+                const creepHP = creep.body.length * 100;
+                roomCreepsCombatData.highestHP = creepHP > roomCreepsCombatData.highestHP ? creepHP : roomCreepsCombatData.highestHP;
+                roomCreepsCombatData.totalHeal += combatData.heal; // Assume maxHeal
             }
         });
-        return combatData;
+        return roomCreepsCombatData;
     }
+
+    //
 
     /**
      * This will calculate the total Damage from ranged and normal attack. It will also check if the body part is boosted or already broken.
@@ -133,11 +201,13 @@ export class CombatIntel {
      * @param targetBodyPart
      * @returns
      */
-    private static getTotalDamagePerCreepBody(bodyParts: BodyPartDefinition[], combatData: CreepCombatData): CreepCombatData {
+    private static getTotalDamagePerCreepBody(bodyParts: BodyPartDefinition[]): CreepCombatData {
+        const combatData = { attack: 0, ranged: 0, heal: 0, dmgMultiplier: 1, toughHits: 0 };
         bodyParts
             .filter(
                 (bodyPart: BodyPartDefinition) =>
-                    (bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === HEAL) && bodyPart.hits
+                    (bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === HEAL || bodyPart.type === TOUGH) &&
+                    bodyPart.hits
             )
             .forEach((bodyPart: BodyPartDefinition) => {
                 let boost = 1;
@@ -145,21 +215,23 @@ export class CombatIntel {
                     if (bodyPart.boost) {
                         boost = BOOSTS.attack[bodyPart.boost].attack;
                     }
-                    combatData.attack += 30 * boost;
+                    combatData.attack += ATTACK_POWER * boost;
                 } else if (bodyPart.type === RANGED_ATTACK) {
                     if (bodyPart.boost) {
                         boost = BOOSTS.ranged_attack[bodyPart.boost].rangedAttack;
                     }
-                    combatData.ranged += 30 * boost;
+                    combatData.ranged += RANGED_ATTACK_POWER * boost;
                 } else if (bodyPart.type === HEAL) {
                     if (bodyPart.boost) {
                         boost = BOOSTS.heal[bodyPart.boost].heal;
                     }
-                    combatData.heal += 12 * boost;
+                    combatData.heal += HEAL_POWER * boost;
                 } else if (bodyPart.type === TOUGH) {
                     if (bodyPart.boost) {
                         boost = BOOSTS.tough[bodyPart.boost].damage;
                     }
+
+                    combatData.toughHits += 100;
                     // Set the highest boost since the damage needs to exceed this
                     if (combatData.dmgMultiplier > boost) {
                         combatData.dmgMultiplier = boost;

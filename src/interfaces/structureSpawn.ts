@@ -19,6 +19,15 @@ interface SpawnOptions {
     disableSort?: boolean;
 }
 
+interface BodyPartsNeeded {
+    move: number;
+    damage: number;
+    heal: number;
+    tough: number;
+    calculatedTough: boolean;
+    boostedTough: boolean;
+}
+
 const enum BoostType {
     ATTACK = 1,
     RANGED_ATTACK,
