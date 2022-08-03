@@ -9,9 +9,10 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
         Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
     }
 
+    const threatLevel = Memory.remoteData[remoteRoomName].threatLevel;
     if (
         Memory.roomData[remoteRoomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-        Memory.remoteData[remoteRoomName].threatLevel === RemoteRoomThreatLevel.INVADER_CORE &&
+        threatLevel === RemoteRoomThreatLevel.INVADER_CORE &&
         !PopulationManagement.hasProtector(remoteRoomName) &&
         !reassignIdleProtector(controllingRoomName, remoteRoomName)
     ) {
@@ -33,7 +34,7 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
         });
     } else if (
         Memory.roomData[remoteRoomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-        Memory.remoteData[remoteRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS &&
+        threatLevel >= RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS &&
         !PopulationManagement.hasProtector(remoteRoomName) &&
         !reassignIdleProtector(controllingRoomName, remoteRoomName)
     ) {
@@ -45,14 +46,16 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
             const dmgNeeded =
                 CombatIntel.getPredictedDamageNeeded(combatIntel.totalHeal, combatIntel.highestDmgMultiplier, combatIntel.highestToughHits) +
                 combatIntel.highestHP / 20;
-            if (combatIntel.totalRanged > 200) {
-                boosts.push(BoostType.TOUGH);
-            }
-            if (combatIntel.totalRanged >= 120) {
-                boosts.push(BoostType.HEAL);
-            }
-            if (dmgNeeded >= 120) {
-                boosts.push(BoostType.RANGED_ATTACK);
+            if (threatLevel > RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS) {
+                if (combatIntel.totalRanged > 200) {
+                    boosts.push(BoostType.TOUGH);
+                }
+                if (combatIntel.totalRanged >= 120) {
+                    boosts.push(BoostType.HEAL);
+                }
+                if (dmgNeeded >= 120) {
+                    boosts.push(BoostType.RANGED_ATTACK);
+                }
             }
             body = PopulationManagement.createDynamicCreepBody(
                 Game.rooms[controllingRoomName],
