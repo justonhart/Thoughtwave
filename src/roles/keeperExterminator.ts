@@ -12,31 +12,17 @@ export class KeeperExterminator extends CombatCreep {
 
             if (target instanceof ConstructionSite) {
                 let miner = Game.creeps[Memory.remoteData[this.memory.assignment].miner];
-                if (miner?.memory.destination !== target.pos.toMemSafe() || !miner?.pos.isNearTo(target.pos)) {
-                    //scan area for keeper
-                    let keeper = target.pos.findInRange(FIND_HOSTILE_CREEPS, 5, { filter: (c) => c.owner.username === 'Source Keeper' }).shift();
-                    if (keeper && this.pos.isNearTo(keeper)) {
-                        this.attackCreep(keeper);
-                    } else if (keeper) {
-                        this.travelTo(keeper, { range: 1 });
-                    } else {
-                        this.travelTo(target.pos, { avoidSourceKeepers: false });
-                    }
+                //scan area for keeper
+                let keeper = target.pos.findInRange(FIND_HOSTILE_CREEPS, 5, { filter: (c) => c.owner.username === 'Source Keeper' }).shift();
+                if (keeper && this.pos.isNearTo(keeper)) {
+                    this.attackCreep(keeper);
+                } else if (miner?.memory.destination !== target.pos.toMemSafe() || !miner?.pos.isNearTo(target.pos)) {
+                    this.travelTo(target.pos, { avoidSourceKeepers: false });
                 } else {
-                    //scan area for keeper
-                    let keeper = target.pos.findInRange(FIND_HOSTILE_CREEPS, 5, { filter: (c) => c.owner.username === 'Source Keeper' }).shift();
-                    if (keeper) {
-                        if (this.pos.isNearTo(keeper)) {
-                            this.attackCreep(keeper);
-                        } else {
-                            this.travelTo(keeper, { range: 1 });
-                        }
-                    } else {
-                        this.travelTo(
-                            target.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR }),
-                            { range: 1 }
-                        );
-                    }
+                    this.travelTo(
+                        target.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR }),
+                        { range: 1 }
+                    );
                 }
             } else if (target instanceof Structure) {
                 if (!this.pos.isNearTo(target)) {

@@ -1,3 +1,4 @@
+import { CombatIntel } from './combatIntel';
 import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { PopulationManagement } from './populationManagement';
 import { getStoragePos } from './roomDesign';
@@ -8,9 +9,10 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
         Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
     }
 
+    const threatLevel = Memory.remoteData[remoteRoomName].threatLevel;
     if (
         Memory.roomData[remoteRoomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-        Memory.remoteData[remoteRoomName].threatLevel === RemoteRoomThreatLevel.INVADER_CORE &&
+        threatLevel === RemoteRoomThreatLevel.INVADER_CORE &&
         !PopulationManagement.hasProtector(remoteRoomName) &&
         !reassignIdleProtector(controllingRoomName, remoteRoomName)
     ) {
@@ -32,21 +34,46 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
         });
     } else if (
         Memory.roomData[remoteRoomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-        Memory.remoteData[remoteRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS &&
+        threatLevel >= RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS &&
         !PopulationManagement.hasProtector(remoteRoomName) &&
         !reassignIdleProtector(controllingRoomName, remoteRoomName)
     ) {
-        const maxSize = 6;
-        const body = PopulationManagement.createPartsArray(
-            [RANGED_ATTACK, MOVE],
-            Game.rooms[controllingRoomName].energyCapacityAvailable - 300,
-            maxSize
-        );
-        body.push(HEAL, MOVE);
+        let body: BodyPartConstant[];
+        let boosts = [];
+        if (remoteRoom) {
+            boosts = [];
+            const combatIntel = CombatIntel.getCreepCombatData(remoteRoom, true);
+            const dmgNeeded =
+                CombatIntel.getPredictedDamageNeeded(combatIntel.totalHeal, combatIntel.highestDmgMultiplier, combatIntel.highestToughHits) +
+                combatIntel.highestHP / 20;
+            if (threatLevel > RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS) {
+                if (combatIntel.totalRanged > 200) {
+                    boosts.push(BoostType.TOUGH);
+                }
+                if (combatIntel.totalRanged >= 120) {
+                    boosts.push(BoostType.HEAL);
+                }
+                if (dmgNeeded >= 120) {
+                    boosts.push(BoostType.RANGED_ATTACK);
+                }
+            }
+            body = PopulationManagement.createDynamicCreepBody(
+                Game.rooms[controllingRoomName],
+                [RANGED_ATTACK, HEAL, MOVE, TOUGH],
+                dmgNeeded,
+                combatIntel.totalRanged,
+                { boosts: boosts }
+            );
+        } else {
+            body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], Game.rooms[controllingRoomName].energyCapacityAvailable - 300, 6);
+            body.push(HEAL, MOVE);
+        }
+
         Memory.spawnAssignments.push({
             designee: controllingRoomName,
             body: body,
             spawnOpts: {
+                boosts: boosts,
                 memory: {
                     role: Role.PROTECTOR,
                     room: controllingRoomName,
