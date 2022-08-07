@@ -2,15 +2,12 @@ import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class Protector extends CombatCreep {
     protected run() {
-        if ((this.hits < this.hitsMax || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
-            this.heal(this);
-        }
-
         if (!this.getActiveBodyparts(RANGED_ATTACK) && !this.getActiveBodyparts(ATTACK)) {
             this.memory.combat.flee = true;
         }
 
         if (this.fledToNewRoom()) {
+            this.healSelf(false);
             return; // Wait while creep is healing
         }
         if (this.travelToRoom(this.memory.assignment) === IN_ROOM || this.memory.targetId) {
@@ -22,6 +19,7 @@ export class Protector extends CombatCreep {
                 this.memory.targetId = this.findTarget();
             }
             if (!this.memory.targetId) {
+                this.healSelf(false);
                 return;
             }
             const target = Game.getObjectById(this.memory.targetId);
@@ -40,7 +38,15 @@ export class Protector extends CombatCreep {
             // Enable retargeting on same tick
             if (!this.memory.combat.flee && creepActionReturnCode !== OK && creepActionReturnCode !== ERR_NOT_IN_RANGE) {
                 delete this.memory.targetId;
+            } else if (creepActionReturnCode === OK) {
+                this.healSelf(!!this.getActiveBodyparts(ATTACK));
             }
+        }
+    }
+
+    private healSelf(hasMeleeAttacked: boolean) {
+        if (!hasMeleeAttacked && (this.hits < this.hitsMax || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
+            this.heal(this);
         }
     }
 
