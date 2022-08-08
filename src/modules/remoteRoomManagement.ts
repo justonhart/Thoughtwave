@@ -41,29 +41,36 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
         let body: BodyPartConstant[];
         let boosts = [];
         if (remoteRoom) {
-            boosts = [];
-            const combatIntel = CombatIntel.getCreepCombatData(remoteRoom, true);
-            const dmgNeeded =
-                CombatIntel.getPredictedDamageNeeded(combatIntel.totalHeal, combatIntel.highestDmgMultiplier, combatIntel.highestToughHits) +
-                combatIntel.highestHP / 20;
-            if (threatLevel > RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS) {
-                if (combatIntel.totalRanged > 200) {
-                    boosts.push(BoostType.TOUGH);
+            if (threatLevel === RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS) {
+                const highestHP = remoteRoom
+                    .find(FIND_HOSTILE_CREEPS)
+                    .filter((creep) => !Memory.playersToIgnore?.includes(creep.owner.username) && creep.owner.username !== 'Source Keeper')
+                    .reduce((highestHP, nextCreep) => (highestHP < nextCreep.hitsMax ? nextCreep.hitsMax : highestHP), 0);
+                body = PopulationManagement.createDynamicCreepBody(Game.rooms[controllingRoomName], [ATTACK, MOVE], Math.ceil(highestHP / 10), 0);
+            } else {
+                const combatIntel = CombatIntel.getCreepCombatData(remoteRoom, true);
+                const dmgNeeded =
+                    CombatIntel.getPredictedDamageNeeded(combatIntel.totalHeal, combatIntel.highestDmgMultiplier, combatIntel.highestToughHits) +
+                    Math.ceil(combatIntel.highestHP / 25);
+                if (threatLevel > RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS) {
+                    if (combatIntel.totalRanged > 200) {
+                        boosts.push(BoostType.TOUGH);
+                    }
+                    if (combatIntel.totalRanged >= 120) {
+                        boosts.push(BoostType.HEAL);
+                    }
+                    if (dmgNeeded >= 180) {
+                        boosts.push(BoostType.RANGED_ATTACK);
+                    }
                 }
-                if (combatIntel.totalRanged >= 120) {
-                    boosts.push(BoostType.HEAL);
-                }
-                if (dmgNeeded >= 120) {
-                    boosts.push(BoostType.RANGED_ATTACK);
-                }
+                body = PopulationManagement.createDynamicCreepBody(
+                    Game.rooms[controllingRoomName],
+                    [RANGED_ATTACK, HEAL, MOVE, TOUGH],
+                    dmgNeeded,
+                    combatIntel.totalRanged,
+                    { boosts: boosts }
+                );
             }
-            body = PopulationManagement.createDynamicCreepBody(
-                Game.rooms[controllingRoomName],
-                [RANGED_ATTACK, HEAL, MOVE, TOUGH],
-                dmgNeeded,
-                combatIntel.totalRanged,
-                { boosts: boosts }
-            );
         } else {
             body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], Game.rooms[controllingRoomName].energyCapacityAvailable - 300, 6);
             body.push(HEAL, MOVE);
