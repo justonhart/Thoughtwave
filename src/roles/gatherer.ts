@@ -122,7 +122,7 @@ export class Gatherer extends TransportCreep {
 
         let targets: { id: Id<Resource> | Id<Structure>; amount: number; shouldBuildRoad?: boolean }[] = [];
 
-        miningPositions.forEach((posString) => {
+        Object.values(miningPositions).forEach((posString) => {
             let pos = posFromMem(posString);
             const areaInRange = Pathing.getArea(pos, 3);
             let lookArea = this.room.lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);

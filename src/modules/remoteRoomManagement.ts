@@ -1,11 +1,12 @@
 import { CombatIntel } from './combatIntel';
-import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
+import { isCenterRoom, isKeeperRoom as isKeeperRoom, posFromMem } from './data';
 import { PopulationManagement } from './populationManagement';
 import { getStoragePos } from './roomDesign';
 
 export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: string) {
     let remoteRoom = Game.rooms[remoteRoomName];
     if (remoteRoom) {
+        convertOldMemoryToNew(controllingRoomName, remoteRoomName);
         Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
     }
 
@@ -93,21 +94,39 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
     }
 }
 
-export function findMiningPositions(controllingRoomName: string, remoteRoomName: string): string[] {
+export function findMiningPositions(controllingRoomName: string, remoteRoomName: string): { [id: Id<Source>]: string } {
     let controllingRoom = Game.rooms[controllingRoomName];
     let remoteRoom = Game.rooms[remoteRoomName];
 
     let harvestTargets: Source[] = remoteRoom.find(FIND_SOURCES);
-    let miningPositions: string[] = [];
+    let miningPositions: { [id: Id<Source>]: string } = {};
 
     harvestTargets.forEach((target) => {
         const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
         if (!path.incomplete) {
-            miningPositions.push(path.path.pop().toMemSafe());
+            miningPositions[target.id] = path.path.pop().toMemSafe();
         }
     });
 
     return miningPositions;
+}
+
+export function findSourceKeeperPositions(remoteRoomName: string): { [id: Id<Structure<StructureConstant>>]: Id<Source> } {
+    const lairs = {};
+    Game.rooms[remoteRoomName]
+        .find(FIND_HOSTILE_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR,
+        })
+        .forEach((lair) => {
+            const source = lair.pos.findClosestByRange(FIND_SOURCES);
+            if (lair.pos.getRangeTo(source) < 5) {
+                lairs[source.id] = lair.id;
+            } else {
+                const mineral = lair.pos.findClosestByRange(FIND_MINERALS);
+                lairs[mineral.id] = lair.id;
+            }
+        });
+    return lairs;
 }
 
 export function calculateRemoteMinerWorkNeeded(roomName: string) {
@@ -119,8 +138,14 @@ export function calculateRemoteMinerWorkNeeded(roomName: string) {
 }
 
 function monitorThreatLevel(room: Room) {
-    let creeps = room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
-    let hasInvaderCore = !!room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_INVADER_CORE }).length;
+    const creeps = room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
+
+    const currentThreadLevel = Memory.remoteData[room.name].threatLevel;
+    let hasInvaderCore = currentThreadLevel === RemoteRoomThreatLevel.INVADER_CORE;
+    if (currentThreadLevel < RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS && Game.time % 3 === 0) {
+        // No need to check for this every tick in every remote room
+        hasInvaderCore = !!room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_INVADER_CORE }).length;
+    }
     return creeps.some((c) => c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0)
         ? RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
         : creeps.length
@@ -157,6 +182,7 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
 
     if (isKeeperRoom(remoteRoomName)) {
         remoteData.keeperExterminator = AssignmentStatus.UNASSIGNED;
+        remoteData.sourceKeeperLairs = findSourceKeeperPositions(remoteRoomName);
     } else if (!isCenterRoom(remoteRoomName)) {
         remoteData.reservationState = RemoteRoomReservationStatus.LOW;
         remoteData.reserver = AssignmentStatus.UNASSIGNED;
@@ -213,7 +239,9 @@ export function convertOldRoomsToNew() {
             let oldRemoteData = Memory.rooms[roomName]['remoteAssignments'][oldRemoteRoomName];
             let newRemoteData: RemoteData;
 
-            let miningPositions = Object.keys(oldRemoteData.miners);
+            let miningPositions = {};
+            Object.keys(oldRemoteData.miners).forEach((miningPos) => miningPositions[posFromMem(miningPos).findClosestByRange(FIND_SOURCES).id]);
+
             newRemoteData = {
                 miningPositions: miningPositions,
                 miner: AssignmentStatus.UNASSIGNED,
@@ -247,4 +275,14 @@ export function dedupeRemoteRooms() {
             Memory.rooms[room].remoteMiningRooms = Array.from(new Set<string>(Memory.rooms[room].remoteMiningRooms));
         }
     });
+}
+
+// TODO: remove after initial setup
+export function convertOldMemoryToNew(controllingRoomName: string, remoteRoomName: string) {
+    if (Memory.remoteData[remoteRoomName].miningPositions[0]) {
+        Memory.remoteData[remoteRoomName].miningPositions = findMiningPositions(controllingRoomName, remoteRoomName);
+    }
+    if (!Memory.remoteData[remoteRoomName].sourceKeeperLairs) {
+        Memory.remoteData[remoteRoomName].sourceKeeperLairs = findSourceKeeperPositions(remoteRoomName);
+    }
 }

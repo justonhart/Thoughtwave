@@ -264,21 +264,23 @@ export class Pathing {
         if (options.preferRoadConstruction || options.preferRamparts) {
             options.efficiency = 0.8; // Make other tiles cost more to avoid multiple roads
         }
-        return PathFinder.search(
-            origin,
+        const goals = [
             {
                 pos: destination,
                 range: range,
             },
-            {
-                maxOps: options.maxOps,
-                plainCost: Math.ceil(2 / options.efficiency),
-                swampCost: Math.ceil(10 / options.efficiency),
-                roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options, creepName),
-                flee: options.flee,
-                maxRooms: options.maxRooms,
-            }
-        );
+        ];
+        if (options.goals) {
+            goals.concat(options.goals);
+        }
+        return PathFinder.search(origin, goals, {
+            maxOps: options.maxOps,
+            plainCost: Math.ceil(2 / options.efficiency),
+            swampCost: Math.ceil(10 / options.efficiency),
+            roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options, creepName),
+            flee: options.flee,
+            maxRooms: options.maxRooms,
+        });
     }
 
     /**
@@ -319,7 +321,10 @@ export class Pathing {
 
                 if (options.avoidSourceKeepers) {
                     matrix = matrix.clone();
-                    if (room.find(FIND_STRUCTURES).some((struct) => struct.structureType === STRUCTURE_KEEPER_LAIR)) {
+                    if (
+                        Memory.remoteData[roomName]?.sourceKeeperLairs ||
+                        (!Memory.remoteData[roomName] && room.find(FIND_STRUCTURES).some((struct) => struct.structureType === STRUCTURE_KEEPER_LAIR))
+                    ) {
                         room.find(FIND_HOSTILE_CREEPS, {
                             filter: (creep) =>
                                 creep.owner.username === 'Source Keeper' &&
@@ -376,7 +381,7 @@ export class Pathing {
                 }
 
                 if (Memory.remoteData[room.name]?.miningPositions) {
-                    Memory.remoteData[room.name].miningPositions
+                    Object.values(Memory.remoteData[room.name].miningPositions)
                         .map((pos) => posFromMem(pos))
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);

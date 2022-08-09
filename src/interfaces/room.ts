@@ -24,12 +24,14 @@ interface RoomMemory {
 
 interface RemoteData {
     reservationState?: RemoteRoomReservationStatus;
-    miningPositions: string[];
+    miningPositions: { [id: Id<Source>]: string }; // sourceId: miningPos
     miner: string;
     gatherer: string;
+    gathererSK?: string;
     reserver?: string;
     threatLevel: RemoteRoomThreatLevel;
     keeperExterminator?: string;
+    sourceKeeperLairs?: { [id: Id<Source>]: Id<Structure<StructureConstant>> }; // keeperId: closestSourceId
 }
 
 interface RoomData {
