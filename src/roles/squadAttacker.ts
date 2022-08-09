@@ -91,7 +91,7 @@ export class SquadAttacker extends CombatCreep {
             }
 
             if (!target) {
-                target = this.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+                target = this.pos.findClosestByRange(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
             }
             if (!target) {
                 target = this.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {

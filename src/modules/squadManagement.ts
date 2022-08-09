@@ -1,4 +1,3 @@
-import { isThisTypeNode, updateFor } from 'typescript';
 import { CombatCreep } from '../virtualCreeps/combatCreep';
 import { posFromMem } from './data';
 import { Pathing } from './pathing';
@@ -343,7 +342,7 @@ export class SquadManagement {
                 const target = this.findPathingTarget();
                 if (target instanceof Creep) {
                     this.squadLeader.travelTo(target, { range: range, maxRooms: 1 });
-                } else {
+                } else if (target) {
                     this.squadLeader.travelTo(target, {
                         range: 1,
                         ignoreStructures: true,
