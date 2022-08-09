@@ -328,7 +328,7 @@ export class Pathing {
                             const avoidArea = Pathing.getArea(creep.pos, 3);
                             for (let x = avoidArea.left; x <= avoidArea.right; x++) {
                                 for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
-                                    matrix.set(x, y, 0xc8);
+                                    matrix.set(x, y, 50);
                                 }
                             }
                         });

@@ -65,11 +65,15 @@ Object.defineProperty(Room.prototype, 'mineral', {
 
 Object.defineProperty(Room.prototype, 'managerLink', {
     get: function (this: Room) {
+        if (this.memory.managerLink) {
+            return Game.getObjectById(this.memory.managerLink);
+        }
         let posToCheck = posFromMem(this.memory.anchorPoint || this.memory.managerPos);
         let link = posToCheck
             ?.findInRange(FIND_MY_STRUCTURES, 1)
             .filter((structure) => structure.structureType === STRUCTURE_LINK)
             .pop();
+        this.memory.managerLink = link.id;
         return link;
     },
     enumerable: false,

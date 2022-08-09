@@ -1,6 +1,7 @@
 interface RoomMemory {
     needsWallRepair?: boolean;
     upgraderLinkPos?: string;
+    managerLink?: Id<Structure>;
     labRequests?: LabNeed[];
     energyDistance?: number;
     controllerDistance?: number;
