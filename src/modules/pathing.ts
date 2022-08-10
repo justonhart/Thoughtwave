@@ -319,8 +319,8 @@ export class Pathing {
                     matrix = Pathing.getCreepMatrix(room);
                 }
 
+                matrix = matrix.clone();
                 if (options.avoidSourceKeepers) {
-                    matrix = matrix.clone();
                     if (
                         Memory.remoteData[roomName]?.sourceKeeperLairs ||
                         (!Memory.remoteData[roomName] && room.find(FIND_STRUCTURES).some((struct) => struct.structureType === STRUCTURE_KEEPER_LAIR))
@@ -341,7 +341,6 @@ export class Pathing {
                 }
 
                 if (options.exitCost) {
-                    matrix = matrix.clone();
                     for (let x = 0; x < 50; x++) {
                         if (!Game.map.getRoomTerrain(roomName).get(x, 0)) {
                             matrix.set(x, 0, options.exitCost);
@@ -390,21 +389,18 @@ export class Pathing {
 
                 // All tiles will be set to one if there is a road construction so that it counts as a finished road
                 if (options.preferRoadConstruction) {
-                    matrix = matrix.clone();
                     room.find(FIND_MY_CONSTRUCTION_SITES, { filter: (struct) => struct.structureType === STRUCTURE_ROAD }).forEach((struct) =>
                         matrix.set(struct.pos.x, struct.pos.y, 1)
                     );
                 }
 
                 if (options.preferRamparts) {
-                    matrix = matrix.clone();
                     room.find(FIND_MY_STRUCTURES, { filter: (struct) => struct.structureType === STRUCTURE_RAMPART }).forEach((rampart) => {
                         matrix.set(rampart.pos.x, rampart.pos.y, 1);
                     });
                 }
 
                 if (options.customMatrixCosts) {
-                    matrix = matrix.clone();
                     options.customMatrixCosts.forEach((matrixCost) => matrix.set(matrixCost.x, matrixCost.y, matrixCost.cost));
                 }
             }

@@ -317,7 +317,8 @@ export class PopulationManagement {
                 Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
-                Memory.remoteData[remoteRoom].gatherer === AssignmentStatus.UNASSIGNED
+                (Memory.remoteData[remoteRoom].gatherer === AssignmentStatus.UNASSIGNED ||
+                    Memory.remoteData[remoteRoom].gathererSK === AssignmentStatus.UNASSIGNED)
         );
     }
 
@@ -340,7 +341,11 @@ export class PopulationManagement {
         let result = spawn.smartSpawn(PARTS, name, options);
 
         if (result === OK) {
-            Memory.remoteData[remoteRoomName].gatherer = name;
+            if (Memory.remoteData[remoteRoomName].gatherer === AssignmentStatus.UNASSIGNED) {
+                Memory.remoteData[remoteRoomName].gatherer = name;
+            } else {
+                Memory.remoteData[remoteRoomName].gathererSK = name;
+            }
         }
 
         return result;

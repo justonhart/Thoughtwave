@@ -183,6 +183,7 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
     if (isKeeperRoom(remoteRoomName)) {
         remoteData.keeperExterminator = AssignmentStatus.UNASSIGNED;
         remoteData.sourceKeeperLairs = findSourceKeeperPositions(remoteRoomName);
+        remoteData.gathererSK = AssignmentStatus.UNASSIGNED;
     } else if (!isCenterRoom(remoteRoomName)) {
         remoteData.reservationState = RemoteRoomReservationStatus.LOW;
         remoteData.reserver = AssignmentStatus.UNASSIGNED;
@@ -284,5 +285,8 @@ export function convertOldMemoryToNew(controllingRoomName: string, remoteRoomNam
     }
     if (!Memory.remoteData[remoteRoomName].sourceKeeperLairs) {
         Memory.remoteData[remoteRoomName].sourceKeeperLairs = findSourceKeeperPositions(remoteRoomName);
+    }
+    if (isKeeperRoom(remoteRoomName) && Memory.remoteData[remoteRoomName].gathererSK === undefined) {
+        Memory.remoteData[remoteRoomName].gathererSK = AssignmentStatus.UNASSIGNED;
     }
 }

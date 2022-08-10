@@ -22,8 +22,8 @@ export class KeeperExterminator extends CombatCreep {
                     const sourceId = Object.entries(Memory.remoteData[this.memory.assignment].miningPositions).find(
                         ([sourceId, miningPos]) => target.pos.toMemSafe() === miningPos
                     );
-                    const lair = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[sourceId[0]] as Id<Structure<StructureConstant>>;
-                    this.travelTo(Game.getObjectById(lair), { range: 1 });
+                    const lairId = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[sourceId[0]] as Id<Structure<StructureConstant>>;
+                    this.travelTo(Game.getObjectById(lairId), { range: 1, avoidSourceKeepers: false });
                 }
             } else if (target instanceof Structure) {
                 if (!this.pos.isNearTo(target)) {

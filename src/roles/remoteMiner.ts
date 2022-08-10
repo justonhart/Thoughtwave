@@ -37,11 +37,9 @@ export class RemoteMiner extends WaveCreep {
                     } else if (container?.store.getFreeCapacity() === 0) {
                         delete this.memory.destination;
                     } else {
-                        const sourceId = Object.entries(Memory.remoteData[this.memory.assignment].miningPositions).find(
-                            ([sourceId, miningPos]) => this.memory.destination === miningPos
-                        )?.[0];
-                        if (sourceId) {
-                            this.harvest(Game.getObjectById(sourceId));
+                        const source = Game.getObjectById(this.getSourceIdByMiningPos(this.memory.destination)) as Source;
+                        if (source && source.energy) {
+                            this.harvest(source);
                         } else {
                             delete this.memory.destination;
                         }
@@ -72,7 +70,7 @@ export class RemoteMiner extends WaveCreep {
             if (isKeeperRoom) {
                 // LAIR
                 const lairId = Memory.remoteData[this.memory.assignment]?.sourceKeeperLairs[sourceId];
-                const lair = Game.getObjectById(lairId[1]) as StructureKeeperLair;
+                const lair = Game.getObjectById(lairId) as StructureKeeperLair;
                 const keeperSpawning = lair?.ticksToSpawn < 100;
                 if (keeperSpawning) {
                     return false;
@@ -105,10 +103,14 @@ export class RemoteMiner extends WaveCreep {
     }
 
     private destinationSpawningKeeper(): boolean {
-        const lair = Object.entries(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).find(
-            ([sourceId, lairId]) => this.pos.getRangeTo(Game.getObjectById(sourceId)) <= 5
-        );
-        const lairInRange = Game.getObjectById(lair[1]) as StructureKeeperLair;
+        const lairId = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[this.getSourceIdByMiningPos(this.memory.destination)];
+        const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
         return lairInRange?.ticksToSpawn < 20;
+    }
+
+    private getSourceIdByMiningPos(pos: string): Id<Source> {
+        return Object.entries(Memory.remoteData[this.memory.assignment].miningPositions).find(
+            ([sourceId, miningPos]) => this.memory.destination === miningPos
+        )?.[0] as Id<Source>;
     }
 }
