@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/data';
+import { isKeeperRoom, posFromMem } from '../modules/data';
 
 //@ts-ignore
 global.IN_ROOM = -20;
@@ -320,24 +320,19 @@ export class Pathing {
                 }
 
                 matrix = matrix.clone();
-                if (options.avoidSourceKeepers) {
-                    if (
-                        Memory.remoteData[roomName]?.sourceKeeperLairs ||
-                        (!Memory.remoteData[roomName] && room.find(FIND_STRUCTURES).some((struct) => struct.structureType === STRUCTURE_KEEPER_LAIR))
-                    ) {
-                        room.find(FIND_HOSTILE_CREEPS, {
-                            filter: (creep) =>
-                                creep.owner.username === 'Source Keeper' &&
-                                (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0),
-                        }).forEach((creep) => {
-                            const avoidArea = Pathing.getArea(creep.pos, 3);
-                            for (let x = avoidArea.left; x <= avoidArea.right; x++) {
-                                for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
-                                    matrix.set(x, y, 50);
-                                }
+                if (options.avoidSourceKeepers && isKeeperRoom(room.name)) {
+                    room.find(FIND_HOSTILE_CREEPS, {
+                        filter: (creep) =>
+                            creep.owner.username === 'Source Keeper' &&
+                            (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0),
+                    }).forEach((creep) => {
+                        const avoidArea = Pathing.getArea(creep.pos, 3);
+                        for (let x = avoidArea.left; x <= avoidArea.right; x++) {
+                            for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
+                                matrix.set(x, y, 50);
                             }
-                        });
-                    }
+                        }
+                    });
                 }
 
                 if (options.exitCost) {
