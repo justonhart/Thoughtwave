@@ -73,7 +73,7 @@ Object.defineProperty(Room.prototype, 'managerLink', {
             ?.findInRange(FIND_MY_STRUCTURES, 1)
             .filter((structure) => structure.structureType === STRUCTURE_LINK)
             .pop();
-        this.memory.managerLink = link.id;
+        this.memory.managerLink = link?.id;
         return link;
     },
     enumerable: false,
