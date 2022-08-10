@@ -199,4 +199,8 @@ export class Gatherer extends TransportCreep {
             this.repair(road);
         }
     }
+
+    protected damaged(): boolean {
+        return this.hits < this.hitsMax * 0.85;
+    }
 }
