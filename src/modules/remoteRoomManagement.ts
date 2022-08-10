@@ -111,7 +111,7 @@ export function findMiningPositions(controllingRoomName: string, remoteRoomName:
     return miningPositions;
 }
 
-export function findSourceKeeperPositions(remoteRoomName: string): { [id: Id<Structure<StructureConstant>>]: Id<Source> } {
+export function findKeeperLairs(remoteRoomName: string): { [id: Id<Source> | Id<Mineral>]: Id<StructureKeeperLair> } {
     const lairs = {};
     Game.rooms[remoteRoomName]
         .find(FIND_HOSTILE_STRUCTURES, {
@@ -119,7 +119,7 @@ export function findSourceKeeperPositions(remoteRoomName: string): { [id: Id<Str
         })
         .forEach((lair) => {
             const source = lair.pos.findClosestByRange(FIND_SOURCES);
-            if (lair.pos.getRangeTo(source) < 5) {
+            if (lair.pos.getRangeTo(source) < 6) {
                 lairs[source.id] = lair.id;
             } else {
                 const mineral = lair.pos.findClosestByRange(FIND_MINERALS);
@@ -182,7 +182,7 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
 
     if (isKeeperRoom(remoteRoomName)) {
         remoteData.keeperExterminator = AssignmentStatus.UNASSIGNED;
-        remoteData.sourceKeeperLairs = findSourceKeeperPositions(remoteRoomName);
+        remoteData.sourceKeeperLairs = findKeeperLairs(remoteRoomName);
         remoteData.gathererSK = AssignmentStatus.UNASSIGNED;
     } else if (!isCenterRoom(remoteRoomName)) {
         remoteData.reservationState = RemoteRoomReservationStatus.LOW;
@@ -284,7 +284,7 @@ export function convertOldMemoryToNew(controllingRoomName: string, remoteRoomNam
         Memory.remoteData[remoteRoomName].miningPositions = findMiningPositions(controllingRoomName, remoteRoomName);
     }
     if (!Memory.remoteData[remoteRoomName].sourceKeeperLairs) {
-        Memory.remoteData[remoteRoomName].sourceKeeperLairs = findSourceKeeperPositions(remoteRoomName);
+        Memory.remoteData[remoteRoomName].sourceKeeperLairs = findKeeperLairs(remoteRoomName);
     }
     if (isKeeperRoom(remoteRoomName) && Memory.remoteData[remoteRoomName].gathererSK === undefined) {
         Memory.remoteData[remoteRoomName].gathererSK = AssignmentStatus.UNASSIGNED;
