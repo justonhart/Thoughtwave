@@ -12,6 +12,11 @@ export class Gatherer extends TransportCreep {
             return;
         }
 
+        // Reset when not carrying energy anymore
+        if (!this.store.getUsedCapacity()) {
+            this.memory.shouldBuildRoad = true;
+        }
+
         let target: any = Game.getObjectById(this.memory.targetId);
         if (!target) {
             if (Game.rooms[this.memory.assignment] || this.travelToRoom(this.memory.assignment) === IN_ROOM) {
@@ -63,7 +68,6 @@ export class Gatherer extends TransportCreep {
                 if (this.store[resourceToStore] === this.store.getUsedCapacity()) {
                     this.onTaskFinished();
                 }
-                this.memory.shouldBuildRoad = true;
                 break;
             default:
                 this.onTaskFinished();
@@ -124,13 +128,12 @@ export class Gatherer extends TransportCreep {
         const targets: { id: Id<Resource> | Id<Structure> | Id<Tombstone>; amount: number; shouldBuildRoad?: boolean }[] = [];
 
         Object.values(miningPositions).forEach((posString) => {
-            let pos = posFromMem(posString);
+            const pos = posFromMem(posString);
             const areaInRange = Pathing.getArea(pos, 3);
-            let lookArea = Game.rooms[roomName].lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);
-            if (lookArea.some((look) => look.creep?.owner?.username === 'Source Keeper')) {
+            const lookArea = Game.rooms[roomName].lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);
+            if (isKeeperRoom(pos.roomName) && lookArea.some((look) => look.creep?.owner?.username === 'Source Keeper')) {
                 return;
             }
-
             lookArea
                 .filter((look) => look.resource?.resourceType === RESOURCE_ENERGY || look.tombstone?.store.energy)
                 .forEach((look) => {
@@ -141,7 +144,7 @@ export class Gatherer extends TransportCreep {
                     }
                 });
 
-            let container: StructureContainer = pos
+            const container: StructureContainer = pos
                 .lookFor(LOOK_STRUCTURES)
                 .find((s) => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
             if (container && container.store.getUsedCapacity()) {
@@ -156,7 +159,7 @@ export class Gatherer extends TransportCreep {
         if (secondGatherer && secondGatherer !== AssignmentStatus.UNASSIGNED) {
             excludeTargetId = Game.creeps[secondGatherer]?.memory?.targetId;
             // Main gatherer always has first dibs on targets (this prevents same target allocation when both gatherers look for a target at the same time)
-            if (!isMainGatherer && Game.creeps[secondGatherer] && !excludeTargetId) {
+            if (!isMainGatherer && Game.creeps[secondGatherer]?.ticksToLive && !excludeTargetId) {
                 return undefined;
             }
         }
