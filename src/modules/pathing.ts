@@ -329,7 +329,9 @@ export class Pathing {
                         const avoidArea = Pathing.getArea(creep.pos, 3);
                         for (let x = avoidArea.left; x <= avoidArea.right; x++) {
                             for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
-                                matrix.set(x, y, 50);
+                                if (x !== destination.x || y !== destination.y) {
+                                    matrix.set(x, y, 50);
+                                }
                             }
                         }
                     });
@@ -361,6 +363,7 @@ export class Pathing {
                 if (Memory.rooms[room.name]?.miningAssignments) {
                     Object.keys(room.memory.miningAssignments)
                         .map((pos) => posFromMem(pos))
+                        .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);
                         });
@@ -369,6 +372,7 @@ export class Pathing {
                 if (Memory.rooms[room.name]?.mineralMiningAssignments) {
                     Object.keys(room.memory.mineralMiningAssignments)
                         .map((pos) => posFromMem(pos))
+                        .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);
                         });
@@ -377,6 +381,7 @@ export class Pathing {
                 if (Memory.remoteData[room.name]?.miningPositions) {
                     Object.values(Memory.remoteData[room.name].miningPositions)
                         .map((pos) => posFromMem(pos))
+                        .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);
                         });

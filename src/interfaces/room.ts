@@ -29,6 +29,8 @@ interface RemoteData {
     gatherer: string;
     gathererSK?: string;
     reserver?: string;
+    mineralMiner?: string;
+    mineralAvailableAt?: number;
     threatLevel: RemoteRoomThreatLevel;
     keeperExterminator?: string;
     sourceKeeperLairs?: { [id: Id<Source>]: Id<Structure<StructureConstant>> }; // keeperId: closestSourceId

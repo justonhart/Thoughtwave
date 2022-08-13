@@ -8,6 +8,7 @@ interface StructureSpawn {
     spawnManager(): ScreepsReturnCode;
     spawnWorker(): ScreepsReturnCode;
     spawnKeeperExterminator(remoteRoomName: string): ScreepsReturnCode;
+    spawnRemoteMineralMiner(remoteRoomName: string): ScreepsReturnCode;
     spawnAssignedCreep(assignment: SpawnAssignment): ScreepsReturnCode;
     spawnFirst(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;
     spawnMax(partsBlock: BodyPartConstant[], name: string, opts?: SpawnOptions, levelCap?: number): ScreepsReturnCode;

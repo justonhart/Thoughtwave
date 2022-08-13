@@ -448,6 +448,12 @@ function runSpawning(room: Room) {
                 let spawn = availableSpawns.pop();
                 spawn?.spawnGatherer(gathererNeed);
             }
+
+            const remoteMineralMinerNeed = PopulationManagement.findRemoteMineralMinerNeed(room);
+            if (remoteMineralMinerNeed) {
+                const spawn = availableSpawns.pop();
+                spawn?.spawnRemoteMineralMiner(remoteMineralMinerNeed);
+            }
         }
     }
 

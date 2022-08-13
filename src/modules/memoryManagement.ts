@@ -118,6 +118,9 @@ function handleDeadCreep(creepName: string) {
         if (deadCreepMemory.role === Role.KEEPER_EXTERMINATOR) {
             Memory.remoteData[deadCreepMemory.assignment].keeperExterminator = AssignmentStatus.UNASSIGNED;
         }
+        if (deadCreepMemory.role === Role.REMOTE_MINERAL_MINER) {
+            Memory.remoteData[deadCreepMemory.assignment].mineralMiner = AssignmentStatus.UNASSIGNED;
+        }
         if (deadCreepMemory.labRequests) {
             Memory.rooms[deadCreepMemory.room].labRequests.unshift(...deadCreepMemory.labRequests);
         }

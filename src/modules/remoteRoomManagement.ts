@@ -1,5 +1,5 @@
 import { CombatIntel } from './combatIntel';
-import { isCenterRoom, isKeeperRoom as isKeeperRoom, posFromMem } from './data';
+import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { PopulationManagement } from './populationManagement';
 import { getStoragePos } from './roomDesign';
 
@@ -7,6 +7,13 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
     let remoteRoom = Game.rooms[remoteRoomName];
     if (remoteRoom) {
         Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
+
+        const mineralAvailableAt = Memory.remoteData[remoteRoomName].mineralAvailableAt;
+        if (isKeeperRoom(remoteRoomName) && mineralAvailableAt === undefined) {
+            // TODO: delete after intial conversion
+            Memory.remoteData[remoteRoomName].mineralMiner = AssignmentStatus.UNASSIGNED;
+            Memory.remoteData[remoteRoomName].mineralAvailableAt = Game.time;
+        }
     }
 
     const threatLevel = Memory.remoteData[remoteRoomName].threatLevel;
@@ -147,10 +154,14 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
     if (isKeeperRoom(remoteRoomName)) {
         remoteData.keeperExterminator = AssignmentStatus.UNASSIGNED;
         remoteData.sourceKeeperLairs = createKeeperLairData(remoteRoomName);
-        remoteData.gathererSK = AssignmentStatus.UNASSIGNED;
     } else if (!isCenterRoom(remoteRoomName)) {
         remoteData.reservationState = RemoteRoomReservationStatus.LOW;
         remoteData.reserver = AssignmentStatus.UNASSIGNED;
+    }
+    if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
+        remoteData.gathererSK = AssignmentStatus.UNASSIGNED;
+        remoteData.mineralMiner = AssignmentStatus.UNASSIGNED;
+        remoteData.mineralAvailableAt = Game.time;
     }
 
     Memory.remoteData[remoteRoomName] = remoteData;

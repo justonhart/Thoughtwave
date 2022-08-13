@@ -1,7 +1,7 @@
 import { WaveCreep } from './waveCreep';
 
 export class TransportCreep extends WaveCreep {
-    private previousTargetId: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
+    private previousTargetId: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral>;
     protected incomingResourceAmount: number = 0;
     protected actionTaken: boolean = false;
     protected run() {
