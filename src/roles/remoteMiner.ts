@@ -45,7 +45,7 @@ export class RemoteMiner extends WaveCreep {
                         }
                     }
 
-                    if (isAKeeperRoom && container && this.destinationSpawningKeeper()) {
+                    if (isAKeeperRoom && container && this.destinationSpawningKeeper(this.memory.destination)) {
                         this.say('🚨KEEPER🚨');
                         delete this.memory.destination;
                     }
@@ -102,15 +102,15 @@ export class RemoteMiner extends WaveCreep {
         return nextPos[1];
     }
 
-    private destinationSpawningKeeper(): boolean {
-        const lairId = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[this.getSourceIdByMiningPos(this.memory.destination)];
+    private destinationSpawningKeeper(pos: string): boolean {
+        const lairId = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[this.getSourceIdByMiningPos(pos)];
         const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
         return lairInRange?.ticksToSpawn < 20;
     }
 
     private getSourceIdByMiningPos(pos: string): Id<Source> {
         return Object.entries(Memory.remoteData[this.memory.assignment].miningPositions).find(
-            ([sourceId, miningPos]) => this.memory.destination === miningPos
+            ([sourceId, miningPos]) => pos === miningPos
         )?.[0] as Id<Source>;
     }
 }

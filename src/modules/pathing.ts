@@ -254,7 +254,7 @@ export class Pathing {
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
         if (origin.roomName !== destination.roomName && !options.allowedRooms) {
             const roomDistance = Game.map.getRoomLinearDistance(origin.roomName, destination.roomName);
-            if (roomDistance > 2) {
+            if (roomDistance >= 2) {
                 const route = this.findRoute(origin.roomName, destination.roomName, options);
                 if (route !== ERR_NO_PATH) {
                     options.allowedRooms = route;
@@ -417,7 +417,8 @@ export class Pathing {
                     return Infinity;
                 }
                 const isMyRoom = Game.rooms[roomName] && Game.rooms[roomName].controller && Game.rooms[roomName].controller.my;
-                if (isMyRoom) {
+                const isRemoteMiningRoom = Memory.remoteData[roomName];
+                if (isMyRoom || isRemoteMiningRoom) {
                     return 1;
                 }
                 if (options.preferHighway) {
@@ -426,6 +427,9 @@ export class Pathing {
                     if (isHighway) {
                         return 1;
                     }
+                }
+                if (isKeeperRoom(roomName)) {
+                    return 2;
                 }
                 return 1.5;
             },
