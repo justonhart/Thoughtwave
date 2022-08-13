@@ -9,10 +9,11 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
         Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
 
         const mineralAvailableAt = Memory.remoteData[remoteRoomName].mineralAvailableAt;
-        if (isKeeperRoom(remoteRoomName) && mineralAvailableAt === undefined) {
+        if ((isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) && mineralAvailableAt === undefined) {
             // TODO: delete after intial conversion
             Memory.remoteData[remoteRoomName].mineralMiner = AssignmentStatus.UNASSIGNED;
             Memory.remoteData[remoteRoomName].mineralAvailableAt = Game.time;
+            Memory.remoteData[remoteRoomName].miningPositions = createMiningPositionData(controllingRoomName, remoteRoomName);
         }
     }
 
@@ -175,6 +176,14 @@ function createMiningPositionData(controllingRoomName: string, remoteRoomName: s
     let miningPositions: { [id: Id<Source>]: string } = {};
 
     harvestTargets.forEach((target) => {
+        const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
+        if (!path.incomplete) {
+            miningPositions[target.id] = path.path.pop().toMemSafe();
+        }
+    });
+
+    const mineralTargets: Mineral[] = remoteRoom.find(FIND_MINERALS);
+    mineralTargets.forEach((target) => {
         const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
         if (!path.incomplete) {
             miningPositions[target.id] = path.path.pop().toMemSafe();
