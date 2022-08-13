@@ -31,11 +31,11 @@ export class CombatCreep extends WaveCreep {
         }
 
         if (this.getActiveBodyparts(ATTACK)) {
-            if (this.pos.isNearTo(target)) {
+            if (this.pos.isNearTo(target) && !target.onEdge()) {
                 // Close Range movement to stick to the enemy
                 return this.move(this.pos.getDirectionTo(target));
             }
-            return this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: 1 });
+            return this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: 1, maxRooms: 1, exitCost: 10 });
         } else if (this.getActiveBodyparts(RANGED_ATTACK)) {
             let range = 3;
             const exitCost = 10;

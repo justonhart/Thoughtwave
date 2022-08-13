@@ -120,7 +120,9 @@ function runBoostTask(task: LabTask): LabTask {
     let primaryLab = Game.getObjectById(task.reactionLabs[0]);
     let targetCreep = Game.creeps[task.targetCreepName];
 
-    if (targetCreep?.pos.isNearTo(primaryLab)) {
+    if (!targetCreep) {
+        task.status = TaskStatus.COMPLETE;
+    } else if (targetCreep?.pos.isNearTo(primaryLab)) {
         let result = primaryLab.boostCreep(targetCreep);
         if (result === OK) {
             task.status = TaskStatus.COMPLETE;
@@ -250,6 +252,11 @@ function attemptToStartTask(room: Room, task: LabTask): LabTask {
         } else {
             if (task.type === LabTaskType.BOOST) {
                 task.reagentsNeeded[0].lab = task.reactionLabs[0];
+
+                if (!Game.creeps[task.targetCreepName]) {
+                    task.status = TaskStatus.COMPLETE;
+                    return task;
+                }
             }
         }
 

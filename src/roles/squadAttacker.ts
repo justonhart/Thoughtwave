@@ -139,6 +139,7 @@ export class SquadAttacker extends CombatCreep {
                         struct.structureType !== STRUCTURE_LAB &&
                         struct.structureType !== STRUCTURE_NUKER &&
                         struct.structureType !== STRUCTURE_KEEPER_LAIR &&
+                        struct.structureType !== STRUCTURE_INVADER_CORE &&
                         struct.structureType !== STRUCTURE_CONTROLLER,
                 });
 
