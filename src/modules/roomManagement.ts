@@ -131,9 +131,9 @@ export function driveRoom(room: Room) {
             runGates(room);
         }
 
-        runSpawning(room);
-
         runLabs(room);
+
+        runSpawning(room);
 
         runRemoteRooms(room);
 
