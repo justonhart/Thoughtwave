@@ -68,14 +68,19 @@ export function runLabs(room: Room) {
                     break;
             }
         } else if (task?.status === TaskStatus.PREPARING) {
-            let canStartTask =
-                task?.type === LabTaskType.BOOST
-                    ? task.reagentsNeeded
-                          .map((need) => Game.getObjectById(need.lab).store[need.resource] === need.amount)
-                          .reduce((readyState, next) => readyState && next)
-                    : task.reagentsNeeded
-                          .map((need) => Game.getObjectById(need.lab).store[need.resource])
-                          .reduce((readyState, next) => readyState && next);
+            let canStartTask: boolean;
+            if (task?.type === LabTaskType.BOOST && !Game.creeps[task.targetCreepName]) {
+                task.status = TaskStatus.COMPLETE;
+            } else {
+                canStartTask =
+                    task?.type === LabTaskType.BOOST
+                        ? task.reagentsNeeded
+                              .map((need) => Game.getObjectById(need.lab).store[need.resource] === need.amount)
+                              .reduce((readyState, next) => readyState && next)
+                        : task.reagentsNeeded
+                              .map((need) => Game.getObjectById(need.lab).store[need.resource] > 0)
+                              .reduce((readyState, next) => readyState && next);
+            }
 
             if (canStartTask) {
                 task.status = TaskStatus.ACTIVE;
