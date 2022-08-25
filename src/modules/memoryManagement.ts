@@ -64,6 +64,10 @@ export function validateAssignments() {
                 Memory.remoteData[remoteRoomName].gatherer = AssignmentStatus.UNASSIGNED;
             }
 
+            if (!Game.creeps[Memory.remoteData[remoteRoomName]?.gathererSK]) {
+                Memory.remoteData[remoteRoomName].gathererSK = AssignmentStatus.UNASSIGNED;
+            }
+
             if (!Game.creeps[Memory.remoteData[remoteRoomName]?.miner]) {
                 Memory.remoteData[remoteRoomName].miner = AssignmentStatus.UNASSIGNED;
             }
@@ -97,9 +101,13 @@ function handleDeadCreep(creepName: string) {
             Memory.rooms[deadCreepMemory.room].remoteMiningRooms?.includes(deadCreepMemory.assignment) &&
             Object.values(Memory.creeps).filter(
                 (creep) => creep.room === deadCreepMemory.room && creep.role === Role.GATHERER && creep.assignment === deadCreepMemory.assignment
-            ).length === 1
+            ).length
         ) {
-            Memory.remoteData[deadCreepMemory.assignment].gatherer = AssignmentStatus.UNASSIGNED;
+            if (Memory.remoteData[deadCreepMemory.assignment].gatherer === creepName) {
+                Memory.remoteData[deadCreepMemory.assignment].gatherer = AssignmentStatus.UNASSIGNED;
+            } else if (Memory.remoteData[deadCreepMemory.assignment].gathererSK === creepName) {
+                Memory.remoteData[deadCreepMemory.assignment].gathererSK = AssignmentStatus.UNASSIGNED;
+            }
         }
         if (deadCreepMemory.role === Role.RESERVER && Memory.rooms[deadCreepMemory.room].remoteMiningRooms?.includes(deadCreepMemory.assignment)) {
             Memory.remoteData[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;
@@ -109,6 +117,9 @@ function handleDeadCreep(creepName: string) {
         }
         if (deadCreepMemory.role === Role.KEEPER_EXTERMINATOR) {
             Memory.remoteData[deadCreepMemory.assignment].keeperExterminator = AssignmentStatus.UNASSIGNED;
+        }
+        if (deadCreepMemory.role === Role.REMOTE_MINERAL_MINER) {
+            Memory.remoteData[deadCreepMemory.assignment].mineralMiner = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.labRequests) {
             Memory.rooms[deadCreepMemory.room].labRequests.unshift(...deadCreepMemory.labRequests);

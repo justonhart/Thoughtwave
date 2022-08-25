@@ -1,6 +1,7 @@
 interface RoomMemory {
     needsWallRepair?: boolean;
     upgraderLinkPos?: string;
+    managerLink?: Id<Structure>;
     labRequests?: LabNeed[];
     energyDistance?: number;
     controllerDistance?: number;
@@ -23,12 +24,16 @@ interface RoomMemory {
 
 interface RemoteData {
     reservationState?: RemoteRoomReservationStatus;
-    miningPositions: string[];
+    miningPositions: { [id: Id<Source>]: string }; // sourceId: miningPos
     miner: string;
     gatherer: string;
+    gathererSK?: string;
     reserver?: string;
+    mineralMiner?: string;
+    mineralAvailableAt?: number;
     threatLevel: RemoteRoomThreatLevel;
     keeperExterminator?: string;
+    sourceKeeperLairs?: { [id: Id<Source>]: Id<Structure<StructureConstant>> }; // keeperId: closestSourceId
 }
 
 interface RoomData {

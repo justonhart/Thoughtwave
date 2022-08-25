@@ -8,7 +8,7 @@ interface CreepMemory {
     link?: Id<StructureLink>;
     destination?: string;
     assignment?: string;
-    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
+    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral>;
     miningPos?: string;
     hasTTLReplacement?: boolean;
     gathering?: boolean;
@@ -86,4 +86,5 @@ const enum Role {
     MINERAL_MINER = 'MINERAL_MINER',
     INTERSHARD_TRAVELLER = 'INTERSHARD_TRAVELLER',
     KEEPER_EXTERMINATOR = 'KEEPER_EXTERMINATOR',
+    REMOTE_MINERAL_MINER = 'REMOTE_MINERAL_MINER',
 }

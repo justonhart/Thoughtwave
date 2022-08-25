@@ -37,6 +37,7 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
     [Role.UPGRADER]: 'u',
     [Role.REMOTE_MINER]: 'rm',
     [Role.KEEPER_EXTERMINATOR]: 'e',
+    [Role.REMOTE_MINERAL_MINER]: 'rmm',
 };
 
 export class PopulationManagement {
@@ -317,7 +318,8 @@ export class PopulationManagement {
                 Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
-                Memory.remoteData[remoteRoom].gatherer === AssignmentStatus.UNASSIGNED
+                (Memory.remoteData[remoteRoom].gatherer === AssignmentStatus.UNASSIGNED ||
+                    Memory.remoteData[remoteRoom].gathererSK === AssignmentStatus.UNASSIGNED)
         );
     }
 
@@ -330,17 +332,17 @@ export class PopulationManagement {
             },
         };
 
-        if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
-            options.boosts = [BoostType.CARRY, BoostType.MOVE];
-        }
-
         let name = this.generateName(options.memory.role, spawn.name);
         let PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9);
         PARTS.push(WORK, WORK, CARRY, CARRY, MOVE);
         let result = spawn.smartSpawn(PARTS, name, options);
 
         if (result === OK) {
-            Memory.remoteData[remoteRoomName].gatherer = name;
+            if (Memory.remoteData[remoteRoomName].gatherer === AssignmentStatus.UNASSIGNED) {
+                Memory.remoteData[remoteRoomName].gatherer = name;
+            } else {
+                Memory.remoteData[remoteRoomName].gathererSK = name;
+            }
         }
 
         return result;
@@ -472,6 +474,84 @@ export class PopulationManagement {
                     // Do not allow nonBoosted TOUGH parts
                     needed.tough = 0;
                     return;
+                }
+                energyAvailable -= BODYPART_COST[part];
+                partsArray.push(part);
+            });
+        }
+
+        return partsArray;
+    }
+
+    /**
+     * Create a creep body with parts in the same ratio as provided in the parts Array except that it will only
+     */
+    public static createCreepBodyWithDynamicMove(room: Room, parts: BodyPartConstant[], partsCap: number = 50, opts?: SpawnOptions) {
+        const getSortValue = (part: BodyPartConstant): number => (part === MOVE ? 2 : part === CARRY ? 1 : 0);
+        parts = parts.sort((a, b) => getSortValue(b) - getSortValue(a));
+        let energyAvailable = room.energyCapacityAvailable;
+        let hasEnergyLeft = true;
+        let partsArray = [];
+        if (partsCap > 50) {
+            partsCap = 50;
+        }
+        const partRatio = {};
+        for (const part of parts) {
+            if (partRatio[part]) {
+                partRatio[part] += 1;
+            } else {
+                partRatio[part] = 1;
+            }
+        }
+
+        if (opts?.boosts) {
+            var boostMap = getResourceBoostsAvailable(room, Array.from(opts.boosts));
+        }
+
+        let move = 0;
+
+        while (hasEnergyLeft && partsArray.length < partsCap) {
+            if (partsCap - partsArray.length === 1 && move === 0) {
+                break;
+            }
+            parts.forEach((part) => {
+                if (partsArray.length === 50) {
+                    return;
+                }
+                if (energyAvailable < BODYPART_COST[part]) {
+                    hasEnergyLeft = false;
+                    return; // no more energy
+                }
+
+                if (part !== MOVE && move > -1) {
+                    return; // First add a MOVE part
+                }
+                if (part === MOVE && move < 0) {
+                    return; // Move not currently needed
+                }
+
+                if (part !== MOVE) {
+                    move++;
+                }
+
+                let boostFound = false;
+                if (opts?.boosts?.length) {
+                    opts.boosts
+                        .filter((boostType) => part === BODY_TO_BOOST_MAP[boostType])
+                        .forEach((boostType) => {
+                            const boostsAvailableCount = boostMap[boostType]?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
+                            if (boostsAvailableCount) {
+                                const nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
+                                boostMap[nextAvailableBoostResource] -= 1;
+                                const tierBoost =
+                                    nextAvailableBoostResource.length > 2 ? nextAvailableBoostResource.length - 1 : nextAvailableBoostResource.length;
+                                move -= this.getMove(part, tierBoost) * Math.ceil((parts.length - partRatio[MOVE]) / partRatio[MOVE]);
+                                boostFound = true;
+                            }
+                        });
+                }
+                if (!boostFound) {
+                    move -= this.getMove(part, 1) * Math.ceil((parts.length - partRatio[MOVE]) / partRatio[MOVE]);
                 }
                 energyAvailable -= BODYPART_COST[part];
                 partsArray.push(part);
@@ -821,6 +901,39 @@ export class PopulationManagement {
         let result = spawn.spawnMax([WORK, WORK, MOVE], name, options);
         if (result === OK) {
             spawn.room.memory.mineralMiningAssignments[nextAvailableAssignment] = name;
+        }
+        return result;
+    }
+
+    static findRemoteMineralMinerNeed(room: Room) {
+        if (room.storage?.store.getFreeCapacity() < 100000 || room.storage?.store[room.mineral.mineralType] > 100000) {
+            return false;
+        }
+
+        return room.memory.remoteMiningRooms.find(
+            (remoteRoom) =>
+                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
+                Memory.remoteData[remoteRoom].mineralAvailableAt <= Game.time &&
+                Memory.remoteData[remoteRoom].mineralMiner === AssignmentStatus.UNASSIGNED
+        );
+    }
+
+    static spawnRemoteMineralMiner(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
+        const options: SpawnOptions = {
+            memory: {
+                room: spawn.room.name,
+                role: Role.REMOTE_MINERAL_MINER,
+                currentTaskPriority: Priority.HIGH,
+                assignment: remoteRoomName,
+            },
+        };
+
+        const name = this.generateName(options.memory.role, spawn.name);
+        const result = spawn.spawnMax([WORK, WORK, CARRY, MOVE, MOVE], name, options);
+        if (result === OK) {
+            Memory.remoteData[remoteRoomName].mineralMiner = name;
         }
         return result;
     }

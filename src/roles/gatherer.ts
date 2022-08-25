@@ -1,4 +1,4 @@
-import { getUsername } from '../modules/data';
+import { getUsername, isKeeperRoom } from '../modules/data';
 import { posFromMem } from '../modules/data';
 import { Pathing } from '../modules/pathing';
 import { getStructureForPos, posInsideBunker } from '../modules/roomDesign';
@@ -7,8 +7,14 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 export class Gatherer extends TransportCreep {
     protected run() {
         if (this.damaged() || Memory.remoteData[this.memory.assignment]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
+            delete this.memory.targetId;
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
+        }
+
+        // Reset when not carrying energy anymore
+        if (!this.store.getUsedCapacity()) {
+            this.memory.shouldBuildRoad = true;
         }
 
         let target: any = Game.getObjectById(this.memory.targetId);
@@ -62,7 +68,6 @@ export class Gatherer extends TransportCreep {
                 if (this.store[resourceToStore] === this.store.getUsedCapacity()) {
                     this.onTaskFinished();
                 }
-                this.memory.shouldBuildRoad = true;
                 break;
             default:
                 this.onTaskFinished();
@@ -117,24 +122,29 @@ export class Gatherer extends TransportCreep {
         );
     }
 
-    protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> {
-        let miningPositions = Memory.remoteData[roomName].miningPositions;
+    protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> | Id<Tombstone> {
+        const miningPositions = Memory.remoteData[roomName].miningPositions;
 
-        let targets: { id: Id<Resource> | Id<Structure>; amount: number; shouldBuildRoad?: boolean }[] = [];
+        const targets: { id: Id<Resource> | Id<Structure> | Id<Tombstone>; amount: number; shouldBuildRoad?: boolean }[] = [];
 
-        miningPositions.forEach((posString) => {
-            let pos = posFromMem(posString);
+        Object.values(miningPositions).forEach((posString) => {
+            const pos = posFromMem(posString);
             const areaInRange = Pathing.getArea(pos, 3);
-            let lookArea = this.room.lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);
-            if (lookArea.some((look) => look.creep?.owner?.username === 'Source Keeper')) {
+            const lookArea = Game.rooms[roomName].lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);
+            if (isKeeperRoom(pos.roomName) && lookArea.some((look) => look.creep?.owner?.username === 'Source Keeper')) {
                 return;
             }
-
             lookArea
-                .filter((look) => look.resource?.resourceType === RESOURCE_ENERGY)
-                .forEach((resource) => targets.push({ id: resource.resource.id, amount: resource.resource.amount, shouldBuildRoad: false }));
+                .filter((look) => look.resource?.resourceType === RESOURCE_ENERGY || look.tombstone?.store.energy)
+                .forEach((look) => {
+                    if (look.resource) {
+                        targets.push({ id: look.resource.id, amount: look.resource.amount, shouldBuildRoad: false });
+                    } else {
+                        targets.push({ id: look.tombstone.id, amount: look.tombstone.store?.energy, shouldBuildRoad: false });
+                    }
+                });
 
-            let container: StructureContainer = pos
+            const container: StructureContainer = pos
                 .lookFor(LOOK_STRUCTURES)
                 .find((s) => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
             if (container && container.store.getUsedCapacity()) {
@@ -142,11 +152,47 @@ export class Gatherer extends TransportCreep {
             }
         });
 
-        const selectedTarget = targets.length ? targets.reduce((highest, next) => (highest.amount > next.amount ? highest : next)) : undefined;
+        // Ensure that if there are 2 gatherers they do not go toward same target
+        const isMainGatherer = this.name === Memory.remoteData[roomName].gatherer;
+        const secondGatherer = isMainGatherer ? Memory.remoteData[roomName].gathererSK : Memory.remoteData[roomName].gatherer;
+        let excludeTargetId: string;
+        if (secondGatherer && secondGatherer !== AssignmentStatus.UNASSIGNED) {
+            excludeTargetId = Game.creeps[secondGatherer]?.memory?.targetId;
+            // Main gatherer always has first dibs on targets (this prevents same target allocation when both gatherers look for a target at the same time)
+            if (!isMainGatherer && Game.creeps[secondGatherer]?.ticksToLive && !excludeTargetId) {
+                return undefined;
+            }
+        }
+
+        // If there are no more targets check for any loose resources (creeps that died on the way or at mineral)
+        if (!targets.length) {
+            const resources = Game.rooms[roomName].find(FIND_DROPPED_RESOURCES);
+            resources.forEach((resource) => targets.push({ id: resource.id, amount: resource.amount, shouldBuildRoad: false }));
+        }
+
+        // Get highest target unless a target is close by then pick that up first
+        let selectedTarget: { id: Id<Resource> | Id<Structure> | Id<Tombstone>; amount: number; shouldBuildRoad?: boolean } = {
+            id: undefined,
+            amount: 0,
+            shouldBuildRoad: false,
+        };
+        targets
+            .filter((target) => target.id !== excludeTargetId)
+            .every((target) => {
+                if (this.pos.roomName === this.memory.assignment && this.pos.getRangeTo(Game.getObjectById(target.id)) <= 3) {
+                    selectedTarget = target;
+                    return false;
+                }
+                if (selectedTarget.amount < target.amount) {
+                    selectedTarget = target;
+                }
+                return true;
+            });
 
         if (selectedTarget?.shouldBuildRoad === false) {
             this.memory.shouldBuildRoad = false;
         }
+
         return selectedTarget?.id;
     }
 
@@ -155,5 +201,9 @@ export class Gatherer extends TransportCreep {
         if (road?.hits < road?.hitsMax) {
             this.repair(road);
         }
+    }
+
+    protected damaged(): boolean {
+        return this.hits < this.hitsMax * 0.85;
     }
 }

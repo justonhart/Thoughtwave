@@ -1,4 +1,4 @@
-import { posFromMem } from '../modules/data';
+import { isKeeperRoom, posFromMem } from '../modules/data';
 
 //@ts-ignore
 global.IN_ROOM = -20;
@@ -254,7 +254,7 @@ export class Pathing {
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
         if (origin.roomName !== destination.roomName && !options.allowedRooms) {
             const roomDistance = Game.map.getRoomLinearDistance(origin.roomName, destination.roomName);
-            if (roomDistance > 2) {
+            if (roomDistance >= 2) {
                 const route = this.findRoute(origin.roomName, destination.roomName, options);
                 if (route !== ERR_NO_PATH) {
                     options.allowedRooms = route;
@@ -264,21 +264,23 @@ export class Pathing {
         if (options.preferRoadConstruction || options.preferRamparts) {
             options.efficiency = 0.8; // Make other tiles cost more to avoid multiple roads
         }
-        return PathFinder.search(
-            origin,
+        const goals = [
             {
                 pos: destination,
                 range: range,
             },
-            {
-                maxOps: options.maxOps,
-                plainCost: Math.ceil(2 / options.efficiency),
-                swampCost: Math.ceil(10 / options.efficiency),
-                roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options, creepName),
-                flee: options.flee,
-                maxRooms: options.maxRooms,
-            }
-        );
+        ];
+        if (options.goals) {
+            goals.concat(options.goals);
+        }
+        return PathFinder.search(origin, goals, {
+            maxOps: options.maxOps,
+            plainCost: Math.ceil(2 / options.efficiency),
+            swampCost: Math.ceil(10 / options.efficiency),
+            roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options, creepName),
+            flee: options.flee,
+            maxRooms: options.maxRooms,
+        });
     }
 
     /**
@@ -317,26 +319,25 @@ export class Pathing {
                     matrix = Pathing.getCreepMatrix(room);
                 }
 
-                if (options.avoidSourceKeepers) {
-                    matrix = matrix.clone();
-                    if (room.find(FIND_STRUCTURES).some((struct) => struct.structureType === STRUCTURE_KEEPER_LAIR)) {
-                        room.find(FIND_HOSTILE_CREEPS, {
-                            filter: (creep) =>
-                                creep.owner.username === 'Source Keeper' &&
-                                (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0),
-                        }).forEach((creep) => {
-                            const avoidArea = Pathing.getArea(creep.pos, 3);
-                            for (let x = avoidArea.left; x <= avoidArea.right; x++) {
-                                for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
-                                    matrix.set(x, y, 0xc8);
+                matrix = matrix.clone();
+                if (options.avoidSourceKeepers && isKeeperRoom(room.name)) {
+                    room.find(FIND_HOSTILE_CREEPS, {
+                        filter: (creep) =>
+                            creep.owner.username === 'Source Keeper' &&
+                            (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0),
+                    }).forEach((creep) => {
+                        const avoidArea = Pathing.getArea(creep.pos, 3);
+                        for (let x = avoidArea.left; x <= avoidArea.right; x++) {
+                            for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
+                                if (x !== destination.x || y !== destination.y) {
+                                    matrix.set(x, y, 50);
                                 }
                             }
-                        });
-                    }
+                        }
+                    });
                 }
 
                 if (options.exitCost) {
-                    matrix = matrix.clone();
                     for (let x = 0; x < 50; x++) {
                         if (!Game.map.getRoomTerrain(roomName).get(x, 0)) {
                             matrix.set(x, 0, options.exitCost);
@@ -362,6 +363,7 @@ export class Pathing {
                 if (Memory.rooms[room.name]?.miningAssignments) {
                     Object.keys(room.memory.miningAssignments)
                         .map((pos) => posFromMem(pos))
+                        .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);
                         });
@@ -370,14 +372,16 @@ export class Pathing {
                 if (Memory.rooms[room.name]?.mineralMiningAssignments) {
                     Object.keys(room.memory.mineralMiningAssignments)
                         .map((pos) => posFromMem(pos))
+                        .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);
                         });
                 }
 
                 if (Memory.remoteData[room.name]?.miningPositions) {
-                    Memory.remoteData[room.name].miningPositions
+                    Object.values(Memory.remoteData[room.name].miningPositions)
                         .map((pos) => posFromMem(pos))
+                        .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);
                         });
@@ -385,21 +389,18 @@ export class Pathing {
 
                 // All tiles will be set to one if there is a road construction so that it counts as a finished road
                 if (options.preferRoadConstruction) {
-                    matrix = matrix.clone();
                     room.find(FIND_MY_CONSTRUCTION_SITES, { filter: (struct) => struct.structureType === STRUCTURE_ROAD }).forEach((struct) =>
                         matrix.set(struct.pos.x, struct.pos.y, 1)
                     );
                 }
 
                 if (options.preferRamparts) {
-                    matrix = matrix.clone();
                     room.find(FIND_MY_STRUCTURES, { filter: (struct) => struct.structureType === STRUCTURE_RAMPART }).forEach((rampart) => {
                         matrix.set(rampart.pos.x, rampart.pos.y, 1);
                     });
                 }
 
                 if (options.customMatrixCosts) {
-                    matrix = matrix.clone();
                     options.customMatrixCosts.forEach((matrixCost) => matrix.set(matrixCost.x, matrixCost.y, matrixCost.cost));
                 }
             }
@@ -416,7 +417,8 @@ export class Pathing {
                     return Infinity;
                 }
                 const isMyRoom = Game.rooms[roomName] && Game.rooms[roomName].controller && Game.rooms[roomName].controller.my;
-                if (isMyRoom) {
+                const isRemoteMiningRoom = Memory.remoteData[roomName];
+                if (isMyRoom || isRemoteMiningRoom) {
                     return 1;
                 }
                 if (options.preferHighway) {
@@ -425,6 +427,9 @@ export class Pathing {
                     if (isHighway) {
                         return 1;
                     }
+                }
+                if (isKeeperRoom(roomName)) {
+                    return 2;
                 }
                 return 1.5;
             },

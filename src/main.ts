@@ -2,7 +2,7 @@ import driveCreep from './modules/creepDriver';
 import { addRoomData, updateRoomData } from './modules/data';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
-import { getAllRoomNeeds, manageEmpireResources } from './modules/resourceManagement';
+import { manageEmpireResources } from './modules/resourceManagement';
 import { driveRoom } from './modules/roomManagement';
 import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');

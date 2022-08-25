@@ -19,10 +19,11 @@ export class KeeperExterminator extends CombatCreep {
                 } else if (miner?.memory.destination !== target.pos.toMemSafe() || !miner?.pos.isNearTo(target.pos)) {
                     this.travelTo(target.pos, { avoidSourceKeepers: false });
                 } else {
-                    this.travelTo(
-                        target.pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR }),
-                        { range: 1 }
+                    const sourceId = Object.entries(Memory.remoteData[this.memory.assignment].miningPositions).find(
+                        ([sourceId, miningPos]) => target.pos.toMemSafe() === miningPos
                     );
+                    const lairId = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[sourceId[0]] as Id<Structure<StructureConstant>>;
+                    this.travelTo(Game.getObjectById(lairId), { range: 1, avoidSourceKeepers: false });
                 }
             } else if (target instanceof Structure) {
                 if (!this.pos.isNearTo(target)) {
@@ -74,9 +75,9 @@ export class KeeperExterminator extends CombatCreep {
             return this.pos.findClosestByPath(keepers)?.id;
         }
 
-        let lairs = Game.rooms[this.memory.assignment]?.find(FIND_HOSTILE_STRUCTURES, {
-            filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR,
-        }) as StructureKeeperLair[];
+        let lairs = Object.values(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).map((lairId) =>
+            Game.getObjectById(lairId)
+        ) as StructureKeeperLair[];
         let nextSpawn = lairs?.reduce((lowestTimer, next) => (lowestTimer.ticksToSpawn <= next.ticksToSpawn ? lowestTimer : next));
         if (nextSpawn) {
             return nextSpawn.id;

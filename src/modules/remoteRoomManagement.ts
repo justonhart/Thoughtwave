@@ -7,6 +7,14 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
     let remoteRoom = Game.rooms[remoteRoomName];
     if (remoteRoom) {
         Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
+
+        const mineralAvailableAt = Memory.remoteData[remoteRoomName].mineralAvailableAt;
+        if ((isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) && mineralAvailableAt === undefined) {
+            // TODO: delete after intial conversion
+            Memory.remoteData[remoteRoomName].mineralMiner = AssignmentStatus.UNASSIGNED;
+            Memory.remoteData[remoteRoomName].mineralAvailableAt = Game.time;
+            Memory.remoteData[remoteRoomName].miningPositions = createMiningPositionData(controllingRoomName, remoteRoomName);
+        }
     }
 
     const threatLevel = Memory.remoteData[remoteRoomName].threatLevel;
@@ -93,23 +101,6 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
     }
 }
 
-export function findMiningPositions(controllingRoomName: string, remoteRoomName: string): string[] {
-    let controllingRoom = Game.rooms[controllingRoomName];
-    let remoteRoom = Game.rooms[remoteRoomName];
-
-    let harvestTargets: Source[] = remoteRoom.find(FIND_SOURCES);
-    let miningPositions: string[] = [];
-
-    harvestTargets.forEach((target) => {
-        const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
-        if (!path.incomplete) {
-            miningPositions.push(path.path.pop().toMemSafe());
-        }
-    });
-
-    return miningPositions;
-}
-
 export function calculateRemoteMinerWorkNeeded(roomName: string) {
     let data = Memory.roomData[roomName];
     let energyPotential = isKeeperRoom(roomName) ? 4000 * 3 : 3000 * data.sourceCount;
@@ -119,8 +110,14 @@ export function calculateRemoteMinerWorkNeeded(roomName: string) {
 }
 
 function monitorThreatLevel(room: Room) {
-    let creeps = room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
-    let hasInvaderCore = !!room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_INVADER_CORE }).length;
+    const creeps = room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
+
+    const currentThreadLevel = Memory.remoteData[room.name].threatLevel;
+    let hasInvaderCore = currentThreadLevel === RemoteRoomThreatLevel.INVADER_CORE;
+    if (currentThreadLevel < RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS && Game.time % 3 === 0) {
+        // No need to check for this every tick in every remote room
+        hasInvaderCore = !!room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_INVADER_CORE }).length;
+    }
     return creeps.some((c) => c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0)
         ? RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
         : creeps.length
@@ -146,7 +143,7 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
         Memory.rooms[controllingRoomName].remoteMiningRooms.push(remoteRoomName);
     }
 
-    let miningPositions = findMiningPositions(controllingRoomName, remoteRoomName);
+    let miningPositions = createMiningPositionData(controllingRoomName, remoteRoomName);
 
     let remoteData: RemoteData = {
         gatherer: AssignmentStatus.UNASSIGNED,
@@ -157,12 +154,61 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
 
     if (isKeeperRoom(remoteRoomName)) {
         remoteData.keeperExterminator = AssignmentStatus.UNASSIGNED;
+        remoteData.sourceKeeperLairs = createKeeperLairData(remoteRoomName);
     } else if (!isCenterRoom(remoteRoomName)) {
         remoteData.reservationState = RemoteRoomReservationStatus.LOW;
         remoteData.reserver = AssignmentStatus.UNASSIGNED;
     }
+    if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
+        remoteData.gathererSK = AssignmentStatus.UNASSIGNED;
+        remoteData.mineralMiner = AssignmentStatus.UNASSIGNED;
+        remoteData.mineralAvailableAt = Game.time;
+    }
 
     Memory.remoteData[remoteRoomName] = remoteData;
+}
+
+function createMiningPositionData(controllingRoomName: string, remoteRoomName: string): { [id: Id<Source>]: string } {
+    let controllingRoom = Game.rooms[controllingRoomName];
+    let remoteRoom = Game.rooms[remoteRoomName];
+
+    let harvestTargets: Source[] = remoteRoom.find(FIND_SOURCES);
+    let miningPositions: { [id: Id<Source>]: string } = {};
+
+    harvestTargets.forEach((target) => {
+        const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
+        if (!path.incomplete) {
+            miningPositions[target.id] = path.path.pop().toMemSafe();
+        }
+    });
+
+    const mineralTargets: Mineral[] = remoteRoom.find(FIND_MINERALS);
+    mineralTargets.forEach((target) => {
+        const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
+        if (!path.incomplete) {
+            miningPositions[target.id] = path.path.pop().toMemSafe();
+        }
+    });
+
+    return miningPositions;
+}
+
+function createKeeperLairData(remoteRoomName: string): { [id: Id<Source> | Id<Mineral>]: Id<StructureKeeperLair> } {
+    const lairs = {};
+    Game.rooms[remoteRoomName]
+        .find(FIND_HOSTILE_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR,
+        })
+        .forEach((lair) => {
+            const source = lair.pos.findClosestByRange(FIND_SOURCES);
+            if (lair.pos.getRangeTo(source) < 6) {
+                lairs[source.id] = lair.id;
+            } else {
+                const mineral = lair.pos.findClosestByRange(FIND_MINERALS);
+                lairs[mineral.id] = lair.id;
+            }
+        });
+    return lairs;
 }
 
 /**
@@ -195,56 +241,4 @@ function reassignIdleProtector(controllingRoomName: string, remoteRoomName: stri
         return true;
     }
     return false;
-}
-
-export function convertOldRoomsToNew() {
-    let myRooms = Object.keys(Memory.rooms).filter((roomName) => Game.rooms[roomName].controller?.my);
-
-    myRooms.forEach((roomName) => {
-        console.log(`Converting old rooms for ${roomName}`);
-
-        if (!Memory.rooms[roomName].remoteMiningRooms) {
-            Memory.rooms[roomName].remoteMiningRooms = [];
-        }
-
-        let oldRemoteRooms = Object.keys(Memory.rooms[roomName]['remoteAssignments']);
-        console.log(`old rooms found ${oldRemoteRooms.length}`);
-        oldRemoteRooms?.forEach((oldRemoteRoomName) => {
-            let oldRemoteData = Memory.rooms[roomName]['remoteAssignments'][oldRemoteRoomName];
-            let newRemoteData: RemoteData;
-
-            let miningPositions = Object.keys(oldRemoteData.miners);
-            newRemoteData = {
-                miningPositions: miningPositions,
-                miner: AssignmentStatus.UNASSIGNED,
-                gatherer: oldRemoteData.gatherer,
-                threatLevel: RemoteRoomThreatLevel.SAFE,
-                reservationState: RemoteRoomReservationStatus.LOW,
-                reserver: AssignmentStatus.UNASSIGNED,
-            };
-
-            Memory.remoteData[oldRemoteRoomName] = newRemoteData;
-            Memory.rooms[roomName].remoteMiningRooms.push(oldRemoteRoomName);
-        });
-    });
-
-    console.log(`Run this next: \nrequire('memoryManagement).validateAssignments();`);
-}
-
-export function clearAllRemoteRoomAssignments() {
-    let myRooms = Object.keys(Memory.rooms).filter((roomName) => Game.rooms[roomName].controller?.my);
-
-    myRooms.forEach((room) => {
-        Memory.rooms[room].remoteMiningRooms = [];
-    });
-}
-
-export function dedupeRemoteRooms() {
-    let myRooms = Object.keys(Memory.rooms).filter((roomName) => Game.rooms[roomName].controller?.my);
-
-    myRooms.forEach((room) => {
-        if (Memory.rooms[room].remoteMiningRooms?.length) {
-            Memory.rooms[room].remoteMiningRooms = Array.from(new Set<string>(Memory.rooms[room].remoteMiningRooms));
-        }
-    });
 }

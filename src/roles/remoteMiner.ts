@@ -10,8 +10,9 @@ export class RemoteMiner extends WaveCreep {
 
         //if we have visibility in assigned room
         if (Game.rooms[this.memory.assignment]) {
+            const isAKeeperRoom = isKeeperRoom(this.memory.assignment);
             if (!this.memory.destination) {
-                this.memory.destination = this.findNextMiningPos();
+                this.memory.destination = this.findNextMiningPos(isAKeeperRoom);
             }
 
             let targetPos = posFromMem(this.memory.destination);
@@ -36,22 +37,25 @@ export class RemoteMiner extends WaveCreep {
                     } else if (container?.store.getFreeCapacity() === 0) {
                         delete this.memory.destination;
                     } else {
-                        let source = this.pos.findInRange(FIND_SOURCES_ACTIVE, 1).shift();
-                        if (source) {
+                        const source = Game.getObjectById(this.getSourceIdByMiningPos(this.memory.destination)) as Source;
+                        if (source && source.energy) {
                             this.harvest(source);
                         } else {
                             delete this.memory.destination;
                         }
                     }
 
-                    if (isKeeperRoom(this.memory.assignment) && container && this.destinationSpawningKeeper()) {
+                    if (isAKeeperRoom && container && this.destinationSpawningKeeper(this.memory.destination)) {
                         this.say('🚨KEEPER🚨');
                         delete this.memory.destination;
                     }
                 }
-            } else if (isKeeperRoom(this.memory.assignment)) {
+            } else if (isAKeeperRoom) {
                 //travel out of danger-zone
-                this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
+                const lairPositions = Object.values(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).map((lairId) => {
+                    return { pos: Game.getObjectById(lairId).pos, range: 0 };
+                });
+                this.travelTo(lairPositions.pop(), { range: 7, flee: true, goals: lairPositions }); // Travel back to home room
             } else {
                 this.say('🚚 is SLOW!');
             }
@@ -60,35 +64,53 @@ export class RemoteMiner extends WaveCreep {
         }
     }
 
-    private findNextMiningPos(): string {
-        let nextPos = Memory.remoteData[this.memory.assignment]?.miningPositions?.find((posString) => {
-            let pos = posFromMem(posString);
-            let hasKeeper = !!pos.findInRange(FIND_HOSTILE_CREEPS, 3, { filter: (c) => c.owner.username === 'Source Keeper' }).length;
-            let lair = pos.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
-                filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR,
-            }) as StructureKeeperLair;
-            let keeperSpawning = lair?.ticksToSpawn < 100;
+    private findNextMiningPos(isKeeperRoom: boolean): string {
+        const nextPos = Object.entries(Memory.remoteData[this.memory.assignment]?.miningPositions)?.find(([sourceId, miningPosString]) => {
+            const pos = posFromMem(miningPosString);
+            if (isKeeperRoom) {
+                // LAIR
+                const lairId = Memory.remoteData[this.memory.assignment]?.sourceKeeperLairs[sourceId];
+                const lair = Game.getObjectById(lairId) as StructureKeeperLair;
+                const keeperSpawning = lair?.ticksToSpawn < 100;
+                if (keeperSpawning) {
+                    return false;
+                }
 
-            if (hasKeeper || keeperSpawning) {
+                // KEEPER
+                const hasKeeper = !!pos.findInRange(FIND_HOSTILE_CREEPS, 3, { filter: (c) => c.owner.username === 'Source Keeper' }).length;
+                if (hasKeeper) {
+                    return false;
+                }
+            }
+
+            // ACTIVE SOURCE
+            const source = Game.getObjectById(sourceId) as Source;
+            if (!source.energy) {
                 return false;
             }
 
-            let source = pos.findInRange(FIND_SOURCES_ACTIVE, 1).shift();
-            let container: StructureContainer = pos
+            // CONTAINER NOT FILLED
+            const container: StructureContainer = pos
                 .lookFor(LOOK_STRUCTURES)
                 .find((s) => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
 
-            return !!source && !(container?.store.getFreeCapacity() === 0);
+            return !(container?.store.getFreeCapacity() === 0);
         });
-
-        return nextPos;
+        if (!nextPos) {
+            return undefined;
+        }
+        return nextPos[1];
     }
 
-    private destinationSpawningKeeper(): boolean {
-        let pos = posFromMem(this.memory.destination);
-        let lair = pos?.findClosestByRange(FIND_HOSTILE_STRUCTURES, {
-            filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR,
-        }) as StructureKeeperLair;
-        return lair?.ticksToSpawn < 20;
+    private destinationSpawningKeeper(pos: string): boolean {
+        const lairId = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[this.getSourceIdByMiningPos(pos)];
+        const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
+        return lairInRange?.ticksToSpawn < 20;
+    }
+
+    private getSourceIdByMiningPos(pos: string): Id<Source> {
+        return Object.entries(Memory.remoteData[this.memory.assignment].miningPositions).find(
+            ([sourceId, miningPos]) => pos === miningPos
+        )?.[0] as Id<Source>;
     }
 }

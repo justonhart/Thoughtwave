@@ -67,6 +67,10 @@ interface TravelToOpts extends PathFinderOpts {
      * Creep efficiency to determine best pathing options
      */
     efficiency?: number;
+    /**
+     * Additional goals (see PathFinder.search)
+     */
+    goals?: { pos: RoomPosition; range: number }[];
 }
 
 interface CustomMatrixCost {
