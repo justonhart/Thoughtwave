@@ -166,6 +166,7 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
     }
 
     Memory.remoteData[remoteRoomName] = remoteData;
+    return OK;
 }
 
 function createMiningPositionData(controllingRoomName: string, remoteRoomName: string): { [id: Id<Source>]: string } {
