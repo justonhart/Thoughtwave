@@ -116,9 +116,11 @@ export class Gatherer extends TransportCreep {
             (!this.room.controller?.owner ||
                 this.room.controller?.reservation?.username === getUsername() ||
                 (this.room.controller?.owner?.username === getUsername() &&
-                    this.room.memory.layout === RoomLayout.BUNKER &&
-                    (!posInsideBunker(this.pos) ||
-                        getStructureForPos(this.room.memory.layout, this.pos, posFromMem(this.room.memory.anchorPoint)) === STRUCTURE_ROAD)))
+                    (this.room.memory.layout !== RoomLayout.BUNKER ||
+                        (this.room.memory.layout === RoomLayout.BUNKER &&
+                            (!posInsideBunker(this.pos) ||
+                                getStructureForPos(this.room.memory.layout, this.pos, posFromMem(this.room.memory.anchorPoint)) ===
+                                    STRUCTURE_ROAD)))))
         );
     }
 
