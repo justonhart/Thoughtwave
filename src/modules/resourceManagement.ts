@@ -23,7 +23,7 @@ export function manageEmpireResources() {
                     }
                 }
             }
-        } else if (!factory.store.getUsedCapacity()) {
+        } else if (false && !factory.store.getUsedCapacity()) {
             let batteryAmount = getResourceAmount(room, RESOURCE_BATTERY);
             if (batteryAmount >= 50 && room.energyStatus < EnergyStatus.OVERFLOW && room.storage?.store.getFreeCapacity() > 100000) {
                 let result = room.addFactoryTask(RESOURCE_ENERGY, Math.min(50000, batteryAmount * 10));
@@ -124,6 +124,7 @@ export function manageEmpireResources() {
                             }
                         } else if (!sent && Game.time % 50 === 0) {
                             if (!global.qualifyingMarketOrders) {
+                                updateBlacklistedRooms();
                                 getQualifyingMarketOrders();
                             }
                             let buyRequest = Game.market.getOrderById(global.qualifyingMarketOrders[resource]);
@@ -254,7 +255,9 @@ export function shipmentReady(terminal: StructureTerminal, shipment: Shipment): 
 }
 
 function getQualifyingMarketOrders() {
-    let marketOrders = Game.market.getAllOrders().filter((o) => o.type === ORDER_BUY && o.price >= 0.85 * Memory.priceMap[o.resourceType]);
+    let marketOrders = Game.market
+        .getAllOrders()
+        .filter((o) => o.type === ORDER_BUY && !Memory.blacklistedRooms.includes(o.roomName) && o.price >= 0.85 * Memory.priceMap[o.resourceType]);
     global.qualifyingMarketOrders = {};
     Object.keys(Memory.priceMap).forEach((res) => {
         let orderId = marketOrders.find((order) => order.resourceType === res)?.id;
@@ -283,4 +286,9 @@ export function getFactoryResourcesNeeded(task: FactoryTask): { res: ResourceCon
     });
 
     return needs;
+}
+
+function updateBlacklistedRooms() {
+    let orders = Game.market.outgoingTransactions.filter((o) => Memory.marketBlacklist.includes(o.recipient?.username));
+    orders.forEach((o) => Memory.blacklistedRooms.push(o.to));
 }
