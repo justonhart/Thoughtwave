@@ -133,7 +133,10 @@ export class Gatherer extends TransportCreep {
             const pos = posFromMem(posString);
             const areaInRange = Pathing.getArea(pos, 3);
             const lookArea = Game.rooms[roomName].lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);
-            if (isKeeperRoom(pos.roomName) && lookArea.some((look) => look.creep?.owner?.username === 'Source Keeper')) {
+            if (
+                isKeeperRoom(pos.roomName) &&
+                (lookArea.some((look) => look.creep?.owner?.username === 'Source Keeper') || this.destinationSpawningKeeper(posString))
+            ) {
                 return;
             }
             lookArea
@@ -207,5 +210,21 @@ export class Gatherer extends TransportCreep {
 
     protected damaged(): boolean {
         return this.hits < this.hitsMax * 0.85;
+    }
+
+    private hasKeeper(target: RoomPosition): boolean {
+        return !!target.findInRange(FIND_HOSTILE_CREEPS, 3, { filter: (c) => c.owner.username === 'Source Keeper' }).length;
+    }
+
+    private destinationSpawningKeeper(pos: string): boolean {
+        const lairId = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[this.getSourceIdByMiningPos(pos)];
+        const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
+        return lairInRange?.ticksToSpawn < 20;
+    }
+
+    private getSourceIdByMiningPos(pos: string): Id<Source> {
+        return Object.entries(Memory.remoteData[this.memory.assignment].miningPositions).find(
+            ([sourceId, miningPos]) => pos === miningPos
+        )?.[0] as Id<Source>;
     }
 }

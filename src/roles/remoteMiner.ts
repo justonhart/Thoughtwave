@@ -18,7 +18,11 @@ export class RemoteMiner extends WaveCreep {
             let targetPos = posFromMem(this.memory.destination);
             if (targetPos) {
                 if (!this.pos.isEqualTo(targetPos)) {
-                    this.travelTo(targetPos);
+                    if (isAKeeperRoom && this.destinationSpawningKeeper(this.memory.destination)) {
+                        delete this.memory.destination;
+                    } else {
+                        this.travelTo(targetPos);
+                    }
                 } else {
                     let container: StructureContainer = targetPos
                         .lookFor(LOOK_STRUCTURES)
@@ -45,7 +49,7 @@ export class RemoteMiner extends WaveCreep {
                         }
                     }
 
-                    if (isAKeeperRoom && container && this.destinationSpawningKeeper(this.memory.destination)) {
+                    if (isAKeeperRoom && container && (this.destinationSpawningKeeper(this.memory.destination) || this.hasKeeper(targetPos))) {
                         this.say('🚨KEEPER🚨');
                         delete this.memory.destination;
                     }
@@ -112,5 +116,9 @@ export class RemoteMiner extends WaveCreep {
         return Object.entries(Memory.remoteData[this.memory.assignment].miningPositions).find(
             ([sourceId, miningPos]) => pos === miningPos
         )?.[0] as Id<Source>;
+    }
+
+    private hasKeeper(target: RoomPosition): boolean {
+        return !!target.findInRange(FIND_HOSTILE_CREEPS, 3, { filter: (c) => c.owner.username === 'Source Keeper' }).length;
     }
 }
