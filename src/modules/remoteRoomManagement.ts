@@ -243,3 +243,13 @@ function reassignIdleProtector(controllingRoomName: string, remoteRoomName: stri
     }
     return false;
 }
+
+export function removeRemoteRoom(hostName: string, remoteRoomName: string) {
+    Memory.rooms[hostName].remoteMiningRooms = Memory.rooms[hostName].remoteMiningRooms.filter((name) => name !== remoteRoomName);
+
+    delete Memory.remoteData[remoteRoomName];
+
+    Memory.roomData[remoteRoomName].asOf = Game.time;
+    Memory.roomData[remoteRoomName].roomStatus = RoomMemoryStatus.VACANT;
+    delete Memory.roomData[remoteRoomName].owner;
+}
