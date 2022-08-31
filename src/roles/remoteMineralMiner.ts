@@ -80,7 +80,7 @@ export class RemoteMineralMiner extends WaveCreep {
             }
             return true;
         });
-        if (!nextPos) {
+        if (!nextPos || this.hasKeeper(posFromMem(nextPos[1]))) {
             return undefined;
         }
         return nextPos[1];

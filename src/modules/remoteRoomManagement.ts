@@ -166,6 +166,7 @@ export function addRemoteRoom(controllingRoomName: string, remoteRoomName: strin
     }
 
     Memory.remoteData[remoteRoomName] = remoteData;
+    return OK;
 }
 
 function createMiningPositionData(controllingRoomName: string, remoteRoomName: string): { [id: Id<Source>]: string } {
@@ -241,4 +242,14 @@ function reassignIdleProtector(controllingRoomName: string, remoteRoomName: stri
         return true;
     }
     return false;
+}
+
+export function removeRemoteRoom(hostName: string, remoteRoomName: string) {
+    Memory.rooms[hostName].remoteMiningRooms = Memory.rooms[hostName].remoteMiningRooms.filter((name) => name !== remoteRoomName);
+
+    delete Memory.remoteData[remoteRoomName];
+
+    Memory.roomData[remoteRoomName].asOf = Game.time;
+    Memory.roomData[remoteRoomName].roomStatus = RoomMemoryStatus.VACANT;
+    delete Memory.roomData[remoteRoomName].owner;
 }

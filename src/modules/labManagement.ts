@@ -75,7 +75,11 @@ export function runLabs(room: Room) {
                 canStartTask =
                     task?.type === LabTaskType.BOOST
                         ? task.reagentsNeeded
-                              .map((need) => Game.getObjectById(need.lab).store[need.resource] === need.amount)
+                              .map(
+                                  (need) =>
+                                      Game.getObjectById(need.lab).store[need.resource] === need.amount &&
+                                      Game.getObjectById(need.lab).store[RESOURCE_ENERGY] >= 1000
+                              )
                               .reduce((readyState, next) => readyState && next)
                         : task.reagentsNeeded
                               .map((need) => Game.getObjectById(need.lab).store[need.resource] > 0)
