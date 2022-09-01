@@ -20,6 +20,7 @@ interface RoomMemory {
     dontCheckConstructionsBefore?: number;
     shipments?: Shipment[];
     factoryTask?: FactoryTask;
+    scanProgress?: string;
 }
 
 interface RemoteData {
