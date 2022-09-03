@@ -84,6 +84,10 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
             body.push(HEAL, MOVE);
         }
 
+        // Cant beat enemy
+        if (body.length === 50) {
+            return;
+        }
         Memory.spawnAssignments.push({
             designee: controllingRoomName,
             body: body,

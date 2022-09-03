@@ -37,7 +37,7 @@ export function driveRoom(room: Room) {
         room.memory.reservedEnergy = 0;
 
         let nukes = room.find(FIND_NUKES);
-        if (room.controller.level >= 6 && nukes.length) {
+        if (room.controller.level >= 6 && nukes.length && getStructuresToProtect(nukes)?.length) {
             let structuresAtRisk = getStructuresToProtect(nukes);
             structuresAtRisk.forEach((structureId) => {
                 let structure = Game.getObjectById(structureId);
@@ -131,31 +131,72 @@ export function driveRoom(room: Room) {
             runGates(room);
         }
 
-        runSpawning(room);
+        try {
+            runSpawning(room);
+        } catch (e) {
+            console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
+        }
 
-        runLabs(room);
+        try {
+            runLabs(room);
+        } catch (e) {
+            console.log(`Error caught running room ${room.name} for Labs: \n${e}`);
+        }
 
-        runRemoteRooms(room);
+        if (!isHomeUnderAttack && room.name !== 'W23S54' && room.name !== 'W23S55') {
+            runRemoteRooms(room);
+        }
 
         delete room.memory.reservedEnergy;
     }
 }
 
 function runTowers(room: Room, isRoomUnderAttack: boolean) {
-    // @ts-ignore
-    let towers: StructureTower[] = room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_TOWER);
+    const towers = room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_TOWER) as StructureTower[];
 
-    let myHurtCreep = room
+    const myHurtCreeps = room
         .find(FIND_MY_CREEPS)
-        .find((creep) => creep.hits < creep.hitsMax && (!isRoomUnderAttack || creep.memory.role === Role.RAMPART_PROTECTOR));
-    if (myHurtCreep) {
-        towers.forEach((tower) => tower.heal(myHurtCreep));
+        .filter(
+            (creep) =>
+                creep.hits < creep.hitsMax &&
+                (!isRoomUnderAttack ||
+                    creep.memory.role === Role.RAMPART_PROTECTOR ||
+                    creep.memory.role === Role.DISTRIBUTOR ||
+                    creep.memory.role === Role.WORKER)
+        );
+    if (myHurtCreeps.length) {
+        var mostHurtCreep = myHurtCreeps.reduce((mostHurt, nextCreep) => (mostHurt.hits < nextCreep.hits ? mostHurt : nextCreep));
+    }
+    if (mostHurtCreep) {
+        towers.forEach((tower) => tower.heal(mostHurtCreep));
         return;
     }
 
     if (!room.controller.safeMode) {
-        let hostileCreeps = room.find(FIND_HOSTILE_CREEPS, { filter: (creep) => !Memory.playersToIgnore?.includes(creep.owner.username) });
-        towers.forEach((tower) => tower.attack(tower.pos.findClosestByRange(hostileCreeps)));
+        const focus = Object.values(Game.creeps).find((creep) => creep.room.name === room.name && creep.memory.targetId2 && creep.memory.ready >= 5);
+        if (focus) {
+            towers.forEach((tower) => tower.attack(Game.getObjectById(focus.memory.targetId2)));
+        } else {
+            // Towers do not attack creeps on the edge because this can cause them to simply waste energy if two attackers are in the room and the healers go in and out of the room
+            const hostileCreep = room
+                .find(FIND_HOSTILE_CREEPS)
+                .filter((creep) => creep.owner.username === 'Invader' || (creep.pos.x > 1 && creep.pos.y < 48 && creep.pos.y > 1 && creep.pos.x < 48))
+                .find((creep) => {
+                    const hostileCreepInfo = CombatIntel.getCreepCombatData(room, true, creep.pos);
+                    const myCreepInfo = CombatIntel.getCreepCombatData(room, false, creep.pos);
+                    const myTowerInfo = CombatIntel.getTowerCombatData(room, false, creep.pos);
+                    return (
+                        CombatIntel.getPredictedDamage(
+                            myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
+                            hostileCreepInfo.highestDmgMultiplier,
+                            hostileCreepInfo.highestToughHits
+                        ) > hostileCreepInfo.totalHeal && !Memory.playersToIgnore?.includes(creep.owner.username)
+                    );
+                });
+            if (hostileCreep) {
+                towers.forEach((tower) => tower.attack(hostileCreep));
+            }
+        }
     }
 }
 
@@ -164,14 +205,14 @@ function runHomeSecurity(homeRoom: Room): boolean {
     const hostileCreepData = CombatIntel.getCreepCombatData(homeRoom, true);
 
     if (hostileCreepData.totalHeal < towerData.minDmg * hostileCreepData.highestDmgMultiplier) {
-        return; // Towers can handle it for sure
+        return false; // Towers can handle it for sure
     }
 
     if (
         homeRoom.memory.layout === RoomLayout.BUNKER &&
         hostileCreepData.totalHeal < CombatIntel.towerDamageAtRange(towerData, 12) * hostileCreepData.highestDmgMultiplier
     ) {
-        return; // Closest Creeps in BunkerLayout have to be in a range of 12 if they want to hit the ramparts in any way
+        return false; // Closest Creeps in BunkerLayout have to be in a range of 12 if they want to hit the ramparts in any way
     }
 
     // No Towers yet so spawn a protector with heal which can then kite the invader around
@@ -191,7 +232,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 },
             });
         }
-        return;
+        return false;
     }
 
     let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
@@ -199,26 +240,14 @@ function runHomeSecurity(homeRoom: Room): boolean {
     if (hostileCreepData.creeps.length >= minNumHostileCreeps) {
         // Spawn multiple rampartProtectors based on the number of enemy hostiles
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
-        if (!currentNumProtectors) {
-            const body = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
-            Memory.spawnAssignments.push({
-                designee: homeRoom.name,
-                body: body,
-                spawnOpts: {
-                    boosts: [BoostType.RANGED_ATTACK],
-                    memory: {
-                        role: Role.RAMPART_PROTECTOR,
-                        room: homeRoom.name,
-                        currentTaskPriority: Priority.MEDIUM,
-                        combat: { flee: false },
-                    },
-                },
-            });
-        }
-        if (hostileCreepData.creeps.length >= 4 && currentNumProtectors - Math.floor(hostileCreepData.creeps.length / 2) < 0) {
+        let t = hostileCreepData.creeps.length > 12 ? 1 : -1;
+        if (
+            !currentNumProtectors ||
+            (hostileCreepData.creeps.length >= 4 && currentNumProtectors + t - Math.floor(hostileCreepData.creeps.length / 4) < 0)
+        ) {
             console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
-            const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
+            const attackerBody = PopulationManagement.createPartsArray([ATTACK, ATTACK, ATTACK, ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10);
             Memory.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: attackerBody,
@@ -229,20 +258,6 @@ function runHomeSecurity(homeRoom: Room): boolean {
                         room: homeRoom.name,
                         assignment: homeRoom.name,
                         currentTaskPriority: Priority.HIGH,
-                        combat: { flee: false },
-                    },
-                },
-            });
-            const rangedBody = PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], homeRoom.energyCapacityAvailable, 25);
-            Memory.spawnAssignments.push({
-                designee: homeRoom.name,
-                body: rangedBody,
-                spawnOpts: {
-                    boosts: [BoostType.RANGED_ATTACK],
-                    memory: {
-                        role: Role.RAMPART_PROTECTOR,
-                        room: homeRoom.name,
-                        currentTaskPriority: Priority.MEDIUM,
                         combat: { flee: false },
                     },
                 },
@@ -392,7 +407,7 @@ function runSpawning(room: Room) {
         spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
     }
 
-    if (PopulationManagement.needsMiner(room) && !roomContainsViolentHostiles) {
+    if (PopulationManagement.needsMiner(room) && (!roomContainsViolentHostiles || room.memory.layout === undefined)) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
     }
@@ -424,7 +439,13 @@ function runSpawning(room: Room) {
             }
         });
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING && room.memory.remoteMiningRooms?.length && !roomContainsViolentHostiles) {
+        if (
+            room.energyStatus >= EnergyStatus.RECOVERING &&
+            room.memory.remoteMiningRooms?.length &&
+            !roomContainsViolentHostiles &&
+            room.name !== 'W23S54' &&
+            room.name !== 'W23S55'
+        ) {
             let exterminatorNeed = PopulationManagement.findExterminatorNeed(room);
             if (exterminatorNeed) {
                 let spawn = availableSpawns.pop();
@@ -457,7 +478,7 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (!roomContainsViolentHostiles) {
+    if (!roomContainsViolentHostiles || room.memory.layout === undefined) {
         availableSpawns.forEach((spawn) => spawn.spawnWorker());
     }
 }

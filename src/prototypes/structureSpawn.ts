@@ -20,8 +20,8 @@ StructureSpawn.prototype.spawnReserver = function (remoteRoomName: string) {
     return PopulationManagement.spawnReserver(this, remoteRoomName);
 };
 
-StructureSpawn.prototype.spawnWorker = function () {
-    return PopulationManagement.spawnWorker(this);
+StructureSpawn.prototype.spawnWorker = function (roomContainsViolentHostiles?: boolean) {
+    return PopulationManagement.spawnWorker(this, roomContainsViolentHostiles);
 };
 
 StructureSpawn.prototype.spawnAssignedCreep = function (assignment: SpawnAssignment) {

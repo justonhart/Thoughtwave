@@ -11,13 +11,7 @@ export class Protector extends CombatCreep {
             return; // Wait while creep is healing
         }
         if (this.travelToRoom(this.memory.assignment) === IN_ROOM || this.memory.targetId) {
-            if (
-                !this.memory.targetId ||
-                !Game.getObjectById(this.memory.targetId) ||
-                Game.getObjectById(this.memory.targetId).pos.roomName !== this.memory.assignment
-            ) {
-                this.memory.targetId = this.findTarget();
-            }
+            this.memory.targetId = this.findTarget();
             if (!this.memory.targetId) {
                 this.healSelf(false);
                 return;
@@ -62,12 +56,6 @@ export class Protector extends CombatCreep {
                 if (closestDangerousHostile) {
                     return closestDangerousHostile.id;
                 }
-            }
-
-            const healers = hostileCreeps.filter((creep) => creep.getActiveBodyparts(HEAL) > 0);
-
-            if (healers.length) {
-                return this.pos.findClosestByRange(healers).id;
             }
 
             const closestDangerousHostile = this.pos.findClosestByRange(hostileCreeps, {

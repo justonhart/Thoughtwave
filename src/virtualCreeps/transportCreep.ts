@@ -70,7 +70,7 @@ export class TransportCreep extends WaveCreep {
 
     //gather energy to distribute
     protected gatherEnergy(): void {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
+        this.memory.currentTaskPriority = Priority.HIGH;
 
         let target = Game.getObjectById(this.memory.energySource);
         if (!target) {
@@ -113,29 +113,34 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
-        if (this.room.storage?.store[RESOURCE_ENERGY]) {
+        if (this.room.storage?.store[RESOURCE_ENERGY] >= this.store.getCapacity()) {
             return this.room.storage.id;
         }
 
         let nonStorageSources: (Ruin | Resource | Structure)[];
 
-        let ruins = this.room.find(FIND_RUINS, {
-            filter: (r) => {
-                return r.store[RESOURCE_ENERGY];
-            },
-        });
+        if (this.room.name !== 'W23S55' && this.room.name !== 'W23S54') {
+            var ruins = this.room.find(FIND_RUINS, {
+                filter: (r) => {
+                    return r.store[RESOURCE_ENERGY];
+                },
+            });
 
-        let looseEnergyStacks = this.room
-            .find(FIND_DROPPED_RESOURCES)
-            .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
-
+            var looseEnergyStacks = this.room
+                .find(FIND_DROPPED_RESOURCES)
+                .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
+        }
         let containers = this.room
             .find(FIND_STRUCTURES)
             .filter((str) => str.structureType === STRUCTURE_CONTAINER && str.store.energy >= this.store.getCapacity());
 
-        nonStorageSources = [...ruins, ...looseEnergyStacks, ...containers];
+        nonStorageSources = [...(ruins ?? []), ...(looseEnergyStacks ?? []), ...containers];
         if (nonStorageSources.length) {
             return this.pos.findClosestByRange(nonStorageSources).id;
+        }
+
+        if (this.room.terminal?.store?.energy >= this.store.getCapacity()) {
+            return this.room.terminal.id;
         }
     }
 
@@ -145,7 +150,7 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected storeCargo() {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
+        this.memory.currentTaskPriority = Priority.HIGH;
         let resourceToStore: any = Object.keys(this.store).shift();
         if (!this.pos.isNearTo(this.homeroom.storage)) {
             this.travelTo(this.homeroom.storage, { ignoreCreeps: true, range: 1 });
@@ -177,7 +182,17 @@ export class TransportCreep extends WaveCreep {
         if (towers.length) {
             return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
         }
-
+        let labs = this.homeroom
+            .find(FIND_MY_STRUCTURES)
+            .filter(
+                (structure) =>
+                    structure.structureType === STRUCTURE_LAB &&
+                    this.previousTargetId !== structure.id &&
+                    structure.store.energy < structure.store.getCapacity(RESOURCE_ENERGY)
+            );
+        if (labs.length) {
+            return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
+        }
         let spawnStructures = this.homeroom.find(FIND_MY_STRUCTURES).filter(
             (structure) =>
                 // @ts-ignore
@@ -189,18 +204,6 @@ export class TransportCreep extends WaveCreep {
 
         if (spawnStructures.length) {
             return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
-        }
-
-        let labs = this.homeroom
-            .find(FIND_MY_STRUCTURES)
-            .filter(
-                (structure) =>
-                    structure.structureType === STRUCTURE_LAB &&
-                    this.previousTargetId !== structure.id &&
-                    structure.store.energy < structure.store.getCapacity(RESOURCE_ENERGY)
-            );
-        if (labs.length) {
-            return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
         }
     }
 
@@ -228,16 +231,18 @@ export class TransportCreep extends WaveCreep {
             ).id;
         }
 
-        let looseResources = room.find(FIND_DROPPED_RESOURCES);
-        if (looseResources.filter((r) => r.amount > 100).length) {
-            return looseResources.reduce((biggestResource, resourceToCompare) =>
-                biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
-            ).id;
-        }
+        if (room.name !== 'W23S55' && room.name !== 'W23S54') {
+            var looseResources = room.find(FIND_DROPPED_RESOURCES);
+            if (looseResources.filter((r) => r.amount > 100).length) {
+                return looseResources.reduce((biggestResource, resourceToCompare) =>
+                    biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
+                ).id;
+            }
 
-        let tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
-        if (tombstonesWithResources.length) {
-            return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
+            let tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
+            if (tombstonesWithResources.length) {
+                return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
+            }
         }
 
         if (containers.length) {
@@ -245,14 +250,15 @@ export class TransportCreep extends WaveCreep {
                 fullestContainer.store.getUsedCapacity() > nextContainer.store.getUsedCapacity() ? fullestContainer : nextContainer
             ).id;
         }
-
-        if (looseResources.length) {
-            return looseResources.reduce((most, next) => (most.amount > next.amount ? most : next)).id;
+        if (room.name !== 'W23S55' && room.name !== 'W23S54') {
+            if (looseResources.length) {
+                return looseResources.reduce((most, next) => (most.amount > next.amount ? most : next)).id;
+            }
         }
     }
 
     protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage | StructureLab) {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
+        this.memory.currentTaskPriority = Priority.HIGH;
         let targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
         if (targetFreeCapacity) {
             if (!this.pos.isNearTo(target)) {
@@ -281,7 +287,7 @@ export class TransportCreep extends WaveCreep {
 
     //gather resources for the purpose of storing
     protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone | StructureLab): void {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
+        this.memory.currentTaskPriority = Priority.HIGH;
 
         let resourcesToWithdraw = target instanceof StructureLab ? [target.mineralType] : (Object.keys(target.store) as ResourceConstant[]);
         let nextResource: ResourceConstant = resourcesToWithdraw.shift();
@@ -304,7 +310,7 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected runPickupJob(resource: Resource): void {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
+        this.memory.currentTaskPriority = Priority.HIGH;
         if (!this.pos.isNearTo(resource)) {
             this.travelTo(resource, { range: 1 });
         } else if (!this.actionTaken) {

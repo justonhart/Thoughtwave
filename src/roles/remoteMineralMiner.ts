@@ -12,7 +12,8 @@ export class RemoteMineralMiner extends WaveCreep {
         if (this.memory.destination && posFromMem(this.memory.destination).roomName === this.memory.room) {
             this.storeCargo();
             if (!this.store.getUsedCapacity()) {
-                if (this.ticksToLive < 200) {
+                const minTicks = isKeeperRoom(this.memory.assignment) ? 200 : 250;
+                if (this.ticksToLive < minTicks) {
                     this.suicide(); // Can be changed to recycle once implemented
                     return;
                 }

@@ -238,6 +238,9 @@ function getPriceMap(): { [resourceType: string]: number } {
 }
 
 export function addHostileRoom(roomName: string) {
+    if (!Memory.roomData[roomName]) {
+        Memory.roomData[roomName] = { hostile: true, asOf: Game.time };
+    }
     Memory.roomData[roomName].hostile = true;
     Memory.roomData[roomName].asOf = Game.time;
 }

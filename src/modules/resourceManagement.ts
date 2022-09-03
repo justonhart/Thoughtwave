@@ -25,7 +25,12 @@ export function manageEmpireResources() {
             }
         } else if (!factory.store.getUsedCapacity()) {
             let batteryAmount = getResourceAmount(room, RESOURCE_BATTERY);
-            if (batteryAmount >= 50 && room.energyStatus < EnergyStatus.OVERFLOW && room.storage?.store.getFreeCapacity() > 100000) {
+            if (
+                batteryAmount >= 50 &&
+                room.name === 'W23S54' &&
+                room.energyStatus < EnergyStatus.OVERFLOW &&
+                room.storage?.store.getFreeCapacity() > 100000
+            ) {
                 let result = room.addFactoryTask(RESOURCE_ENERGY, Math.min(50000, batteryAmount * 10));
                 if (result === OK) {
                     console.log(`${room.name} added battery decompression task`);
@@ -237,7 +242,7 @@ export function getExtraResources(room: Room): ResourceConstant[] {
 
     const ALL_MINERALS_AND_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)] as ResourceConstant[];
     ALL_MINERALS_AND_COMPOUNDS.forEach((resource) => {
-        if (getResourceAmount(room, resource) > 10000 && room.terminal.store[resource] >= 5000) {
+        if (resource !== RESOURCE_CATALYZED_UTRIUM_ACID && getResourceAmount(room, resource) > 10000 && room.terminal.store[resource] >= 5000) {
             extraResources.push(resource);
         }
     });

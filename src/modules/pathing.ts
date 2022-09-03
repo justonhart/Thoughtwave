@@ -109,11 +109,10 @@ export class Pathing {
         const cpuBefore = Game.cpu.getUsed();
         if (creep.memory._m.path && creep.memory._m.stuckCount) {
             // First try pushing the creep in front closer to their target (stayOnPath will not recalculate new Path)
-            if (!Pathing.pushForward(creep) || creep.memory._m.stuckCount > 1) {
+            if (!Pathing.pushForward(creep, opts) || creep.memory._m.stuckCount > 1) {
                 creep.memory._m.repath++;
                 opts.pathColor = 'blue';
                 opts.ignoreCreeps = false;
-                opts.preferRamparts = false;
                 delete creep.memory._m.path; // recalculate path (for now this will be used all the way till the target...could implement a recalculate after n ticks method to go back to original path after getting unstuck)
             } else {
                 new RoomVisual(creep.pos.roomName).circle(creep.pos, {
@@ -127,9 +126,10 @@ export class Pathing {
         }
 
         if (!creep.memory._m.path) {
-            //console.log(`${creep.name} in ${creep.pos.toMemSafe} is looking for new path.`);
             creep.memory._m.visibleRooms = []; // Reset
-            if (!opts.efficiency) {
+            if (!opts.efficiency && (opts.preferRoadConstruction || opts.preferRamparts)) {
+                opts.efficiency = 0.8; // Make other tiles cost more
+            } else if (!opts.efficiency) {
                 opts.efficiency = Pathing.getCreepMoveEfficiency(creep);
             }
             let pathFinder = Pathing.findTravelPath(creep.name, creep.pos, destination, opts);
@@ -261,9 +261,6 @@ export class Pathing {
                 }
             }
         }
-        if (options.preferRoadConstruction || options.preferRamparts) {
-            options.efficiency = 0.8; // Make other tiles cost more to avoid multiple roads
-        }
         const goals = [
             {
                 pos: destination,
@@ -357,7 +354,9 @@ export class Pathing {
                 }
                 if (Memory.rooms[room.name]?.anchorPoint || Memory.rooms[room.name]?.managerPos) {
                     let managerPos = posFromMem(room.memory.anchorPoint || room.memory.managerPos);
-                    matrix.set(managerPos.x, managerPos.y, 10);
+                    if (!Pathing.sameCoord(managerPos, destination)) {
+                        matrix.set(managerPos.x, managerPos.y, 50);
+                    }
                 }
 
                 if (Memory.rooms[room.name]?.miningAssignments) {
@@ -396,7 +395,10 @@ export class Pathing {
 
                 if (options.preferRamparts) {
                     room.find(FIND_MY_STRUCTURES, { filter: (struct) => struct.structureType === STRUCTURE_RAMPART }).forEach((rampart) => {
-                        matrix.set(rampart.pos.x, rampart.pos.y, 1);
+                        const costAtPos = matrix.get(rampart.pos.x, rampart.pos.y);
+                        if (!costAtPos || (costAtPos > 1 && costAtPos < 255)) {
+                            matrix.set(rampart.pos.x, rampart.pos.y, 2); // Ramparts without roads and walkable
+                        }
                     });
                 }
 
@@ -587,7 +589,7 @@ export class Pathing {
      * @param creep -
      * @returns -
      */
-    static pushForward(creep: Creep): boolean {
+    static pushForward(creep: Creep, opts: TravelToOpts): boolean {
         if (creep.memory._m.path) {
             const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
             //check if creep is in nextPos
@@ -608,6 +610,11 @@ export class Pathing {
                 // Swap places if creep is closer to the destination than the obstacleCreep
                 if (obstacleCreep.pos.getRangeTo(obstacleCreepDestination) >= creep.pos.getRangeTo(obstacleCreepDestination)) {
                     return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
+                }
+
+                // Do not allow pushing
+                if (opts.noPush && obstacleCreep.memory.currentTaskPriority >= opts.noPush) {
+                    return false;
                 }
 
                 // Find Path closer to target

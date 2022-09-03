@@ -71,6 +71,10 @@ interface TravelToOpts extends PathFinderOpts {
      * Additional goals (see PathFinder.search)
      */
     goals?: { pos: RoomPosition; range: number }[];
+    /**
+     * Do no allow creep to push other creeps when stuck
+     */
+    noPush?: Priority;
 }
 
 interface CustomMatrixCost {
