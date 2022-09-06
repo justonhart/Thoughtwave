@@ -135,6 +135,10 @@ export function driveRoom(room: Room) {
             scanArea(room);
         }
 
+        if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50) {
+            room.powerSpawn.processPower();
+        }
+
         runLabs(room);
 
         runSpawning(room);

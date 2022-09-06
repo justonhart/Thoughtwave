@@ -76,6 +76,7 @@ interface Room {
     addFactoryTask(product: ResourceConstant, amount: number): ScreepsReturnCode;
     factory: StructureFactory;
     observer: StructureObserver;
+    powerSpawn: StructurePowerSpawn;
 }
 
 interface RoomPosition {
