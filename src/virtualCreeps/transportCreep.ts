@@ -119,17 +119,15 @@ export class TransportCreep extends WaveCreep {
 
         let nonStorageSources: (Ruin | Resource | Structure)[];
 
-        if (this.room.name !== 'W23S55' && this.room.name !== 'W23S54') {
-            var ruins = this.room.find(FIND_RUINS, {
-                filter: (r) => {
-                    return r.store[RESOURCE_ENERGY];
-                },
-            });
+        var ruins = this.room.find(FIND_RUINS, {
+            filter: (r) => {
+                return r.store[RESOURCE_ENERGY];
+            },
+        });
 
-            var looseEnergyStacks = this.room
-                .find(FIND_DROPPED_RESOURCES)
-                .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
-        }
+        var looseEnergyStacks = this.room
+            .find(FIND_DROPPED_RESOURCES)
+            .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
         let containers = this.room
             .find(FIND_STRUCTURES)
             .filter((str) => str.structureType === STRUCTURE_CONTAINER && str.store.energy >= this.store.getCapacity());
@@ -231,18 +229,16 @@ export class TransportCreep extends WaveCreep {
             ).id;
         }
 
-        if (room.name !== 'W23S55' && room.name !== 'W23S54') {
-            var looseResources = room.find(FIND_DROPPED_RESOURCES);
-            if (looseResources.filter((r) => r.amount > 100).length) {
-                return looseResources.reduce((biggestResource, resourceToCompare) =>
-                    biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
-                ).id;
-            }
+        var looseResources = room.find(FIND_DROPPED_RESOURCES);
+        if (looseResources.filter((r) => r.amount > 100).length) {
+            return looseResources.reduce((biggestResource, resourceToCompare) =>
+                biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
+            ).id;
+        }
 
-            let tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
-            if (tombstonesWithResources.length) {
-                return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
-            }
+        let tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
+        if (tombstonesWithResources.length) {
+            return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
         }
 
         if (containers.length) {
@@ -250,10 +246,8 @@ export class TransportCreep extends WaveCreep {
                 fullestContainer.store.getUsedCapacity() > nextContainer.store.getUsedCapacity() ? fullestContainer : nextContainer
             ).id;
         }
-        if (room.name !== 'W23S55' && room.name !== 'W23S54') {
-            if (looseResources.length) {
-                return looseResources.reduce((most, next) => (most.amount > next.amount ? most : next)).id;
-            }
+        if (looseResources.length) {
+            return looseResources.reduce((most, next) => (most.amount > next.amount ? most : next)).id;
         }
     }
 
