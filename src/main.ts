@@ -8,6 +8,13 @@ import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
+    //disable email notifications for non-spawn structures
+    Object.values(Game.structures)
+        .filter((struct) => struct.structureType !== STRUCTURE_SPAWN)
+        .forEach((struct) => {
+            struct.notifyWhenAttacked(false);
+        });
+
     let cpuUsed = 0;
     let cpuUsageString = `${Game.time}:   `;
 
