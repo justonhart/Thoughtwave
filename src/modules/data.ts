@@ -43,16 +43,14 @@ export function updateRoomData(room: Room) {
         } else {
             data.roomStatus = RoomMemoryStatus.RESERVED_OTHER;
         }
-    } else if (room.controller) {
+    } else {
         delete data.owner;
         delete data.roomLevel;
         data.roomStatus = RoomMemoryStatus.VACANT;
     }
 
-    if (data.roomStatus !== RoomMemoryStatus.OWNED_ME) {
-        if (room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_TOWER && s.isActive() }).length || data.roomLevel) {
-            data.hostile = true;
-        }
+    if (data.roomStatus !== RoomMemoryStatus.OWNED_ME && data.roomLevel) {
+        data.hostile = true;
     } else {
         delete data.hostile;
     }
