@@ -269,4 +269,12 @@ function initMissingMemoryValues() {
     if (!Memory.squads) {
         Memory.squads = {};
     }
+
+    if (!Memory.marketBlacklist) {
+        Memory.marketBlacklist = [];
+    }
+
+    if (!Memory.blacklistedRooms) {
+        Memory.blacklistedRooms = [];
+    }
 }

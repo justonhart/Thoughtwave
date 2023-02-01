@@ -132,15 +132,15 @@ export function driveRoom(room: Room) {
         }
 
         try {
-            runSpawning(room);
-        } catch (e) {
-            console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
-        }
-
-        try {
             runLabs(room);
         } catch (e) {
             console.log(`Error caught running room ${room.name} for Labs: \n${e}`);
+        }
+        
+        try {
+            runSpawning(room);
+        } catch (e) {
+            console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
         }
 
         if (!isHomeUnderAttack) {

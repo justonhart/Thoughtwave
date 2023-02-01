@@ -7,6 +7,8 @@ interface Memory {
     operations?: Operation[];
     playersToIgnore?: string[];
     squads?: { [squadId: string]: Squad };
+    marketBlacklist?: string[]; //player names we don't want to sell to
+    blacklistedRooms?: string[]; //room names we don't sell to
 }
 
 interface EmpireIntershard {

@@ -181,7 +181,19 @@ export class TransportCreep extends WaveCreep {
             return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
         }
 
-        const spawnStructures = this.homeroom.find(FIND_MY_STRUCTURES).filter(
+        let labs = this.homeroom
+            .find(FIND_MY_STRUCTURES)
+            .filter(
+                (structure) =>
+                    structure.structureType === STRUCTURE_LAB &&
+                    this.previousTargetId !== structure.id &&
+                    structure.store.energy < structure.store.getCapacity(RESOURCE_ENERGY)
+            );
+        if (labs.length) {
+            return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
+        }
+
+        let spawnStructures = this.homeroom.find(FIND_MY_STRUCTURES).filter(
             (structure) =>
                 // @ts-ignore
                 [STRUCTURE_EXTENSION, STRUCTURE_SPAWN].includes(structure.structureType) &&
@@ -192,18 +204,6 @@ export class TransportCreep extends WaveCreep {
 
         if (spawnStructures.length) {
             return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
-        }
-
-        const labs = this.homeroom
-            .find(FIND_MY_STRUCTURES)
-            .filter(
-                (structure) =>
-                    structure.structureType === STRUCTURE_LAB &&
-                    this.previousTargetId !== structure.id &&
-                    structure.store.energy < structure.store.getCapacity(RESOURCE_ENERGY)
-            );
-        if (labs.length) {
-            return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
         }
     }
 

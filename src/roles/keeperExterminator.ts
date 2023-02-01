@@ -78,7 +78,7 @@ export class KeeperExterminator extends CombatCreep {
         let lairs = Object.values(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).map((lairId) =>
             Game.getObjectById(lairId)
         ) as StructureKeeperLair[];
-        let nextSpawn = lairs?.reduce((lowestTimer, next) => (lowestTimer.ticksToSpawn <= next.ticksToSpawn ? lowestTimer : next));
+        let nextSpawn = lairs?.reduce((lowestTimer, next) => (lowestTimer?.ticksToSpawn <= next?.ticksToSpawn ? lowestTimer : next));
         if (nextSpawn) {
             return nextSpawn.id;
         }
