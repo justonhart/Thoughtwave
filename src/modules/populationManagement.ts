@@ -58,9 +58,8 @@ export class PopulationManagement {
         };
 
         // Increase during siege for more repair creeps
-        let t = roomContainsViolentHostiles && spawn.room.workerCapacity < 3 ? 1 : 0;
-
-        let canSupportAnotherWorker = workerCount < spawn.room.workerCapacity + t;
+        let canSupportAnotherWorker =
+            workerCount < spawn.room.workerCapacity + (roomContainsViolentHostiles && spawn.room.workerCapacity < 3 ? 1 : 0);
 
         let spawnUpgrader =
             canSupportAnotherWorker &&

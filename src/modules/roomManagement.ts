@@ -165,11 +165,13 @@ function runTowers(room: Room, isRoomUnderAttack: boolean) {
                     creep.memory.role === Role.WORKER)
         );
     if (myHurtCreeps.length) {
-        var mostHurtCreep = myHurtCreeps.reduce((mostHurt, nextCreep) => (mostHurt.hits < nextCreep.hits ? mostHurt : nextCreep));
-    }
-    if (mostHurtCreep) {
-        towers.forEach((tower) => tower.heal(mostHurtCreep));
-        return;
+        const mostHurtCreep = myHurtCreeps.reduce((mostHurt, nextCreep) => (mostHurt.hits < nextCreep.hits ? mostHurt : nextCreep));
+
+        // TODO: Optimize to only heal as much as needed
+        if (mostHurtCreep) {
+            towers.forEach((tower) => tower.heal(mostHurtCreep));
+            return;
+        }
     }
 
     if (!room.controller.safeMode) {
@@ -240,10 +242,10 @@ function runHomeSecurity(homeRoom: Room): boolean {
     if (hostileCreepData.creeps.length >= minNumHostileCreeps) {
         // Spawn multiple rampartProtectors based on the number of enemy hostiles
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
-        let t = hostileCreepData.creeps.length > 12 ? 1 : -1;
         if (
             !currentNumProtectors ||
-            (hostileCreepData.creeps.length >= 4 && currentNumProtectors + t - Math.floor(hostileCreepData.creeps.length / 4) < 0)
+            (hostileCreepData.creeps.length >= 4 &&
+                currentNumProtectors + (hostileCreepData.creeps.length > 12 ? 1 : -1) - Math.floor(hostileCreepData.creeps.length / 4) < 0)
         ) {
             console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)

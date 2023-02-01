@@ -119,16 +119,16 @@ export class TransportCreep extends WaveCreep {
 
         let nonStorageSources: (Ruin | Resource | Structure)[];
 
-        var ruins = this.room.find(FIND_RUINS, {
+        const ruins = this.room.find(FIND_RUINS, {
             filter: (r) => {
                 return r.store[RESOURCE_ENERGY];
             },
         });
 
-        var looseEnergyStacks = this.room
+        const looseEnergyStacks = this.room
             .find(FIND_DROPPED_RESOURCES)
             .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
-        let containers = this.room
+        const containers = this.room
             .find(FIND_STRUCTURES)
             .filter((str) => str.structureType === STRUCTURE_CONTAINER && str.store.energy >= this.store.getCapacity());
 
@@ -171,7 +171,7 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findRefillTarget(): Id<Structure> {
-        let towers = this.homeroom
+        const towers = this.homeroom
             .find(FIND_MY_STRUCTURES)
             .filter(
                 (structure) =>
@@ -180,18 +180,8 @@ export class TransportCreep extends WaveCreep {
         if (towers.length) {
             return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
         }
-        let labs = this.homeroom
-            .find(FIND_MY_STRUCTURES)
-            .filter(
-                (structure) =>
-                    structure.structureType === STRUCTURE_LAB &&
-                    this.previousTargetId !== structure.id &&
-                    structure.store.energy < structure.store.getCapacity(RESOURCE_ENERGY)
-            );
-        if (labs.length) {
-            return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
-        }
-        let spawnStructures = this.homeroom.find(FIND_MY_STRUCTURES).filter(
+
+        const spawnStructures = this.homeroom.find(FIND_MY_STRUCTURES).filter(
             (structure) =>
                 // @ts-ignore
                 [STRUCTURE_EXTENSION, STRUCTURE_SPAWN].includes(structure.structureType) &&
@@ -202,6 +192,18 @@ export class TransportCreep extends WaveCreep {
 
         if (spawnStructures.length) {
             return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
+        }
+
+        const labs = this.homeroom
+            .find(FIND_MY_STRUCTURES)
+            .filter(
+                (structure) =>
+                    structure.structureType === STRUCTURE_LAB &&
+                    this.previousTargetId !== structure.id &&
+                    structure.store.energy < structure.store.getCapacity(RESOURCE_ENERGY)
+            );
+        if (labs.length) {
+            return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
         }
     }
 
@@ -214,29 +216,29 @@ export class TransportCreep extends WaveCreep {
             return undefined;
         }
 
-        let labsNeedingEmptied = this.room.labs?.filter((lab) => lab.status === LabStatus.NEEDS_EMPTYING);
+        const labsNeedingEmptied = this.room.labs?.filter((lab) => lab.status === LabStatus.NEEDS_EMPTYING);
         if (labsNeedingEmptied.length) {
             return this.pos.findClosestByRange(labsNeedingEmptied).id;
         }
 
-        let containers: StructureContainer[] = room
+        const containers: StructureContainer[] = room
             .find(FIND_STRUCTURES)
             .filter((structure) => structure.structureType === STRUCTURE_CONTAINER && structure.store.getUsedCapacity()) as StructureContainer[];
-        let fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
+        const fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
         if (fillingContainers.length) {
             return fillingContainers.reduce((fullestContainer, nextContainer) =>
                 fullestContainer.store.getUsedCapacity() > nextContainer.store.getUsedCapacity() ? fullestContainer : nextContainer
             ).id;
         }
 
-        var looseResources = room.find(FIND_DROPPED_RESOURCES);
+        const looseResources = room.find(FIND_DROPPED_RESOURCES);
         if (looseResources.filter((r) => r.amount > 100).length) {
             return looseResources.reduce((biggestResource, resourceToCompare) =>
                 biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
             ).id;
         }
 
-        let tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
+        const tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
         if (tombstonesWithResources.length) {
             return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
         }
