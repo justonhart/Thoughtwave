@@ -143,7 +143,7 @@ export function driveRoom(room: Room) {
             console.log(`Error caught running room ${room.name} for Labs: \n${e}`);
         }
 
-        if (!isHomeUnderAttack && room.name !== 'W23S54') {
+        if (!isHomeUnderAttack) {
             runRemoteRooms(room);
         }
 
@@ -439,12 +439,7 @@ function runSpawning(room: Room) {
             }
         });
 
-        if (
-            room.energyStatus >= EnergyStatus.RECOVERING &&
-            room.memory.remoteMiningRooms?.length &&
-            !roomContainsViolentHostiles &&
-            room.name !== 'W23S54'
-        ) {
+        if (room.energyStatus >= EnergyStatus.RECOVERING && room.memory.remoteMiningRooms?.length && !roomContainsViolentHostiles) {
             let exterminatorNeed = PopulationManagement.findExterminatorNeed(room);
             if (exterminatorNeed) {
                 let spawn = availableSpawns.pop();
