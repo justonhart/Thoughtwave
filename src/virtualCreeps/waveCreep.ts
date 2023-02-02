@@ -3,6 +3,9 @@ import { posFromMem } from '../modules/data';
 export class WaveCreep extends Creep {
     private static priorityQueue: Map<string, (creep: Creep) => void> = new Map();
     public drive() {
+        //disable notifications for all creeps
+        this.notifyWhenAttacked(false);
+
         if (this.memory.needsBoosted) {
             this.getNextBoost();
         } else if (this.memory.portalLocations?.[0]) {

@@ -124,6 +124,29 @@ export class Manager extends WaveCreep {
             this.memory.targetId = storage.id;
             return;
         }
+
+        if (storage.store.power && powerSpawn?.store.power < powerSpawn?.store.getCapacity(RESOURCE_POWER) / 10) {
+            this.withdraw(
+                storage,
+                RESOURCE_POWER,
+                Math.min(this.store.getCapacity(), storage.store.power, powerSpawn.store.getFreeCapacity(RESOURCE_POWER))
+            );
+            this.memory.targetId = powerSpawn.id;
+            return;
+        }
+
+        if (
+            this.room.energyStatus >= EnergyStatus.STABLE &&
+            powerSpawn?.store.energy <= powerSpawn?.store.getCapacity(RESOURCE_ENERGY) - this.store.getCapacity()
+        ) {
+            this.withdraw(
+                storage,
+                RESOURCE_ENERGY,
+                Math.min(this.store.getCapacity(), storage.store.energy, powerSpawn.store.getFreeCapacity(RESOURCE_ENERGY))
+            );
+            this.memory.targetId = powerSpawn.id;
+            return;
+        }
     }
 
     private getResourceToTransferToTerminal(): MineralCompoundConstant {

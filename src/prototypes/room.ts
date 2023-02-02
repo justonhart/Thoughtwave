@@ -117,6 +117,22 @@ Object.defineProperty(Room.prototype, 'factory', {
     configurable: true,
 });
 
+Object.defineProperty(Room.prototype, 'observer', {
+    get: function (this: Room) {
+        return this.find(FIND_MY_STRUCTURES).find((s) => s.structureType === STRUCTURE_OBSERVER && s.isActive());
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'powerSpawn', {
+    get: function (this: Room) {
+        return this.find(FIND_MY_STRUCTURES).find((s) => s.structureType === STRUCTURE_POWER_SPAWN && s.isActive());
+    },
+    enumerable: false,
+    configurable: true,
+});
+
 Room.prototype.addLabTask = function (this: Room, opts: LabTaskOpts): ScreepsReturnCode {
     return addLabTask(this, opts);
 };

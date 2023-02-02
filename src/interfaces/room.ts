@@ -21,6 +21,7 @@ interface RoomMemory {
     dontCheckConstructionsBefore?: number;
     shipments?: Shipment[];
     factoryTask?: FactoryTask;
+    scanProgress?: string;
 }
 
 interface RemoteData {
@@ -75,6 +76,8 @@ interface Room {
     addShipment(destination: string, resource: ResourceConstant, amount: number, marketOrderId?: string): ScreepsReturnCode;
     addFactoryTask(product: ResourceConstant, amount: number): ScreepsReturnCode;
     factory: StructureFactory;
+    observer: StructureObserver;
+    powerSpawn: StructurePowerSpawn;
 }
 
 interface RoomPosition {

@@ -131,6 +131,22 @@ export function driveRoom(room: Room) {
             runGates(room);
         }
 
+        if (room.observer) {
+          try {
+              scanArea(room);
+          } catch (e) {
+              console.log(`Error caught running room ${room.name} for Observer: \n${e}`);
+          }
+        }
+        
+        if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50) {
+          try {
+            room.powerSpawn.processPower();
+          } catch (e) {
+              console.log(`Error caught running room ${room.name} for PowerSpawn: \n${e}`);
+          }
+        }
+
         try {
             runLabs(room);
         } catch (e) {
@@ -595,4 +611,61 @@ function runRemoteRooms(room: Room) {
             console.log(`Error caught running remote room ${remoteRoomName}: \n${e}`);
         }
     });
+}
+
+function scanArea(room: Room) {
+    let xDiff: number, yDiff: number;
+
+    //increment progress counter
+    if (room.memory.scanProgress === undefined || room.memory.scanProgress === '10.10') {
+        xDiff = -10;
+        yDiff = -10;
+    } else {
+        let values = room.memory.scanProgress.split('.').map((s) => parseInt(s));
+
+        if (values[1] === 10) {
+            xDiff = values[0] + 1;
+            yDiff = -10;
+        } else {
+            xDiff = values[0];
+            yDiff = values[1] + 1;
+        }
+    }
+
+    let scanTargetName = computeRoomNameFromDiff(room.name, xDiff, yDiff);
+
+    //get visiblity
+    room.observer.observeRoom(scanTargetName);
+    room.memory.scanProgress = `${xDiff}.${yDiff}`;
+}
+
+function computeRoomNameFromDiff(startingRoomName: string, xDiff: number, yDiff: number) {
+    //lets say W0 = E(-1), S1 = N(-1)
+
+    let values = startingRoomName
+        .replace('N', '.N')
+        .replace('S', '.S')
+        .split('.')
+        .map((v) => {
+            if (v.startsWith('E') || v.startsWith('N')) {
+                return parseInt(v.slice(1));
+            } else {
+                return -1 * parseInt(v.slice(1)) - 1;
+            }
+        });
+
+    let startX = values[0];
+    let startY = values[1];
+
+    let targetValues = [startX + xDiff, startY + yDiff];
+
+    return targetValues
+        .map((v, index) => {
+            if (v >= 0) {
+                return index === 0 ? 'E' + v : 'N' + v;
+            } else {
+                return index === 0 ? 'W' + (-1 * v - 1) : 'S' + (-1 * v - 1);
+            }
+        })
+        .reduce((sum, next) => sum + next);
 }
