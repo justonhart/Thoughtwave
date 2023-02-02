@@ -1,4 +1,7 @@
 interface CreepMemory {
+    stop?: boolean;
+    ready?: number;
+    targetId2?: Id<Creep>;
     shouldBuildRoad?: boolean;
     gatheringLabResources?: boolean;
     needsBoosted?: boolean;

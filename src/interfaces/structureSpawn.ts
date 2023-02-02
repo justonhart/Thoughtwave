@@ -6,7 +6,7 @@ interface StructureSpawn {
     spawnGatherer(remoteRoomName: string): ScreepsReturnCode;
     spawnReserver(remoteRoomName: string): ScreepsReturnCode;
     spawnManager(): ScreepsReturnCode;
-    spawnWorker(): ScreepsReturnCode;
+    spawnWorker(roomContainsViolentHostiles?: boolean): ScreepsReturnCode;
     spawnKeeperExterminator(remoteRoomName: string): ScreepsReturnCode;
     spawnRemoteMineralMiner(remoteRoomName: string): ScreepsReturnCode;
     spawnAssignedCreep(assignment: SpawnAssignment): ScreepsReturnCode;

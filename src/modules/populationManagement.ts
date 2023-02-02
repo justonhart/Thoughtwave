@@ -41,7 +41,7 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
 };
 
 export class PopulationManagement {
-    static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
+    static spawnWorker(spawn: StructureSpawn, roomContainsViolentHostiles?: boolean): ScreepsReturnCode {
         let workers = spawn.room.creeps.filter((creep) => creep.memory.role === Role.WORKER);
         let hasUpgrader = spawn.room.creeps.some((c) => c.memory.role === Role.UPGRADER);
         let roomNeedsConstruction =
@@ -50,13 +50,16 @@ export class PopulationManagement {
         let workerCount = workers.length + (hasUpgrader ? 1 : 0);
 
         let options: SpawnOptions = {
+            boosts: roomContainsViolentHostiles ? [BoostType.BUILD] : [],
             memory: {
                 room: spawn.room.name,
                 role: Role.WORKER,
             },
         };
 
-        let canSupportAnotherWorker = workerCount < spawn.room.workerCapacity;
+        // Increase during siege for more repair creeps
+        let canSupportAnotherWorker =
+            workerCount < spawn.room.workerCapacity + (roomContainsViolentHostiles && spawn.room.workerCapacity < 3 ? 1 : 0);
 
         let spawnUpgrader =
             canSupportAnotherWorker &&
@@ -66,7 +69,7 @@ export class PopulationManagement {
             !roomNeedsCoreStructures(spawn.room);
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
-        let creepLevelCap = 15;
+        let creepLevelCap = 16;
         if (spawnUpgrader) {
             options.memory.role = Role.UPGRADER;
             options.boosts = [BoostType.UPGRADE];
@@ -459,7 +462,7 @@ export class PopulationManagement {
                             let boostsAvailableCount = boostMap[boostType]?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
                             if (boostsAvailableCount) {
                                 const nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
-                                boostMap[nextAvailableBoostResource] -= 1;
+                                boostMap[boostType].filter((boost) => boost.amount > 0)[0].amount -= 1;
                                 const tierBoost =
                                     nextAvailableBoostResource.length > 2 ? nextAvailableBoostResource.length - 1 : nextAvailableBoostResource.length;
                                 this.updateNeededValues(part, needed, tierBoost);
@@ -542,7 +545,7 @@ export class PopulationManagement {
                             const boostsAvailableCount = boostMap[boostType]?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
                             if (boostsAvailableCount) {
                                 const nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
-                                boostMap[nextAvailableBoostResource] -= 1;
+                                boostMap[boostType].filter((boost) => boost.amount > 0)[0].amount -= 1;
                                 const tierBoost =
                                     nextAvailableBoostResource.length > 2 ? nextAvailableBoostResource.length - 1 : nextAvailableBoostResource.length;
                                 move -= this.getMove(part, tierBoost) * Math.ceil((parts.length - partRatio[MOVE]) / partRatio[MOVE]);

@@ -127,14 +127,16 @@ export class CombatIntel {
     private static calculateTotal(towers: StructureTower[], pos: RoomPosition, min: number, max: number): number {
         const interval = (max - min) / (this.towerMaxRange - this.towerMinRange); // Damage diff between ranges
         return towers.reduce((totalDamage, nextTower) => {
+            // Power Action
+            const powerLevel = this.getTowerPowerLevel(nextTower);
             const range = nextTower.pos.getRangeTo(pos);
 
             if (range >= this.towerMaxRange) {
-                return min;
+                return min * powerLevel;
             } else if (range <= this.towerMinRange) {
-                return max;
+                return max * powerLevel;
             }
-            return (totalDamage += max - (range - this.towerMinRange) * interval);
+            return (totalDamage += max - (range - this.towerMinRange) * interval) * powerLevel;
         }, 0);
     }
 
@@ -158,21 +160,18 @@ export class CombatIntel {
         creeps.map((creep: Creep) => {
             const combatData = this.getTotalDamagePerCreepBody(creep.body);
             roomCreepsCombatData.creeps.push(combatData);
-            // Only count tough parts on heal units since they are the once that need to be outdamaged
-            if (
-                combatData.heal &&
-                roomCreepsCombatData.highestToughHits / roomCreepsCombatData.highestDmgMultiplier < combatData.toughHits / combatData.dmgMultiplier
-            ) {
-                roomCreepsCombatData.highestDmgMultiplier = combatData.dmgMultiplier;
-                roomCreepsCombatData.highestToughHits = combatData.toughHits;
-            }
 
             if (pos) {
                 const range = creep.pos.getRangeTo(pos);
-                if (range === 1) {
+                if (range <= 1) {
                     roomCreepsCombatData.totalDmg += combatData.attack;
                     roomCreepsCombatData.totalAttack += combatData.attack;
                     roomCreepsCombatData.totalHeal += combatData.heal;
+                    if (range === 0) {
+                        roomCreepsCombatData.highestDmgMultiplier = combatData.dmgMultiplier;
+                        roomCreepsCombatData.highestToughHits = combatData.toughHits;
+                        roomCreepsCombatData.highestHP = creep.body.length * 100;
+                    }
                 }
                 if (range <= 3) {
                     roomCreepsCombatData.totalDmg += combatData.ranged;
@@ -180,8 +179,6 @@ export class CombatIntel {
                     if (range > 1) {
                         roomCreepsCombatData.totalHeal += combatData.heal / 3; // Ranged Heal
                     }
-                    const creepHP = creep.body.length * 100;
-                    roomCreepsCombatData.highestHP = creepHP > roomCreepsCombatData.highestHP ? creepHP : roomCreepsCombatData.highestHP;
                 }
             } else {
                 roomCreepsCombatData.totalDmg += combatData.attack + combatData.ranged;
@@ -190,6 +187,15 @@ export class CombatIntel {
                 const creepHP = creep.body.length * 100;
                 roomCreepsCombatData.highestHP = creepHP > roomCreepsCombatData.highestHP ? creepHP : roomCreepsCombatData.highestHP;
                 roomCreepsCombatData.totalHeal += combatData.heal; // Assume maxHeal
+                // Only count tough parts on heal units since they are the once that need to be outdamaged
+                if (
+                    combatData.heal &&
+                    roomCreepsCombatData.highestToughHits / roomCreepsCombatData.highestDmgMultiplier <
+                        combatData.toughHits / combatData.dmgMultiplier
+                ) {
+                    roomCreepsCombatData.highestDmgMultiplier = combatData.dmgMultiplier;
+                    roomCreepsCombatData.highestToughHits = combatData.toughHits;
+                }
             }
         });
         return roomCreepsCombatData;
@@ -203,7 +209,7 @@ export class CombatIntel {
      * @param targetBodyPart
      * @returns
      */
-    private static getTotalDamagePerCreepBody(bodyParts: BodyPartDefinition[]): CreepCombatData {
+    public static getTotalDamagePerCreepBody(bodyParts: BodyPartDefinition[]): CreepCombatData {
         const combatData = { attack: 0, ranged: 0, heal: 0, dmgMultiplier: 1, toughHits: 0 };
         bodyParts
             .filter(
@@ -241,5 +247,17 @@ export class CombatIntel {
                 }
             });
         return combatData;
+    }
+
+    private static getTowerPowerLevel(tower: StructureTower): number {
+        let powerLevel = 1;
+        tower.effects?.forEach((effect) => {
+            if (effect.effect === PWR_DISRUPT_TOWER) {
+                powerLevel -= effect.level / 10;
+            } else if (effect.effect === PWR_OPERATE_TOWER) {
+                powerLevel += effect.level / 10;
+            }
+        });
+        return powerLevel;
     }
 }

@@ -1,4 +1,5 @@
 interface RoomMemory {
+    towerAttacked?: number;
     needsWallRepair?: boolean;
     upgraderLinkPos?: string;
     managerLink?: Id<Structure>;

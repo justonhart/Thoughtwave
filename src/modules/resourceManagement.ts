@@ -238,7 +238,16 @@ export function getExtraResources(room: Room): ResourceConstant[] {
 
     const ALL_MINERALS_AND_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)] as ResourceConstant[];
     ALL_MINERALS_AND_COMPOUNDS.forEach((resource) => {
-        if (getResourceAmount(room, resource) > 10000 && room.terminal.store[resource] >= 5000) {
+        let maxResourceAmount = 10000;
+        // Increase Defensive Resource Amount
+        if (resource === RESOURCE_CATALYZED_UTRIUM_ACID) {
+            maxResourceAmount = 20000;
+        }
+        if (
+            resource !== RESOURCE_CATALYZED_UTRIUM_ACID &&
+            getResourceAmount(room, resource) > maxResourceAmount &&
+            room.terminal.store[resource] >= 5000
+        ) {
             extraResources.push(resource);
         }
     });

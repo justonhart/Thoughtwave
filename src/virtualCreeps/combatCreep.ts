@@ -41,14 +41,13 @@ export class CombatCreep extends WaveCreep {
             const exitCost = 10;
             let shouldFlee = true;
 
-            const hostilesInSquadRange = this.pos.findInRange(FIND_HOSTILE_CREEPS, 3); // check around target for proper massAttack pathing
+            const hostilesInSquadRange = this.pos.findInRange(FIND_HOSTILE_CREEPS, 4); // check around target for proper massAttack pathing
             const rangeToTarget = this.pos.getRangeTo(target);
 
-            // If not in range, an enemy squad with RANGED_ATTACK, or no dangerous creeps, then go closer to enable massAttack
+            // If not in range or a squad without melee creep, then go closer to enable massAttack
             if (
                 rangeToTarget > range ||
-                (hostilesInSquadRange.length > 1 && hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(RANGED_ATTACK))) ||
-                !hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK))
+                (hostilesInSquadRange.length > 1 && !hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(ATTACK)))
             ) {
                 range = 1;
                 shouldFlee = false;
@@ -84,5 +83,35 @@ export class CombatCreep extends WaveCreep {
             return true; // Creep retreated to previous room to heal
         }
         return false;
+    }
+
+    public identifySquads(): Id<Creep>[][] {
+        const hostileCreeps = this.room
+            .find(FIND_HOSTILE_CREEPS)
+            .filter((hostileCreep) =>
+                hostileCreep.body.some(
+                    (bodyPart) => bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === WORK || bodyPart.type === HEAL
+                )
+            );
+        const squads: Creep[][] = [];
+        hostileCreeps.forEach((hostileCreep) => {
+            if (!squads.length) {
+                squads.push([hostileCreep]);
+            } else {
+                let found = false;
+                squads.every((squad) => {
+                    if (squad.length < 4 && squad.some((squadCreep) => hostileCreep.pos.isNearTo(squadCreep))) {
+                        squad.push(hostileCreep);
+                        found = true;
+                        return false;
+                    }
+                    return true;
+                });
+                if (!found) {
+                    squads.push([hostileCreep]);
+                }
+            }
+        });
+        return squads.map((squad) => squad.map((squadCreep) => squadCreep.id));
     }
 }

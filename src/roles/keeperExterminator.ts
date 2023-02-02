@@ -3,8 +3,8 @@ import { CombatCreep } from '../virtualCreeps/combatCreep';
 export class KeeperExterminator extends CombatCreep {
     private attacked: boolean = false;
     protected run() {
-        if (this.room.name === this.memory.assignment || this.memory.targetId) {
-            let target = Game.getObjectById(this.memory.targetId);
+        let target = Game.getObjectById(this.memory.targetId);
+        if (this.room.name === this.memory.assignment || target) {
             if (!target) {
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
