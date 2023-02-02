@@ -39,7 +39,7 @@ export class Worker extends WorkerCreep {
 
         if (
             !this.homeroom.controller.upgradeBlocked &&
-            this.homeroom.controller.ticksToDowngrade <= this.homeroom.controller.ticksToDowngradeMax / 2
+            this.homeroom.controller.ticksToDowngrade <= this.homeroom.controller.ticksToDowngradeMax * 0.75
         ) {
             return this.homeroom.controller.id;
         }
@@ -54,11 +54,11 @@ export class Worker extends WorkerCreep {
                 //@ts-expect-error
                 structure.ticksToDecay !== undefined &&
                 (structure.structureType === STRUCTURE_RAMPART
-                    ? structure.hits <= this.room.getDefenseHitpointTarget() * 0.1
+                    ? structure.hits <= Math.min(this.room.getDefenseHitpointTarget() * 0.1, 500000)
                     : structure.hits <= structure.hitsMax * 0.1)
         );
         if (decayingStructuresAtRisk.length) {
-            return this.pos.findClosestByPath(decayingStructuresAtRisk)?.id;
+            return this.pos.findClosestByRange(decayingStructuresAtRisk)?.id; //findClosestByPath was hanging up on unreachable manager rampart...
         }
 
         let repairQueue = this.homeroom.memory.repairQueue;
@@ -73,7 +73,7 @@ export class Worker extends WorkerCreep {
             return constructionSite;
         }
 
-        if (this.room.memory.needsWallRepair || this.room.controller.level === 8) {
+        if (this.room.memory.needsWallRepair) {
             let defensesToRepair = this.homeroom.find(FIND_STRUCTURES, {
                 filter: (s) => (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) && s.hits < s.hitsMax,
             });

@@ -11,6 +11,7 @@ import {
     placeRoadsToPOIs,
     cleanRoom,
     placeBunkerInnerRamparts,
+    placeBunkerCoreRamparts,
     roomNeedsCoreStructures,
     placeUpgraderLink,
 } from './roomDesign';
@@ -81,6 +82,9 @@ export function driveRoom(room: Room) {
             ) {
                 switch (room.controller.level) {
                     case 8:
+                        if (!roomNeedsCoreStructures(room)) {
+                            placeBunkerCoreRamparts(room);
+                        }
                     case 7:
                         placeUpgraderLink(room);
                     case 6:
@@ -132,19 +136,19 @@ export function driveRoom(room: Room) {
         }
 
         if (room.observer) {
-          try {
-              scanArea(room);
-          } catch (e) {
-              console.log(`Error caught running room ${room.name} for Observer: \n${e}`);
-          }
+            try {
+                scanArea(room);
+            } catch (e) {
+                console.log(`Error caught running room ${room.name} for Observer: \n${e}`);
+            }
         }
-        
+
         if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50) {
-          try {
-            room.powerSpawn.processPower();
-          } catch (e) {
-              console.log(`Error caught running room ${room.name} for PowerSpawn: \n${e}`);
-          }
+            try {
+                room.powerSpawn.processPower();
+            } catch (e) {
+                console.log(`Error caught running room ${room.name} for PowerSpawn: \n${e}`);
+            }
         }
 
         try {
@@ -152,7 +156,7 @@ export function driveRoom(room: Room) {
         } catch (e) {
             console.log(`Error caught running room ${room.name} for Labs: \n${e}`);
         }
-        
+
         try {
             runSpawning(room);
         } catch (e) {
@@ -384,7 +388,7 @@ function runSpawning(room: Room) {
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
     let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER || creep.memory.role === Role.UPGRADER).length;
     let assignments = Memory.spawnAssignments.filter((assignment) => assignment.designee === room.name);
-    let roomContainsViolentHostiles =
+    let roomUnderAttack =
         room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0 &&
         !room.controller.safeMode;
 
@@ -399,7 +403,7 @@ function runSpawning(room: Room) {
             .reduce((sum, next) => sum + next);
     }
 
-    if (roomContainsViolentHostiles) {
+    if (roomUnderAttack) {
         let protectorAssignments = assignments.filter(
             (assignment) =>
                 assignment.spawnOpts.memory.room === room.name &&
@@ -414,7 +418,7 @@ function runSpawning(room: Room) {
         });
     }
 
-    if (PopulationManagement.needsTransporter(room) && !roomContainsViolentHostiles) {
+    if (PopulationManagement.needsTransporter(room) && !roomUnderAttack) {
         let options: SpawnOptions = {
             memory: {
                 room: room.name,
@@ -425,7 +429,7 @@ function runSpawning(room: Room) {
         spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
     }
 
-    if (PopulationManagement.needsMiner(room) && (!roomContainsViolentHostiles || room.memory.layout === undefined)) {
+    if (PopulationManagement.needsMiner(room) && (!roomUnderAttack || room.memory.layout === undefined)) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
     }
@@ -448,7 +452,7 @@ function runSpawning(room: Room) {
         spawn?.spawnMineralMiner();
     }
 
-    if (workerCount >= room.workerCapacity && !roomContainsViolentHostiles) {
+    if (workerCount >= room.workerCapacity && !roomUnderAttack) {
         assignments.forEach((assignment) => {
             let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
             if (canSpawnAssignment) {
@@ -457,7 +461,7 @@ function runSpawning(room: Room) {
             }
         });
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING && room.memory.remoteMiningRooms?.length && !roomContainsViolentHostiles) {
+        if (room.energyStatus >= EnergyStatus.RECOVERING && room.memory.remoteMiningRooms?.length && !roomUnderAttack) {
             let exterminatorNeed = PopulationManagement.findExterminatorNeed(room);
             if (exterminatorNeed) {
                 let spawn = availableSpawns.pop();
@@ -490,9 +494,7 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (!roomContainsViolentHostiles || room.memory.layout === undefined) {
-        availableSpawns.forEach((spawn) => spawn.spawnWorker());
-    }
+    availableSpawns.forEach((spawn) => spawn.spawnWorker(roomUnderAttack));
 }
 
 export function findRepairTargets(room: Room): Id<Structure>[] {
