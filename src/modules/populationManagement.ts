@@ -63,7 +63,6 @@ export class PopulationManagement {
 
         let spawnUpgrader =
             canSupportAnotherWorker &&
-            !spawn.room.find(FIND_NUKES).length &&
             !INCOMING_NUKE &&
             !hasUpgrader &&
             (!roomNeedsConstruction || workers.length > 0) &&
