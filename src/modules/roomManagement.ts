@@ -220,6 +220,35 @@ function runTowers(room: Room, isRoomUnderAttack: boolean) {
             }
         }
     }
+
+    //if no defensive use for towers, repair roads
+    if (room.controller.safeMode || !isRoomUnderAttack) {
+        if (room.memory.towerRepairMap === undefined) {
+            room.memory.towerRepairMap = {};
+        }
+
+        towers.forEach((tower) => {
+            let repairQueue = room.memory.repairQueue;
+
+            if (tower.store.energy > 600) {
+                if (!room.memory.towerRepairMap[tower.id]) {
+                    let roadId = repairQueue.find((id) => Game.getObjectById(id).structureType === STRUCTURE_ROAD) as Id<StructureRoad>;
+                    room.memory.towerRepairMap[tower.id] = roadId;
+                    room.removeFromRepairQueue(roadId);
+                }
+
+                let roadToRepair = Game.getObjectById(room.memory.towerRepairMap[tower.id]);
+
+                if (roadToRepair?.hits < roadToRepair?.hitsMax) {
+                    tower.repair(roadToRepair);
+                } else {
+                    delete room.memory.towerRepairMap[tower.id];
+                }
+            } else {
+                delete room.memory.towerRepairMap[tower.id];
+            }
+        });
+    }
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {
@@ -304,6 +333,7 @@ export function initRoom(room: Room) {
         miningAssignments: {},
         mineralMiningAssignments: {},
         remoteMiningRooms: [],
+        towerRepairMap: {},
     };
 
     miningPostitions.forEach((pos) => {
