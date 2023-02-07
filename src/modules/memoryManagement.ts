@@ -277,4 +277,8 @@ function initMissingMemoryValues() {
     if (!Memory.blacklistedRooms) {
         Memory.blacklistedRooms = [];
     }
+
+    if (!Memory.visionRequests) {
+        Memory.visionRequests = [];
+    }
 }
