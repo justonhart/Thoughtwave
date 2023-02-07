@@ -41,7 +41,8 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
 };
 
 export class PopulationManagement {
-    static spawnWorker(spawn: StructureSpawn, roomContainsViolentHostiles?: boolean): ScreepsReturnCode {
+    static spawnWorker(spawn: StructureSpawn, roomUnderAttack?: boolean): ScreepsReturnCode {
+        const INCOMING_NUKE = spawn.room.find(FIND_NUKES).length > 0;
         let workers = spawn.room.creeps.filter((creep) => creep.memory.role === Role.WORKER);
         let hasUpgrader = spawn.room.creeps.some((c) => c.memory.role === Role.UPGRADER);
         let roomNeedsConstruction =
@@ -50,7 +51,7 @@ export class PopulationManagement {
         let workerCount = workers.length + (hasUpgrader ? 1 : 0);
 
         let options: SpawnOptions = {
-            boosts: roomContainsViolentHostiles ? [BoostType.BUILD] : [],
+            boosts: roomUnderAttack || INCOMING_NUKE ? [BoostType.BUILD] : [],
             memory: {
                 room: spawn.room.name,
                 role: Role.WORKER,
@@ -59,11 +60,12 @@ export class PopulationManagement {
 
         // Increase during siege for more repair creeps
         let canSupportAnotherWorker =
-            workerCount < spawn.room.workerCapacity + (roomContainsViolentHostiles && spawn.room.workerCapacity < 3 ? 1 : 0);
+            workerCount < spawn.room.workerCapacity + ((roomUnderAttack || INCOMING_NUKE) && spawn.room.workerCapacity < 3 ? 1 : 0);
 
         let spawnUpgrader =
+            !roomUnderAttack &&
             canSupportAnotherWorker &&
-            !spawn.room.find(FIND_NUKES).length &&
+            !INCOMING_NUKE &&
             !hasUpgrader &&
             (!roomNeedsConstruction || workers.length > 0) &&
             !roomNeedsCoreStructures(spawn.room);

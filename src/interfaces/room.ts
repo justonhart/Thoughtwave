@@ -22,6 +22,7 @@ interface RoomMemory {
     shipments?: Shipment[];
     factoryTask?: FactoryTask;
     scanProgress?: string;
+    towerRepairMap?: { [towerId: string]: Id<StructureRoad> }; //maps towerId to roadId
 }
 
 interface RemoteData {

@@ -364,6 +364,23 @@ export function placeBunkerInnerRamparts(room: Room) {
     }
 }
 
+export function placeBunkerCoreRamparts(room: Room) {
+    let anchor = posFromMem(room.memory.anchorPoint);
+
+    if (anchor) {
+        let topLeft = new RoomPosition(anchor.x - 3, anchor.y - 3, room.name);
+        let placed = 0;
+        for (let xDif = 0; xDif <= 6 && placed < 5; xDif++) {
+            for (let yDif = 0; yDif <= 6 && placed < 5; yDif++) {
+                let result = room.createConstructionSite(topLeft.x + xDif, topLeft.y + yDif, STRUCTURE_RAMPART);
+                if (result === OK) {
+                    placed++;
+                }
+            }
+        }
+    }
+}
+
 export function placeMinerLinks(room: Room) {
     if (room.managerLink) {
         Object.keys(room.memory.miningAssignments)
