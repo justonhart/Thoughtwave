@@ -266,8 +266,8 @@ function runHomeSecurity(homeRoom: Room): boolean {
         return false; // Closest Creeps in BunkerLayout have to be in a range of 12 if they want to hit the ramparts in any way
     }
 
-    // No Towers yet so spawn a protector with heal which can then kite the invader around
-    if (hostileCreepData.creeps.length && homeRoom.controller.level === 2) {
+    // No Towers and/or ramparts yet so spawn a minimum protector with heal which can then kite the invader around
+    if (hostileCreepData.creeps.length && homeRoom.controller.level < 4) {
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (!currentNumProtectors) {
             Memory.spawnAssignments.push({
@@ -286,9 +286,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
         return false;
     }
 
-    let minNumHostileCreeps = homeRoom.controller.level < 4 ? 1 : 2;
-
-    if (hostileCreepData.creeps.length >= minNumHostileCreeps) {
+    if (hostileCreepData.creeps.length >= 2) {
         // Spawn multiple rampartProtectors based on the number of enemy hostiles
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (
