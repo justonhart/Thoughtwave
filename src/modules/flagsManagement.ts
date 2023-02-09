@@ -1,4 +1,4 @@
-import { addHostileRoom, unclaimRoom } from './memoryManagement';
+import { addHostileRoom, unclaimRoom } from './data';
 import { addOperation } from './operationsManagement';
 
 export default function manageFlags() {

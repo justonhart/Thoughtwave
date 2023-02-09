@@ -22,6 +22,8 @@ export function manageMemory() {
 
     global.roomConstructionsChecked = false;
 
+    global.visionRequestIncrement = 1;
+
     deleteExpiredRoomData();
 
     let needToInitIntershard = !JSON.parse(InterShardMemory.getLocal())?.outboundCreeps;
@@ -38,7 +40,7 @@ export function manageMemory() {
     if (!Memory.priceMap || Game.time % 20000 === 0) {
         Memory.priceMap = getPriceMap();
     }
-
+    mangeVisionRequests();
     manageOperations();
     cleanSpawnAssignments();
 }
@@ -192,34 +194,6 @@ function cleanIntershardOutboundList() {
     }
 }
 
-export function unclaimRoom(roomName: string) {
-    let room = Game.rooms[roomName];
-
-    if (room?.controller?.my) {
-        room.controller.unclaim();
-    }
-
-    if (room?.find(FIND_MY_CONSTRUCTION_SITES).length) {
-        room.find(FIND_MY_CONSTRUCTION_SITES).forEach((site) => site.remove());
-    }
-
-    Memory.operations = Memory.operations.filter((op) => op.targetRoom !== roomName);
-    Memory.spawnAssignments = Memory.spawnAssignments.filter(
-        (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
-    );
-
-    let roomCreeps = Object.values(Game.creeps).filter((c) => c.memory.room === roomName);
-    roomCreeps.forEach((creep) => {
-        // delete creep memory to prevent automatic updates in memory management
-        delete Memory.creeps[creep.name];
-        creep.suicide();
-    });
-
-    Memory.rooms[roomName].unclaim = true;
-
-    return 'done';
-}
-
 //remove assignments to rooms that cannot spawn
 function cleanSpawnAssignments() {
     Memory.spawnAssignments = Memory.spawnAssignments.filter(
@@ -235,14 +209,6 @@ function getPriceMap(): { [resourceType: string]: number } {
     });
 
     return map;
-}
-
-export function addHostileRoom(roomName: string) {
-    if (!Memory.roomData[roomName]) {
-        Memory.roomData[roomName] = { hostile: true, asOf: Game.time };
-    }
-    Memory.roomData[roomName].hostile = true;
-    Memory.roomData[roomName].asOf = Game.time;
 }
 
 function initMissingMemoryValues() {
@@ -279,6 +245,27 @@ function initMissingMemoryValues() {
     }
 
     if (!Memory.visionRequests) {
-        Memory.visionRequests = [];
+        Memory.visionRequests = {};
     }
+}
+
+function mangeVisionRequests() {
+    let observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room].observer);
+
+    Object.keys(Memory.visionRequests).forEach((requestId) => {
+        let request = Memory.visionRequests[requestId];
+        if (request.completed) {
+            delete Memory.visionRequests[requestId];
+            return;
+        }
+
+        if (!request.assigned) {
+            let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 10);
+            if (suitableRoom) {
+                Memory.rooms[suitableRoom].visionRequests.push(requestId);
+                Memory.visionRequests[requestId].assigned = true;
+            }
+            return;
+        }
+    });
 }

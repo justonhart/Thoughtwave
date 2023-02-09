@@ -1,4 +1,4 @@
-import { posFromMem } from './data';
+import { addVisionRequest, posFromMem } from './data';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
 import { getSpawnPos, placeBunkerConstructionSites, roomNeedsCoreStructures } from './roomDesign';
@@ -450,12 +450,12 @@ function manageQuadAttackRoomOperation(op: Operation) {
 
             if (!Game.rooms[op.targetRoom]) {
                 //request visibility into target room
-                if (!Memory.visionRequests.some((rq) => rq.targetRoom === op.targetRoom)) {
+                if (!op.visionRequests) {
                     let visionRequest: VisionRequest = {
                         targetRoom: op.targetRoom,
                     };
 
-                    Memory.visionRequests.push(visionRequest);
+                    op.visionRequests = [addVisionRequest(visionRequest)];
                 }
             } else {
                 //use visibility in target room to calculate hits

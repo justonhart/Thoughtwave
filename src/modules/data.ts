@@ -100,3 +100,46 @@ export function isCenterRoom(roomName: string) {
         .map((num) => parseInt(num) % 10 === 5)
         .reduce((last, next) => last && next);
 }
+
+export function addHostileRoom(roomName: string) {
+    if (!Memory.roomData[roomName]) {
+        Memory.roomData[roomName] = { hostile: true, asOf: Game.time };
+    }
+    Memory.roomData[roomName].hostile = true;
+    Memory.roomData[roomName].asOf = Game.time;
+}
+
+export function unclaimRoom(roomName: string) {
+    let room = Game.rooms[roomName];
+
+    if (room?.controller?.my) {
+        room.controller.unclaim();
+    }
+
+    if (room?.find(FIND_MY_CONSTRUCTION_SITES).length) {
+        room.find(FIND_MY_CONSTRUCTION_SITES).forEach((site) => site.remove());
+    }
+
+    Memory.operations = Memory.operations.filter((op) => op.targetRoom !== roomName);
+    Memory.spawnAssignments = Memory.spawnAssignments.filter(
+        (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
+    );
+
+    let roomCreeps = Object.values(Game.creeps).filter((c) => c.memory.room === roomName);
+    roomCreeps.forEach((creep) => {
+        // delete creep memory to prevent automatic updates in memory management
+        delete Memory.creeps[creep.name];
+        creep.suicide();
+    });
+
+    Memory.rooms[roomName].unclaim = true;
+
+    return 'done';
+}
+
+//returns id
+export function addVisionRequest(request: VisionRequest): string {
+    let requestId = `${Game.time}_${visionRequestIncrement++}`;
+    Memory.visionRequests[requestId] = request;
+    return requestId;
+}

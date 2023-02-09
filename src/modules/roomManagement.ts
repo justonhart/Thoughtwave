@@ -136,10 +136,21 @@ export function driveRoom(room: Room) {
         }
 
         if (room.observer) {
-            try {
-                scanArea(room);
-            } catch (e) {
-                console.log(`Error caught running room ${room.name} for Observer: \n${e}`);
+            let visionRequestId = room.memory.visionRequests.find(
+                (rq) => !Memory.visionRequests[rq].onTick || Memory.visionRequests[rq].onTick === Game.time + 1
+            );
+            if (visionRequestId) {
+                try {
+                    runVisionRequest(room, visionRequestId);
+                } catch (e) {
+                    console.log(`Error caught running room ${room.name} for Observer request: \n${e}`);
+                }
+            } else {
+                try {
+                    scanArea(room);
+                } catch (e) {
+                    console.log(`Error caught running room ${room.name} for Observer scanning: \n${e}`);
+                }
             }
         }
 
@@ -700,4 +711,12 @@ function computeRoomNameFromDiff(startingRoomName: string, xDiff: number, yDiff:
             }
         })
         .reduce((sum, next) => sum + next);
+}
+
+function runVisionRequest(room: Room, requestId: string) {
+    let result = room.observer.observeRoom(Memory.visionRequests[requestId].targetRoom);
+    if (result === OK) {
+        Memory.visionRequests[requestId].completed = true;
+        room.memory.visionRequests = room.memory.visionRequests.filter((rq) => rq !== requestId);
+    }
 }
