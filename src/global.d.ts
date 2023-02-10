@@ -12,6 +12,8 @@ declare global {
 
     //resource maps to first qualifying purchase order
     var qualifyingMarketOrders: { [resource: string]: string };
+
+    var visionRequestIncrement: number;
 }
 
 export {};

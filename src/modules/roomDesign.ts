@@ -42,7 +42,11 @@ export function findBunkerLocation(room: Room): RoomPosition {
                     if (valid) {
                         anchorPoint = lookPos;
                         drawBunker(anchorPoint);
-                        drawRoadsToPOIs(room, anchorPoint);
+                        try {
+                            drawRoadsToPOIs(room, anchorPoint);
+                        } catch (e) {
+                            console.log('error drawing');
+                        }
                     }
                 }
             }
@@ -221,7 +225,12 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
 
         pois.push(...room.find(FIND_MINERALS));
         pois.push(room.controller);
-        pois.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
+
+        if (Memory.rooms[room.name]) {
+            pois.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
+        } else {
+            pois.push(...room.find(FIND_SOURCES).map((s) => s.pos));
+        }
 
         let storagePos = new RoomPosition(anchorPos.x + 1, anchorPos.y - 1, anchorPos.roomName);
         let roadPositions = [];
@@ -242,7 +251,9 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
 
         roadPositions.push(...room.find(FIND_MY_CONSTRUCTION_SITES).filter((site) => site.structureType === STRUCTURE_ROAD));
 
-        blockedPositions.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
+        if (Memory.rooms[room.name]) {
+            blockedPositions.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
+        }
 
         let findPathToStorage = (poi: RoomPosition | Mineral | StructureController) => {
             let range: number;
@@ -259,6 +270,7 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
                 plainCost: 3,
                 swampCost: 5,
                 ignoreDestructibleStructures: true,
+                ignoreRoads: true,
                 ignoreCreeps: true,
                 range: range,
                 costCallback: function (roomName, costMatrix) {
@@ -275,14 +287,24 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
             return path;
         };
 
-        let sourcePaths = Object.keys(room.memory.miningAssignments).map((pos) => findPathToStorage(posFromMem(pos)));
+        let sourcePaths;
+        if (Memory.rooms[room.name]) {
+            sourcePaths = Object.keys(room.memory.miningAssignments).map((pos) => findPathToStorage(posFromMem(pos)));
+        } else {
+            sourcePaths = room
+                .find(FIND_SOURCES)
+                .map((s) => s.pos)
+                .map((pos) => findPathToStorage(pos));
+        }
         let avgEnergyToStorageDistance = sourcePaths.map((path) => path.length).reduce((sum, next) => sum + next, 0) / sourcePaths.length;
-
-        room.memory.energyDistance = avgEnergyToStorageDistance;
 
         let controllerPath = findPathToStorage(room.controller);
         let controllerDistance = controllerPath.length;
-        room.memory.controllerDistance = controllerDistance;
+
+        if (Memory.rooms[room.name]) {
+            room.memory.energyDistance = avgEnergyToStorageDistance;
+            room.memory.controllerDistance = controllerDistance;
+        }
 
         let mineralPath = findPathToStorage(room.find(FIND_MINERALS)[0]);
 
