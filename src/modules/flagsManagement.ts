@@ -1,5 +1,6 @@
-import { addHostileRoom, unclaimRoom } from './data';
+import { addHostileRoom, addVisionRequest, unclaimRoom } from './data';
 import { addOperation } from './operationsManagement';
+import { findBunkerLocation } from './roomDesign';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
@@ -210,5 +211,12 @@ export default function manageFlags() {
         }
         addOperation(OperationType.CLEAN, Game.flags.clean.pos.roomName, opts);
         Game.flags.clean.remove();
+    }
+
+    if (Game.flags.layout) {
+        addVisionRequest({ targetRoom: Game.flags.layout.pos.roomName });
+        if (Game.rooms[Game.flags.layout.pos.roomName]) {
+            findBunkerLocation(Game.rooms[Game.flags.layout.pos.roomName]);
+        }
     }
 }
