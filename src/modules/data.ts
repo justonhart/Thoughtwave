@@ -138,8 +138,14 @@ export function unclaimRoom(roomName: string) {
 }
 
 //returns id
-export function addVisionRequest(request: VisionRequest): string {
-    let requestId = `${Game.time}_${visionRequestIncrement++}`;
-    Memory.visionRequests[requestId] = request;
-    return requestId;
+export function addVisionRequest(request: VisionRequest): string | ScreepsReturnCode {
+    let observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room].observer);
+    let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 5);
+    if (suitableRoom) {
+        let requestId = `${Game.time}_${visionRequestIncrement++}`;
+        Memory.visionRequests[requestId] = request;
+        return requestId;
+    } else {
+        return ERR_NOT_FOUND;
+    }
 }

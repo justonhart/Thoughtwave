@@ -260,7 +260,7 @@ function mangeVisionRequests() {
         }
 
         if (!request.assigned) {
-            let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 10);
+            let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 5);
             if (suitableRoom) {
                 Memory.rooms[suitableRoom].visionRequests.push(requestId);
                 Memory.visionRequests[requestId].assigned = true;

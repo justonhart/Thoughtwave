@@ -214,8 +214,11 @@ export default function manageFlags() {
     }
 
     if (Game.flags.layout) {
-        addVisionRequest({ targetRoom: Game.flags.layout.pos.roomName });
-        if (Game.rooms[Game.flags.layout.pos.roomName]) {
+        let result = addVisionRequest({ targetRoom: Game.flags.layout.pos.roomName });
+
+        if (result === ERR_NOT_FOUND) {
+            console.log('No observers in range');
+        } else if (Game.rooms[Game.flags.layout.pos.roomName]) {
             findBunkerLocation(Game.rooms[Game.flags.layout.pos.roomName]);
         }
     }
