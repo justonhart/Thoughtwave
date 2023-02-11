@@ -47,6 +47,7 @@ interface RoomData {
     owner?: string;
     hostile?: boolean;
     roomLevel?: number;
+    roads?: { [pos: string]: string }; // RoomPosition: coordinates separated by delimiter
 }
 
 const enum RoomMemoryStatus {

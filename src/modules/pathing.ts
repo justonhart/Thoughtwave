@@ -92,6 +92,7 @@ export class Pathing {
         if (destination.toMemSafe() !== creep.memory._m.destination) {
             delete creep.memory._m.path;
             creep.memory._m.repath = 0;
+            creep.memory._m.previousDestination = creep.memory._m.destination;
             creep.memory._m.destination = destination.toMemSafe();
         }
 
@@ -164,6 +165,10 @@ export class Pathing {
             }
 
             creep.memory._m.path = Pathing.serializePath(creep.pos, pathFinder.path, { color: opts.pathColor, lineStyle: 'dashed' });
+            // Get all roomPositions along the path
+            if (opts.pathsRoomPositions?.length === 0) {
+                Array.prototype.push.apply(opts.pathsRoomPositions, pathFinder.path);
+            }
             creep.memory._m.stuckCount = 0;
         }
 
@@ -388,6 +393,11 @@ export class Pathing {
 
                 // All tiles will be set to one if there is a road construction so that it counts as a finished road
                 if (options.preferRoadConstruction) {
+                    if (Memory.roomData[room.name].roads) {
+                        Object.values(Memory.roomData[room.name].roads).forEach((road) =>
+                            road.split(',').forEach((pos) => matrix.set(parseInt(pos.split(':')[0]), parseInt(pos.split(':')[1]), 1))
+                        ); // Include road in memory even if not yet build
+                    }
                     room.find(FIND_MY_CONSTRUCTION_SITES, { filter: (struct) => struct.structureType === STRUCTURE_ROAD }).forEach((struct) =>
                         matrix.set(struct.pos.x, struct.pos.y, 1)
                     );

@@ -75,6 +75,10 @@ interface TravelToOpts extends PathFinderOpts {
      * Do no allow creep to push other creeps when stuck
      */
     noPush?: Priority;
+    /**
+     * Retrieve paths roomPositions
+     */
+    pathsRoomPositions?: RoomPosition[];
 }
 
 interface CustomMatrixCost {
@@ -89,6 +93,7 @@ interface CustomMatrixCost {
 interface TravelState {
     lastCoord?: string;
     destination?: string;
+    previousDestination?: string;
     path?: string;
     stuckCount?: number;
     repath?: number;
