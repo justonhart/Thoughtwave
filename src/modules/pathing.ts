@@ -638,7 +638,7 @@ export class Pathing {
                     obstacleCreep.memory._m = { repath: 0 };
                 }
                 obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
-                return Pathing.moveObstacleCreep(obstacleCreep, nextDirection);
+                return Pathing.moveObstacleCreep(obstacleCreep, obstacleCreep.pos.getDirectionTo(creep));
             }
         }
         return false;
