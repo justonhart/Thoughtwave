@@ -93,7 +93,6 @@ interface CustomMatrixCost {
 interface TravelState {
     lastCoord?: string;
     destination?: string;
-    previousDestination?: string;
     path?: string;
     stuckCount?: number;
     repath?: number;

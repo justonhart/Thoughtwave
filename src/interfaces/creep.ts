@@ -23,6 +23,7 @@ interface CreepMemory {
     scout?: ScoutMemory;
     combat?: CombatMemory;
     nextRole?: Role;
+    storeRoadInMemory?: Id<StructureContainer>;
 }
 
 interface Creep {
