@@ -390,8 +390,8 @@ export class Pathing {
                         });
                 }
 
-                // All tiles will be set to one if there is a road construction so that it counts as a finished road
-                if (options.preferRoadConstruction) {
+                // All tiles will be set to one if there is a road construction so that it counts as a finished road.
+                if (options.preferRoadConstruction && options.ignoreCreeps) {
                     // Include road in memory even if not yet build
                     if (Memory.roomData[room.name].roads) {
                         Object.values(Memory.roomData[room.name].roads).forEach((road) =>
