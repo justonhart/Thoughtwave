@@ -75,6 +75,10 @@ interface TravelToOpts extends PathFinderOpts {
      * Do no allow creep to push other creeps when stuck
      */
     noPush?: Priority;
+    /**
+     * Retrieve paths roomPositions
+     */
+    pathsRoomPositions?: RoomPosition[];
 }
 
 interface CustomMatrixCost {

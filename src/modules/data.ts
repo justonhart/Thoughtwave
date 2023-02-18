@@ -80,6 +80,16 @@ export function deleteExpiredRoomData() {
         });
 }
 
+export function deleteExpiredRoadData() {
+    Object.keys(Memory.roomData)
+        .filter((roomName) => Memory.roomData[roomName].roads)
+        .map((roomName) =>
+            Object.keys(Memory.roomData[roomName].roads)
+                .filter((containerId) => !Game.getObjectById(containerId))
+                .forEach((containerId) => delete Memory.roomData[roomName].roads[containerId])
+        );
+}
+
 export function isKeeperRoom(roomName: string) {
     return (
         !isCenterRoom(roomName) &&

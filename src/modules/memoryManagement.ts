@@ -1,4 +1,4 @@
-import { deleteExpiredRoomData } from './data';
+import { deleteExpiredRoadData, deleteExpiredRoomData } from './data';
 import { manageOperations } from './operationsManagement';
 import { getAllRoomNeeds } from './resourceManagement';
 
@@ -25,6 +25,9 @@ export function manageMemory() {
     global.visionRequestIncrement = 1;
 
     deleteExpiredRoomData();
+    if (Game.time % 100 === 0) {
+        deleteExpiredRoadData();
+    }
 
     let needToInitIntershard = !JSON.parse(InterShardMemory.getLocal())?.outboundCreeps;
     if (needToInitIntershard) {
