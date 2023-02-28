@@ -55,7 +55,7 @@ export class Gatherer extends TransportCreep {
                 (this.memory.storeRoadInMemory && !Memory.roomData[this.pos.roomName].roads[this.memory.storeRoadInMemory])
         );
         // Going back to storage
-        if (posFromMem(this.memory._m.destination)?.roomName === this.memory.room && this.memory.storeRoadInMemory) {
+        if (posFromMem(this.memory._m.destination)?.roomName === this.memory.room && roomPositions.length) {
             this.storeRoadInMemory(roomPositions);
         }
         this.repairRoad();
@@ -63,16 +63,15 @@ export class Gatherer extends TransportCreep {
 
     protected storeRoadInMemory(roomPositions: RoomPosition[]) {
         roomPositions
-            ?.filter((pos) => pos.x < 49 && pos.y < 49 && pos.x > 0 && pos.y > 0)
-            .filter((pos) => Game.rooms[pos.roomName]) // only store in memroy when visible
+            ?.filter((pos) => pos.x < 49 && pos.y < 49 && pos.x > 0 && pos.y > 0) // only store in memory when visible, not on edge, and doesnt yet have anything for that path
             .forEach((pos) => {
                 if (!Memory.roomData[pos.roomName].roads) {
                     Memory.roomData[pos.roomName].roads = {};
                 }
                 // Initialize new road path
                 if (!Memory.roomData[pos.roomName].roads[this.memory.storeRoadInMemory]) {
-                    if (!this.onEdge() && this.pos.roomName === pos.roomName) {
-                        // only for first pos from container instead of when entering new room
+                    // only for first pos from container instead of when entering new room
+                    if (this.pos.roomName === pos.roomName) {
                         Memory.roomData[pos.roomName].roads[this.memory.storeRoadInMemory] = `${this.pos.x}:${this.pos.y},`;
                     } else {
                         Memory.roomData[pos.roomName].roads[this.memory.storeRoadInMemory] = '';
