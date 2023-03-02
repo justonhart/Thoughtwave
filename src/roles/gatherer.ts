@@ -52,7 +52,9 @@ export class Gatherer extends TransportCreep {
         let roomPositions = [];
         roomPositions = this.storeCargo(
             !Memory.roomData[this.pos.roomName].roads ||
-                (this.memory.storeRoadInMemory && !Memory.roomData[this.pos.roomName].roads[this.memory.storeRoadInMemory])
+                (this.memory.storeRoadInMemory &&
+                    !Memory.roomData[this.pos.roomName].roads[this.memory.storeRoadInMemory] &&
+                    this.pos.isNearTo(Game.getObjectById(this.memory.storeRoadInMemory)))
         );
         // Going back to storage
         if (posFromMem(this.memory._m.destination)?.roomName === this.memory.room && roomPositions.length) {
