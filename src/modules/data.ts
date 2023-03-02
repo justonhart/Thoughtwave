@@ -82,8 +82,8 @@ export function deleteExpiredRoomData() {
 
 export function deleteExpiredRoadData() {
     Object.keys(Memory.roomData)
-        .filter((roomName) => Memory.roomData[roomName].roads)
-        .map((roomName) =>
+        .filter((roomName) => Game.rooms[roomName] && Memory.roomData[roomName].roads)
+        .forEach((roomName) =>
             Object.keys(Memory.roomData[roomName].roads)
                 .filter((containerId) => !Game.getObjectById(containerId))
                 .forEach((containerId) => delete Memory.roomData[roomName].roads[containerId])

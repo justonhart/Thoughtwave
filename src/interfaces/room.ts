@@ -85,6 +85,7 @@ interface Room {
 
 interface RoomPosition {
     toMemSafe(): string;
+    neighbors(includeDiagonal?: boolean, includeCenter?: boolean): RoomPosition[];
 }
 
 const enum PhaseShiftStatus {

@@ -8,6 +8,35 @@ RoomPosition.prototype.toMemSafe = function (this: RoomPosition): string {
     return `${this.x}.${this.y}.${this.roomName}`;
 };
 
+RoomPosition.prototype.neighbors = function (this: RoomPosition, includeDiagonal: boolean = true, includeCenter: boolean = false): RoomPosition[] {
+    const adjacentPositions = [];
+
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            if ((!includeCenter && dx === 0 && dy === 0) || (!includeDiagonal && dx !== 0 && dy !== 0)) {
+                // Skip the current position
+                continue;
+            }
+
+            const adjX = this.x + dx;
+            const adjY = this.y + dy;
+
+            // Check if the adjacent position is in the room
+            if (adjX < 0 || adjX > 49 || adjY < 0 || adjY > 49) {
+                continue;
+            }
+
+            // Create a new RoomPosition object for the adjacent position
+            const adjPos = new RoomPosition(adjX, adjY, this.roomName);
+
+            // Add the adjacent position to the list of adjacent positions
+            adjacentPositions.push(adjPos);
+        }
+    }
+
+    return adjacentPositions;
+};
+
 Room.prototype.getRepairTarget = function (this: Room): Id<Structure> {
     let targets = this.memory.repairQueue;
 

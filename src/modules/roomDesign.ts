@@ -1,4 +1,6 @@
 import { posFromMem } from './data';
+import { minCutWalls } from './minCut';
+import { Pathing } from './pathing';
 
 export function calculateRoomSpace(room: Room) {
     let totalWorkableSpace = 46 * 46;
@@ -584,3 +586,522 @@ export function cleanRoom(room: Room) {
         });
     }
 }
+
+//-----------------STAMP DESIGN----------------------------------------------------
+export function findStampLocation(room: Room) {
+    if (Game.cpu.bucket < 600) {
+        console.log('cpu bucket too low');
+        // TODO: schedule for future tick?
+        return;
+    }
+    const terrain = Game.map.getRoomTerrain(room.name);
+    const poiAvg = findPoiAverage(room);
+    let starCenter = new RoomPosition(poiAvg.x - 1, poiAvg.y + 1, room.name);
+    const stamps = {
+        center: [],
+        extension: [],
+        lab: [],
+        storage: [],
+        container: [],
+        link: [],
+        tower: [],
+        observer: [],
+        powerspawn: [],
+        rampart: [],
+        road: [],
+    };
+    // Block all available spots around sources for link and extension (road on link to maximize extensions)
+    findBestMiningPostitions(room, terrain).forEach((bestSpot) => {
+        stamps['container'].push(bestSpot.pos);
+        stamps['link'].push(bestSpot.adjacentSpaces.shift());
+        stamps['extension'] = stamps['extension'].concat(bestSpot.adjacentSpaces);
+    });
+
+    const minerExtensions = stamps['extension'].concat(stamps['container']).concat(stamps['link']);
+
+    let targetPositions = [];
+    let roadPositions = [];
+    setCenterPositions(starCenter, targetPositions, roadPositions);
+    let valid =
+        !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
+        !containsStamp(stamps, targetPositions) &&
+        !containsNonRoadStamp(stamps, roadPositions);
+
+    if (!valid) {
+        for (let lookDistance = 1; lookDistance < 50; lookDistance++) {
+            let lookPos: RoomPosition;
+            let x: number, y: number;
+
+            for (y = starCenter.y - lookDistance; y <= starCenter.y + lookDistance && !valid; y++) {
+                for (x = starCenter.x - lookDistance; x <= starCenter.x + lookDistance && !valid; x++) {
+                    if (y > starCenter.y - lookDistance && y < starCenter.y + lookDistance && x > starCenter.x - lookDistance) {
+                        x = starCenter.x + lookDistance;
+                    }
+
+                    // since the square is 7 wide, the center must be at least 3 tiles away from edges (cant build on x/y = 0/49 or in front of exits)
+                    if (x > 4 && x < 45 && y > 4 && y < 45) {
+                        lookPos = new RoomPosition(x, y, starCenter.roomName);
+                        targetPositions = [];
+                        roadPositions = [];
+                        setCenterPositions(lookPos, targetPositions, roadPositions);
+                        valid =
+                            !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
+                            !containsStamp(stamps, targetPositions) &&
+                            !containsNonRoadStamp(stamps, roadPositions);
+                    }
+                    if (valid) {
+                        starCenter = lookPos;
+                        stamps['center'] = stamps['center'].concat(targetPositions); // TODO: remove and instead add stuff to extensions, managerPos, container, spawner
+                        stamps['road'] = stamps['road'].concat(roadPositions);
+                    }
+                }
+            }
+        }
+    } else {
+        stamps['center'] = stamps['storage'].concat(targetPositions);
+        stamps['road'] = stamps['road'].concat(roadPositions);
+    }
+
+    if (valid) {
+        bfs(starCenter, stamps, terrain);
+        stamps['container'].forEach((pos) => addRoadToPois(pos, stamps, room.name));
+        const isWall = ([x, y]) => terrain.get(x, y) === TERRAIN_MASK_WALL;
+        const isCenter = ([x, y]) => x > 1 && x < 48 && y > 1 && y < 48 && isInRange(stamps, new RoomPosition(x, y, room.name), minerExtensions); // Cant build on edges and try to keep 2 away from ramparts so structures cant be hit (could change it to simply put ramparts on those structures)
+        minCutWalls({ isWall, isCenter }).forEach(([x, y]) => stamps['rampart'].push(new RoomPosition(x, y, room.name)));
+        drawLayout(Game.rooms[room.name].visual, stamps);
+    }
+}
+
+/**
+ * Ensure ramparts are 3 tiles away from structures unless it is on the edge. In that case we need to put ramparts on the structures that are in range
+ * @param currentStamps
+ * @param pos
+ * @param minerExtensions
+ * @returns
+ */
+function isInRange(currentStamps: { [type: string]: RoomPosition[] }, pos: RoomPosition, minerExtensions: RoomPosition[]): boolean {
+    return []
+        .concat(
+            ...Object.entries(currentStamps)
+                .filter(([key, currentStamps]) => key !== 'road')
+                .map(([key, currentStamps]) => currentStamps)
+        )
+        .some((value) => !minerExtensions.some((ext) => Pathing.sameCoord(value, ext)) && value.getRangeTo(pos) < 3);
+}
+
+/**
+ * Fill the targetPositions and roadPositions for the center stamp
+ * @param starCenter
+ * @param targetPositions
+ * @param roadPositions
+ */
+function setCenterPositions(starCenter: RoomPosition, targetPositions: RoomPosition[], roadPositions: RoomPosition[]) {
+    const radius = 3;
+    for (let dx = -radius; dx <= radius; dx++) {
+        for (let dy = -radius; dy <= radius; dy++) {
+            // Exclude corners
+            if (
+                !(dx === -radius && dy === -radius) &&
+                !(dx === radius && dy === -radius) &&
+                !(dx === -radius && dy === radius) &&
+                !(dx === radius && dy === radius)
+            ) {
+                // Roads around center
+                if (dx === -radius || dx === radius || dy === -radius || dy === radius) {
+                    roadPositions.push(new RoomPosition(starCenter.x + dx, starCenter.y + dy, starCenter.roomName));
+                } else {
+                    targetPositions.push(new RoomPosition(starCenter.x + dx, starCenter.y + dy, starCenter.roomName));
+                }
+            }
+        }
+    }
+}
+
+function hasWalls(terrain: RoomTerrain, positions: RoomPosition[]) {
+    return positions.some((pos) => terrain.get(pos.x, pos.y) === TERRAIN_MASK_WALL);
+}
+
+function containsStamp(currentStamps: { [type: string]: RoomPosition[] }, targetPositions: RoomPosition[]): boolean {
+    return [].concat(...Object.values(currentStamps)).some((value) => targetPositions.some((targetPos) => Pathing.sameCoord(value, targetPos)));
+}
+
+function containsNonRoadStamp(currentStamps: { [type: string]: RoomPosition[] }, targetPositions: RoomPosition[]): boolean {
+    return []
+        .concat(
+            ...Object.entries(currentStamps)
+                .filter(([key, currentStamps]) => key !== 'road')
+                .map(([key, currentStamps]) => currentStamps)
+        )
+        .some((value) => targetPositions.some((targetPos) => Pathing.sameCoord(value, targetPos)));
+}
+
+function drawLayout(roomVisual: RoomVisual, stamps: { [type: string]: RoomPosition[] }) {
+    Object.entries(stamps).forEach(([type, positions]) => {
+        let color = '#123456';
+        switch (type) {
+            case 'extension':
+                color = '#FFFF00'; // Yellow
+                break;
+            case 'container':
+                color = '#FF0000'; // Red
+                break;
+            case 'storage':
+                color = '#00008B'; // Blue
+                break;
+            case 'lab':
+                color = '#FFFFFF'; // White
+                break;
+            case 'tower':
+                color = '#800080'; // Purple
+                break;
+            case 'link':
+                color = '#000000'; // Black
+                break;
+            case 'powerspawn':
+                color = '#A52A2A'; // Brown
+                break;
+            case 'observer':
+                color = '#006400'; // Green
+                break;
+            case 'rampart':
+                color = '#0a035c'; // Dark Blue
+                break;
+        }
+
+        if (type !== 'road') {
+            positions.forEach((pos) => roomVisual.circle(pos.x, pos.y, { radius: 0.4, fill: color, stroke: '#ffffff' }));
+        } else {
+            for (let i = 0; i < positions.length; i++) {
+                for (let j = i + 1; j < positions.length; j++) {
+                    if (positions[i].inRangeTo(positions[j], 1)) {
+                        roomVisual.line(positions[i], positions[j], { width: 0.3, opacity: 0.8, lineStyle: 'solid' });
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ensures all positions are inside the room with 6 tiles away from the exit. This still allows for roads + ramparts in front of the exit and a buffer zone between structures so they cannot get hit
+function positionsInBoundary(positions: RoomPosition[]): boolean {
+    return !positions.some((pos) => pos.x < 5 || pos.y < 5 || pos.x > 44 || pos.y > 44);
+}
+
+function bfs(startPos: RoomPosition, stamps: { [type: string]: RoomPosition[] }, terrain: RoomTerrain): void {
+    let visited: Set<string> = new Set();
+    let queue: RoomPosition[] = [startPos];
+
+    // subtract miner length from extensions because for each miner a road will later on which decreases the amount of extensions around the miner
+    while (queue.length > 0 && (stamps['extension'].length - stamps['container'].length < 56 || !stamps['storage'].length || !stamps['lab'].length)) {
+        const pos: RoomPosition = queue.shift()!;
+
+        // Mark the position as visited
+        visited.add(pos.toString());
+
+        // Add the unvisited neighbors to the queue
+        pos.neighbors(false)
+            .filter(
+                (neighborPos) =>
+                    positionsInBoundary([neighborPos]) &&
+                    !visited.has(neighborPos.toString()) &&
+                    terrain.get(neighborPos.x, neighborPos.y) !== TERRAIN_MASK_WALL
+            )
+            .forEach((neighborPos) => {
+                // Add the neighbor to the queue
+                queue.push(neighborPos);
+            });
+        // skip if it already has a structure on it
+        if (containsStamp(stamps, [pos])) {
+            continue;
+        }
+
+        // Resource Management
+        if (!stamps['storage'].length) {
+            const targetPositions = [];
+            const roadPositions = [];
+            for (let dx = -1; dx <= 2; dx++) {
+                for (let dy = -1; dy <= 3; dy++) {
+                    // Exclude corners
+                    if (!(dx === -1 && dy === -1) && !(dx === -1 && dy === 3) && !(dx === 2 && dy === -1) && !(dx === 2 && dy === 3)) {
+                        // Roads around center
+                        if (dx === -1 || dx === 2 || dy === -1 || dy === 3) {
+                            roadPositions.push(new RoomPosition(pos.x + dx, pos.y + dy, pos.roomName));
+                        } else {
+                            targetPositions.push(new RoomPosition(pos.x + dx, pos.y + dy, pos.roomName));
+                        }
+                    }
+                }
+            }
+            // Avoid being in base + allow corners + avid other extension stamps
+            if (
+                !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
+                positionsInBoundary(targetPositions) &&
+                !containsStamp(stamps, targetPositions) &&
+                !containsNonRoadStamp(stamps, roadPositions)
+            ) {
+                stamps['storage'] = stamps['storage'].concat(targetPositions);
+                stamps['road'] = stamps['road'].concat(roadPositions);
+                addMissingRoads(startPos, roadPositions[0], stamps);
+                continue;
+            }
+        }
+
+        // Labs
+        if (!stamps['lab'].length) {
+            let targetPositions = [];
+            let roadPositions = [];
+
+            // only checks from left to right (bottom to top) direction. Can be improved by also checking a right to left (bottom to top) direction if need be
+            targetPositions = [
+                new RoomPosition(pos.x - 1, pos.y, pos.roomName),
+                new RoomPosition(pos.x - 2, pos.y, pos.roomName),
+                new RoomPosition(pos.x - 2, pos.y + 1, pos.roomName),
+                new RoomPosition(pos.x - 3, pos.y + 1, pos.roomName),
+                new RoomPosition(pos.x - 3, pos.y + 2, pos.roomName),
+                new RoomPosition(pos.x, pos.y + 1, pos.roomName),
+                new RoomPosition(pos.x, pos.y + 2, pos.roomName),
+                new RoomPosition(pos.x - 1, pos.y + 2, pos.roomName),
+                new RoomPosition(pos.x - 1, pos.y + 3, pos.roomName),
+                new RoomPosition(pos.x - 2, pos.y + 3, pos.roomName),
+            ];
+            roadPositions = [
+                new RoomPosition(pos.x, pos.y, pos.roomName),
+                new RoomPosition(pos.x - 1, pos.y + 1, pos.roomName),
+                new RoomPosition(pos.x - 2, pos.y + 2, pos.roomName),
+            ];
+
+            // Avoid being in base + allow corners + avid other extension stamps
+            if (
+                !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
+                positionsInBoundary(targetPositions) &&
+                !containsStamp(stamps, targetPositions) &&
+                !containsNonRoadStamp(stamps, roadPositions)
+            ) {
+                stamps['lab'] = stamps['lab'].concat(targetPositions);
+                stamps['road'] = stamps['road'].concat(roadPositions);
+                addMissingRoads(startPos, roadPositions[0], stamps);
+                continue;
+            }
+        }
+
+        // Extensions since the square is 2 wide, the center must be at least 2 tiles away from edges (cant build on x/y = 0/49 or in front of exits)
+        if (stamps['extension'].length - stamps['container'].length < 56) {
+            const targetPositions = [
+                pos,
+                new RoomPosition(pos.x - 1, pos.y, pos.roomName),
+                new RoomPosition(pos.x + 1, pos.y, pos.roomName),
+                new RoomPosition(pos.x, pos.y - 1, pos.roomName),
+                new RoomPosition(pos.x, pos.y + 1, pos.roomName),
+            ];
+            const roadPositions = [
+                new RoomPosition(pos.x - 1, pos.y - 1, pos.roomName),
+                new RoomPosition(pos.x + 1, pos.y - 1, pos.roomName),
+                new RoomPosition(pos.x + 1, pos.y + 1, pos.roomName),
+                new RoomPosition(pos.x - 1, pos.y + 1, pos.roomName),
+                new RoomPosition(pos.x - 2, pos.y, pos.roomName),
+                new RoomPosition(pos.x, pos.y + 2, pos.roomName),
+                new RoomPosition(pos.x + 2, pos.y, pos.roomName),
+                new RoomPosition(pos.x, pos.y - 2, pos.roomName),
+            ];
+            // Avoid being in base + allow corners + avid other stamps
+            if (
+                !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
+                positionsInBoundary(targetPositions) &&
+                !containsStamp(stamps, targetPositions) &&
+                !containsNonRoadStamp(stamps, roadPositions)
+            ) {
+                stamps['extension'] = stamps['extension'].concat(targetPositions);
+                stamps['road'] = stamps['road'].concat(roadPositions);
+                addMissingRoads(startPos, roadPositions[0], stamps);
+                continue;
+            }
+        }
+    }
+
+    // Rerun for small stuff like towers, left over extension, powerspawn, etc.
+    visited = new Set();
+    queue = [startPos];
+    while (
+        queue.length > 0 &&
+        (stamps['extension'].length - stamps['container'].length < 60 ||
+            stamps['tower'].length < 6 ||
+            !stamps['powerspawn'].length ||
+            !stamps['observer'].length)
+    ) {
+        const pos: RoomPosition = queue.shift()!;
+
+        // Mark the position as visited
+        visited.add(pos.toString());
+
+        // Add the unvisited neighbors to the queue
+        pos.neighbors(false)
+            .filter(
+                (neighborPos) =>
+                    positionsInBoundary([neighborPos]) &&
+                    !visited.has(neighborPos.toString()) &&
+                    terrain.get(neighborPos.x, neighborPos.y) !== TERRAIN_MASK_WALL
+            )
+            .forEach((neighborPos) => {
+                // Add the neighbor to the queue
+                queue.push(neighborPos);
+            });
+
+        // skip if it already has a structure on it
+        if (containsStamp(stamps, [pos])) {
+            continue;
+        }
+
+        // Check if near a Road
+        if (
+            Object.entries(stamps)
+                .filter(([key, currentStamps]) => key === 'road')
+                .some(([key, currentStamps]) => currentStamps.some((currentStamp) => pos.isNearTo(currentStamp)))
+        ) {
+            // Extensions
+            if (stamps['extension'].length - stamps['container'].length < 60) {
+                stamps['extension'].push(pos);
+                continue;
+            }
+
+            // Towers
+            if (stamps['tower'].length < 6) {
+                stamps['tower'].push(pos);
+                continue;
+            }
+
+            // PowerSpawner
+            if (!stamps['powerspawn'].length) {
+                stamps['powerspawn'].push(pos);
+                continue;
+            }
+        }
+
+        // Observer - last
+        if (
+            stamps['tower'].length > 5 &&
+            stamps['extension'].length - stamps['container'].length > 59 &&
+            stamps['powerspawn'].length &&
+            !stamps['observer'].length
+        ) {
+            stamps['observer'].push(pos);
+            continue;
+        }
+    }
+}
+
+/**
+ * Find the mining position with the most open areas around to maximize number of extensions
+ * @param room
+ * @returns
+ */
+function findBestMiningPostitions(room: Room, terrain: RoomTerrain): { pos: RoomPosition; adjacentSpaces: RoomPosition[] }[] {
+    const sources = room.find(FIND_SOURCES);
+    const miningPositions = sources.map((source) => {
+        let bestSpot: { pos: RoomPosition; adjacentSpaces: RoomPosition[] };
+        source.pos
+            .neighbors()
+            .filter((pos) => terrain.get(pos.x, pos.y) !== TERRAIN_MASK_WALL)
+            .forEach((pos) => {
+                // all possible positions ==> now find the one with the most free spots around it
+                const adjacentSpaces = pos.neighbors().filter((minerPos) => terrain.get(minerPos.x, minerPos.y) !== TERRAIN_MASK_WALL);
+
+                // New best spot
+                if (!bestSpot || bestSpot.adjacentSpaces?.length < adjacentSpaces.length) {
+                    bestSpot = { pos, adjacentSpaces };
+                }
+            });
+        return bestSpot;
+    });
+
+    // if a unique mining position was found for each source
+    if (miningPositions.length === sources.length) {
+        return miningPositions;
+    }
+
+    return undefined;
+}
+
+function addRoadToPois(poi: RoomPosition | Mineral | StructureController, stamps: { [type: string]: RoomPosition[] }, roomName: string) {
+    let range: number;
+
+    if (poi instanceof RoomPosition) {
+        range = 1;
+    } else if (poi instanceof Mineral) {
+        range = 2;
+    } else if (poi instanceof StructureController) {
+        range = 3;
+    }
+
+    let path = stamps['storage'][0].findPathTo(poi, {
+        plainCost: 3,
+        swampCost: 5,
+        ignoreDestructibleStructures: true,
+        ignoreCreeps: true,
+        range: range,
+        costCallback: function (roomName, costMatrix) {
+            const matrix = costMatrix.clone();
+            Object.values(stamps['road']).forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 1));
+            Object.entries(stamps)
+                .filter(([key, currentStamps]) => key !== 'road')
+                .forEach(([key, currentStamps]) => currentStamps.forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 10)));
+            return matrix;
+        },
+    });
+
+    const lastStep = path[path.length - 1];
+    // add road to miner by replacing one extension with a road
+    let index = stamps['extension'].findIndex((pos) => pos.x === lastStep.x && pos.y === lastStep.y);
+    if (index !== -1) {
+        stamps['extension'].splice(index, 1); // Previous extension placement will be overwriten by the road placement
+    } else {
+        // Best placement for road is in link spot so put the link in any of the extensions spot
+        index = stamps['link'].findIndex((pos) => pos.x === lastStep.x && pos.y === lastStep.y);
+        if (index !== -1) {
+            stamps['link'].splice(index, 1); // Previous link placement will be overwriten by the road placement
+            stamps['link'].push(stamps['extension'].shift());
+        }
+    }
+
+    //add unique road positions for next cost_matrix
+    stamps['road'] = stamps['road'].concat(
+        path
+            .filter((step) => Object.values(stamps['road']).map((pos) => pos.x === step.x && pos.y === step.y))
+            .map((step) => new RoomPosition(step.x, step.y, roomName))
+    );
+}
+
+// Can be done in later tick
+function addMissingRoads(starCenter: RoomPosition, sourcePos: RoomPosition, stamps: { [type: string]: RoomPosition[] }) {
+    const path = sourcePos.findPathTo(starCenter, {
+        plainCost: 3,
+        swampCost: 5,
+        ignoreDestructibleStructures: true,
+        ignoreCreeps: true,
+        range: 3,
+        maxRooms: 1,
+        costCallback: function (roomName, costMatrix) {
+            const matrix = costMatrix.clone();
+            Object.values(stamps['road']).forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 1));
+            Object.entries(stamps)
+                .filter(([key, currentStamps]) => key !== 'road' && key !== 'rampart')
+                .forEach(([key, currentStamps]) => currentStamps.forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 255)));
+            return matrix;
+        },
+    });
+
+    //add unique road positions for next cost_matrix
+    const newRoadPos = path
+        .filter((step) => !stamps['road'].some((road) => road.x === step.x && road.y === step.y))
+        .map((uniqueStep) => new RoomPosition(uniqueStep.x, uniqueStep.y, starCenter.roomName));
+    stamps['road'] = stamps['road'].concat(newRoadPos);
+}
+
+// TODO: Link placement has to be in correct miner location see picture its 2 in the same one
+
+// distributor not worry about miner and center extensions for refilling as soon as manager is there
+// miner add refilling of nearby extensions
+// manager add center and resource management logic (center has containers for fast refill so they should take from there and when not full request more from link)
+// store in memory with pos and id for easy check if still there and creating construction. Should be in order of placement. Also identify stamps for distributor ==> dont worry about mining or center extensions
+
+// New stamp allows for filtering out certain types of stamps for distributor/link placement etc.
+// stamp = ["extension": [{type: "miner1", pos: []}, {type: "center", pos: []}, {type: "plus1", pos: []}, {type: "single", pos[]}]]
