@@ -83,7 +83,9 @@ export class Gatherer extends TransportCreep {
         if (this.onEdge() || !Memory.roomData[this.pos.roomName].roads) {
             return false;
         }
-        return Object.values(Memory.roomData[this.pos.roomName].roads).some((path) => path.includes(`${this.pos.x}:${this.pos.y}`));
+        return Object.values(Memory.roomData[this.pos.roomName].roads).some((path) =>
+            path.split(',').some((pos) => pos === `${this.pos.x}:${this.pos.y}`)
+        );
     }
 
     protected findTarget() {
