@@ -20,11 +20,6 @@ export class Gatherer extends TransportCreep {
             }
         }
 
-        // Clear containerId from memory
-        if (!(target instanceof StructureStorage)) {
-            delete this.memory.storeRoadInMemory;
-        }
-
         if (target instanceof Resource) {
             this.runPickupJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer) {
@@ -52,14 +47,13 @@ export class Gatherer extends TransportCreep {
         let roomPositions = [];
         roomPositions = this.storeCargo(
             !Memory.roomData[this.pos.roomName].roads ||
-                (this.memory.storeRoadInMemory &&
-                    !Memory.roomData[this.pos.roomName].roads[this.memory.storeRoadInMemory] &&
-                    Game.getObjectById(this.memory.storeRoadInMemory)?.pos.isNearTo(this))
+                (this.memory.storeRoadInMemory && !Memory.roomData[this.pos.roomName].roads[this.memory.storeRoadInMemory])
         );
         // Going back to storage
         if (posFromMem(this.memory._m.destination)?.roomName === this.memory.room) {
             this.storeRoadInMemory(roomPositions);
         }
+        delete this.memory.storeRoadInMemory; // only needed to initially store road in memory
         this.repairRoad();
     }
 
@@ -70,16 +64,18 @@ export class Gatherer extends TransportCreep {
                 if (!Memory.roomData[pos.roomName].roads) {
                     Memory.roomData[pos.roomName].roads = {};
                 }
+                let delimiter = ',';
                 // Initialize new road path
                 if (!Memory.roomData[pos.roomName].roads[this.memory.storeRoadInMemory]) {
                     // only for first pos from container instead of when entering new room
                     if (this.pos.roomName === pos.roomName) {
-                        Memory.roomData[pos.roomName].roads[this.memory.storeRoadInMemory] = `${this.pos.x}:${this.pos.y},`;
+                        Memory.roomData[pos.roomName].roads[this.memory.storeRoadInMemory] = `${this.pos.x}:${this.pos.y}`;
                     } else {
+                        delimiter = '';
                         Memory.roomData[pos.roomName].roads[this.memory.storeRoadInMemory] = '';
                     }
                 }
-                Memory.roomData[pos.roomName].roads[this.memory.storeRoadInMemory] += `${pos.x}:${pos.y},`;
+                Memory.roomData[pos.roomName].roads[this.memory.storeRoadInMemory] += `${delimiter}${pos.x}:${pos.y}`;
             });
     }
 
@@ -87,11 +83,7 @@ export class Gatherer extends TransportCreep {
         if (this.onEdge() || !Memory.roomData[this.pos.roomName].roads) {
             return false;
         }
-        const path = Memory.roomData[this.pos.roomName].roads[this.memory.storeRoadInMemory];
-        if (!path) {
-            return false;
-        }
-        return path.includes(`${this.pos.x}:${this.pos.y}`);
+        return Object.values(Memory.roomData[this.pos.roomName].roads).some((path) => path.includes(`${this.pos.x}:${this.pos.y}`));
     }
 
     protected findTarget() {
