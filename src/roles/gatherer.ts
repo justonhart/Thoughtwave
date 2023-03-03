@@ -45,9 +45,10 @@ export class Gatherer extends TransportCreep {
 
     private storeAndRepair(): void {
         let roomPositions = [];
+        // only get roomPositions if storeRoadInMemory is set and there isnt already a road in memory
         roomPositions = this.storeCargo(
-            !Memory.roomData[this.pos.roomName].roads ||
-                (this.memory.storeRoadInMemory && !Memory.roomData[this.pos.roomName].roads[this.memory.storeRoadInMemory])
+            this.memory.storeRoadInMemory &&
+                (!Memory.roomData[this.pos.roomName].roads || !Memory.roomData[this.pos.roomName].roads[this.memory.storeRoadInMemory])
         );
         // Going back to storage
         if (posFromMem(this.memory._m.destination)?.roomName === this.memory.room) {
