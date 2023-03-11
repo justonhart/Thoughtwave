@@ -3,6 +3,7 @@ import { posFromMem } from '../modules/data';
 import { PopulationManagement } from '../modules/populationManagement';
 import { getFactoryResourcesNeeded } from '../modules/resourceManagement';
 import { findRepairTargets, getStructuresToProtect } from '../modules/roomManagement';
+import { readStampLayoutFromMemory } from '../modules/roomDesign';
 
 RoomPosition.prototype.toMemSafe = function (this: RoomPosition): string {
     return `${this.x}.${this.y}.${this.roomName}`;
@@ -94,6 +95,10 @@ Object.defineProperty(Room.prototype, 'mineral', {
 
 Object.defineProperty(Room.prototype, 'managerLink', {
     get: function (this: Room) {
+        if (this.memory.layout === RoomLayout.STAMP) {
+            return Game.getObjectById(this.stamps.link.find((linkDetail) => linkDetail.type === 'center')?.id);
+        }
+
         if (this.memory.managerLink) {
             return Game.getObjectById(this.memory.managerLink);
         }
@@ -111,7 +116,13 @@ Object.defineProperty(Room.prototype, 'managerLink', {
 
 Object.defineProperty(Room.prototype, 'upgraderLink', {
     get: function (this: Room) {
-        let posToCheck = posFromMem(this.memory.upgraderLinkPos);
+        let posToCheck: RoomPosition;
+        if (this.memory.layout === RoomLayout.STAMP) {
+            posToCheck = this.stamps.link.find((linkDetail) => linkDetail.type === 'controller')?.pos;
+        } else {
+            posToCheck = posFromMem(this.memory.upgraderLinkPos);
+        }
+
         let link = posToCheck
             ?.lookFor(LOOK_STRUCTURES)
             .filter((structure) => structure.structureType === STRUCTURE_LINK)
@@ -157,6 +168,16 @@ Object.defineProperty(Room.prototype, 'observer', {
 Object.defineProperty(Room.prototype, 'powerSpawn', {
     get: function (this: Room) {
         return this.find(FIND_MY_STRUCTURES).find((s) => s.structureType === STRUCTURE_POWER_SPAWN && s.isActive());
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'stamps', {
+    get: function (this: Room) {
+        if (this.memory.layout === RoomLayout.STAMP) {
+            return readStampLayoutFromMemory(this);
+        }
     },
     enumerable: false,
     configurable: true,

@@ -11,6 +11,13 @@ export function manageMemory() {
         }
     }
 
+    // Cleanup dead rooms
+    if (Game.time % 100 === 0) {
+        Object.keys(Memory.rooms)
+            .filter((roomName) => !Object.keys(Memory.rooms[roomName]).length)
+            .forEach((roomName) => delete Memory.rooms[roomName]);
+    }
+
     handleDeadSquads();
 
     // if(!!InterShardMemory.getLocal()){

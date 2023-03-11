@@ -5,35 +5,79 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 const MINERAL_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)];
 
 export class Manager extends WaveCreep {
+    private actionTaken = false;
+
     protected run() {
-        if (posFromMem(this.room.memory?.managerPos)?.isEqualTo(this.pos) === false) {
-            this.travelTo(posFromMem(this.room.memory?.managerPos));
+        const managerPos =
+            this.room.memory.layout === RoomLayout.STAMP ? posFromMem(this.memory.destination) : posFromMem(this.room.memory?.managerPos);
+        const isCenterStampManager =
+            this.room.memory.layout === RoomLayout.STAMP &&
+            this.room.stamps.managers.some(
+                (managerDetail) => managerDetail.type === 'center' && managerDetail.pos.x === managerPos.x && managerDetail.pos.y === managerPos.y
+            );
+
+        if (managerPos?.isEqualTo(this.pos) === false) {
+            this.travelTo(managerPos);
         } else {
             if (this.memory.targetId) {
                 let target = Game.getObjectById(this.memory.targetId);
 
-                this.transfer(target as StructureContainer, Object.keys(this.store).pop() as ResourceConstant);
+                this.transfer(target as Structure, Object.keys(this.store).pop() as ResourceConstant);
+                this.actionTaken = true;
                 delete this.memory.targetId;
-            } else if (this.store.getUsedCapacity() > 0 && this.room.storage?.store.getFreeCapacity()) {
+            } else if (!isCenterStampManager && this.store.getUsedCapacity() > 0 && this.room.storage?.store.getFreeCapacity()) {
                 this.transfer(this.room.storage, Object.keys(this.store).pop() as ResourceConstant);
-            } else if (this.ticksToLive > 1) {
+                this.actionTaken = true;
+            } else if (!isCenterStampManager && this.ticksToLive > 1) {
+                this.actionTaken = true;
                 this.startNewTask();
+            } else if (isCenterStampManager && this.ticksToLive > 1) {
+                this.startCenterTask();
+            }
+
+            if (!this.actionTaken && this.memory.targetId) {
+                let target = Game.getObjectById(this.memory.targetId);
+                this.transfer(target as Structure, Object.keys(this.store).pop() as ResourceConstant);
+                delete this.memory.targetId;
             }
         }
     }
 
     private startNewTask() {
-        let structuresToManage = this.pos.findInRange(FIND_MY_STRUCTURES, 1);
-        let managerLink: StructureLink = structuresToManage.find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
-        let nuker: StructureNuker = structuresToManage.find((structure) => structure.structureType === STRUCTURE_NUKER) as StructureNuker;
-        let factory: StructureFactory = structuresToManage.find((structure) => structure.structureType === STRUCTURE_FACTORY) as StructureFactory;
-        let spawns: StructureSpawn[] = structuresToManage.filter((structure) => structure.structureType === STRUCTURE_SPAWN) as StructureSpawn[];
-        let powerSpawn: StructurePowerSpawn = structuresToManage.find(
+        const structuresToManage = this.pos.findInRange(FIND_MY_STRUCTURES, 1);
+        const managerLink: StructureLink = structuresToManage.find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
+        const nuker: StructureNuker = structuresToManage.find((structure) => structure.structureType === STRUCTURE_NUKER) as StructureNuker;
+        const factory: StructureFactory = structuresToManage.find((structure) => structure.structureType === STRUCTURE_FACTORY) as StructureFactory;
+        const spawns: StructureSpawn[] = structuresToManage.filter((structure) => structure.structureType === STRUCTURE_SPAWN) as StructureSpawn[];
+        const powerSpawn: StructurePowerSpawn = structuresToManage.find(
             (structure) => structure.structureType === STRUCTURE_POWER_SPAWN
         ) as StructurePowerSpawn;
-        let terminal: StructureTerminal = structuresToManage.find((structure) => structure.structureType === STRUCTURE_TERMINAL) as StructureTerminal;
+        const terminal: StructureTerminal = structuresToManage.find(
+            (structure) => structure.structureType === STRUCTURE_TERMINAL
+        ) as StructureTerminal;
 
-        let storage = this.room.storage;
+        const storage = this.room.storage;
+
+        if (!storage) {
+            return;
+        }
+
+        // Send energy to the center if the center link has no energy in it
+        if (!managerLink?.cooldown && storage.store.energy && this.room.memory.layout === RoomLayout.STAMP) {
+            const posToCheck = this.room.stamps.link.find((linkDetail) => linkDetail.type === 'center').pos;
+            let centerLink = posToCheck?.lookFor(LOOK_STRUCTURES).find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
+            if (centerLink) {
+                if (!centerLink?.store.energy) {
+                    if (managerLink?.store.energy > 0) {
+                        managerLink.transferEnergy(centerLink);
+                    } else {
+                        this.withdraw(storage, RESOURCE_ENERGY);
+                        this.memory.targetId = managerLink.id;
+                        return;
+                    }
+                }
+            }
+        }
 
         if (!this.room.managerLink?.cooldown && this.room.upgraderLink?.store.energy <= 400 && storage.store.energy) {
             if (managerLink?.store.energy > 0) {
@@ -145,6 +189,46 @@ export class Manager extends WaveCreep {
                 Math.min(this.store.getCapacity(), storage.store.energy, powerSpawn.store.getFreeCapacity(RESOURCE_ENERGY))
             );
             this.memory.targetId = powerSpawn.id;
+            return;
+        }
+    }
+
+    private startCenterTask() {
+        const structuresToManage = this.pos.findInRange(FIND_STRUCTURES, 1);
+        const managerLink = structuresToManage.find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
+        const extensions = structuresToManage.filter((structure) => structure.structureType === STRUCTURE_EXTENSION) as StructureExtension[];
+        const container = structuresToManage.find((structure) => structure.structureType === STRUCTURE_CONTAINER) as StructureContainer;
+        const spawn = structuresToManage.find((structure) => structure.structureType === STRUCTURE_SPAWN) as StructureSpawn;
+
+        // Pull energy from link into container
+        if (container?.store.energy < 1600 && managerLink?.store.energy) {
+            this.withdraw(managerLink, RESOURCE_ENERGY);
+            this.memory.targetId = container.id;
+            return;
+        }
+
+        // Pull energy from container into spawn
+        if (spawn?.store.getFreeCapacity(RESOURCE_ENERGY) && (container?.store.energy || this.store.energy)) {
+            if (!this.store.energy) {
+                this.withdraw(container, RESOURCE_ENERGY);
+                this.actionTaken = true;
+            }
+            this.memory.targetId = spawn.id;
+            return;
+        }
+
+        // Pull energy from container into extension and ensure managers do not have the same extension as a target
+        const extensionInNeed = extensions?.find(
+            (extension) =>
+                extension.store.getFreeCapacity(RESOURCE_ENERGY) &&
+                this.room.creeps.some((creep) => creep.memory.role === Role.MANAGER && creep.memory.targetId !== extension.id)
+        );
+        if (extensionInNeed && (container?.store.energy || this.store.energy)) {
+            if (!this.store.energy) {
+                this.withdraw(container, RESOURCE_ENERGY);
+                this.actionTaken = true;
+            }
+            this.memory.targetId = extensionInNeed.id;
             return;
         }
     }

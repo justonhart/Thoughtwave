@@ -130,7 +130,7 @@ export class Pathing {
             if (!opts.efficiency && (opts.preferRoadConstruction || opts.preferRamparts)) {
                 opts.efficiency = 0.8; // Make other tiles cost more
             } else if (!opts.efficiency) {
-                opts.efficiency = Pathing.getCreepMoveEfficiency(creep);
+                opts.efficiency = Pathing.getCreepMoveEfficiency(creep, opts.currentTickEnergy);
             }
             let pathFinder = Pathing.findTravelPath(creep.name, creep.pos, destination, opts);
             if (pathFinder.incomplete) {
@@ -203,10 +203,13 @@ export class Pathing {
      * @param creep -
      * @returns
      */
-    static getCreepMoveEfficiency(creep: Creep): number {
+    static getCreepMoveEfficiency(creep: Creep, currentTickEnergy?: number): number {
         let totalreduction = 0;
         let totalparts = 0;
         let used = creep.store.getUsedCapacity();
+        if (currentTickEnergy) {
+            used += currentTickEnergy;
+        }
         creep.body.forEach((body) => {
             switch (body.type) {
                 case MOVE:
@@ -301,6 +304,10 @@ export class Pathing {
 
             const room = Game.rooms[roomName];
             if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination.roomName && Pathing.checkAvoid(roomName)) {
+                if (!Memory.roomData[roomName]?.owner) {
+                    // Hostile but not owned room
+                    options.avoidedTemporaryHostileRooms = true;
+                }
                 return false;
             }
 
@@ -356,11 +363,20 @@ export class Pathing {
                         }
                     }
                 }
+
                 if (Memory.rooms[room.name]?.anchorPoint || Memory.rooms[room.name]?.managerPos) {
                     let managerPos = posFromMem(room.memory.anchorPoint || room.memory.managerPos);
                     if (!Pathing.sameCoord(managerPos, destination)) {
                         matrix.set(managerPos.x, managerPos.y, 50);
                     }
+                }
+
+                if (Memory.rooms[room.name]?.layout === RoomLayout.STAMP) {
+                    room.stamps.managers.forEach((managerStamp) => {
+                        if (!Pathing.sameCoord(managerStamp.pos, destination)) {
+                            matrix.set(managerStamp.pos.x, managerStamp.pos.y, 20);
+                        }
+                    });
                 }
 
                 if (Memory.rooms[room.name]?.miningAssignments) {
@@ -426,6 +442,10 @@ export class Pathing {
         const route = Game.map.findRoute(originRoom, destination, {
             routeCallback: (roomName) => {
                 if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination && Pathing.checkAvoid(roomName)) {
+                    if (!Memory.roomData[roomName]?.owner) {
+                        // Hostile but not owned room
+                        options.avoidedTemporaryHostileRooms = true;
+                    }
                     return Infinity;
                 }
                 const isMyRoom = Game.rooms[roomName] && Game.rooms[roomName].controller && Game.rooms[roomName].controller.my;
@@ -648,7 +668,7 @@ export class Pathing {
                     obstacleCreep.memory._m = { repath: 0 };
                 }
                 obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
-                return Pathing.moveObstacleCreep(obstacleCreep, nextDirection);
+                return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
             }
         }
         return false;

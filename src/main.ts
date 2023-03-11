@@ -12,6 +12,16 @@ module.exports.loop = function () {
     let cpuUsageString = `${Game.time}:   `;
 
     try {
+        if (global.nextTickFunctions?.length) {
+            global.nextTickFunctions.forEach((taskName) => taskName());
+            global.nextTickFunctions = [];
+        }
+    } catch (e) {
+        global.nextTickFunctions.pop();
+        console.log(`Error caught in nextTickFunctions: \n${e}`);
+    }
+
+    try {
         manageMemory();
     } catch (e) {
         console.log(`Error caught in memory management: \n${e}`);

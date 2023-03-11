@@ -94,7 +94,18 @@ export class WorkerCreep extends WaveCreep {
 
         let containers = this.room
             .find(FIND_STRUCTURES)
-            .filter((str) => str.structureType === STRUCTURE_CONTAINER && str.store.energy >= this.store.getCapacity());
+            .filter(
+                (str) =>
+                    str.structureType === STRUCTURE_CONTAINER &&
+                    str.store.energy >= this.store.getCapacity() &&
+                    (this.room.memory.layout !== RoomLayout.STAMP ||
+                        !this.room.stamps.container.some(
+                            (containerStamp) =>
+                                str.pos.x === containerStamp.pos.x &&
+                                str.pos.y === containerStamp.pos.y &&
+                                (containerStamp.type === 'center' || containerStamp.type === 'rm')
+                        ))
+            );
 
         nonStorageSources = [...ruins, ...looseEnergyStacks, ...containers];
         if (nonStorageSources.length) {

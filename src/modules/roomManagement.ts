@@ -14,6 +14,7 @@ import {
     placeBunkerCoreRamparts,
     roomNeedsCoreStructures,
     placeUpgraderLink,
+    findStampLocation,
 } from './roomDesign';
 
 const BUILD_CHECK_PERIOD = 100;
@@ -73,6 +74,7 @@ export function driveRoom(room: Room) {
             }
 
             if (
+                room.memory.layout === RoomLayout.BUNKER &&
                 Game.cpu.bucket > 200 &&
                 !global.roomConstructionsChecked &&
                 (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
@@ -108,6 +110,90 @@ export function driveRoom(room: Room) {
                     case 1:
                         cleanRoom(room);
                 }
+                global.roomConstructionsChecked = true;
+                room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
+            }
+
+            if (
+                room.memory.layout === RoomLayout.STAMP &&
+                !global.roomConstructionsChecked &&
+                (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
+                (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
+                Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
+                room.find(FIND_MY_CONSTRUCTION_SITES).length < 15
+            ) {
+                // Cleanup any leftover storage/terminal that is in the way
+                if (
+                    room.stamps.spawn.some(
+                        (spawnStamp) =>
+                            spawnStamp.rcl <= room.controller.level &&
+                            !room
+                                .lookAt(spawnStamp.pos)
+                                .some(
+                                    (lookObj) =>
+                                        lookObj.constructionSite?.structureType === spawnStamp.type ||
+                                        lookObj.structure?.structureType === spawnStamp.type
+                                )
+                    )
+                ) {
+                    if (room.storage) {
+                        const destroyStorage = Object.values(room.stamps).some((stamps: StampDetail[]) =>
+                            stamps.some((stamp) => stamp.rcl < 4 && stamp.pos.x === room.storage.pos.x && stamp.pos.y === room.storage.pos.y)
+                        );
+                        if (destroyStorage) {
+                            room.storage.destroy();
+                        }
+                    }
+                    if (room.terminal) {
+                        const destroyTerminal = Object.values(room.stamps).some((stamps: StampDetail[]) =>
+                            stamps.some((stamp) => stamp.rcl < 4 && stamp.pos.x === room.terminal.pos.x && stamp.pos.y === room.terminal.pos.y)
+                        );
+                        if (destroyTerminal) {
+                            room.terminal.destroy();
+                        }
+                    }
+                }
+
+                // Cleanup left over storage/terminal
+                if (room.controller.level > 3 && room.storage && !room.storage?.my) {
+                    room.storage.destroy();
+                }
+                if (room.controller.level > 3 && room.terminal && !room.terminal?.my) {
+                    room.terminal.destroy();
+                }
+
+                // Check for any missing structures and add them
+                const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+                let constructionSitesCount = constructionSites.length;
+                if (constructionSitesCount < 15) {
+                    const structures = room.find(FIND_STRUCTURES);
+                    const constructionStamps: { pos: RoomPosition; key: StructureConstant }[] = [];
+                    // Check against all structures and construction sites currently in the room. If a stamp is not in either then add it as a construction site
+                    Object.entries(room.stamps)
+                        .filter(([key, stamps]: [string, StampDetail[]]) => key !== 'managers')
+                        .forEach(([key, stamps]: [string, StampDetail[]]) => {
+                            stamps
+                                .filter(
+                                    (stamp) =>
+                                        stamp.rcl <= room.controller.level &&
+                                        !structures.some(
+                                            (structure) =>
+                                                key === structure.structureType && stamp.pos.x === structure.pos.x && stamp.pos.y === structure.pos.y
+                                        ) &&
+                                        !constructionSites.some(
+                                            (structure) =>
+                                                key === structure.structureType && stamp.pos.x === structure.pos.x && stamp.pos.y === structure.pos.y
+                                        )
+                                )
+                                .forEach((stamp) => constructionStamps.push({ pos: stamp.pos, key: key as StructureConstant }));
+                        });
+                    while (constructionStamps?.length && constructionSitesCount < 15) {
+                        const nextConstructionSite = constructionStamps.pop();
+                        room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
+                        constructionSitesCount++;
+                    }
+                }
+
                 global.roomConstructionsChecked = true;
                 room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
             }
@@ -348,6 +434,28 @@ export function initRoom(room: Room) {
         room.memory.layout = RoomLayout.BUNKER;
         room.memory.anchorPoint = anchorPoint.toMemSafe();
         room.createConstructionSite(anchorPoint.x, anchorPoint.y - 1, STRUCTURE_SPAWN);
+    } else {
+        const findStampFunction = () => {
+            const valid = findStampLocation(room);
+            if (valid) {
+                room.memory.layout = RoomLayout.STAMP;
+                const spawn = room.stamps.spawn.find((spawnDetail) => spawnDetail.rcl === 1);
+                room.createConstructionSite(spawn, STRUCTURE_SPAWN);
+                room.memory.miningAssignments = {};
+                room.stamps.container
+                    .filter((containerStamp) => containerStamp.type?.includes('miner'))
+                    .forEach((minerStamp) => (room.memory.miningAssignments[minerStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
+                room.memory.mineralMiningAssignments = {};
+                room.stamps.container
+                    .filter((containerStamp) => containerStamp.type?.includes('mineral'))
+                    .forEach((mineralStamp) => (room.memory.mineralMiningAssignments[mineralStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
+            }
+        };
+        if (!global.nextTickFunctions) {
+            global.nextTickFunctions = [findStampFunction];
+        } else {
+            global.nextTickFunctions.push(findStampFunction);
+        }
     }
 }
 
@@ -463,11 +571,24 @@ function runSpawning(room: Room) {
     }
 
     if (PopulationManagement.needsManager(room)) {
-        if (room.memory.layout !== undefined) {
-            let suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(posFromMem(room.memory.anchorPoint)));
+        if (room.memory.layout === RoomLayout.BUNKER) {
+            const suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(posFromMem(room.memory.anchorPoint)));
             if (suitableSpawn) {
                 suitableSpawn.spawnManager();
                 availableSpawns = availableSpawns.filter((spawn) => spawn !== suitableSpawn);
+            }
+        } else if (room.memory.layout === RoomLayout.STAMP) {
+            // Look for spawn closest to new Manager if none found just spawn it
+            const newManagerPos = PopulationManagement.getNewStampManager(room)?.pos;
+            if (newManagerPos) {
+                const suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(newManagerPos));
+                if (suitableSpawn) {
+                    suitableSpawn.spawnManager();
+                    availableSpawns = availableSpawns.filter((spawn) => spawn !== suitableSpawn);
+                } else {
+                    let spawn = availableSpawns.pop();
+                    spawn?.spawnManager();
+                }
             }
         } else {
             let spawn = availableSpawns.pop();
