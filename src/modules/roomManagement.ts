@@ -420,42 +420,19 @@ export function initRoom(room: Room) {
         towerRepairMap: {},
     };
 
-    miningPostitions.forEach((pos) => {
-        room.memory.miningAssignments[pos.toMemSafe()] = AssignmentStatus.UNASSIGNED;
-    });
-
-    let mineralMiningPosition = findMineralMiningPosition(room);
-    room.memory.mineralMiningAssignments[mineralMiningPosition.toMemSafe()] = AssignmentStatus.UNASSIGNED;
-
-    //calculate room layout here
-    let anchorPoint = findBunkerLocation(room);
-
-    if (anchorPoint) {
-        room.memory.layout = RoomLayout.BUNKER;
-        room.memory.anchorPoint = anchorPoint.toMemSafe();
-        room.createConstructionSite(anchorPoint.x, anchorPoint.y - 1, STRUCTURE_SPAWN);
-    } else {
-        const findStampFunction = () => {
-            const valid = findStampLocation(room);
-            if (valid) {
-                room.memory.layout = RoomLayout.STAMP;
-                const spawn = room.stamps.spawn.find((spawnDetail) => spawnDetail.rcl === 1);
-                room.createConstructionSite(spawn, STRUCTURE_SPAWN);
-                room.memory.miningAssignments = {};
-                room.stamps.container
-                    .filter((containerStamp) => containerStamp.type?.includes('miner'))
-                    .forEach((minerStamp) => (room.memory.miningAssignments[minerStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
-                room.memory.mineralMiningAssignments = {};
-                room.stamps.container
-                    .filter((containerStamp) => containerStamp.type?.includes('mineral'))
-                    .forEach((mineralStamp) => (room.memory.mineralMiningAssignments[mineralStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
-            }
-        };
-        if (!global.nextTickFunctions) {
-            global.nextTickFunctions = [findStampFunction];
-        } else {
-            global.nextTickFunctions.push(findStampFunction);
-        }
+    const valid = findStampLocation(room);
+    if (valid) {
+        room.memory.layout = RoomLayout.STAMP;
+        const spawn = room.stamps.spawn.find((spawnDetail) => spawnDetail.rcl === 1);
+        room.createConstructionSite(spawn, STRUCTURE_SPAWN);
+        room.memory.miningAssignments = {};
+        room.stamps.container
+            .filter((containerStamp) => containerStamp.type !== 'mineral' && containerStamp.type?.includes('miner'))
+            .forEach((minerStamp) => (room.memory.miningAssignments[minerStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
+        room.memory.mineralMiningAssignments = {};
+        room.stamps.container
+            .filter((containerStamp) => containerStamp.type === 'mineral')
+            .forEach((mineralStamp) => (room.memory.mineralMiningAssignments[mineralStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
     }
 }
 

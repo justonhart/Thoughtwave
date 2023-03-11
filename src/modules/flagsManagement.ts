@@ -23,6 +23,11 @@ export default function manageFlags() {
             };
         }
 
+        addOperation(OperationType.SECURE, Game.flags.colonize.pos.roomName, {
+            operativeCount: 2,
+            expireAt: Game.time + 10000,
+            portalLocations: portalLocations,
+        });
         addOperation(OperationType.COLONIZE, Game.flags.colonize.pos.roomName, opts);
         Game.flags.colonize.remove();
     }
@@ -86,9 +91,29 @@ export default function manageFlags() {
     }
 
     if (Game.flags.secure) {
+        let portalLocations = [];
+
+        if (Game.flags.portal) {
+            portalLocations.push(Game.flags.portal.pos.toMemSafe());
+            Game.flags.portal.remove();
+        }
+
+        let opts: OperationOpts = {
+            portalLocations: portalLocations,
+        };
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                selectionCriteria: OriginCriteria.CLOSEST,
+            };
+        }
         addOperation(OperationType.SECURE, Game.flags.secure.pos.roomName, {
             operativeCount: 2,
             expireAt: Game.time + 4500,
+            portalLocations: portalLocations,
         });
         Game.flags.secure.remove();
     }

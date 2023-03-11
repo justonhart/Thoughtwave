@@ -309,6 +309,7 @@ function manageSecureRoomOperation(op: Operation) {
                     currentTaskPriority: Priority.MEDIUM,
                     combat: { flee: false },
                     room: op.targetRoom,
+                    portalLocations: op.portalLocations,
                 },
             },
         });

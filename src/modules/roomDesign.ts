@@ -670,12 +670,16 @@ export function findStampLocation(room: Room) {
         }
         // Add roads to miningPositions, controller, minerals
         stamps.container
-            .filter((stampDetail) => stampDetail.type?.includes('miner'))
+            .filter((stampDetail) => stampDetail.type !== 'mineral' && stampDetail.type?.includes('miner'))
             .forEach((minerPoi) => addRoadToPois(minerPoi.pos, stamps, 3, minerPoi.type));
         placeControllerLink(room.controller.pos, stamps, terrain);
         addRoadToPois(stamps.link.find((linkDetail) => linkDetail.type === 'controller')?.pos, stamps, 3);
-        stamps.extractor.push({ rcl: 6, pos: room.mineral.pos });
+        stamps.extractor.push({ type: 'mineral', rcl: 6, pos: room.mineral.pos });
         addRoadToPois(room.mineral, stamps, 6);
+        // Filter out duplicate roads
+        stamps.road = stamps.road.filter(
+            (roadDetail, index, self) => index === self.findIndex((road) => road.pos.toMemSafe() === roadDetail.pos.toMemSafe())
+        );
         if (Game.cpu.tickLimit - Game.cpu.getUsed() < 150) {
             // Schedule rampart walls for next tick
             global.nextTickFunctions = [
@@ -942,8 +946,10 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
             ) {
                 const rm = 'rm';
                 stamps.storage.push({ type: rm, rcl: 4, pos: new RoomPosition(pos.x, pos.y, pos.roomName) });
+                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(pos.x, pos.y, pos.roomName) });
                 stamps.nuker.push({ type: rm, rcl: 8, pos: new RoomPosition(pos.x + 1, pos.y, pos.roomName) });
                 stamps.terminal.push({ type: rm, rcl: 6, pos: new RoomPosition(pos.x, pos.y + 1, pos.roomName) });
+                stamps.rampart.push({ rcl: 6, pos: new RoomPosition(pos.x, pos.y + 1, pos.roomName) });
                 stamps.managers.push({ type: rm, rcl: 5, pos: new RoomPosition(pos.x + 1, pos.y + 1, pos.roomName) });
                 stamps.link.push({ type: rm, rcl: 5, pos: new RoomPosition(pos.x, pos.y + 2, pos.roomName) });
                 stamps.factory.push({ type: rm, rcl: 7, pos: new RoomPosition(pos.x + 1, pos.y + 2, pos.roomName) });
@@ -975,6 +981,7 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
                 new RoomPosition(pos.x, pos.y, pos.roomName),
                 new RoomPosition(pos.x - 1, pos.y + 1, pos.roomName),
                 new RoomPosition(pos.x - 2, pos.y + 2, pos.roomName),
+                new RoomPosition(pos.x - 3, pos.y + 3, pos.roomName), // Optional but good to leave an out on both sides of the labs
             ];
 
             // Avoid being in base + allow corners + avid other extension stamps
@@ -1060,8 +1067,11 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
                 queue.push(neighborPos);
             });
 
-        // skip if it already has a structure on it
-        if (containsStamp(stamps, [pos])) {
+        // skip if it already has a structure on it or if it is next to a wall to avoid closing off ways to chocke points
+        if (
+            containsStamp(stamps, [pos]) ||
+            pos.neighbors(false).some((neighborPos) => terrain.get(neighborPos.x, neighborPos.y) === TERRAIN_MASK_WALL)
+        ) {
             continue;
         }
 
@@ -1168,7 +1178,7 @@ function addRoadToPois(poi: RoomPosition | Mineral | StructureController, stamps
             },
         });
 
-    if (type?.includes('miner')) {
+    if (type !== 'mineral' && type?.includes('miner')) {
         const lastStep = path[path.length - 1];
         // Replace extension/link with a road (is already taken into account in previous methods so 60 extensions will still be placed)
         const road = stamps.road.find((roadStamp) => roadStamp.type === type);
@@ -1264,13 +1274,16 @@ function setCenterExtensions(stamps: Stamps, starCenter: RoomPosition) {
     stamps.extension.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x + 2, starCenter.y - 2, starCenter.roomName) });
     stamps.managers.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x - 1, starCenter.y + 1, starCenter.roomName) });
     stamps.managers.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x + 1, starCenter.y - 1, starCenter.roomName) });
+    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(starCenter.x - 2, starCenter.y - 1, starCenter.roomName) });
 
     // RCL 5
     stamps.link.push({ type, rcl: 5, pos: new RoomPosition(starCenter.x, starCenter.y, starCenter.roomName) });
 
     // RCL 7
     stamps.spawn.push({ type, rcl: 7, pos: new RoomPosition(starCenter.x + 2, starCenter.y - 1, starCenter.roomName) });
+    stamps.rampart.push({ rcl: 7, pos: new RoomPosition(starCenter.x + 2, starCenter.y - 1, starCenter.roomName) });
 
     // RCL 8
     stamps.spawn.push({ type, rcl: 8, pos: new RoomPosition(starCenter.x, starCenter.y + 2, starCenter.roomName) });
+    stamps.rampart.push({ rcl: 8, pos: new RoomPosition(starCenter.x, starCenter.y + 2, starCenter.roomName) });
 }
