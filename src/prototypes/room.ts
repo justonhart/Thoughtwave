@@ -95,14 +95,13 @@ Object.defineProperty(Room.prototype, 'mineral', {
 
 Object.defineProperty(Room.prototype, 'managerLink', {
     get: function (this: Room) {
+        let posToCheck = posFromMem(this.memory.anchorPoint || this.memory.managerPos);
         if (this.memory.layout === RoomLayout.STAMP) {
-            return Game.getObjectById(this.stamps.link.find((linkDetail) => linkDetail.type === 'center')?.id);
-        }
-
-        if (this.memory.managerLink) {
+            posToCheck = this.stamps.link.find((linkDetail) => linkDetail.type === 'rm')?.pos;
+        } else if (this.memory.managerLink) {
             return Game.getObjectById(this.memory.managerLink);
         }
-        let posToCheck = posFromMem(this.memory.anchorPoint || this.memory.managerPos);
+
         let link = posToCheck
             ?.findInRange(FIND_MY_STRUCTURES, 1)
             .filter((structure) => structure.structureType === STRUCTURE_LINK)

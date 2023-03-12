@@ -13,8 +13,8 @@ export class Distributor extends TransportCreep {
             }
         }
 
-        if (!target && (this.homeroom.storage?.store.energy > 0 || this.store.energy > 0)) {
-            if (this.store.energy < this.store.getUsedCapacity()) {
+        if (!target && (this.homeroom.storage?.store.energy > 0 || this.store.energy + this.incomingResourceAmount > this.outgoingResourceAmount)) {
+            if (this.homeroom.storage && this.store.energy < this.store.getUsedCapacity()) {
                 target = this.homeroom.storage.id;
             } else {
                 target = this.findRefillTarget();

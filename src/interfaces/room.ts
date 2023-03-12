@@ -110,7 +110,6 @@ interface Stamps {
 
 interface StampDetail {
     type?: string; // Can differentiate if needed (center vs miner extensions)
-    id?: Id<Structure> | Id<ConstructionSite> | Id<Creep>; // Check if Structure has been built
     rcl: number; // Indicator at what rcl structure should be build
     pos: RoomPosition;
 }

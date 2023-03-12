@@ -687,6 +687,7 @@ export function findStampLocation(room: Room) {
                     const isWall = ([x, y]) => terrain.get(x, y) === TERRAIN_MASK_WALL;
                     const isCenter = ([x, y]) => x > 1 && x < 48 && y > 1 && y < 48 && isInRange(stamps, new RoomPosition(x, y, room.name)); // Cant build on edges and try to keep 2 away from ramparts so structures cant be hit (could change it to simply put ramparts on those structures)
                     minCutWalls({ isWall, isCenter }).forEach(([x, y]) => stamps.rampart.push({ rcl: 4, pos: new RoomPosition(x, y, room.name) }));
+                    addRampartsOnMiners(stamps);
                     storeStampLayoutInMemory(stamps, room);
                 },
             ];
@@ -694,11 +695,39 @@ export function findStampLocation(room: Room) {
             const isWall = ([x, y]) => terrain.get(x, y) === TERRAIN_MASK_WALL;
             const isCenter = ([x, y]) => x > 1 && x < 48 && y > 1 && y < 48 && isInRange(stamps, new RoomPosition(x, y, room.name)); // Cant build on edges and try to keep 2 away from ramparts so structures cant be hit (could change it to simply put ramparts on those structures)
             minCutWalls({ isWall, isCenter }).forEach(([x, y]) => stamps.rampart.push({ rcl: 4, pos: new RoomPosition(x, y, room.name) }));
+            addRampartsOnMiners(stamps);
         }
         drawLayout(Game.rooms[room.name].visual, stamps);
         storeStampLayoutInMemory(stamps, room);
     }
     return valid;
+}
+
+// Add Ramparts on miningPosition and links outside of the stamp boundary
+function addRampartsOnMiners(stamps: Stamps) {
+    stamps.container
+        .filter((containerStamp) => containerStamp.type?.includes('miner'))
+        .forEach((minerStamp) => {
+            if (!isInsideBoundaries(minerStamp.pos, stamps)) {
+                stamps.rampart.push({ rcl: 4, pos: minerStamp.pos });
+                const link = stamps.link.find((linkDetail) => linkDetail.type === minerStamp.type);
+                if (link) {
+                    stamps.rampart.push({ rcl: link.rcl, pos: link.pos });
+                }
+            }
+        });
+}
+
+/**
+ * Checks if the path crosses a rampart location. If so, then it is considered outside the stamp boundaries
+ * @param pos
+ * @param stamps
+ * @returns
+ */
+function isInsideBoundaries(pos: RoomPosition, stamps: Stamps): boolean {
+    return !stamps.storage[0].pos
+        .findPathTo(pos)
+        .some((step) => stamps.rampart.some((rampartDetail) => rampartDetail.pos.x === step.x && rampartDetail.pos.y === step.y));
 }
 
 function storeStampLayoutInMemory(stamps: Stamps, room: Room): void {
@@ -865,6 +894,7 @@ function placeControllerLink(startPos: RoomPosition, stamps: Stamps, terrain: Ro
     // Define layer width and starting layer index
     let layer_width = Math.floor(gridSize / 2);
 
+    const availableSpots = [];
     // Loop through the layers
     while (layer_width >= 0) {
         // Define the boundaries of the current layer
@@ -879,8 +909,12 @@ function placeControllerLink(startPos: RoomPosition, stamps: Stamps, terrain: Ro
                 // Do something with the current cell, e.g. set it to 1
                 const position = new RoomPosition(x, y, startPos.roomName);
                 if (terrain.get(x, y) !== TERRAIN_MASK_WALL && !containsStamp(stamps, [position])) {
-                    stamps.link.push({ type: 'controller', rcl: 8, pos: position });
-                    return;
+                    // If its a position already next to a road take it
+                    if (stamps.road.some((roadDetail) => position.isNearTo(roadDetail))) {
+                        stamps.link.push({ type: 'controller', rcl: 8, pos: position });
+                        return;
+                    }
+                    availableSpots.push(position);
                 }
             }
         }
@@ -888,6 +922,9 @@ function placeControllerLink(startPos: RoomPosition, stamps: Stamps, terrain: Ro
         // Move to the next layer
         layer_width--;
     }
+
+    const closest = stamps.storage[0].pos.findClosestByPath(availableSpots); // Costly but since it only runs once its worth it
+    stamps.link.push({ type: 'controller', rcl: 8, pos: closest });
 }
 
 function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): boolean {

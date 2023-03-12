@@ -242,17 +242,32 @@ export class TransportCreep extends WaveCreep {
         }
 
         let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
-        const hasManager = this.homeroom.creeps.some((creep) => creep.memory.role === Role.MANAGER);
-        if (this.homeroom.memory.layout === RoomLayout.STAMP && hasManager) {
+        const hasManagerWithContainer =
+            this.homeroom.creeps.some((creep) => creep.memory.role === Role.MANAGER) &&
+            (this.homeroom.memory.layout !== RoomLayout.STAMP ||
+                this.homeroom
+                    .find(FIND_STRUCTURES)
+                    .some(
+                        (structure) =>
+                            structure.structureType === STRUCTURE_CONTAINER &&
+                            this.homeroom.stamps.container.some(
+                                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.toMemSafe() === structure.pos.toMemSafe()
+                            )
+                    ));
+        // If there is a manager with a container then do not refill center structures
+        if (this.homeroom.memory.layout === RoomLayout.STAMP && hasManagerWithContainer) {
             targetStructureTypes = [STRUCTURE_EXTENSION];
             // Make Distributor fill up center containers as long as there is no center link yet
             if (
-                !this.homeroom.stamps.link.some(
-                    (linkStamp) =>
-                        linkStamp.type === 'center' &&
-                        linkStamp.rcl <= this.homeroom.controller.level &&
-                        !this.homeroom.lookForAt(LOOK_STRUCTURES, linkStamp.pos).some((structure) => structure.structureType === STRUCTURE_LINK)
-                )
+                !this.homeroom
+                    .find(FIND_STRUCTURES)
+                    .some(
+                        (structure) =>
+                            structure.structureType === STRUCTURE_LINK &&
+                            this.homeroom.stamps.link.some(
+                                (linkStamp) => linkStamp.type === 'center' && linkStamp.pos.toMemSafe() === structure.pos.toMemSafe()
+                            )
+                    )
             ) {
                 targetStructureTypes.push(STRUCTURE_CONTAINER);
             }
@@ -266,7 +281,7 @@ export class TransportCreep extends WaveCreep {
                 structure.store[RESOURCE_ENERGY] < structure.store.getCapacity(RESOURCE_ENERGY) &&
                 // Do not fill up center or miner extensions
                 (this.homeroom.memory.layout !== RoomLayout.STAMP ||
-                    !hasManager ||
+                    !hasManagerWithContainer ||
                     structure.structureType !== STRUCTURE_EXTENSION ||
                     !this.homeroom.stamps.extension.some(
                         (extensionStamp) =>
@@ -284,7 +299,7 @@ export class TransportCreep extends WaveCreep {
 
         if (spawnStructures.length) {
             // Switch between containers which is important in early rcl
-            if (this.homeroom.memory.layout === RoomLayout.STAMP && hasManager && this.homeroom.controller.level < 5) {
+            if (this.homeroom.memory.layout === RoomLayout.STAMP && this.homeroom.controller.level < 5 && hasManagerWithContainer) {
                 if (
                     spawnStructures.length > 1 &&
                     spawnStructures.every((structure) => structure.structureType === STRUCTURE_CONTAINER) &&
