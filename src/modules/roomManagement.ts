@@ -4,7 +4,6 @@ import { posFromMem } from './data';
 import { PopulationManagement } from './populationManagement';
 import { manageRemoteRoom } from './remoteRoomManagement';
 import {
-    findBunkerLocation,
     placeBunkerOuterRamparts,
     placeBunkerConstructionSites,
     placeMinerLinks,
@@ -211,6 +210,21 @@ export function driveRoom(room: Room) {
                         (creep) =>
                             creep.owner.username !== 'Invader' &&
                             (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
+                    )
+            ) {
+                room.controller.activateSafeMode();
+            }
+        } else if (room.memory.layout === RoomLayout.STAMP) {
+            const centerLink = room.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'center');
+            if (
+                centerLink &&
+                room
+                    .find(FIND_HOSTILE_CREEPS)
+                    .some(
+                        (creep) =>
+                            creep.owner.username !== 'Invader' &&
+                            (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
+                            (creep.pos.x > 3 || creep.pos.y > 3 || creep.pos.x < 46 || creep.pos.y > 46)
                     )
             ) {
                 room.controller.activateSafeMode();

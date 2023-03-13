@@ -107,6 +107,7 @@ interface TravelState {
     lastMove?: number;
     visibleRooms?: string[];
     allowedRooms?: string[];
+    keepPath?: boolean;
 }
 
 interface Destination {

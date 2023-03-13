@@ -119,7 +119,16 @@ export default function manageFlags() {
     }
 
     if (Game.flags.recover) {
-        let opts: OperationOpts = {};
+        let portalLocations = [];
+
+        if (Game.flags.portal) {
+            portalLocations.push(Game.flags.portal.pos.toMemSafe());
+            Game.flags.portal.remove();
+        }
+
+        let opts: OperationOpts = {
+            portalLocations: portalLocations,
+        };
 
         if (Game.flags.origin) {
             opts.originRoom = Game.flags.origin.pos.roomName;

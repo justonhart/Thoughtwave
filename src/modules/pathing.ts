@@ -169,6 +169,17 @@ export class Pathing {
                 Array.prototype.push.apply(opts.pathsRoomPositions, pathFinder.path);
             }
             creep.memory._m.stuckCount = 0;
+
+            // Do not remove next path if instantly going back to old room
+            if (
+                !creep.memory._m.keepPath &&
+                creep.memory._m.lastCoord &&
+                Pathing.isExit(posFromMem(creep.memory._m.lastCoord)) &&
+                (!Pathing.positionAtDirection(creep.pos, parseInt(creep.memory._m.path[0], 10) as DirectionConstant) ||
+                    Pathing.isExit(Pathing.positionAtDirection(creep.pos, parseInt(creep.memory._m.path[0], 10) as DirectionConstant)))
+            ) {
+                creep.memory._m.keepPath = true;
+            }
         }
 
         // Can be removed later but needed this for debugging
@@ -184,12 +195,15 @@ export class Pathing {
         }
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
         if (
+            !creep.memory._m.keepPath &&
             opts.avoidSourceKeepers &&
             creep.memory._m.lastCoord &&
             posFromMem(creep.memory._m.lastCoord).roomName !== creep.pos.roomName &&
             !creep.memory._m.visibleRooms.includes(creep.pos.roomName)
         ) {
             delete creep.memory._m.path; // Recalculate path in each new room as well if the creep should avoid hostiles in each room
+        } else if (creep.memory._m.lastCoord && posFromMem(creep.memory._m.lastCoord).roomName !== creep.pos.roomName && creep.memory._m.keepPath) {
+            creep.memory._m.keepPath = false;
         }
         return creep.move(nextDirection);
     }
