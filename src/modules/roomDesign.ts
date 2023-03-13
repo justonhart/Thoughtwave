@@ -776,6 +776,10 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
             }
         }
     }
+
+    stamps.rampart = stamps.rampart.filter(
+        (rampartDetail, index, self) => index === self.findIndex((rampart) => rampart.pos.toMemSafe() === rampartDetail.pos.toMemSafe())
+    );
 }
 
 // Add Ramparts on miningPosition and links outside of the stamp boundary ==> no longer used but left in case needed later
