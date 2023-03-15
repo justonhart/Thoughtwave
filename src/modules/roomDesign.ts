@@ -705,7 +705,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
 }
 
 function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: string) {
-    for (let i = 2; i < 48; i++) {
+    for (let i = 1; i < 49; i++) {
         // Top
         if (terrain.get(i, 2) !== TERRAIN_MASK_WALL) {
             if (terrain.get(i, 0) !== TERRAIN_MASK_WALL) {
@@ -787,12 +787,12 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
                 if (terrain.get(48, i - 1) !== TERRAIN_MASK_WALL && terrain.get(49, i - 2) === TERRAIN_MASK_WALL) {
                     stamps.rampart.push({ rcl: 4, pos: new RoomPosition(48, i - 1, roomName) });
                 }
-            } else if (terrain.get(49, i) === TERRAIN_MASK_WALL && terrain.get(49, i + 1) !== TERRAIN_MASK_WALL) {
+            } else if (terrain.get(49, i) === TERRAIN_MASK_WALL && terrain.get(49, i - 1) !== TERRAIN_MASK_WALL) {
                 stamps.rampart.push({ rcl: 4, pos: new RoomPosition(47, i, roomName) });
                 if (terrain.get(47, i + 1) !== TERRAIN_MASK_WALL) {
                     stamps.rampart.push({ rcl: 4, pos: new RoomPosition(47, i + 1, roomName) });
                 }
-                if (terrain.get(48, i + 1) !== TERRAIN_MASK_WALL && terrain.get(49, i - 2) === TERRAIN_MASK_WALL) {
+                if (terrain.get(48, i + 1) !== TERRAIN_MASK_WALL && terrain.get(49, i + 2) === TERRAIN_MASK_WALL) {
                     stamps.rampart.push({ rcl: 4, pos: new RoomPosition(48, i + 1, roomName) });
                 }
             }
@@ -1034,7 +1034,7 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
 
     // subtract miner length from extensions because for each miner a road will later on which decreases the amount of extensions around the miner
     while (queue.length > 0 && (stamps.extension.length < 56 || !stamps.storage.length || !stamps.lab.length)) {
-        if (Game.cpu.tickLimit - Game.cpu.getUsed() < 20) {
+        if (Game.cpu.tickLimit - Game.cpu.getUsed() < 40) {
             return false;
         }
         const pos: RoomPosition = queue.shift()!;
