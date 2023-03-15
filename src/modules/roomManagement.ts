@@ -191,7 +191,11 @@ export function driveRoom(room: Room) {
                         const nextConstructionSite = constructionStamps.pop();
                         const result = room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
                         if (result !== OK) {
-                            console.log(result);
+                            console.log(
+                                `Could not createConstruction for Stamp layout in room ${
+                                    room.name
+                                }. Result: ${result}. Position: ${nextConstructionSite.pos.toMemSafe()}`
+                            );
                         }
                         constructionSitesCount++;
                     }
