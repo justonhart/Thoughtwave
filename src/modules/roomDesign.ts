@@ -684,10 +684,8 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     if (valid) {
         valid = bfs(starCenter, stamps, terrain);
         if (!valid) {
-            if (valid === false) {
-                console.log('No proper placements found.');
-            }
-            return;
+            console.log('No proper placements found.');
+            return false;
         }
         // Add roads to miningPositions, controller, minerals
         stamps.container
@@ -1036,8 +1034,8 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
 
     // subtract miner length from extensions because for each miner a road will later on which decreases the amount of extensions around the miner
     while (queue.length > 0 && (stamps.extension.length < 56 || !stamps.storage.length || !stamps.lab.length)) {
-        if (Game.cpu.tickLimit - Game.cpu.getUsed() < 50) {
-            return;
+        if (Game.cpu.tickLimit - Game.cpu.getUsed() < 20) {
+            return false;
         }
         const pos: RoomPosition = queue.shift()!;
         // Mark the position as visited
