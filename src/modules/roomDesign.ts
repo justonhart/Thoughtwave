@@ -591,7 +591,7 @@ export function cleanRoom(room: Room) {
 }
 
 //-----------------STAMP DESIGN----------------------------------------------------
-export function findStampLocation(room: Room) {
+export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     if (Game.cpu.bucket < 300) {
         console.log('CPU bucket is too low. Operation has been scheduled to run automatically once bucket is full enough.');
         global.nextTickFunctions = [
@@ -699,7 +699,9 @@ export function findStampLocation(room: Room) {
         addRoadToPois(room.mineral, stamps, 6);
         addRampartsAroundExits(stamps, terrain, room.name);
         drawLayout(Game.rooms[room.name].visual, stamps);
-        storeStampLayoutInMemory(stamps, room);
+        if (storeInMemory) {
+            storeStampLayoutInMemory(stamps, room);
+        }
     }
     return valid;
 }

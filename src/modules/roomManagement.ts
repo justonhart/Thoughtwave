@@ -244,7 +244,7 @@ export function driveRoom(room: Room) {
         }
 
         if (room.observer) {
-            let visionRequestId = room.memory.visionRequests.find(
+            let visionRequestId = room.memory.visionRequests?.find(
                 (rq) => !Memory.visionRequests[rq].onTick || Memory.visionRequests[rq].onTick === Game.time + 1
             );
             if (visionRequestId) {
