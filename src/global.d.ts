@@ -14,6 +14,8 @@ declare global {
     var qualifyingMarketOrders: { [resource: string]: string };
 
     var nextTickFunctions: (() => void)[];
+
+    var visionRequestIncrement: number;
 }
 
 export {};

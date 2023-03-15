@@ -3,17 +3,17 @@ import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
 import { getSpawnPos, placeBunkerConstructionSites, roomNeedsCoreStructures } from './roomDesign';
 
-const OPERATION_STARTING_STAGE_MAP: Record<OperationType, OperationStage> = {
-    1: OperationStage.CLAIM,
-    2: OperationStage.ACTIVE,
-    3: OperationStage.ACTIVE,
-    4: OperationStage.ACTIVE,
-    5: OperationStage.ACTIVE,
-    6: OperationStage.ACTIVE,
-    7: OperationStage.ACTIVE,
-    8: OperationStage.ACTIVE,
-    9: OperationStage.ACTIVE,
-    10: OperationStage.ACTIVE,
+const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } = {
+    [OperationType.COLONIZE]: OperationStage.CLAIM,
+    [OperationType.STERILIZE]: OperationStage.ACTIVE,
+    [OperationType.COLLECTION]: OperationStage.ACTIVE,
+    [OperationType.SECURE]: OperationStage.ACTIVE,
+    [OperationType.ROOM_RECOVERY]: OperationStage.ACTIVE,
+    [OperationType.ATTACK]: OperationStage.ACTIVE,
+    [OperationType.QUAD_ATTACK]: OperationStage.ACTIVE,
+    [OperationType.UPGRADE_BOOST]: OperationStage.ACTIVE,
+    [OperationType.REMOTE_BUILD]: OperationStage.ACTIVE,
+    [OperationType.CLEAN]: OperationStage.ACTIVE,
 };
 
 const OPERATOR_PARTS_MAP: { [key in OperationType]?: BodyPartConstant[] } = {
