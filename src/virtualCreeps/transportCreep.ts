@@ -160,21 +160,8 @@ export class TransportCreep extends WaveCreep {
                     isAllowedStampContainer = false;
                 }
             }
-            return (
-                str.structureType === STRUCTURE_CONTAINER &&
-                (str.store.energy >= this.store.getCapacity() || this.room.controller?.level < 5) &&
-                isAllowedStampContainer
-            );
+            return str.structureType === STRUCTURE_CONTAINER && str.store.energy >= this.store.getCapacity() && isAllowedStampContainer;
         });
-
-        // If there are multiple containers and one is full while the other one isnt then prioritize that one
-        if (
-            containers.length > 1 &&
-            containers.some((container: StructureContainer) => !container.store.getFreeCapacity()) &&
-            containers.some((container: StructureContainer) => container.store.getFreeCapacity())
-        ) {
-            containers = containers.filter((container: StructureContainer) => !container.store.getFreeCapacity());
-        }
 
         nonStorageSources = [...(ruins ?? []), ...(looseEnergyStacks ?? []), ...containers];
         if (nonStorageSources.length) {
@@ -242,18 +229,25 @@ export class TransportCreep extends WaveCreep {
         }
 
         let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
+        // If there are center
         const hasManagerWithContainer =
-            this.homeroom.creeps.some((creep) => creep.memory.role === Role.MANAGER) &&
-            (this.homeroom.memory.layout !== RoomLayout.STAMP ||
-                this.homeroom
-                    .find(FIND_STRUCTURES)
-                    .some(
-                        (structure) =>
-                            structure.structureType === STRUCTURE_CONTAINER &&
-                            this.homeroom.stamps.container.some(
-                                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.toMemSafe() === structure.pos.toMemSafe()
-                            )
-                    ));
+            this.homeroom.memory.layout === RoomLayout.STAMP &&
+            this.homeroom.creeps.some(
+                (creep) =>
+                    creep.memory.role === Role.MANAGER &&
+                    this.homeroom.stamps.managers.some(
+                        (managerStamp) => managerStamp.type === 'center' && managerStamp.pos.toMemSafe() === creep.memory.destination
+                    )
+            ) &&
+            this.homeroom
+                .find(FIND_STRUCTURES)
+                .some(
+                    (structure) =>
+                        structure.structureType === STRUCTURE_CONTAINER &&
+                        this.homeroom.stamps.container.some(
+                            (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.toMemSafe() === structure.pos.toMemSafe()
+                        )
+                );
         // If there is a manager with a container then do not refill center structures
         if (this.homeroom.memory.layout === RoomLayout.STAMP && hasManagerWithContainer) {
             targetStructureTypes = [STRUCTURE_EXTENSION];

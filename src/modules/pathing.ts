@@ -360,21 +360,28 @@ export class Pathing {
                 }
 
                 if (options.exitCost) {
+                    const terrain = Game.map.getRoomTerrain(roomName);
                     for (let x = 0; x < 50; x++) {
-                        if (!Game.map.getRoomTerrain(roomName).get(x, 0)) {
-                            matrix.set(x, 0, options.exitCost);
-                        }
-                        if (!Game.map.getRoomTerrain(roomName).get(x, 49)) {
-                            matrix.set(x, 49, options.exitCost);
-                        }
+                        Pathing.setMatrixIfNotWall(terrain, matrix, x, 0, options.exitCost);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, x, 49, options.exitCost);
                     }
                     for (let y = 0; y < 50; y++) {
-                        if (!Game.map.getRoomTerrain(roomName).get(0, y)) {
-                            matrix.set(0, y, options.exitCost);
-                        }
-                        if (!Game.map.getRoomTerrain(roomName).get(49, y)) {
-                            matrix.set(49, y, options.exitCost);
-                        }
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 0, y, options.exitCost);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 49, y, options.exitCost);
+                    }
+                }
+
+                if (options.avoidEdges) {
+                    const terrain = Game.map.getRoomTerrain(roomName);
+                    for (let i = 0; i < 50; i++) {
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 0, i, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 1, i, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 48, i, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 49, i, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, i, 0, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, i, 1, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, i, 48, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, i, 49, 20);
                     }
                 }
 
@@ -725,5 +732,11 @@ export class Pathing {
             return;
         }
         return new RoomPosition(x, y, origin.roomName);
+    }
+
+    static setMatrixIfNotWall(terrain: RoomTerrain, matrix: CostMatrix, x: number, y: number, cost: number) {
+        if (terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+            matrix.set(x, y, cost);
+        }
     }
 }

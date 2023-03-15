@@ -87,6 +87,10 @@ interface TravelToOpts extends PathFinderOpts {
      * If pathing is done in the same tick this can be used to provide the energy gathered during the tick
      */
     currentTickEnergy?: number;
+    /**
+     * Avoid edges (first two tiles from exits). Useful for stamp layouts as these use ramparts at exits
+     */
+    avoidEdges?: boolean;
 }
 
 interface CustomMatrixCost {
