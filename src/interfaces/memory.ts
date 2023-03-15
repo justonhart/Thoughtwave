@@ -9,6 +9,7 @@ interface Memory {
     squads?: { [squadId: string]: Squad };
     marketBlacklist?: string[]; //player names we don't want to sell to
     blacklistedRooms?: string[]; //room names we don't sell to
+    visionRequests?: { [id: string]: VisionRequest };
 }
 
 interface EmpireIntershard {
@@ -50,6 +51,8 @@ interface Operation {
     portalLocations?: string[];
     forcedDestinations?: string[];
     pathCost?: number;
+    toughHitsRequired?: number;
+    visionRequests?: string[];
 }
 
 interface OperationOpts {
@@ -139,4 +142,11 @@ const enum OperationStage {
     CLAIM,
     BUILD,
     COMPLETE,
+}
+
+interface VisionRequest {
+    targetRoom: string; //roomname
+    assigned?: boolean;
+    onTick?: number; //what tick is the vision required? undefined = immediately
+    completed?: boolean; //once need is done, mark completed to remove
 }
