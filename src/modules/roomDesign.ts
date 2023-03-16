@@ -1007,13 +1007,21 @@ function containsStamp(stamps: Stamps, targetPositions: RoomPosition[]): boolean
 }
 
 function containsNonRoadStamp(stamps: Stamps, targetPositions: RoomPosition[]): boolean {
-    return []
-        .concat(
-            ...Object.entries(stamps)
-                .filter(([key, currentStamps]) => key !== STRUCTURE_ROAD)
-                .map(([key, currentStamps]) => currentStamps)
+    return (
+        []
+            .concat(
+                ...Object.entries(stamps)
+                    .filter(([key, currentStamps]) => key !== STRUCTURE_ROAD)
+                    .map(([key, currentStamps]) => currentStamps)
+            )
+            .some((stampDetail: StampDetail) => targetPositions.some((targetPos) => Pathing.sameCoord(stampDetail.pos, targetPos))) ||
+        stamps.road.some(
+            (roadDetail) =>
+                roadDetail.type !== 'mineral' &&
+                roadDetail.type?.includes('miner') &&
+                targetPositions.some((targetPos) => Pathing.sameCoord(roadDetail.pos, targetPos))
         )
-        .some((stampDetail: StampDetail) => targetPositions.some((targetPos) => Pathing.sameCoord(stampDetail.pos, targetPos)));
+    );
 }
 
 function drawLayout(roomVisual: RoomVisual, stamps: Stamps) {

@@ -192,9 +192,9 @@ export function driveRoom(room: Room) {
                         const result = room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
                         if (result !== OK) {
                             console.log(
-                                `Could not createConstruction for Stamp layout in room ${
-                                    room.name
-                                }. Result: ${result}. Position: ${nextConstructionSite.pos.toMemSafe()}`
+                                `Could not createConstruction for Stamp layout in room ${room.name}. Result: ${result}. Type: ${
+                                    nextConstructionSite.key
+                                }. Position: ${nextConstructionSite.pos.toMemSafe()}`
                             );
                         }
                         constructionSitesCount++;
