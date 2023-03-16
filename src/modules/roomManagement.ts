@@ -477,7 +477,7 @@ export function initRoom(room: Room) {
                 room.createConstructionSite(spawn, STRUCTURE_SPAWN);
                 room.memory.miningAssignments = {};
                 room.stamps.container
-                    .filter((containerStamp) => containerStamp.type?.includes('miner'))
+                    .filter((containerStamp) => containerStamp.type?.includes('miner') && containerStamp.type !== ('mineral'))
                     .forEach((minerStamp) => (room.memory.miningAssignments[minerStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
                 room.memory.mineralMiningAssignments = {};
                 room.stamps.container
