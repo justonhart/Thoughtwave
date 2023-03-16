@@ -591,7 +591,7 @@ export function cleanRoom(room: Room) {
 }
 
 //-----------------STAMP DESIGN----------------------------------------------------
-const debug = true; // debug cpu usage
+const debug = false; // debug cpu usage
 export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     logCpu('Start');
     if (Game.cpu.bucket < 200) {
@@ -775,7 +775,10 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
             started = 0;
         }
 
-        if (terrain.get(i, 2) !== TERRAIN_MASK_WALL) {
+        if (
+            terrain.get(i, 2) !== TERRAIN_MASK_WALL &&
+            (terrain.get(i, 3) !== TERRAIN_MASK_WALL || terrain.get(i - 1, 3) !== TERRAIN_MASK_WALL || terrain.get(i + 1, 3) !== TERRAIN_MASK_WALL)
+        ) {
             if (terrain.get(i, 0) !== TERRAIN_MASK_WALL) {
                 ramparts.push(new RoomPosition(i, 2, roomName));
             } else if (terrain.get(i + 1, 0) !== TERRAIN_MASK_WALL) {
@@ -813,7 +816,10 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
             started = 0;
         }
 
-        if (terrain.get(i, 47) !== TERRAIN_MASK_WALL) {
+        if (
+            terrain.get(i, 47) !== TERRAIN_MASK_WALL &&
+            (terrain.get(i, 46) !== TERRAIN_MASK_WALL || terrain.get(i - 1, 46) !== TERRAIN_MASK_WALL || terrain.get(i + 1, 46) !== TERRAIN_MASK_WALL)
+        ) {
             if (terrain.get(i, 49) !== TERRAIN_MASK_WALL) {
                 ramparts.push(new RoomPosition(i, 47, roomName));
             } else if (terrain.get(i + 1, 49) !== TERRAIN_MASK_WALL) {
@@ -851,7 +857,10 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
             started = 0;
         }
 
-        if (terrain.get(2, i) !== TERRAIN_MASK_WALL) {
+        if (
+            terrain.get(2, i) !== TERRAIN_MASK_WALL &&
+            (terrain.get(3, i) !== TERRAIN_MASK_WALL || terrain.get(3, i - 1) !== TERRAIN_MASK_WALL || terrain.get(3, i + 1) !== TERRAIN_MASK_WALL)
+        ) {
             if (terrain.get(0, i) !== TERRAIN_MASK_WALL) {
                 ramparts.push(new RoomPosition(2, i, roomName));
             } else if (terrain.get(0, i + 1) !== TERRAIN_MASK_WALL) {
@@ -889,7 +898,10 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
             started = 0;
         }
 
-        if (terrain.get(47, i) !== TERRAIN_MASK_WALL) {
+        if (
+            terrain.get(47, i) !== TERRAIN_MASK_WALL &&
+            (terrain.get(46, i) !== TERRAIN_MASK_WALL || terrain.get(46, i - 1) !== TERRAIN_MASK_WALL || terrain.get(46, i + 1) !== TERRAIN_MASK_WALL)
+        ) {
             if (terrain.get(49, i) !== TERRAIN_MASK_WALL) {
                 ramparts.push(new RoomPosition(47, i, roomName));
             } else if (terrain.get(49, i + 1) !== TERRAIN_MASK_WALL) {
