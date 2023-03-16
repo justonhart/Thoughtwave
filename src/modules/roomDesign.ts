@@ -743,22 +743,29 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
 
         if (terrain.get(i, 2) !== TERRAIN_MASK_WALL) {
             if (terrain.get(i, 0) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i, 2, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 2, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 2, roomName) });
             } else if (terrain.get(i + 1, 0) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i, 2, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 2, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 2, roomName) });
                 if (terrain.get(i - 1, 2) !== TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i - 1, 2, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i - 1, 2, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i - 1, 2, roomName) });
                 }
                 if (terrain.get(i - 1, 1) !== TERRAIN_MASK_WALL && terrain.get(i - 2, 0) === TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i - 1, 1, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i - 1, 1, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i - 1, 1, roomName) });
                 }
             } else if (terrain.get(i - 1, 0) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i, 2, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 2, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 2, roomName) });
                 if (terrain.get(i + 1, 2) !== TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i + 1, 2, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i + 1, 2, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i + 1, 2, roomName) });
                 }
                 if (terrain.get(i + 1, 1) !== TERRAIN_MASK_WALL && terrain.get(i + 2, 0) === TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i + 1, 1, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i + 1, 1, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i + 1, 1, roomName) });
                 }
             }
         }
@@ -777,22 +784,29 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
 
         if (terrain.get(i, 47) !== TERRAIN_MASK_WALL) {
             if (terrain.get(i, 49) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i, 47, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 47, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 47, roomName) });
             } else if (terrain.get(i + 1, 49) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i, 47, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 47, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 47, roomName) });
                 if (terrain.get(i - 1, 47) !== TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i - 1, 47, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i - 1, 47, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i - 1, 47, roomName) });
                 }
                 if (terrain.get(i - 1, 48) !== TERRAIN_MASK_WALL && terrain.get(i - 2, 49) === TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i - 1, 48, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i - 1, 48, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i - 1, 48, roomName) });
                 }
             } else if (terrain.get(i - 1, 49) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i, 47, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 47, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i, 47, roomName) });
                 if (terrain.get(i + 1, 47) !== TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i + 1, 47, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i + 1, 47, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i + 1, 47, roomName) });
                 }
                 if (terrain.get(i + 1, 48) !== TERRAIN_MASK_WALL && terrain.get(i + 2, 49) === TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(i + 1, 48, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i + 1, 48, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(i + 1, 48, roomName) });
                 }
             }
         }
@@ -811,22 +825,29 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
 
         if (terrain.get(2, i) !== TERRAIN_MASK_WALL) {
             if (terrain.get(0, i) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(2, i, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(2, i, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(2, i, roomName) });
             } else if (terrain.get(0, i + 1) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(2, i, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(2, i, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(2, i, roomName) });
                 if (terrain.get(2, i - 1) !== TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(2, i - 1, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(2, i - 1, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(2, i - 1, roomName) });
                 }
                 if (terrain.get(1, i - 1) !== TERRAIN_MASK_WALL && terrain.get(0, i - 2) === TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(1, i - 1, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(1, i - 1, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(1, i - 1, roomName) });
                 }
             } else if (terrain.get(0, i - 1) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(2, i, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(2, i, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(2, i, roomName) });
                 if (terrain.get(2, i + 1) !== TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(2, i + 1, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(2, i + 1, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(2, i + 1, roomName) });
                 }
                 if (terrain.get(1, i + 1) !== TERRAIN_MASK_WALL && terrain.get(0, i + 2) === TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(1, i + 1, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(1, i + 1, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(1, i + 1, roomName) });
                 }
             }
         }
@@ -845,22 +866,29 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
 
         if (terrain.get(47, i) !== TERRAIN_MASK_WALL) {
             if (terrain.get(49, i) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(47, i, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(47, i, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(47, i, roomName) });
             } else if (terrain.get(49, i + 1) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(47, i, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(47, i, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(47, i, roomName) });
                 if (terrain.get(47, i - 1) !== TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(47, i - 1, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(47, i - 1, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(47, i - 1, roomName) });
                 }
                 if (terrain.get(48, i - 1) !== TERRAIN_MASK_WALL && terrain.get(49, i - 2) === TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(48, i - 1, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(48, i - 1, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(48, i - 1, roomName) });
                 }
             } else if (terrain.get(49, i - 1) !== TERRAIN_MASK_WALL) {
-                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(47, i, roomName) });
+                stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(47, i, roomName) });
+                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(47, i, roomName) });
                 if (terrain.get(47, i + 1) !== TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(47, i + 1, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(47, i + 1, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(47, i + 1, roomName) });
                 }
                 if (terrain.get(48, i + 1) !== TERRAIN_MASK_WALL && terrain.get(49, i + 2) === TERRAIN_MASK_WALL) {
-                    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(48, i + 1, roomName) });
+                    stamps.rampart.push({ type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(48, i + 1, roomName) });
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: new RoomPosition(48, i + 1, roomName) });
                 }
             }
         }
