@@ -1244,7 +1244,10 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
                 !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
                 positionsInStampBoundary(targetPositions) &&
                 !containsStamp(stamps, targetPositions) &&
-                !containsNonRoadStamp(stamps, roadPositions)
+                !containsNonRoadStamp(stamps, roadPositions) &&
+                !stamps.container
+                    .filter((containerDetail) => containerDetail.type?.includes('miner'))
+                    .some((minerContainer) => targetPositions.some((t) => t.getRangeTo(minerContainer.pos) < 3))
             ) {
                 logCpu('Lab Found');
                 targetPositions.forEach((labPos) => {
@@ -1403,7 +1406,7 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
             Object.entries(stamps)
                 .filter(([key, currentStamps]: [string, StampDetail[]]) => key !== STRUCTURE_ROAD)
                 .forEach(([key, currentStamps]: [string, StampDetail[]]) =>
-                    currentStamps.forEach((nonRoadStamp) => matrix.set(nonRoadStamp.pos.x, nonRoadStamp.pos.y, 10))
+                    currentStamps.forEach((nonRoadStamp) => matrix.set(nonRoadStamp.pos.x, nonRoadStamp.pos.y, 50))
                 );
             return matrix;
         },
@@ -1472,7 +1475,7 @@ function addMissingRoads(starCenter: RoomPosition, sourcePos: RoomPosition, stam
             Object.entries(stamps)
                 .filter(([key, currentStamps]) => key !== STRUCTURE_ROAD && key !== STRUCTURE_RAMPART)
                 .forEach(([key, currentStamps]: [string, StampDetail[]]) =>
-                    currentStamps.forEach((roadDetail) => matrix.set(roadDetail.pos.x, roadDetail.pos.y, 20))
+                    currentStamps.forEach((roadDetail) => matrix.set(roadDetail.pos.x, roadDetail.pos.y, 50))
                 );
             return matrix;
         },
