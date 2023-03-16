@@ -1,6 +1,6 @@
 import { addHostileRoom, addVisionRequest, unclaimRoom } from './data';
 import { addOperation } from './operationsManagement';
-import { findBunkerLocation } from './roomDesign';
+import { findBunkerLocation, findStampLocation } from './roomDesign';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
@@ -247,13 +247,23 @@ export default function manageFlags() {
         Game.flags.clean.remove();
     }
 
-    if (Game.flags.layout) {
-        let result = addVisionRequest({ targetRoom: Game.flags.layout.pos.roomName });
+    if (Game.flags.bunker) {
+        let result = addVisionRequest({ targetRoom: Game.flags.bunker.pos.roomName });
 
         if (result === ERR_NOT_FOUND) {
             console.log('No observers in range');
-        } else if (Game.rooms[Game.flags.layout.pos.roomName]) {
-            findBunkerLocation(Game.rooms[Game.flags.layout.pos.roomName]);
+        } else if (Game.rooms[Game.flags.bunker.pos.roomName]) {
+            findBunkerLocation(Game.rooms[Game.flags.bunker.pos.roomName]);
+        }
+    }
+
+    if (Game.flags.stamp) {
+        let result = addVisionRequest({ targetRoom: Game.flags.stamp.pos.roomName });
+
+        if (result === ERR_NOT_FOUND) {
+            console.log('No observers in range');
+        } else if (Game.rooms[Game.flags.stamp.pos.roomName]) {
+            findStampLocation(Game.rooms[Game.flags.stamp.pos.roomName], false);
         }
     }
 }
