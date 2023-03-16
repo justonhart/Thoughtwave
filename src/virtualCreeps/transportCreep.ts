@@ -51,19 +51,16 @@ export class TransportCreep extends WaveCreep {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (target instanceof Resource) {
             this.runPickupJob(target);
+        } else if (
+            target instanceof StructureContainer &&
+            this.homeroom.memory.layout === RoomLayout.STAMP &&
+            this.homeroom.stamps.container.some(
+                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.x === target.pos.x && containerStamp.pos.y === target.pos.y
+            )
+        ) {
+            this.runRefillJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer || target?.status === LabStatus.NEEDS_EMPTYING) {
-            if (
-                target instanceof StructureContainer &&
-                this.homeroom.memory.layout === RoomLayout.STAMP &&
-                this.homeroom.stamps.container.some(
-                    (containerStamp) =>
-                        containerStamp.type === 'center' && containerStamp.pos.x === target.pos.x && containerStamp.pos.y === target.pos.y
-                )
-            ) {
-                this.runRefillDropJob(target);
-            } else {
-                this.runCollectionJob(target);
-            }
+            this.runCollectionJob(target);
         } else if (
             target instanceof StructureSpawn ||
             target instanceof StructureExtension ||
@@ -375,7 +372,7 @@ export class TransportCreep extends WaveCreep {
         }
     }
 
-    protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage | StructureLab) {
+    protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage | StructureLab | StructureContainer) {
         this.memory.currentTaskPriority = Priority.HIGH;
         let targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
         if (targetFreeCapacity) {
@@ -398,26 +395,6 @@ export class TransportCreep extends WaveCreep {
                         }
                         break;
                 }
-            }
-        } else {
-            this.onTaskFinished();
-        }
-    }
-
-    protected runRefillDropJob(target: StructureContainer) {
-        this.memory.currentTaskPriority = Priority.HIGH;
-        let targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
-        if (targetFreeCapacity) {
-            if (this.pos.x !== target.pos.x || this.pos.y !== target.pos.y) {
-                this.travelTo(target, { range: 0, currentTickEnergy: this.incomingResourceAmount });
-            } else if (!this.actionTaken) {
-                this.drop(RESOURCE_ENERGY, Math.min(this.store.energy, targetFreeCapacity));
-                this.outgoingResourceAmount += Math.min(this.store.energy, targetFreeCapacity);
-                this.actionTaken = true;
-                if (target.store.getFreeCapacity(RESOURCE_ENERGY) >= this.store.energy) {
-                    this.memory.gathering = true;
-                }
-                this.onTaskFinished();
             }
         } else {
             this.onTaskFinished();
