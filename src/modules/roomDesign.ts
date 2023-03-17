@@ -737,17 +737,9 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
 function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: string): RoomPosition[][] {
     // TOP
     let rampartsPerSection: RoomPosition[][] = []; // add ramparts each array being its own section
-    let started = 0;
+    let endSection = false;
     let ramparts = [];
     for (let i = 1; i < 49; i++) {
-        if (terrain.get(i, 2) !== TERRAIN_MASK_WALL) {
-            if (started === 0) {
-                started = i;
-            }
-        } else if (started !== 0) {
-            started = 0;
-        }
-
         if (
             terrain.get(i, 2) !== TERRAIN_MASK_WALL &&
             (terrain.get(i, 3) !== TERRAIN_MASK_WALL || terrain.get(i - 1, 3) !== TERRAIN_MASK_WALL || terrain.get(i + 1, 3) !== TERRAIN_MASK_WALL)
@@ -770,25 +762,22 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
                 if (terrain.get(i + 1, 1) !== TERRAIN_MASK_WALL && terrain.get(i + 2, 0) === TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(i + 1, 1, roomName));
                 }
+            } else if (ramparts.length !== 0) {
+                endSection = true;
             }
+        } else if (ramparts.length !== 0) {
+            endSection = true;
         }
 
-        if (ramparts.length && started === 0) {
+        if (endSection) {
             rampartsPerSection.push(ramparts);
             ramparts = [];
+            endSection = false;
         }
     }
 
     // BOTTOM
     for (let i = 1; i < 49; i++) {
-        if (terrain.get(i, 47) !== TERRAIN_MASK_WALL) {
-            if (started === 0) {
-                started = i;
-            }
-        } else if (started !== 0) {
-            started = 0;
-        }
-
         if (
             terrain.get(i, 47) !== TERRAIN_MASK_WALL &&
             (terrain.get(i, 46) !== TERRAIN_MASK_WALL || terrain.get(i - 1, 46) !== TERRAIN_MASK_WALL || terrain.get(i + 1, 46) !== TERRAIN_MASK_WALL)
@@ -811,25 +800,22 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
                 if (terrain.get(i + 1, 48) !== TERRAIN_MASK_WALL && terrain.get(i + 2, 49) === TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(i + 1, 48, roomName));
                 }
+            } else if (ramparts.length !== 0) {
+                endSection = true;
             }
+        } else if (ramparts.length !== 0) {
+            endSection = true;
         }
 
-        if (ramparts.length && started === 0) {
+        if (endSection) {
             rampartsPerSection.push(ramparts);
             ramparts = [];
+            endSection = false;
         }
     }
 
     // LEFT
     for (let i = 1; i < 49; i++) {
-        if (terrain.get(2, i) !== TERRAIN_MASK_WALL) {
-            if (started === 0) {
-                started = i;
-            }
-        } else if (started !== 0) {
-            started = 0;
-        }
-
         if (
             terrain.get(2, i) !== TERRAIN_MASK_WALL &&
             (terrain.get(3, i) !== TERRAIN_MASK_WALL || terrain.get(3, i - 1) !== TERRAIN_MASK_WALL || terrain.get(3, i + 1) !== TERRAIN_MASK_WALL)
@@ -852,25 +838,22 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
                 if (terrain.get(1, i + 1) !== TERRAIN_MASK_WALL && terrain.get(0, i + 2) === TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(1, i + 1, roomName));
                 }
+            } else if (ramparts.length !== 0) {
+                endSection = true;
             }
+        } else if (ramparts.length !== 0) {
+            endSection = true;
         }
 
-        if (ramparts.length && started === 0) {
+        if (endSection) {
             rampartsPerSection.push(ramparts);
             ramparts = [];
+            endSection = false;
         }
     }
 
     // RIGHT
     for (let i = 1; i < 49; i++) {
-        if (terrain.get(47, i) !== TERRAIN_MASK_WALL) {
-            if (started === 0) {
-                started = i;
-            }
-        } else if (started !== 0) {
-            started = 0;
-        }
-
         if (
             terrain.get(47, i) !== TERRAIN_MASK_WALL &&
             (terrain.get(46, i) !== TERRAIN_MASK_WALL || terrain.get(46, i - 1) !== TERRAIN_MASK_WALL || terrain.get(46, i + 1) !== TERRAIN_MASK_WALL)
@@ -893,12 +876,17 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
                 if (terrain.get(48, i + 1) !== TERRAIN_MASK_WALL && terrain.get(49, i + 2) === TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(48, i + 1, roomName));
                 }
+            } else if (ramparts.length !== 0) {
+                endSection = true;
             }
+        } else if (ramparts.length !== 0) {
+            endSection = true;
         }
 
-        if (ramparts.length && started === 0) {
+        if (endSection) {
             rampartsPerSection.push(ramparts);
             ramparts = [];
+            endSection = false;
         }
     }
 
