@@ -229,22 +229,22 @@ export class TransportCreep extends WaveCreep {
         // If there are center
         const hasManagerWithContainer =
             this.homeroom.memory.layout === RoomLayout.STAMP &&
-            this.homeroom.creeps.some(
+            this.homeroom.creeps.filter(
                 (creep) =>
                     creep.memory.role === Role.MANAGER &&
                     this.homeroom.stamps.managers.some(
                         (managerStamp) => managerStamp.type === 'center' && managerStamp.pos.toMemSafe() === creep.memory.destination
                     )
-            ) &&
+            ).length > 1 &&
             this.homeroom
                 .find(FIND_STRUCTURES)
-                .some(
+                .filter(
                     (structure) =>
                         structure.structureType === STRUCTURE_CONTAINER &&
                         this.homeroom.stamps.container.some(
                             (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.toMemSafe() === structure.pos.toMemSafe()
                         )
-                );
+                ).length > 1;
         // If there is a manager with a container then do not refill center structures
         if (this.homeroom.memory.layout === RoomLayout.STAMP && hasManagerWithContainer) {
             targetStructureTypes = [STRUCTURE_EXTENSION];
