@@ -187,6 +187,9 @@ export function driveRoom(room: Room) {
                                 )
                                 .forEach((stamp) => constructionStamps.push({ pos: stamp.pos, key: key as StructureConstant }));
                         });
+                    constructionStamps.sort((a, b) => {
+                        return getStructurePriority(a.key) > getStructurePriority(b.key) ? 1 : -1;
+                    });
                     while (constructionStamps?.length && constructionSitesCount < 15) {
                         const nextConstructionSite = constructionStamps.pop();
                         const result = room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
@@ -875,5 +878,17 @@ function runVisionRequest(room: Room, requestId: string) {
     if (result === OK) {
         Memory.visionRequests[requestId].completed = true;
         room.memory.visionRequests = room.memory.visionRequests.filter((rq) => rq !== requestId);
+    }
+}
+
+function getStructurePriority(structureType: StructureConstant): number {
+    if (structureType === STRUCTURE_STORAGE) {
+        return 2;
+    } else if (structureType === STRUCTURE_SPAWN || structureType === STRUCTURE_EXTENSION || structureType === STRUCTURE_TOWER) {
+        return 1;
+    } else if (structureType === STRUCTURE_RAMPART) {
+        return -1;
+    } else {
+        return 0;
     }
 }
