@@ -728,7 +728,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
 }
 
 /**
- * Adds ramparts around all exits and returns the center position for each section exit ==> TODO: see W59S24 make ramparts great again
+ * Adds ramparts around all exits and returns the center position for each section exit
  * @param stamps
  * @param terrain
  * @param roomName
@@ -1177,12 +1177,9 @@ function placeControllerLink(startPos: RoomPosition, stamps: Stamps, terrain: Ro
 function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): boolean {
     let visited: Set<string> = new Set();
     let queue: RoomPosition[] = [startPos];
+
     // subtract miner length from extensions because for each miner a road will later on which decreases the amount of extensions around the miner
-    while (
-        queue.length > 0 &&
-        (stamps.extension.length < 56 || !stamps.storage.length || !stamps.lab.length) &&
-        (Game.cpu.tickLimit - Game.cpu.getUsed() > 200 || !stamps.storage.length || !stamps.lab.length)
-    ) {
+    while ((queue.length > 0 && !stamps.storage.length) || !stamps.lab.length) {
         if (Game.cpu.tickLimit - Game.cpu.getUsed() < 30) {
             console.log('Ran out of cpu so stopped execution.');
             return false;
@@ -1298,44 +1295,67 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
                 continue;
             }
         }
+    }
+
+    visited = new Set();
+    queue = [startPos];
+    while (queue.length > 0 && stamps.extension.length < 56 && Game.cpu.tickLimit - Game.cpu.getUsed() > 150) {
+        const pos: RoomPosition = queue.shift()!;
+        // Mark the position as visited
+        visited.add(pos.toMemSafe());
+
+        // Add the unvisited neighbors to the queue
+        pos.neighbors(false)
+            .filter(
+                (neighborPos) =>
+                    positionsInStampBoundary([neighborPos]) &&
+                    !visited.has(neighborPos.toMemSafe()) &&
+                    terrain.get(neighborPos.x, neighborPos.y) !== TERRAIN_MASK_WALL
+            )
+            .forEach((neighborPos) => {
+                // Add the neighbor to the queue
+                queue.push(neighborPos);
+            });
+        // skip if it already has a structure on it
+        if (containsStamp(stamps, [pos])) {
+            continue;
+        }
 
         // Extensions since the square is 2 wide, the center must be at least 2 tiles away from edges (cant build on x/y = 0/49 or in front of exits)
         // These go last since they can always be put around roads
-        if (stamps.storage.length && stamps.lab.length && stamps.extension.length < 56) {
-            const targetPositions = [
-                pos,
-                new RoomPosition(pos.x - 1, pos.y, pos.roomName),
-                new RoomPosition(pos.x + 1, pos.y, pos.roomName),
-                new RoomPosition(pos.x, pos.y - 1, pos.roomName),
-                new RoomPosition(pos.x, pos.y + 1, pos.roomName),
-            ];
-            const roadPositions = [
-                new RoomPosition(pos.x - 1, pos.y - 1, pos.roomName),
-                new RoomPosition(pos.x + 1, pos.y - 1, pos.roomName),
-                new RoomPosition(pos.x + 1, pos.y + 1, pos.roomName),
-                new RoomPosition(pos.x - 1, pos.y + 1, pos.roomName),
-                new RoomPosition(pos.x - 2, pos.y, pos.roomName),
-                new RoomPosition(pos.x, pos.y + 2, pos.roomName),
-                new RoomPosition(pos.x + 2, pos.y, pos.roomName),
-                new RoomPosition(pos.x, pos.y - 2, pos.roomName),
-            ];
-            // Avoid being in base + allow corners + avid other stamps
-            if (
-                !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
-                positionsInStampBoundary(targetPositions) &&
-                !containsStamp(stamps, targetPositions) &&
-                !containsNonRoadStamp(stamps, roadPositions)
-            ) {
-                const rcl = 3 + Math.floor(stamps.extension.length / 10);
-                targetPositions.forEach((extensionPos) => {
-                    let extensionRcl = 3 + Math.floor(stamps.extension.length / 10);
-                    // Stamps will at the earliest be placed at rcl4 and each new level increases the number of extensions by 10. To calculate the rcl simply take the current extensionCount and divide it by 10 to find the correleating controller level
-                    stamps.extension.push({ rcl: extensionRcl, pos: extensionPos });
-                });
-                roadPositions.forEach((roadPos) => addUniqueRoad(stamps, { rcl, pos: roadPos })); // before adding extensions to have proper rcl
-                addMissingRoads(startPos, roadPositions[0], stamps, rcl);
-                continue;
-            }
+        const targetPositions = [
+            pos,
+            new RoomPosition(pos.x - 1, pos.y, pos.roomName),
+            new RoomPosition(pos.x + 1, pos.y, pos.roomName),
+            new RoomPosition(pos.x, pos.y - 1, pos.roomName),
+            new RoomPosition(pos.x, pos.y + 1, pos.roomName),
+        ];
+        const roadPositions = [
+            new RoomPosition(pos.x - 1, pos.y - 1, pos.roomName),
+            new RoomPosition(pos.x + 1, pos.y - 1, pos.roomName),
+            new RoomPosition(pos.x + 1, pos.y + 1, pos.roomName),
+            new RoomPosition(pos.x - 1, pos.y + 1, pos.roomName),
+            new RoomPosition(pos.x - 2, pos.y, pos.roomName),
+            new RoomPosition(pos.x, pos.y + 2, pos.roomName),
+            new RoomPosition(pos.x + 2, pos.y, pos.roomName),
+            new RoomPosition(pos.x, pos.y - 2, pos.roomName),
+        ];
+        // Avoid being in base + allow corners + avid other stamps
+        if (
+            !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
+            positionsInStampBoundary(targetPositions) &&
+            !containsStamp(stamps, targetPositions) &&
+            !containsNonRoadStamp(stamps, roadPositions)
+        ) {
+            const rcl = 3 + Math.floor(stamps.extension.length / 10);
+            targetPositions.forEach((extensionPos) => {
+                let extensionRcl = 3 + Math.floor(stamps.extension.length / 10);
+                // Stamps will at the earliest be placed at rcl4 and each new level increases the number of extensions by 10. To calculate the rcl simply take the current extensionCount and divide it by 10 to find the correleating controller level
+                stamps.extension.push({ rcl: extensionRcl, pos: extensionPos });
+            });
+            roadPositions.forEach((roadPos) => addUniqueRoad(stamps, { rcl, pos: roadPos })); // before adding extensions to have proper rcl
+            addMissingRoads(startPos, roadPositions[0], stamps, rcl);
+            continue;
         }
     }
     return true;
