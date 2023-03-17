@@ -1186,7 +1186,7 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
     while (
         queue.length > 0 &&
         (stamps.extension.length < 56 || !stamps.storage.length || !stamps.lab.length) &&
-        (visited.size < 150 || !stamps.storage.length || !stamps.lab.length)
+        (Game.cpu.tickLimit - Game.cpu.getUsed() > 200 || !stamps.storage.length || !stamps.lab.length)
     ) {
         if (Game.cpu.tickLimit - Game.cpu.getUsed() < 30) {
             console.log('Ran out of cpu so stopped execution.');
