@@ -235,7 +235,10 @@ export class TransportCreep extends WaveCreep {
                     this.homeroom.stamps.managers.some(
                         (managerStamp) => managerStamp.type === 'center' && managerStamp.pos.toMemSafe() === creep.memory.destination
                     )
-            ).length > 1 &&
+            ).length <
+                this.homeroom.memory.stampLayout.managers
+                    .map((data) => data.rcl)
+                    .reduce((totalNeeded, nextRCL) => (nextRCL <= this.homeroom.controller.level ? totalNeeded + 1 : totalNeeded), 0) &&
             this.homeroom
                 .find(FIND_STRUCTURES)
                 .filter(
