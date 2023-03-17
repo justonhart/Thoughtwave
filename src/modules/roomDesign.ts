@@ -1476,6 +1476,7 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
         swampCost: 5,
         ignoreDestructibleStructures: true,
         ignoreCreeps: true,
+        ignoreRoads: true,
         range: range,
         costCallback: function (roomName, costMatrix) {
             const matrix = costMatrix.clone();
@@ -1483,7 +1484,9 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
             Object.entries(stamps)
                 .filter(([key, currentStamps]: [string, StampDetail[]]) => key !== STRUCTURE_ROAD && key !== STRUCTURE_RAMPART)
                 .forEach(([key, currentStamps]: [string, StampDetail[]]) =>
-                    currentStamps.forEach((nonRoadStamp) => matrix.set(nonRoadStamp.pos.x, nonRoadStamp.pos.y, 50))
+                    currentStamps
+                        .filter((nonRoadStamp) => nonRoadStamp.type !== type)
+                        .forEach((nonRoadStamp) => matrix.set(nonRoadStamp.pos.x, nonRoadStamp.pos.y, 50))
                 );
             return matrix;
         },
