@@ -694,50 +694,23 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
         // Add roads to miningPositions, controller, minerals
         stamps.container
             .filter((stampDetail) => stampDetail.type?.includes('source'))
-            .forEach((minerPoi) => addRoadToPois(minerPoi.pos, stamps, 3, minerPoi.type));
+            .forEach((minerPoi) => addRoadToPois(minerPoi.pos, stamps, 3, minerPoi.type, terrain));
         stamps.extractor.push({ type: 'mineral', rcl: 6, pos: room.mineral.pos });
-        addRoadToPois(room.mineral.pos, stamps, 6, 'mineral');
+        addRoadToPois(room.mineral.pos, stamps, 6, 'mineral', terrain);
 
         // Add Ramparts
-        let sections = addRampartsAroundExits(stamps, terrain, room.name);
-        let index = 0;
-        sections = sections.filter((section) => {
-            const pos = JSON.parse(JSON.stringify(section[0]));
-            if (pos.x === 2) {
-                pos.x = 0;
-            } else if (pos.x === 47) {
-                pos.x = 49;
-            } else if (pos.y === 2) {
-                pos.y = 0;
-            } else if (pos.y === 47) {
-                pos.y = 49;
-            }
-            const path = PathFinder.search(pos, stamps.storage[0].pos, {
-                maxRooms: 1,
-                roomCallback: function (roomName) {
-                    const matrix = new PathFinder.CostMatrix();
-                    sections.forEach((section, i) => {
-                        if (index !== i) {
-                            section.forEach((position) => matrix.set(position.x, position.y, 255));
-                        }
-                    });
-                    return matrix;
-                },
-            });
-            index++;
-            return !path.incomplete;
-        });
-
+        const sections = getRampartSectionsAroundExits(stamps, terrain, room.name);
         sections.forEach((section) => {
             section.forEach((section) => {
+                if (!containsNonRoadStamp(stamps, [section])) {
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: section });
+                }
                 stamps.rampart.push({ rcl: 4, pos: section });
-                addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: section });
             });
-            addRoadToPois(section[0], stamps, 4, STRUCTURE_RAMPART);
+            addRoadToPois(section[0], stamps, 4, STRUCTURE_RAMPART, terrain);
         });
 
-        placeControllerLink(room.controller.pos, stamps, terrain);
-        addRoadToPois(room.controller.pos, stamps, 3, STRUCTURE_CONTROLLER, 3);
+        addRoadToPois(room.controller.pos, stamps, 3, STRUCTURE_CONTROLLER, terrain, 3);
 
         // Add left over single structures
         addSingleStructures(stamps, terrain);
@@ -761,9 +734,9 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
  * @param roomName
  * @returns
  */
-function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: string): RoomPosition[][] {
+function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: string): RoomPosition[][] {
     // TOP
-    const rampartsPerSection: RoomPosition[][] = []; // add ramparts each array being its own section
+    let rampartsPerSection: RoomPosition[][] = []; // add ramparts each array being its own section
     let started = 0;
     let ramparts = [];
     for (let i = 1; i < 49; i++) {
@@ -929,11 +902,33 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
         }
     }
 
-    /*     stamps.rampart = stamps.rampart.filter(
-        (rampartDetail, index, self) => index === self.findIndex((rampart) => rampart.pos.toMemSafe() === rampartDetail.pos.toMemSafe())
-    ); */
-
-    return rampartsPerSection;
+    let index = 0;
+    return rampartsPerSection.filter((section) => {
+        const pos = JSON.parse(JSON.stringify(section[0]));
+        if (pos.x === 2) {
+            pos.x = 0;
+        } else if (pos.x === 47) {
+            pos.x = 49;
+        } else if (pos.y === 2) {
+            pos.y = 0;
+        } else if (pos.y === 47) {
+            pos.y = 49;
+        }
+        const path = PathFinder.search(pos, stamps.storage[0].pos, {
+            maxRooms: 1,
+            roomCallback: function (roomName) {
+                const matrix = new PathFinder.CostMatrix();
+                rampartsPerSection.forEach((section, i) => {
+                    if (index !== i) {
+                        section.forEach((position) => matrix.set(position.x, position.y, 255));
+                    }
+                });
+                return matrix;
+            },
+        });
+        index++;
+        return !path.incomplete;
+    });
 }
 
 // Add Ramparts on miningPosition and links outside of the stamp boundary ==> no longer used but left in case needed later
@@ -1352,6 +1347,7 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
  * @returns
  */
 function findBestMiningPostitions(room: Room, terrain: RoomTerrain): { pos: RoomPosition; adjacentSpaces: RoomPosition[] }[] {
+    // TODO: two sources next to each other see W57S21
     const sources = room.find(FIND_SOURCES);
     const miningPositions = sources.map((source) => {
         let bestSpot: { pos: RoomPosition; adjacentSpaces: RoomPosition[] };
@@ -1388,7 +1384,29 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
     const storagePos = stamps.storage[0].pos;
     // Sort roads ==> roads without type first as these are around stamps which the distributor has to go to anyway. Then sort the rest of the roads by range to storage so it will put stuff close to it
     const roads = stamps.road
-        .sort((a, b) => (a.type && !b.type ? 1 : !a.type && b.type ? -1 : storagePos.getRangeTo(a.pos) > storagePos.getRangeTo(b.pos) ? 1 : -1))
+        .filter(
+            (roadDetail) =>
+                roadDetail.type !== 'notBuildable' && roadDetail.pos.x > 2 && roadDetail.pos.x < 47 && roadDetail.pos.y > 2 && roadDetail.pos.y < 47
+        )
+        .sort((a, b) => {
+            if (a.type && !b.type) {
+                return 1;
+            } else if (!a.type && b.type) {
+                return -1;
+            } else if (a.type?.includes('source') && !b.type?.includes('source')) {
+                return -1;
+            } else if (b.type?.includes('source') && !a.type?.includes('source')) {
+                return 1;
+            }
+            const rangeA = storagePos.getRangeTo(a.pos);
+            const rangeB = storagePos.getRangeTo(b.pos);
+            if (rangeA > rangeB) {
+                return 1;
+            } else if (rangeB > rangeA) {
+                return -1;
+            }
+            return 0;
+        })
         .map((roadDetail) => roadDetail.pos);
     while (roads.length > 0 && (stamps.extension.length < 60 || stamps.tower.length < 6 || !stamps.powerSpawn.length || !stamps.observer.length)) {
         let neighbors = roads
@@ -1432,7 +1450,7 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
     logCpu('End addSingleStructures');
 }
 
-function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: string, range: number = 1) {
+function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: string, terrain: RoomTerrain, range: number = 1) {
     const path = stamps.storage[0].pos.findPathTo(poi, {
         plainCost: 3,
         swampCost: 5,
@@ -1479,13 +1497,27 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
             }
             road.pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName);
         }
+    } else if (type === STRUCTURE_CONTROLLER) {
+        const lastStep = path[path.length - 1];
+        const pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName);
+        const freePos = pos
+            .neighbors(false, true)
+            .find(
+                (neighborPos) =>
+                    (pos.x !== neighborPos.x || pos.y !== neighborPos.y) && !hasWalls(terrain, [neighborPos]) && !containsStamp(stamps, [neighborPos])
+            );
+        stamps.link.push({ type: 'controller', rcl: 8, pos: freePos });
     }
 
     //add unique road positions for next cost_matrix
-    path.forEach((step) => {
+    path.forEach((step, index) => {
         const road = stamps.road.find((roadDetail) => roadDetail.pos.x === step.x && roadDetail.pos.y === step.y);
         if (!road) {
-            addUniqueRoad(stamps, { type, rcl, pos: new RoomPosition(step.x, step.y, stamps.storage[0].pos.roomName) });
+            if (type === STRUCTURE_CONTROLLER && index === path.length - 1) {
+                addUniqueRoad(stamps, { type: 'notBuildable', rcl, pos: new RoomPosition(step.x, step.y, stamps.storage[0].pos.roomName) });
+            } else {
+                addUniqueRoad(stamps, { type, rcl, pos: new RoomPosition(step.x, step.y, stamps.storage[0].pos.roomName) });
+            }
         } else if (road.rcl > rcl) {
             // Override rcl
             road.rcl = rcl;
