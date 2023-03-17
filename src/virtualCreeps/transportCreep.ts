@@ -147,7 +147,7 @@ export class TransportCreep extends WaveCreep {
                 const container = this.room.stamps.container.find(
                     (containerStamp) => str.pos.x === containerStamp.pos.x && str.pos.y === containerStamp.pos.y
                 );
-                if (container && container.type?.includes('miner') && container.type !== 'mineral') {
+                if (container && container.type?.includes('source')) {
                     isAllowedStampContainer = !this.room.stamps.link.some(
                         (linkStamp) =>
                             linkStamp.type === container.type &&
@@ -278,7 +278,7 @@ export class TransportCreep extends WaveCreep {
                         (extensionStamp) =>
                             extensionStamp.pos.x === structure.pos.x &&
                             extensionStamp.pos.y === structure.pos.y &&
-                            (extensionStamp.type === 'center' || extensionStamp.type?.includes('miner'))
+                            (extensionStamp.type === 'center' || extensionStamp.type?.includes('source'))
                     )) &&
                 // Fill up center containers
                 (structure.structureType !== STRUCTURE_CONTAINER ||
@@ -333,8 +333,7 @@ export class TransportCreep extends WaveCreep {
                     (room.memory.layout !== RoomLayout.STAMP ||
                         room.stamps.container.some(
                             (containerStamp) =>
-                                containerStamp.type !== 'mineral' &&
-                                containerStamp.type?.includes('miner') &&
+                                containerStamp.type?.includes('source') &&
                                 containerStamp.pos.x === structure.pos.x &&
                                 containerStamp.pos.y === structure.pos.y
                         ))

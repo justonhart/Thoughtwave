@@ -477,11 +477,11 @@ export function initRoom(room: Room) {
                 room.createConstructionSite(spawn, STRUCTURE_SPAWN);
                 room.memory.miningAssignments = {};
                 room.stamps.container
-                    .filter((containerStamp) => containerStamp.type?.includes('miner') && containerStamp.type !== ('mineral'))
+                    .filter((containerStamp) => containerStamp.type?.includes('source'))
                     .forEach((minerStamp) => (room.memory.miningAssignments[minerStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
                 room.memory.mineralMiningAssignments = {};
                 room.stamps.container
-                    .filter((containerStamp) => containerStamp.type?.includes('mineral'))
+                    .filter((containerStamp) => containerStamp.type === 'mineral')
                     .forEach((mineralStamp) => (room.memory.mineralMiningAssignments[mineralStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
             }
         };
@@ -499,7 +499,7 @@ export function initRoom(room: Room) {
         room.createConstructionSite(spawn, STRUCTURE_SPAWN);
         room.memory.miningAssignments = {};
         room.stamps.container
-            .filter((containerStamp) => containerStamp.type !== 'mineral' && containerStamp.type?.includes('miner'))
+            .filter((containerStamp) => containerStamp.type?.includes('source'))
             .forEach((minerStamp) => (room.memory.miningAssignments[minerStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
         room.memory.mineralMiningAssignments = {};
         room.stamps.container

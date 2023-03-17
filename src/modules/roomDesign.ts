@@ -629,15 +629,15 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     // Block all available spots around sources for link and extension
     findBestMiningPostitions(room, terrain).forEach((bestSpot) => {
         let linkRcl = 6;
-        addUniqueRoad(stamps, { type: `miner${stamps.container.length}`, rcl: 3, pos: bestSpot.adjacentSpaces.shift() });
-        stamps.link.push({ type: `miner${stamps.container.length}`, rcl: linkRcl, pos: bestSpot.adjacentSpaces.shift() });
+        addUniqueRoad(stamps, { type: `source${stamps.container.length}`, rcl: 3, pos: bestSpot.adjacentSpaces.shift() });
+        stamps.link.push({ type: `source${stamps.container.length}`, rcl: linkRcl, pos: bestSpot.adjacentSpaces.shift() });
         linkRcl++;
         bestSpot.adjacentSpaces.forEach((extensionPos) => {
             const rcl = extensionCount < 20 ? 4 : 5;
-            stamps.extension.push({ type: `miner${stamps.container.length}`, rcl, pos: extensionPos });
+            stamps.extension.push({ type: `source${stamps.container.length}`, rcl, pos: extensionPos });
             extensionCount++;
         });
-        stamps.container.push({ type: `miner${stamps.container.length}`, rcl: 3, pos: bestSpot.pos });
+        stamps.container.push({ type: `source${stamps.container.length}`, rcl: 3, pos: bestSpot.pos });
     });
 
     let targetPositions = [];
@@ -693,7 +693,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
         }
         // Add roads to miningPositions, controller, minerals
         stamps.container
-            .filter((stampDetail) => stampDetail.type !== 'mineral' && stampDetail.type?.includes('miner'))
+            .filter((stampDetail) => stampDetail.type?.includes('source'))
             .forEach((minerPoi) => addRoadToPois(minerPoi.pos, stamps, 3, minerPoi.type));
         stamps.extractor.push({ type: 'mineral', rcl: 6, pos: room.mineral.pos });
         addRoadToPois(room.mineral.pos, stamps, 6, 'mineral');
@@ -939,7 +939,7 @@ function addRampartsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: 
 // Add Ramparts on miningPosition and links outside of the stamp boundary ==> no longer used but left in case needed later
 function addRampartsOnMiners(stamps: Stamps) {
     stamps.container
-        .filter((containerStamp) => containerStamp.type?.includes('miner'))
+        .filter((containerStamp) => containerStamp.type?.includes('source'))
         .forEach((minerStamp) => {
             if (!isInsideStampBoundaries(minerStamp.pos, stamps)) {
                 stamps.rampart.push({ rcl: 4, pos: minerStamp.pos });
@@ -996,7 +996,7 @@ function isInRange(stamps: Stamps, pos: RoomPosition): boolean {
                 .filter(([key, currentStamps]: [string, StampDetail[]]) => key !== STRUCTURE_ROAD) // Filter out roads
                 .map(([key, currentStamps]: [string, StampDetail[]]) =>
                     currentStamps
-                        .filter((stampDetail) => !stampDetail.type?.includes('miner') && stampDetail.type !== 'controller')
+                        .filter((stampDetail) => !stampDetail.type?.includes('source') && stampDetail.type !== 'controller')
                         .map((nonMinerStamps) => nonMinerStamps.pos)
                 ) // filter out miner extensions and return all other stamps
         )
@@ -1051,10 +1051,7 @@ function containsNonRoadStamp(stamps: Stamps, targetPositions: RoomPosition[]): 
             )
             .some((stampDetail: StampDetail) => targetPositions.some((targetPos) => Pathing.sameCoord(stampDetail.pos, targetPos))) ||
         stamps.road.some(
-            (roadDetail) =>
-                roadDetail.type !== 'mineral' &&
-                roadDetail.type?.includes('miner') &&
-                targetPositions.some((targetPos) => Pathing.sameCoord(roadDetail.pos, targetPos))
+            (roadDetail) => roadDetail.type?.includes('source') && targetPositions.some((targetPos) => Pathing.sameCoord(roadDetail.pos, targetPos))
         )
     );
 }
@@ -1281,7 +1278,7 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
                 !containsStamp(stamps, targetPositions) &&
                 !containsNonRoadStamp(stamps, roadPositions) &&
                 !stamps.container
-                    .filter((containerDetail) => containerDetail.type?.includes('miner'))
+                    .filter((containerDetail) => containerDetail.type?.includes('source'))
                     .some((minerContainer) => targetPositions.some((t) => t.getRangeTo(minerContainer.pos) < 3))
             ) {
                 logCpu('Lab Found');
@@ -1453,7 +1450,7 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
         if (!isCloseToEdge(pos)) {
             stamps.container.push({ type, rcl: 6, pos: new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName) });
         }
-    } else if (type?.includes('miner')) {
+    } else if (type?.includes('source')) {
         const lastStep = path[path.length - 1];
         // Replace extension/link with a road (is already taken into account in previous methods so 60 extensions will still be placed)
         const road = stamps.road.find((roadStamp) => roadStamp.type === type);
