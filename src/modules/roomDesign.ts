@@ -1170,15 +1170,23 @@ function placeControllerLink(startPos: RoomPosition, stamps: Stamps, terrain: Ro
     stamps.link.push({ type: 'controller', rcl: 8, pos: closest });
 }
 
+/**
+ * Run a breadth first search to find closest placements for labs/rm/extension stamps.
+ * Setting the "visisted.size < 150" higher will use more cpu to find more places to put the "+" extensions stamp. The lower it is the more likely the extensions
+ * are going to be simply around nearby roads.
+ * @param startPos
+ * @param stamps
+ * @param terrain
+ * @returns
+ */
 function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): boolean {
     let visited: Set<string> = new Set();
     let queue: RoomPosition[] = [startPos];
-    let traveled = 0;
     // subtract miner length from extensions because for each miner a road will later on which decreases the amount of extensions around the miner
     while (
         queue.length > 0 &&
         (stamps.extension.length < 56 || !stamps.storage.length || !stamps.lab.length) &&
-        (traveled < 1000 || !stamps.storage.length || !stamps.lab.length)
+        (visited.size < 150 || !stamps.storage.length || !stamps.lab.length)
     ) {
         if (Game.cpu.tickLimit - Game.cpu.getUsed() < 30) {
             console.log('Ran out of cpu so stopped execution.');
@@ -1186,14 +1194,14 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
         }
         const pos: RoomPosition = queue.shift()!;
         // Mark the position as visited
-        visited.add(pos.toString());
+        visited.add(pos.toMemSafe());
 
         // Add the unvisited neighbors to the queue
         pos.neighbors(false)
             .filter(
                 (neighborPos) =>
                     positionsInStampBoundary([neighborPos]) &&
-                    !visited.has(neighborPos.toString()) &&
+                    !visited.has(neighborPos.toMemSafe()) &&
                     terrain.get(neighborPos.x, neighborPos.y) !== TERRAIN_MASK_WALL
             )
             .forEach((neighborPos) => {
@@ -1205,7 +1213,6 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
             continue;
         }
 
-        traveled++;
         // Resource Management
         if (!stamps.storage.length) {
             const targetPositions = [];
