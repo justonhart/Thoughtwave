@@ -378,7 +378,9 @@ export class TransportCreep extends WaveCreep {
         this.memory.currentTaskPriority = Priority.HIGH;
         let targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
         if (targetFreeCapacity) {
-            if (!this.pos.isNearTo(target)) {
+            if(!this.store.energy){
+                this.memory.gathering = true;
+            } else if (!this.pos.isNearTo(target)) {
                 this.travelTo(target, { range: 1, currentTickEnergy: this.incomingResourceAmount });
             } else if (!this.actionTaken) {
                 let result = this.transfer(target, RESOURCE_ENERGY);
@@ -392,9 +394,6 @@ export class TransportCreep extends WaveCreep {
                         this.actionTaken = true;
                         this.outgoingResourceAmount += Math.min(this.store.energy, targetFreeCapacity);
                         this.onTaskFinished();
-                        if (target.store.getFreeCapacity(RESOURCE_ENERGY) >= this.store.energy) {
-                            this.memory.gathering = true;
-                        }
                         break;
                 }
             }
