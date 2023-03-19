@@ -159,3 +159,17 @@ export function addVisionRequest(request: VisionRequest): string | ScreepsReturn
         return ERR_NOT_FOUND;
     }
 }
+
+export function getExitDirections(roomName: string): DirectionConstant[]{
+    const terrain = new Room.Terrain(roomName);
+    let exits = new Set<DirectionConstant>();
+
+    for(let i = 0; i < 50; i++){
+        if(terrain.get(0, i) !== TERRAIN_MASK_WALL){exits.add(LEFT);}
+        if(terrain.get(49, i) !== TERRAIN_MASK_WALL){exits.add(RIGHT);}
+        if(terrain.get(i, 0) !== TERRAIN_MASK_WALL){exits.add(TOP);}
+        if(terrain.get(i, 49) !== TERRAIN_MASK_WALL){exits.add(BOTTOM);} 
+    }
+
+    return Array.from(exits);
+}

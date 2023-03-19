@@ -1,6 +1,6 @@
 import { CombatIntel } from './combatIntel';
 import { runLabs } from './labManagement';
-import { posFromMem } from './data';
+import { getExitDirections, posFromMem } from './data';
 import { PopulationManagement } from './populationManagement';
 import { manageRemoteRoom } from './remoteRoomManagement';
 import {
@@ -842,7 +842,7 @@ function scanArea(room: Room) {
     room.memory.scanProgress = `${xDiff}.${yDiff}`;
 }
 
-function computeRoomNameFromDiff(startingRoomName: string, xDiff: number, yDiff: number) {
+export function computeRoomNameFromDiff(startingRoomName: string, xDiff: number, yDiff: number) {
     //lets say W0 = E(-1), S1 = N(-1)
 
     let values = startingRoomName
@@ -891,4 +891,46 @@ function getStructurePriority(structureType: StructureConstant): number {
     } else {
         return 0;
     }
+}
+
+export function findRemoteMiningOptions(room: Room){
+    let exits = getExitDirections(room.name);
+    let safeRoomsDepthOne: string[] = []; //rooms we can pass through for mining
+    for(let exit of exits){
+        let nextRoomName = exit === LEFT || exit === RIGHT ? computeRoomNameFromDiff(room.name, exit === LEFT ? -1 : 1, 0) : computeRoomNameFromDiff(room.name, 0, exit === BOTTOM ? -1 : 1);
+        if([RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER, RoomMemoryStatus.OWNED_INVADER].includes(Memory.roomData[nextRoomName]?.roomStatus)){
+            safeRoomsDepthOne.push(nextRoomName);
+        }
+    }
+
+    let safeRoomsDepthTwo: string[] = [];
+    for(let depthOneRoomName of safeRoomsDepthOne){
+        let depthOneExits = getExitDirections(depthOneRoomName);
+        for(let exit of depthOneExits){
+            let nextRoomName = exit === LEFT || exit === RIGHT ? computeRoomNameFromDiff(depthOneRoomName, exit === LEFT ? -1 : 1, 0) : computeRoomNameFromDiff(depthOneRoomName, 0, exit === BOTTOM ? -1 : 1);
+            if([RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER, RoomMemoryStatus.OWNED_INVADER].includes(Memory.roomData[nextRoomName]?.roomStatus)){
+                safeRoomsDepthTwo.push(nextRoomName);
+            }
+        }
+    }
+
+    let safeRoomsDepthThree: string[] = [];
+    for(let depthTwoRoomName of safeRoomsDepthTwo){
+        let depthTwoExits = getExitDirections(depthTwoRoomName);
+        for(let exit of depthTwoExits){
+            let nextRoomName = exit === LEFT || exit === RIGHT ? computeRoomNameFromDiff(depthTwoRoomName, exit === LEFT ? -1 : 1, 0) : computeRoomNameFromDiff(depthTwoRoomName, 0, exit === BOTTOM ? -1 : 1);
+            if([RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER, RoomMemoryStatus.OWNED_INVADER].includes(Memory.roomData[nextRoomName]?.roomStatus)){
+                safeRoomsDepthThree.push(nextRoomName);
+            }
+        }
+    }
+
+    return Array.from(
+        new Set<string>(
+            [...safeRoomsDepthOne, ...safeRoomsDepthTwo, ...safeRoomsDepthThree]
+            .filter(roomName => 
+                Memory.roomData[roomName]?.sourceCount && 
+                [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_INVADER, RoomMemoryStatus.OWNED_INVADER].includes(Memory.roomData[roomName]?.roomStatus) )
+        )
+    );
 }
