@@ -1,6 +1,7 @@
-import { posFromMem } from './data';
+import { addVisionRequest, posFromMem } from './data';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
+import { addRemoteRoom } from './remoteRoomManagement';
 import { getSpawnPos, placeBunkerConstructionSites, roomNeedsCoreStructures } from './roomDesign';
 
 const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } = {
@@ -14,6 +15,7 @@ const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } 
     [OperationType.UPGRADE_BOOST]: OperationStage.ACTIVE,
     [OperationType.REMOTE_BUILD]: OperationStage.ACTIVE,
     [OperationType.CLEAN]: OperationStage.ACTIVE,
+    [OperationType.ADD_REMOTE_MINING]: OperationStage.ACTIVE
 };
 
 const OPERATOR_PARTS_MAP: { [key in OperationType]?: BodyPartConstant[] } = {
@@ -55,6 +57,9 @@ export function manageOperations() {
                     break;
                 case OperationType.QUAD_ATTACK:
                     manageQuadAttackRoomOperation(op);
+                    break;
+                case OperationType.ADD_REMOTE_MINING:
+                    manageAddRemoteMiningOperation(op);
                     break;
                 case OperationType.COLLECTION:
                 case OperationType.UPGRADE_BOOST:
@@ -256,6 +261,7 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
             originRoom: originRoom,
             stage: OPERATION_STARTING_STAGE_MAP[operationType],
             type: operationType,
+            visionRequests: [],
             ...opts,
         };
 
@@ -658,3 +664,20 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
         },
     });
 }
+function manageAddRemoteMiningOperation(op: Operation) {
+    //if target room has vision, perform functions
+    if(Game.rooms[op.targetRoom]){
+        let result = addRemoteRoom(op.originRoom, op.targetRoom);
+        if(result != OK){
+            console.log(`Problem assigning remote room ${op.targetRoom} to ${op.originRoom}: ${result}`);
+        }
+        op.stage = OperationStage.COMPLETE;
+    } else if(!op.visionRequests?.some(id => Memory.visionRequests[id])){
+        //add vision request
+        let result = addVisionRequest({targetRoom: op.targetRoom});
+        if(result !== ERR_NOT_FOUND){
+            op.visionRequests.push(result as string);
+        }
+    } // else wait for rq to resolve
+}
+

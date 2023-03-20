@@ -134,6 +134,7 @@ const enum OperationType {
     UPGRADE_BOOST,
     REMOTE_BUILD,
     CLEAN,
+    ADD_REMOTE_MINING,
 }
 
 const enum OperationStage {
