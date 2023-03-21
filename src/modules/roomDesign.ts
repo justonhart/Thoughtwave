@@ -1444,6 +1444,10 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
             return 0;
         })
         .map((roadDetail) => roadDetail.pos);
+
+    Object.entries(stamps).map(([key, stampsDetails]: [string, StampDetail[]]) =>
+        stampsDetails.filter((s) => s.pos?.x === undefined).forEach((s) => console.log(key + ' ' + s.type))
+    );
     while (roads.length > 0 && (stamps.extension.length < 60 || stamps.tower.length < 6 || !stamps.powerSpawn.length || !stamps.observer.length)) {
         let neighbors = roads
             .shift()
@@ -1487,26 +1491,7 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
 }
 
 function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: string, terrain: RoomTerrain, range: number = 1) {
-    const path = stamps.storage[0].pos.findPathTo(poi, {
-        plainCost: 3,
-        swampCost: 5,
-        ignoreDestructibleStructures: true,
-        ignoreCreeps: true,
-        ignoreRoads: true,
-        range: range,
-        costCallback: function (roomName, costMatrix) {
-            const matrix = costMatrix.clone();
-            stamps.road.forEach((roadStamp) => matrix.set(roadStamp.pos.x, roadStamp.pos.y, 1));
-            Object.entries(stamps)
-                .filter(([key, currentStamps]: [string, StampDetail[]]) => key !== STRUCTURE_ROAD && key !== STRUCTURE_RAMPART)
-                .forEach(([key, currentStamps]: [string, StampDetail[]]) =>
-                    currentStamps
-                        .filter((nonRoadStamp) => nonRoadStamp.type !== type)
-                        .forEach((nonRoadStamp) => matrix.set(nonRoadStamp.pos.x, nonRoadStamp.pos.y, 50))
-                );
-            return matrix;
-        },
-    });
+    const path = findPathToPoi(poi, stamps, type, terrain, range);
 
     if (type === 'mineral') {
         const lastStep = path.pop();
@@ -1545,7 +1530,12 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
                 (neighborPos) =>
                     (pos.x !== neighborPos.x || pos.y !== neighborPos.y) && !hasWalls(terrain, [neighborPos]) && !containsStamp(stamps, [neighborPos])
             );
-        stamps.link.push({ type: 'controller', rcl: 8, pos: freePos });
+        if (freePos) {
+            stamps.link.push({ type: 'controller', rcl: 8, pos: freePos });
+        } else {
+            placeControllerLink(poi, stamps, terrain);
+            findPathToPoi(poi, stamps, type, terrain, range);
+        }
     }
 
     //add unique road positions for next cost_matrix
@@ -1561,6 +1551,39 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
             // Override rcl
             road.rcl = rcl;
         }
+    });
+}
+
+function findPathToPoi(poi: RoomPosition, stamps: Stamps, type: string, terrain: RoomTerrain, range: number = 1) {
+    return stamps.storage[0].pos.findPathTo(poi, {
+        plainCost: 3,
+        swampCost: 5,
+        ignoreDestructibleStructures: true,
+        ignoreCreeps: true,
+        ignoreRoads: true,
+        range: range,
+        costCallback: function (roomName, costMatrix) {
+            const matrix = costMatrix.clone();
+            stamps.road.forEach((roadStamp) => matrix.set(roadStamp.pos.x, roadStamp.pos.y, 1));
+            Object.entries(stamps)
+                .filter(([key, currentStamps]: [string, StampDetail[]]) => key !== STRUCTURE_ROAD && key !== STRUCTURE_RAMPART)
+                .forEach(([key, currentStamps]: [string, StampDetail[]]) =>
+                    currentStamps
+                        .filter((nonRoadStamp) => nonRoadStamp.type !== type)
+                        .forEach((nonRoadStamp) => matrix.set(nonRoadStamp.pos.x, nonRoadStamp.pos.y, 50))
+                );
+            for (let i = 0; i < 50; i++) {
+                Pathing.setMatrixIfNotWall(terrain, matrix, 0, i, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, 1, i, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, 48, i, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, 49, i, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, i, 0, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, i, 1, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, i, 48, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, i, 49, 20);
+            }
+            return matrix;
+        },
     });
 }
 

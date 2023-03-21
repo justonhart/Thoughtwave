@@ -212,7 +212,13 @@ export class RampartProtector extends CombatCreep {
             return;
         }
 
-        creep.travelTo(targetRampart, { preferRamparts: true, efficiency: 0.2, maxRooms: 1, noPush: creep.memory.currentTaskPriority });
+        creep.travelTo(targetRampart, {
+            preferRamparts: true,
+            efficiency: 0.2,
+            maxRooms: 1,
+            noPush: creep.memory.currentTaskPriority,
+            avoidEdges: true,
+        });
     }
 
     private findTarget(): Id<Creep> {
