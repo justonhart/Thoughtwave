@@ -10,6 +10,7 @@ interface Memory {
     marketBlacklist?: string[]; //player names we don't want to sell to
     blacklistedRooms?: string[]; //room names we don't sell to
     visionRequests?: { [id: string]: VisionRequest };
+    remoteRoomClaims?: { [targetRoom: string]: { claimant: string; depth: number } }; //map of potential remote rooms to rooms intending to claim them and their 'room distance' from - closer claimants get priority
 }
 
 interface EmpireIntershard {
