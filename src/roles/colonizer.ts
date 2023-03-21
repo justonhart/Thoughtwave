@@ -33,7 +33,7 @@ export class Colonizer extends WorkerCreep {
             if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
                 let target = Game.getObjectById(this.memory.targetId);
 
-                if (!this.memory.targetId || !target) {
+                if (!target) {
                     this.memory.targetId = this.findTarget();
                     target = Game.getObjectById(this.memory.targetId);
                 }

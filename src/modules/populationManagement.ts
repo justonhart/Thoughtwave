@@ -193,24 +193,36 @@ export class PopulationManagement {
     }
 
     static getMinerBody(miningPos: RoomPosition, energyCapacityAvailable: number): (WORK | MOVE | CARRY)[] {
-        let minerBody: (WORK | MOVE | CARRY)[];
+        let minerBody: (WORK | MOVE | CARRY)[] = [];
+
+        const minerStructures = miningPos
+            .findInRange(FIND_MY_STRUCTURES, 1)
+            .filter((s) => s.structureType === STRUCTURE_LINK || s.structureType === STRUCTURE_EXTENSION);
+        if (Memory.rooms[miningPos.roomName].layout === RoomLayout.STAMP) {
+            if (minerStructures.some((minerStructure) => minerStructure.structureType === STRUCTURE_EXTENSION)) {
+                if (energyCapacityAvailable >= 850) {
+                    minerBody = [CARRY, CARRY, CARRY];
+                } else {
+                    minerBody = [CARRY];
+                }
+            }
+        } else if (minerStructures.some((minerStructure) => minerStructure.structureType === STRUCTURE_LINK)) {
+            minerBody = [CARRY];
+        }
+        energyCapacityAvailable -= minerBody.length * 50;
 
         if (energyCapacityAvailable >= 650) {
-            minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE];
+            minerBody = minerBody.concat([WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE]);
         } else if (energyCapacityAvailable >= 550) {
-            minerBody = [WORK, WORK, WORK, WORK, WORK, MOVE];
+            minerBody = minerBody.concat([WORK, WORK, WORK, WORK, WORK, MOVE]);
         } else if (energyCapacityAvailable >= 450) {
-            minerBody = [WORK, WORK, WORK, WORK, MOVE];
+            minerBody = minerBody.concat([WORK, WORK, WORK, WORK, MOVE]);
         } else if (energyCapacityAvailable >= 350) {
-            minerBody = [WORK, WORK, WORK, MOVE];
+            minerBody = minerBody.concat([WORK, WORK, WORK, MOVE]);
         } else {
-            minerBody = [WORK, WORK, MOVE];
+            minerBody = minerBody.concat([WORK, WORK, MOVE]);
         }
 
-        let link = miningPos.findInRange(FIND_MY_STRUCTURES, 1).find((s) => s.structureType === STRUCTURE_LINK);
-        if (link) {
-            minerBody.unshift(CARRY);
-        }
         return minerBody;
     }
 
@@ -257,7 +269,10 @@ export class PopulationManagement {
             !spawn.room.find(FIND_MY_CREEPS).filter((creep) => creep.memory.role === Role.MINER).length &&
             (!spawn.room.storage || spawn.room.storage?.store[RESOURCE_ENERGY] < 1000)
         ) {
-            let emergencyMinerBody = [WORK, WORK, MOVE];
+            let emergencyMinerBody: (WORK | MOVE | CARRY)[] = [WORK, WORK, MOVE];
+            if (spawn.room.memory.layout === RoomLayout.STAMP) {
+                emergencyMinerBody.unshift(CARRY);
+            }
             result = spawn.smartSpawn(emergencyMinerBody, name, options);
             if (result === OK) {
                 if (currentMiner) {
@@ -816,6 +831,7 @@ export class PopulationManagement {
 
         let immobile = false;
 
+        let levelCap = 8;
         if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
             let anchorPoint = posFromMem(spawn.room.memory.anchorPoint);
 
@@ -826,20 +842,45 @@ export class PopulationManagement {
             }
 
             immobile = true;
+        } else if (spawn.room.memory?.layout === RoomLayout.STAMP) {
+            const newManager = this.getNewStampManager(spawn.room);
+            if (newManager) {
+                options.memory.destination = newManager.pos.toMemSafe();
+                // Center Managers (and before terminal stage) don't need as many carry parts
+                if (newManager.type !== 'rm' || spawn.room.controller.level < 6) {
+                    levelCap = 2;
+                }
+                // Use immobile only after center finished building to avoid spot being taken
+                if (newManager.type !== 'rm' && spawn.room.controller.level > 4 && spawn.pos.isNearTo(newManager.pos)) {
+                    options.directions = [spawn.pos.getDirectionTo(newManager.pos)];
+                    immobile = true;
+                }
+            }
         }
 
         if (immobile) {
-            return spawn.spawnMax([CARRY, CARRY], this.generateName(options.memory.role, spawn.name), options, 8);
+            return spawn.spawnMax([CARRY, CARRY], this.generateName(options.memory.role, spawn.name), options, levelCap);
         } else {
-            let body = this.createPartsArray([CARRY, CARRY], spawn.room.energyCapacityAvailable, 8).concat([MOVE]);
+            let body = this.createPartsArray([CARRY, CARRY], spawn.room.energyCapacityAvailable - 50, levelCap).concat([MOVE]);
             return spawn.smartSpawn(body, this.generateName(options.memory.role, spawn.name), options);
         }
     }
 
+    static getNewStampManager(room: Room) {
+        const currentManagers = room.creeps.filter((creep) => creep.memory.role === Role.MANAGER).map((manager) => manager.memory.destination);
+        return room.stamps.managers.find(
+            (managerDetail) =>
+                managerDetail.rcl <= room.controller.level && !currentManagers.some((positions) => managerDetail.pos.toMemSafe() === positions)
+        );
+    }
+
     static needsManager(room: Room): boolean {
         let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
-        let manager = roomCreeps.find((creep) => creep.memory.role === Role.MANAGER);
-        return room.controller?.level >= 5 && (room.memory.layout !== undefined || !!room.memory.managerPos) && !manager;
+        let manager = roomCreeps.filter((creep) => creep.memory.role === Role.MANAGER);
+        if (room.memory.layout === RoomLayout.STAMP) {
+            return room.stamps.managers.filter((managerDetail) => managerDetail.rcl <= room.controller.level)?.length > manager?.length;
+        }
+        return room.controller?.level >= 5 && (room.memory.layout !== undefined || !!room.memory.managerPos) && !manager?.length;
     }
 
     static hasProtector(roomName: string): boolean {

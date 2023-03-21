@@ -10,6 +10,20 @@ export class RemoteMiner extends WaveCreep {
 
         //if we have visibility in assigned room
         if (Game.rooms[this.memory.assignment]) {
+            // Remove left over extensions (usually from strongholds) when these block creation of new extensions
+            if (this.memory.targetId) {
+                const structure = Game.getObjectById(this.memory.targetId) as StructureContainer;
+                if (!structure) {
+                    delete this.memory.targetId;
+                } else {
+                    const dismantleStatus = this.dismantle(structure);
+                    if (dismantleStatus === ERR_NOT_IN_RANGE) {
+                        this.travelTo(structure);
+                    }
+                    return;
+                }
+            }
+
             const isAKeeperRoom = isKeeperRoom(this.memory.assignment);
             if (!this.memory.destination) {
                 this.memory.destination = this.findNextMiningPos(isAKeeperRoom);
@@ -31,7 +45,23 @@ export class RemoteMiner extends WaveCreep {
                     if (!container && this.store.energy) {
                         let constructionSite = targetPos.lookFor(LOOK_CONSTRUCTION_SITES).find((s) => s.structureType === STRUCTURE_CONTAINER);
                         if (!constructionSite) {
-                            this.room.createConstructionSite(targetPos, STRUCTURE_CONTAINER);
+                            const result = this.room.createConstructionSite(targetPos, STRUCTURE_CONTAINER);
+                            if (result === ERR_RCL_NOT_ENOUGH) {
+                                // left over extensions from a stronghold
+                                const structure = this.room
+                                    .find(FIND_STRUCTURES, {
+                                        filter: (s) =>
+                                            s.structureType === STRUCTURE_CONTAINER &&
+                                            !Object.keys(Memory.remoteData[this.memory.assignment]?.miningPositions)?.some(
+                                                (sourceId) => s.id === sourceId
+                                            ),
+                                    })
+                                    .shift();
+
+                                if (structure) {
+                                    this.memory.targetId = structure.id;
+                                }
+                            }
                         } else if (this.store.energy) {
                             this.build(constructionSite);
                             return;

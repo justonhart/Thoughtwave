@@ -25,7 +25,7 @@ export class WorkerCreep extends WaveCreep {
         if (target instanceof StructureStorage) {
             switch (this.withdraw(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { range: 1 });
+                    this.travelTo(target, { range: 1, maxRooms: 1 });
                     break;
                 case 0:
                     this.stopGathering();
@@ -38,7 +38,7 @@ export class WorkerCreep extends WaveCreep {
         if (target instanceof StructureContainer) {
             switch (this.withdraw(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { range: 1 });
+                    this.travelTo(target, { range: 1, maxRooms: 1 });
                     break;
                 case 0:
                     this.stopGathering();
@@ -51,7 +51,7 @@ export class WorkerCreep extends WaveCreep {
         if (target instanceof Ruin) {
             switch (this.withdraw(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { ignoreCreeps: true, range: 1 });
+                    this.travelTo(target, { ignoreCreeps: true, range: 1, maxRooms: 1 });
                     break;
                 case 0:
                     this.stopGathering();
@@ -64,7 +64,7 @@ export class WorkerCreep extends WaveCreep {
         if (target instanceof Resource) {
             switch (this.pickup(target)) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { ignoreCreeps: true, range: 1 });
+                    this.travelTo(target, { ignoreCreeps: true, range: 1, maxRooms: 1 });
                     break;
                 case 0:
                     this.stopGathering();
@@ -94,7 +94,18 @@ export class WorkerCreep extends WaveCreep {
 
         let containers = this.room
             .find(FIND_STRUCTURES)
-            .filter((str) => str.structureType === STRUCTURE_CONTAINER && str.store.energy >= this.store.getCapacity());
+            .filter(
+                (str) =>
+                    str.structureType === STRUCTURE_CONTAINER &&
+                    str.store.energy >= this.store.getCapacity() &&
+                    (this.room.memory.layout !== RoomLayout.STAMP ||
+                        !this.room.stamps.container.some(
+                            (containerStamp) =>
+                                str.pos.x === containerStamp.pos.x &&
+                                str.pos.y === containerStamp.pos.y &&
+                                (containerStamp.type === 'center' || containerStamp.type === 'rm')
+                        ))
+            );
 
         nonStorageSources = [...ruins, ...looseEnergyStacks, ...containers];
         if (nonStorageSources.length) {
@@ -108,7 +119,7 @@ export class WorkerCreep extends WaveCreep {
         let buildSuccess = this.build(target);
         switch (buildSuccess) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { range: 3 });
+                this.travelTo(target, { range: 3, maxRooms: 1, exitCost: 10 });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
@@ -134,6 +145,7 @@ export class WorkerCreep extends WaveCreep {
             case ERR_NOT_IN_RANGE:
                 this.travelTo(this.homeroom.controller, {
                     range: 3,
+                    maxRooms: 1,
                 });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
@@ -159,7 +171,13 @@ export class WorkerCreep extends WaveCreep {
             let repairSuccess = this.repair(target);
             switch (repairSuccess) {
                 case ERR_NOT_IN_RANGE:
-                    this.travelTo(target, { range: 3 });
+                    const opts: TravelToOpts = { range: 3, maxRooms: 1 };
+                    if (this.homeroom.memory.layout === RoomLayout.STAMP && this.room.find(FIND_HOSTILE_CREEPS).length > 0) {
+                        opts.avoidEdges = true;
+                    } else {
+                        opts.exitCost = 10;
+                    }
+                    this.travelTo(target, opts);
                     break;
                 case ERR_NOT_ENOUGH_RESOURCES:
                     this.memory.gathering = true;

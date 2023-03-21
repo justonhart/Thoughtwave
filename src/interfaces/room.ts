@@ -23,6 +23,7 @@ interface RoomMemory {
     factoryTask?: FactoryTask;
     scanProgress?: string;
     towerRepairMap?: { [towerId: string]: Id<StructureRoad> }; //maps towerId to roadId
+    stampLayout?: Stamps;
     visionRequests?: string[]; //vision request Ids
 }
 
@@ -81,11 +82,37 @@ interface Room {
     factory: StructureFactory;
     observer: StructureObserver;
     powerSpawn: StructurePowerSpawn;
+    stamps: Stamps;
 }
 
 interface RoomPosition {
     toMemSafe(): string;
     neighbors(includeDiagonal?: boolean, includeCenter?: boolean): RoomPosition[];
+}
+
+interface Stamps {
+    extension: StampDetail[];
+    tower: StampDetail[];
+    road: StampDetail[];
+    rampart: StampDetail[];
+    lab: StampDetail[];
+    link: StampDetail[];
+    observer: StampDetail[];
+    powerSpawn: StampDetail[];
+    spawn: StampDetail[];
+    managers: StampDetail[];
+    storage: StampDetail[];
+    nuker: StampDetail[];
+    terminal: StampDetail[];
+    factory: StampDetail[];
+    container: StampDetail[];
+    extractor: StampDetail[];
+}
+
+interface StampDetail {
+    type?: string; // Can differentiate if needed (center vs miner extensions)
+    rcl: number; // Indicator at what rcl structure should be build
+    pos: RoomPosition;
 }
 
 const enum PhaseShiftStatus {
@@ -143,4 +170,5 @@ interface Gate {
 
 const enum RoomLayout {
     BUNKER,
+    STAMP,
 }

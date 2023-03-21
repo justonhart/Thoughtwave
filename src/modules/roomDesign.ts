@@ -1,5 +1,4 @@
 import { posFromMem } from './data';
-import { minCutWalls } from './minCut';
 import { Pathing } from './pathing';
 
 export function calculateRoomSpace(room: Room) {
@@ -188,6 +187,8 @@ export function getSpawnPos(room: Room) {
         case RoomLayout.BUNKER:
             let anchorPoint = posFromMem(room.memory.anchorPoint);
             return new RoomPosition(anchorPoint.x, anchorPoint.y - 1, room.name);
+        case RoomLayout.STAMP:
+            return room.stamps.spawn.find((spawnStamp) => spawnStamp.rcl === 1).pos;
     }
 }
 
@@ -196,6 +197,8 @@ export function getStoragePos(room: Room) {
         case RoomLayout.BUNKER:
             let anchorPoint = posFromMem(room.memory.anchorPoint);
             return new RoomPosition(anchorPoint.x + 1, anchorPoint.y - 1, room.name);
+        case RoomLayout.STAMP:
+            return room.stamps.storage[0].pos;
         default:
             return (
                 room.find(FIND_MY_STRUCTURES, {
@@ -588,17 +591,22 @@ export function cleanRoom(room: Room) {
 }
 
 //-----------------STAMP DESIGN----------------------------------------------------
-export function findStampLocation(room: Room) {
-    if (Game.cpu.bucket < 600) {
-        console.log('cpu bucket too low');
-        // TODO: schedule for future tick?
+const debug = false; // debug cpu usage
+export function findStampLocation(room: Room, storeInMemory: boolean = true) {
+    logCpu('Start');
+    if (Game.cpu.bucket < 200) {
+        console.log('CPU bucket is too low. Operation has been scheduled to run automatically once bucket is full enough.');
+        global.nextTickFunctions = [
+            () => {
+                findStampLocation(room);
+            },
+        ];
         return;
     }
     const terrain = Game.map.getRoomTerrain(room.name);
     const poiAvg = findPoiAverage(room);
     let starCenter = new RoomPosition(poiAvg.x - 1, poiAvg.y + 1, room.name);
     const stamps = {
-        center: [],
         extension: [],
         lab: [],
         storage: [],
@@ -606,18 +614,31 @@ export function findStampLocation(room: Room) {
         link: [],
         tower: [],
         observer: [],
-        powerspawn: [],
+        powerSpawn: [],
         rampart: [],
         road: [],
-    };
-    // Block all available spots around sources for link and extension (road on link to maximize extensions)
+        managers: [],
+        spawn: [],
+        nuker: [],
+        factory: [],
+        terminal: [],
+        extractor: [],
+    } as Stamps;
+    // 15 center extensions. If it goes above 20 then itll be in rcl 5
+    let extensionCount = 15;
+    // Block all available spots around sources for link and extension
     findBestMiningPostitions(room, terrain).forEach((bestSpot) => {
-        stamps['container'].push(bestSpot.pos);
-        stamps['link'].push(bestSpot.adjacentSpaces.shift());
-        stamps['extension'] = stamps['extension'].concat(bestSpot.adjacentSpaces);
+        let linkRcl = 6;
+        addUniqueRoad(stamps, { type: `source${stamps.container.length}`, rcl: 3, pos: bestSpot.adjacentSpaces.shift() });
+        stamps.link.push({ type: `source${stamps.container.length}`, rcl: linkRcl, pos: bestSpot.adjacentSpaces.shift() });
+        linkRcl++;
+        bestSpot.adjacentSpaces.forEach((extensionPos) => {
+            const rcl = extensionCount < 20 ? 4 : 5;
+            stamps.extension.push({ type: `source${stamps.container.length}`, rcl, pos: extensionPos });
+            extensionCount++;
+        });
+        stamps.container.push({ type: `source${stamps.container.length}`, rcl: 3, pos: bestSpot.pos });
     });
-
-    const minerExtensions = stamps['extension'].concat(stamps['container']).concat(stamps['link']);
 
     let targetPositions = [];
     let roadPositions = [];
@@ -651,25 +672,297 @@ export function findStampLocation(room: Room) {
                     }
                     if (valid) {
                         starCenter = lookPos;
-                        stamps['center'] = stamps['center'].concat(targetPositions); // TODO: remove and instead add stuff to extensions, managerPos, container, spawner
-                        stamps['road'] = stamps['road'].concat(roadPositions);
+                        setCenterExtensions(stamps, starCenter);
+                        roadPositions.forEach((pos) => addUniqueRoad(stamps, { rcl: 3, pos }));
                     }
                 }
             }
         }
     } else {
-        stamps['center'] = stamps['storage'].concat(targetPositions);
-        stamps['road'] = stamps['road'].concat(roadPositions);
+        setCenterExtensions(stamps, starCenter);
+        roadPositions.forEach((pos) => addUniqueRoad(stamps, { rcl: 3, pos }));
     }
 
     if (valid) {
-        bfs(starCenter, stamps, terrain);
-        stamps['container'].forEach((pos) => addRoadToPois(pos, stamps, room.name));
-        const isWall = ([x, y]) => terrain.get(x, y) === TERRAIN_MASK_WALL;
-        const isCenter = ([x, y]) => x > 1 && x < 48 && y > 1 && y < 48 && isInRange(stamps, new RoomPosition(x, y, room.name), minerExtensions); // Cant build on edges and try to keep 2 away from ramparts so structures cant be hit (could change it to simply put ramparts on those structures)
-        minCutWalls({ isWall, isCenter }).forEach(([x, y]) => stamps['rampart'].push(new RoomPosition(x, y, room.name)));
+        logCpu('Start bfs');
+        valid = bfs(starCenter, stamps, terrain);
+        logCpu('End bfs');
+        if (!valid) {
+            console.log('No proper placements found.');
+            return false;
+        }
+        // Add roads to miningPositions, controller, minerals
+        stamps.container
+            .filter((stampDetail) => stampDetail.type?.includes('source'))
+            .forEach((minerPoi) => addRoadToPois(minerPoi.pos, stamps, 3, minerPoi.type, terrain));
+        stamps.extractor.push({ type: 'mineral', rcl: 6, pos: room.mineral.pos });
+        addRoadToPois(room.mineral.pos, stamps, 6, 'mineral', terrain);
+
+        // Add Ramparts
+        const sections = getRampartSectionsAroundExits(stamps, terrain, room.name);
+        sections.forEach((section) => {
+            section.forEach((section) => {
+                if (!containsNonRoadStamp(stamps, [section])) {
+                    addUniqueRoad(stamps, { type: STRUCTURE_RAMPART, rcl: 4, pos: section });
+                }
+                stamps.rampart.push({ rcl: 4, pos: section });
+            });
+            addRoadToPois(section[0], stamps, 4, STRUCTURE_RAMPART, terrain);
+        });
+
+        addRoadToPois(room.controller.pos, stamps, 3, STRUCTURE_CONTROLLER, terrain, 3);
+
+        // Add left over single structures
+        addSingleStructures(stamps, terrain);
+
+        // Visualize
         drawLayout(Game.rooms[room.name].visual, stamps);
+
+        // Store layout in memory
+        if (storeInMemory) {
+            storeStampLayoutInMemory(stamps, room);
+        }
     }
+    logCpu('End');
+    return valid;
+}
+
+/**
+ * Adds ramparts around all exits and returns the center position for each section exit
+ * @param stamps
+ * @param terrain
+ * @param roomName
+ * @returns
+ */
+function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: string): RoomPosition[][] {
+    // TOP
+    let rampartsPerSection: RoomPosition[][] = []; // add ramparts each array being its own section
+    let endSection = false;
+    let ramparts = [];
+    for (let i = 1; i < 49; i++) {
+        if (
+            terrain.get(i, 2) !== TERRAIN_MASK_WALL &&
+            (terrain.get(i, 3) !== TERRAIN_MASK_WALL || terrain.get(i - 1, 3) !== TERRAIN_MASK_WALL || terrain.get(i + 1, 3) !== TERRAIN_MASK_WALL)
+        ) {
+            if (terrain.get(i, 0) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(i, 2, roomName));
+            } else if (terrain.get(i + 1, 0) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(i, 2, roomName));
+                if (terrain.get(i - 1, 2) !== TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(i - 1, 2, roomName));
+                }
+                if (terrain.get(i - 1, 1) !== TERRAIN_MASK_WALL && terrain.get(i - 2, 0) === TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(i - 1, 1, roomName));
+                }
+            } else if (terrain.get(i - 1, 0) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(i, 2, roomName));
+                if (terrain.get(i + 1, 2) !== TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(i + 1, 2, roomName));
+                }
+                if (terrain.get(i + 1, 1) !== TERRAIN_MASK_WALL && terrain.get(i + 2, 0) === TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(i + 1, 1, roomName));
+                }
+            } else if (ramparts.length !== 0) {
+                endSection = true;
+            }
+        } else if (ramparts.length !== 0) {
+            endSection = true;
+        }
+
+        if (endSection) {
+            rampartsPerSection.push(ramparts);
+            ramparts = [];
+            endSection = false;
+        }
+    }
+
+    // BOTTOM
+    for (let i = 1; i < 49; i++) {
+        if (
+            terrain.get(i, 47) !== TERRAIN_MASK_WALL &&
+            (terrain.get(i, 46) !== TERRAIN_MASK_WALL || terrain.get(i - 1, 46) !== TERRAIN_MASK_WALL || terrain.get(i + 1, 46) !== TERRAIN_MASK_WALL)
+        ) {
+            if (terrain.get(i, 49) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(i, 47, roomName));
+            } else if (terrain.get(i + 1, 49) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(i, 47, roomName));
+                if (terrain.get(i - 1, 47) !== TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(i - 1, 47, roomName));
+                }
+                if (terrain.get(i - 1, 48) !== TERRAIN_MASK_WALL && terrain.get(i - 2, 49) === TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(i - 1, 48, roomName));
+                }
+            } else if (terrain.get(i - 1, 49) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(i, 47, roomName));
+                if (terrain.get(i + 1, 47) !== TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(i + 1, 47, roomName));
+                }
+                if (terrain.get(i + 1, 48) !== TERRAIN_MASK_WALL && terrain.get(i + 2, 49) === TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(i + 1, 48, roomName));
+                }
+            } else if (ramparts.length !== 0) {
+                endSection = true;
+            }
+        } else if (ramparts.length !== 0) {
+            endSection = true;
+        }
+
+        if (endSection) {
+            rampartsPerSection.push(ramparts);
+            ramparts = [];
+            endSection = false;
+        }
+    }
+
+    // LEFT
+    for (let i = 1; i < 49; i++) {
+        if (
+            terrain.get(2, i) !== TERRAIN_MASK_WALL &&
+            (terrain.get(3, i) !== TERRAIN_MASK_WALL || terrain.get(3, i - 1) !== TERRAIN_MASK_WALL || terrain.get(3, i + 1) !== TERRAIN_MASK_WALL)
+        ) {
+            if (terrain.get(0, i) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(2, i, roomName));
+            } else if (terrain.get(0, i + 1) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(2, i, roomName));
+                if (terrain.get(2, i - 1) !== TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(2, i - 1, roomName));
+                }
+                if (terrain.get(1, i - 1) !== TERRAIN_MASK_WALL && terrain.get(0, i - 2) === TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(1, i - 1, roomName));
+                }
+            } else if (terrain.get(0, i - 1) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(2, i, roomName));
+                if (terrain.get(2, i + 1) !== TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(2, i + 1, roomName));
+                }
+                if (terrain.get(1, i + 1) !== TERRAIN_MASK_WALL && terrain.get(0, i + 2) === TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(1, i + 1, roomName));
+                }
+            } else if (ramparts.length !== 0) {
+                endSection = true;
+            }
+        } else if (ramparts.length !== 0) {
+            endSection = true;
+        }
+
+        if (endSection) {
+            rampartsPerSection.push(ramparts);
+            ramparts = [];
+            endSection = false;
+        }
+    }
+
+    // RIGHT
+    for (let i = 1; i < 49; i++) {
+        if (
+            terrain.get(47, i) !== TERRAIN_MASK_WALL &&
+            (terrain.get(46, i) !== TERRAIN_MASK_WALL || terrain.get(46, i - 1) !== TERRAIN_MASK_WALL || terrain.get(46, i + 1) !== TERRAIN_MASK_WALL)
+        ) {
+            if (terrain.get(49, i) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(47, i, roomName));
+            } else if (terrain.get(49, i + 1) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(47, i, roomName));
+                if (terrain.get(47, i - 1) !== TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(47, i - 1, roomName));
+                }
+                if (terrain.get(48, i - 1) !== TERRAIN_MASK_WALL && terrain.get(49, i - 2) === TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(48, i - 1, roomName));
+                }
+            } else if (terrain.get(49, i - 1) !== TERRAIN_MASK_WALL) {
+                ramparts.push(new RoomPosition(47, i, roomName));
+                if (terrain.get(47, i + 1) !== TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(47, i + 1, roomName));
+                }
+                if (terrain.get(48, i + 1) !== TERRAIN_MASK_WALL && terrain.get(49, i + 2) === TERRAIN_MASK_WALL) {
+                    ramparts.push(new RoomPosition(48, i + 1, roomName));
+                }
+            } else if (ramparts.length !== 0) {
+                endSection = true;
+            }
+        } else if (ramparts.length !== 0) {
+            endSection = true;
+        }
+
+        if (endSection) {
+            rampartsPerSection.push(ramparts);
+            ramparts = [];
+            endSection = false;
+        }
+    }
+
+    let index = 0;
+    return rampartsPerSection.filter((section) => {
+        const pos = JSON.parse(JSON.stringify(section[0]));
+        if (pos.x === 2) {
+            pos.x = 0;
+        } else if (pos.x === 47) {
+            pos.x = 49;
+        } else if (pos.y === 2) {
+            pos.y = 0;
+        } else if (pos.y === 47) {
+            pos.y = 49;
+        }
+        const path = PathFinder.search(pos, stamps.storage[0].pos, {
+            maxRooms: 1,
+            roomCallback: function (roomName) {
+                const matrix = new PathFinder.CostMatrix();
+                rampartsPerSection.forEach((section, i) => {
+                    if (index !== i) {
+                        section.forEach((position) => matrix.set(position.x, position.y, 255));
+                    }
+                });
+                return matrix;
+            },
+        });
+        index++;
+        return !path.incomplete;
+    });
+}
+
+// Add Ramparts on miningPosition and links outside of the stamp boundary ==> no longer used but left in case needed later
+function addRampartsOnMiners(stamps: Stamps) {
+    stamps.container
+        .filter((containerStamp) => containerStamp.type?.includes('source'))
+        .forEach((minerStamp) => {
+            if (!isInsideStampBoundaries(minerStamp.pos, stamps)) {
+                stamps.rampart.push({ rcl: 4, pos: minerStamp.pos });
+                const link = stamps.link.find((linkDetail) => linkDetail.type === minerStamp.type);
+                if (link) {
+                    stamps.rampart.push({ rcl: link.rcl, pos: link.pos });
+                }
+            }
+        });
+}
+
+/**
+ * Checks if the path crosses a rampart location. If so, then it is considered outside the stamp boundaries ==> no longer used but left just in case
+ * @param pos
+ * @param stamps
+ * @returns
+ */
+function isInsideStampBoundaries(pos: RoomPosition, stamps: Stamps): boolean {
+    return !stamps.storage[0].pos
+        .findPathTo(pos)
+        .some((step) => stamps.rampart.some((rampartDetail) => rampartDetail.pos.x === step.x && rampartDetail.pos.y === step.y));
+}
+
+function storeStampLayoutInMemory(stamps: Stamps, room: Room): void {
+    Object.values(stamps).map((stampsDetails: StampDetail[]) =>
+        stampsDetails.forEach((stampDetail) => {
+            stampDetail.pos = stampDetail.pos.toMemSafe() as unknown as RoomPosition;
+        })
+    );
+    room.memory.stampLayout = stamps;
+}
+
+export function readStampLayoutFromMemory(room: Room): Stamps {
+    const stamps = JSON.parse(JSON.stringify(room.memory.stampLayout));
+    Object.values(stamps).map((stampsDetails: StampDetail[]) =>
+        stampsDetails
+            .filter((stampDetail) => stampDetail.pos)
+            .forEach((stampDetail) => (stampDetail.pos = posFromMem(stampDetail.pos as unknown as string)))
+    );
+    return stamps;
 }
 
 /**
@@ -679,14 +972,18 @@ export function findStampLocation(room: Room) {
  * @param minerExtensions
  * @returns
  */
-function isInRange(currentStamps: { [type: string]: RoomPosition[] }, pos: RoomPosition, minerExtensions: RoomPosition[]): boolean {
+function isInRange(stamps: Stamps, pos: RoomPosition): boolean {
     return []
         .concat(
-            ...Object.entries(currentStamps)
-                .filter(([key, currentStamps]) => key !== 'road')
-                .map(([key, currentStamps]) => currentStamps)
+            ...Object.entries(stamps)
+                .filter(([key, currentStamps]: [string, StampDetail[]]) => key !== STRUCTURE_ROAD) // Filter out roads
+                .map(([key, currentStamps]: [string, StampDetail[]]) =>
+                    currentStamps
+                        .filter((stampDetail) => !stampDetail.type?.includes('source') && stampDetail.type !== 'controller')
+                        .map((nonMinerStamps) => nonMinerStamps.pos)
+                ) // filter out miner extensions and return all other stamps
         )
-        .some((value) => !minerExtensions.some((ext) => Pathing.sameCoord(value, ext)) && value.getRangeTo(pos) < 3);
+        .some((stampPos) => stampPos.getRangeTo(pos) < 3);
 }
 
 /**
@@ -721,89 +1018,170 @@ function hasWalls(terrain: RoomTerrain, positions: RoomPosition[]) {
     return positions.some((pos) => terrain.get(pos.x, pos.y) === TERRAIN_MASK_WALL);
 }
 
-function containsStamp(currentStamps: { [type: string]: RoomPosition[] }, targetPositions: RoomPosition[]): boolean {
-    return [].concat(...Object.values(currentStamps)).some((value) => targetPositions.some((targetPos) => Pathing.sameCoord(value, targetPos)));
-}
-
-function containsNonRoadStamp(currentStamps: { [type: string]: RoomPosition[] }, targetPositions: RoomPosition[]): boolean {
+function containsStamp(stamps: Stamps, targetPositions: RoomPosition[]): boolean {
     return []
-        .concat(
-            ...Object.entries(currentStamps)
-                .filter(([key, currentStamps]) => key !== 'road')
-                .map(([key, currentStamps]) => currentStamps)
-        )
-        .some((value) => targetPositions.some((targetPos) => Pathing.sameCoord(value, targetPos)));
+        .concat(...Object.values(stamps))
+        .some((stampDetails: StampDetail) => targetPositions.some((targetPos) => Pathing.sameCoord(stampDetails.pos, targetPos)));
 }
 
-function drawLayout(roomVisual: RoomVisual, stamps: { [type: string]: RoomPosition[] }) {
-    Object.entries(stamps).forEach(([type, positions]) => {
-        let color = '#123456';
-        switch (type) {
-            case 'extension':
-                color = '#FFFF00'; // Yellow
-                break;
-            case 'container':
-                color = '#FF0000'; // Red
-                break;
-            case 'storage':
-                color = '#00008B'; // Blue
-                break;
-            case 'lab':
-                color = '#FFFFFF'; // White
-                break;
-            case 'tower':
-                color = '#800080'; // Purple
-                break;
-            case 'link':
-                color = '#000000'; // Black
-                break;
-            case 'powerspawn':
-                color = '#A52A2A'; // Brown
-                break;
-            case 'observer':
-                color = '#006400'; // Green
-                break;
-            case 'rampart':
-                color = '#0a035c'; // Dark Blue
-                break;
-        }
+function containsNonRoadStamp(stamps: Stamps, targetPositions: RoomPosition[]): boolean {
+    return (
+        []
+            .concat(
+                ...Object.entries(stamps)
+                    .filter(([key, currentStamps]) => key !== STRUCTURE_ROAD)
+                    .map(([key, currentStamps]) => currentStamps)
+            )
+            .some((stampDetail: StampDetail) => targetPositions.some((targetPos) => Pathing.sameCoord(stampDetail.pos, targetPos))) ||
+        stamps.road.some(
+            (roadDetail) => roadDetail.type?.includes('source') && targetPositions.some((targetPos) => Pathing.sameCoord(roadDetail.pos, targetPos))
+        )
+    );
+}
 
-        if (type !== 'road') {
-            positions.forEach((pos) => roomVisual.circle(pos.x, pos.y, { radius: 0.4, fill: color, stroke: '#ffffff' }));
-        } else {
-            for (let i = 0; i < positions.length; i++) {
-                for (let j = i + 1; j < positions.length; j++) {
-                    if (positions[i].inRangeTo(positions[j], 1)) {
-                        roomVisual.line(positions[i], positions[j], { width: 0.3, opacity: 0.8, lineStyle: 'solid' });
-                    }
+function drawLayout(roomVisual: RoomVisual, stamps: Stamps) {
+    Object.entries(stamps)
+        .filter(([type, stampDetails]: [string, StampDetail[]]) => type !== STRUCTURE_ROAD)
+        .forEach(([type, stampDetails]: [string, StampDetail[]]) => {
+            stampDetails.forEach((stampDetail) => {
+                let color = '#123456';
+                switch (type) {
+                    case STRUCTURE_EXTENSION:
+                        color = '#FFFF00'; // Yellow
+                        break;
+                    case STRUCTURE_CONTAINER:
+                        color = '#FF0000'; // Red
+                        break;
+                    case STRUCTURE_STORAGE:
+                        color = '#00008B'; // Blue
+                        break;
+                    case STRUCTURE_LAB:
+                        color = '#520031'; // Purple
+                        break;
+                    case STRUCTURE_TOWER:
+                        color = '#800080'; // Purple
+                        break;
+                    case STRUCTURE_LINK:
+                        color = '#000000'; // Black
+                        break;
+                    case STRUCTURE_POWER_SPAWN:
+                        color = '#00008B'; // Blue
+                        break;
+                    case STRUCTURE_NUKER:
+                        color = '#00008B'; // Blue
+                        break;
+                    case STRUCTURE_OBSERVER:
+                        color = '#006400'; // Green
+                        break;
+                    case STRUCTURE_RAMPART:
+                        color = '#0a035c'; // Dark Blue
+                        break;
+                    case STRUCTURE_SPAWN:
+                        color = '#ff006a'; // Pink
+                        break;
+                    case 'managers':
+                        color = '#ff7300'; // Orange
+                        break;
+                    case STRUCTURE_TERMINAL:
+                        color = '#00008B'; // Blue
+                        break;
+                    case STRUCTURE_FACTORY:
+                        color = '#00008B'; // Blue
+                        break;
                 }
+
+                roomVisual.circle(stampDetail.pos.x, stampDetail.pos.y, { radius: 0.4, fill: color, stroke: '#ffffff' });
+            });
+        });
+
+    // Roads
+    const roadPositions = stamps.road.map((roadDetail) => roadDetail.pos);
+    for (let i = 0; i < roadPositions.length; i++) {
+        for (let j = i + 1; j < roadPositions.length; j++) {
+            if (roadPositions[i].isNearTo(roadPositions[j])) {
+                roomVisual.line(roadPositions[i], roadPositions[j], { width: 0.3, opacity: 0.8, lineStyle: 'solid' });
             }
         }
-    });
+    }
 }
 
 // ensures all positions are inside the room with 6 tiles away from the exit. This still allows for roads + ramparts in front of the exit and a buffer zone between structures so they cannot get hit
-function positionsInBoundary(positions: RoomPosition[]): boolean {
+function positionsInStampBoundary(positions: RoomPosition[]): boolean {
     return !positions.some((pos) => pos.x < 5 || pos.y < 5 || pos.x > 44 || pos.y > 44);
 }
 
-function bfs(startPos: RoomPosition, stamps: { [type: string]: RoomPosition[] }, terrain: RoomTerrain): void {
+// check if position is in an non-buildable area
+function isCloseToEdge(pos: RoomPosition): boolean {
+    return pos.x < 2 || pos.y < 2 || pos.x > 47 || pos.y > 47;
+}
+
+function placeControllerLink(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): void {
+    const gridSize = 9;
+    // Define layer width and starting layer index
+    let layer_width = Math.floor(gridSize / 2);
+
+    const availableSpots = [];
+    // Loop through the layers
+    while (layer_width >= 0) {
+        // Define the boundaries of the current layer
+        const x_min = startPos.x - layer_width < 2 ? 2 : startPos.x - layer_width;
+        const y_min = startPos.y - layer_width < 2 ? 2 : startPos.y - layer_width;
+        const x_max = startPos.x + layer_width > 47 ? 47 : startPos.x + layer_width;
+        const y_max = startPos.y + layer_width > 47 ? 47 : startPos.y + layer_width;
+
+        // Loop through the cells in the current layer
+        for (let x = x_min; x <= x_max; x++) {
+            for (let y = y_min; y <= y_max; y++) {
+                // Do something with the current cell, e.g. set it to 1
+                const position = new RoomPosition(x, y, startPos.roomName);
+                if (terrain.get(x, y) !== TERRAIN_MASK_WALL && !containsStamp(stamps, [position])) {
+                    // If its a position already next to a road take it
+                    if (stamps.road.some((roadDetail) => position.isNearTo(roadDetail))) {
+                        stamps.link.push({ type: 'controller', rcl: 8, pos: position });
+                        return;
+                    }
+                    availableSpots.push(position);
+                }
+            }
+        }
+
+        // Move to the next layer
+        layer_width--;
+    }
+
+    const closest = stamps.storage[0].pos.findClosestByPath(availableSpots); // Costly but since it only runs once its worth it
+    stamps.link.push({ type: 'controller', rcl: 8, pos: closest });
+}
+
+/**
+ * Run a breadth first search to find closest placements for labs/rm/extension stamps.
+ * Setting the "visisted.size < 150" higher will use more cpu to find more places to put the "+" extensions stamp. The lower it is the more likely the extensions
+ * are going to be simply around nearby roads.
+ * @param startPos
+ * @param stamps
+ * @param terrain
+ * @returns
+ */
+function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): boolean {
     let visited: Set<string> = new Set();
     let queue: RoomPosition[] = [startPos];
 
     // subtract miner length from extensions because for each miner a road will later on which decreases the amount of extensions around the miner
-    while (queue.length > 0 && (stamps['extension'].length - stamps['container'].length < 56 || !stamps['storage'].length || !stamps['lab'].length)) {
+    while ((queue.length > 0 && !stamps.storage.length) || !stamps.lab.length) {
+        if (Game.cpu.tickLimit - Game.cpu.getUsed() < 30) {
+            console.log('Ran out of cpu so stopped execution.');
+            return false;
+        }
         const pos: RoomPosition = queue.shift()!;
-
         // Mark the position as visited
-        visited.add(pos.toString());
+        visited.add(pos.toMemSafe());
 
         // Add the unvisited neighbors to the queue
         pos.neighbors(false)
             .filter(
                 (neighborPos) =>
-                    positionsInBoundary([neighborPos]) &&
-                    !visited.has(neighborPos.toString()) &&
+                    positionsInStampBoundary([neighborPos]) &&
+                    !visited.has(neighborPos.toMemSafe()) &&
                     terrain.get(neighborPos.x, neighborPos.y) !== TERRAIN_MASK_WALL
             )
             .forEach((neighborPos) => {
@@ -816,7 +1194,7 @@ function bfs(startPos: RoomPosition, stamps: { [type: string]: RoomPosition[] },
         }
 
         // Resource Management
-        if (!stamps['storage'].length) {
+        if (!stamps.storage.length) {
             const targetPositions = [];
             const roadPositions = [];
             for (let dx = -1; dx <= 2; dx++) {
@@ -835,19 +1213,28 @@ function bfs(startPos: RoomPosition, stamps: { [type: string]: RoomPosition[] },
             // Avoid being in base + allow corners + avid other extension stamps
             if (
                 !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
-                positionsInBoundary(targetPositions) &&
+                positionsInStampBoundary(targetPositions) &&
                 !containsStamp(stamps, targetPositions) &&
                 !containsNonRoadStamp(stamps, roadPositions)
             ) {
-                stamps['storage'] = stamps['storage'].concat(targetPositions);
-                stamps['road'] = stamps['road'].concat(roadPositions);
-                addMissingRoads(startPos, roadPositions[0], stamps);
+                logCpu('RM Found');
+                const rm = 'rm';
+                stamps.storage.push({ type: rm, rcl: 4, pos: new RoomPosition(pos.x, pos.y, pos.roomName) });
+                stamps.rampart.push({ rcl: 4, pos: new RoomPosition(pos.x, pos.y, pos.roomName) });
+                stamps.nuker.push({ type: rm, rcl: 8, pos: new RoomPosition(pos.x + 1, pos.y, pos.roomName) });
+                stamps.terminal.push({ type: rm, rcl: 6, pos: new RoomPosition(pos.x, pos.y + 1, pos.roomName) });
+                stamps.rampart.push({ rcl: 6, pos: new RoomPosition(pos.x, pos.y + 1, pos.roomName) });
+                stamps.managers.push({ type: rm, rcl: 5, pos: new RoomPosition(pos.x + 1, pos.y + 1, pos.roomName) });
+                stamps.link.push({ type: rm, rcl: 5, pos: new RoomPosition(pos.x, pos.y + 2, pos.roomName) });
+                stamps.factory.push({ type: rm, rcl: 7, pos: new RoomPosition(pos.x + 1, pos.y + 2, pos.roomName) });
+                roadPositions.forEach((roadPos) => addUniqueRoad(stamps, { rcl: 4, pos: roadPos }));
+                addMissingRoads(startPos, roadPositions[0], stamps, 4);
                 continue;
             }
         }
 
         // Labs
-        if (!stamps['lab'].length) {
+        if (!stamps.lab.length) {
             let targetPositions = [];
             let roadPositions = [];
 
@@ -868,125 +1255,98 @@ function bfs(startPos: RoomPosition, stamps: { [type: string]: RoomPosition[] },
                 new RoomPosition(pos.x, pos.y, pos.roomName),
                 new RoomPosition(pos.x - 1, pos.y + 1, pos.roomName),
                 new RoomPosition(pos.x - 2, pos.y + 2, pos.roomName),
+                new RoomPosition(pos.x - 3, pos.y + 3, pos.roomName), // Optional but good to leave an out on both sides of the labs
             ];
 
             // Avoid being in base + allow corners + avid other extension stamps
             if (
                 !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
-                positionsInBoundary(targetPositions) &&
+                positionsInStampBoundary(targetPositions) &&
                 !containsStamp(stamps, targetPositions) &&
-                !containsNonRoadStamp(stamps, roadPositions)
+                !containsNonRoadStamp(stamps, roadPositions) &&
+                !stamps.container
+                    .filter((containerDetail) => containerDetail.type?.includes('source'))
+                    .some((minerContainer) => targetPositions.some((t) => t.getRangeTo(minerContainer.pos) < 3))
             ) {
-                stamps['lab'] = stamps['lab'].concat(targetPositions);
-                stamps['road'] = stamps['road'].concat(roadPositions);
-                addMissingRoads(startPos, roadPositions[0], stamps);
-                continue;
-            }
-        }
-
-        // Extensions since the square is 2 wide, the center must be at least 2 tiles away from edges (cant build on x/y = 0/49 or in front of exits)
-        if (stamps['extension'].length - stamps['container'].length < 56) {
-            const targetPositions = [
-                pos,
-                new RoomPosition(pos.x - 1, pos.y, pos.roomName),
-                new RoomPosition(pos.x + 1, pos.y, pos.roomName),
-                new RoomPosition(pos.x, pos.y - 1, pos.roomName),
-                new RoomPosition(pos.x, pos.y + 1, pos.roomName),
-            ];
-            const roadPositions = [
-                new RoomPosition(pos.x - 1, pos.y - 1, pos.roomName),
-                new RoomPosition(pos.x + 1, pos.y - 1, pos.roomName),
-                new RoomPosition(pos.x + 1, pos.y + 1, pos.roomName),
-                new RoomPosition(pos.x - 1, pos.y + 1, pos.roomName),
-                new RoomPosition(pos.x - 2, pos.y, pos.roomName),
-                new RoomPosition(pos.x, pos.y + 2, pos.roomName),
-                new RoomPosition(pos.x + 2, pos.y, pos.roomName),
-                new RoomPosition(pos.x, pos.y - 2, pos.roomName),
-            ];
-            // Avoid being in base + allow corners + avid other stamps
-            if (
-                !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
-                positionsInBoundary(targetPositions) &&
-                !containsStamp(stamps, targetPositions) &&
-                !containsNonRoadStamp(stamps, roadPositions)
-            ) {
-                stamps['extension'] = stamps['extension'].concat(targetPositions);
-                stamps['road'] = stamps['road'].concat(roadPositions);
-                addMissingRoads(startPos, roadPositions[0], stamps);
+                logCpu('Lab Found');
+                targetPositions.forEach((labPos) => {
+                    let rcl = 6;
+                    if (stamps.lab.length >= 6) {
+                        rcl = 8;
+                    } else if (stamps.lab.length >= 3) {
+                        rcl = 7;
+                    }
+                    stamps.lab.push({ rcl, pos: labPos });
+                });
+                roadPositions.forEach((roadPos) => addUniqueRoad(stamps, { type: STRUCTURE_LAB, rcl: 6, pos: roadPos }));
+                addMissingRoads(startPos, roadPositions[0], stamps, 6);
                 continue;
             }
         }
     }
 
-    // Rerun for small stuff like towers, left over extension, powerspawn, etc.
     visited = new Set();
     queue = [startPos];
-    while (
-        queue.length > 0 &&
-        (stamps['extension'].length - stamps['container'].length < 60 ||
-            stamps['tower'].length < 6 ||
-            !stamps['powerspawn'].length ||
-            !stamps['observer'].length)
-    ) {
+    while (queue.length > 0 && stamps.extension.length < 56 && Game.cpu.tickLimit - Game.cpu.getUsed() > 150) {
         const pos: RoomPosition = queue.shift()!;
-
         // Mark the position as visited
-        visited.add(pos.toString());
+        visited.add(pos.toMemSafe());
 
         // Add the unvisited neighbors to the queue
         pos.neighbors(false)
             .filter(
                 (neighborPos) =>
-                    positionsInBoundary([neighborPos]) &&
-                    !visited.has(neighborPos.toString()) &&
+                    positionsInStampBoundary([neighborPos]) &&
+                    !visited.has(neighborPos.toMemSafe()) &&
                     terrain.get(neighborPos.x, neighborPos.y) !== TERRAIN_MASK_WALL
             )
             .forEach((neighborPos) => {
                 // Add the neighbor to the queue
                 queue.push(neighborPos);
             });
-
         // skip if it already has a structure on it
         if (containsStamp(stamps, [pos])) {
             continue;
         }
 
-        // Check if near a Road
+        // Extensions since the square is 2 wide, the center must be at least 2 tiles away from edges (cant build on x/y = 0/49 or in front of exits)
+        // These go last since they can always be put around roads
+        const targetPositions = [
+            pos,
+            new RoomPosition(pos.x - 1, pos.y, pos.roomName),
+            new RoomPosition(pos.x + 1, pos.y, pos.roomName),
+            new RoomPosition(pos.x, pos.y - 1, pos.roomName),
+            new RoomPosition(pos.x, pos.y + 1, pos.roomName),
+        ];
+        const roadPositions = [
+            new RoomPosition(pos.x - 1, pos.y - 1, pos.roomName),
+            new RoomPosition(pos.x + 1, pos.y - 1, pos.roomName),
+            new RoomPosition(pos.x + 1, pos.y + 1, pos.roomName),
+            new RoomPosition(pos.x - 1, pos.y + 1, pos.roomName),
+            new RoomPosition(pos.x - 2, pos.y, pos.roomName),
+            new RoomPosition(pos.x, pos.y + 2, pos.roomName),
+            new RoomPosition(pos.x + 2, pos.y, pos.roomName),
+            new RoomPosition(pos.x, pos.y - 2, pos.roomName),
+        ];
+        // Avoid being in base + allow corners + avid other stamps
         if (
-            Object.entries(stamps)
-                .filter(([key, currentStamps]) => key === 'road')
-                .some(([key, currentStamps]) => currentStamps.some((currentStamp) => pos.isNearTo(currentStamp)))
+            !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
+            positionsInStampBoundary(targetPositions) &&
+            !containsStamp(stamps, targetPositions) &&
+            !containsNonRoadStamp(stamps, roadPositions)
         ) {
-            // Extensions
-            if (stamps['extension'].length - stamps['container'].length < 60) {
-                stamps['extension'].push(pos);
-                continue;
-            }
-
-            // Towers
-            if (stamps['tower'].length < 6) {
-                stamps['tower'].push(pos);
-                continue;
-            }
-
-            // PowerSpawner
-            if (!stamps['powerspawn'].length) {
-                stamps['powerspawn'].push(pos);
-                continue;
-            }
-        }
-
-        // Observer - last
-        if (
-            stamps['tower'].length > 5 &&
-            stamps['extension'].length - stamps['container'].length > 59 &&
-            stamps['powerspawn'].length &&
-            !stamps['observer'].length
-        ) {
-            stamps['observer'].push(pos);
+            const rcl = 3 + Math.floor(stamps.extension.length / 10);
+            targetPositions.forEach((extensionPos) => {
+                let extensionRcl = 3 + Math.floor(stamps.extension.length / 10);
+                // Stamps will at the earliest be placed at rcl4 and each new level increases the number of extensions by 10. To calculate the rcl simply take the current extensionCount and divide it by 10 to find the correleating controller level
+                stamps.extension.push({ rcl: extensionRcl, pos: extensionPos });
+            });
+            roadPositions.forEach((roadPos) => addUniqueRoad(stamps, { rcl, pos: roadPos })); // before adding extensions to have proper rcl
+            addMissingRoads(startPos, roadPositions[0], stamps, rcl);
             continue;
         }
     }
+    return true;
 }
 
 /**
@@ -995,15 +1355,18 @@ function bfs(startPos: RoomPosition, stamps: { [type: string]: RoomPosition[] },
  * @returns
  */
 function findBestMiningPostitions(room: Room, terrain: RoomTerrain): { pos: RoomPosition; adjacentSpaces: RoomPosition[] }[] {
+    // TODO: two sources next to each other see W57S21
     const sources = room.find(FIND_SOURCES);
     const miningPositions = sources.map((source) => {
         let bestSpot: { pos: RoomPosition; adjacentSpaces: RoomPosition[] };
         source.pos
             .neighbors()
-            .filter((pos) => terrain.get(pos.x, pos.y) !== TERRAIN_MASK_WALL)
+            .filter((pos) => terrain.get(pos.x, pos.y) !== TERRAIN_MASK_WALL && !isCloseToEdge(pos))
             .forEach((pos) => {
                 // all possible positions ==> now find the one with the most free spots around it
-                const adjacentSpaces = pos.neighbors().filter((minerPos) => terrain.get(minerPos.x, minerPos.y) !== TERRAIN_MASK_WALL);
+                const adjacentSpaces = pos
+                    .neighbors()
+                    .filter((minerPos) => terrain.get(minerPos.x, minerPos.y) !== TERRAIN_MASK_WALL && !isCloseToEdge(minerPos));
 
                 // New best spot
                 if (!bestSpot || bestSpot.adjacentSpaces?.length < adjacentSpaces.length) {
@@ -1021,57 +1384,166 @@ function findBestMiningPostitions(room: Room, terrain: RoomTerrain): { pos: Room
     return undefined;
 }
 
-function addRoadToPois(poi: RoomPosition | Mineral | StructureController, stamps: { [type: string]: RoomPosition[] }, roomName: string) {
-    let range: number;
+/**
+ * Places single structures such as towers, left over extensions, observers, etc. around already placed roads. It will prioritize roads around center/extensions/rm first
+ */
+function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
+    logCpu('Start addSingleStructures');
+    const storagePos = stamps.storage[0].pos;
+    // Sort roads ==> roads without type first as these are around stamps which the distributor has to go to anyway. Then sort the rest of the roads by range to storage so it will put stuff close to it
+    const roads = stamps.road
+        .filter(
+            (roadDetail) =>
+                roadDetail.type !== 'notBuildable' && roadDetail.pos.x > 2 && roadDetail.pos.x < 47 && roadDetail.pos.y > 2 && roadDetail.pos.y < 47
+        )
+        .sort((a, b) => {
+            if (a.type && !b.type) {
+                return 1;
+            } else if (!a.type && b.type) {
+                return -1;
+            } else if (a.type?.includes('source') && !b.type?.includes('source')) {
+                return -1;
+            } else if (b.type?.includes('source') && !a.type?.includes('source')) {
+                return 1;
+            }
+            const rangeA = storagePos.getRangeTo(a.pos);
+            const rangeB = storagePos.getRangeTo(b.pos);
+            if (rangeA > rangeB) {
+                return 1;
+            } else if (rangeB > rangeA) {
+                return -1;
+            }
+            return 0;
+        })
+        .map((roadDetail) => roadDetail.pos);
+    while (roads.length > 0 && (stamps.extension.length < 60 || stamps.tower.length < 6 || !stamps.powerSpawn.length || !stamps.observer.length)) {
+        let neighbors = roads
+            .shift()
+            .neighbors(true, false)
+            .filter((neighbor) => !containsStamp(stamps, [neighbor]) && terrain.get(neighbor.x, neighbor.y) !== TERRAIN_MASK_WALL);
+        while (
+            neighbors.length &&
+            (stamps.extension.length < 60 || stamps.tower.length < 6 || !stamps.powerSpawn.length || !stamps.observer.length)
+        ) {
+            // Extensions
+            if (stamps.extension.length < 60 && neighbors.length) {
+                stamps.extension.push({ rcl: 3 + Math.floor(stamps.extension.length / 10), pos: neighbors.pop() });
+            }
 
-    if (poi instanceof RoomPosition) {
-        range = 1;
-    } else if (poi instanceof Mineral) {
-        range = 2;
-    } else if (poi instanceof StructureController) {
-        range = 3;
+            // Towers
+            const towerCount = stamps.tower.length;
+            if (towerCount < 6 && neighbors.length) {
+                let rcl = 3;
+                if (towerCount === 1) {
+                    rcl = 5;
+                } else if (towerCount === 2) {
+                    rcl = 7;
+                } else if (towerCount > 2) {
+                    rcl = 8;
+                }
+                stamps.tower.push({ rcl: rcl, pos: neighbors.pop() });
+            }
+
+            // PowerSpawner
+            if (!stamps.powerSpawn.length && neighbors.length) {
+                stamps.powerSpawn.push({ rcl: 8, pos: neighbors.pop() });
+            }
+
+            // Observer - last since it doesnt need to be close to anything
+            if (neighbors.length && stamps.tower.length > 5 && stamps.extension.length > 59 && stamps.powerSpawn.length && !stamps.observer.length) {
+                stamps.observer.push({ rcl: 8, pos: neighbors.pop() });
+            }
+        }
     }
+    logCpu('End addSingleStructures');
+}
 
-    let path = stamps['storage'][0].findPathTo(poi, {
+function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: string, terrain: RoomTerrain, range: number = 1) {
+    const path = stamps.storage[0].pos.findPathTo(poi, {
         plainCost: 3,
         swampCost: 5,
         ignoreDestructibleStructures: true,
         ignoreCreeps: true,
+        ignoreRoads: true,
         range: range,
         costCallback: function (roomName, costMatrix) {
             const matrix = costMatrix.clone();
-            Object.values(stamps['road']).forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 1));
+            stamps.road.forEach((roadStamp) => matrix.set(roadStamp.pos.x, roadStamp.pos.y, 1));
             Object.entries(stamps)
-                .filter(([key, currentStamps]) => key !== 'road')
-                .forEach(([key, currentStamps]) => currentStamps.forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 10)));
+                .filter(([key, currentStamps]: [string, StampDetail[]]) => key !== STRUCTURE_ROAD && key !== STRUCTURE_RAMPART)
+                .forEach(([key, currentStamps]: [string, StampDetail[]]) =>
+                    currentStamps
+                        .filter((nonRoadStamp) => nonRoadStamp.type !== type)
+                        .forEach((nonRoadStamp) => matrix.set(nonRoadStamp.pos.x, nonRoadStamp.pos.y, 50))
+                );
             return matrix;
         },
     });
 
-    const lastStep = path[path.length - 1];
-    // add road to miner by replacing one extension with a road
-    let index = stamps['extension'].findIndex((pos) => pos.x === lastStep.x && pos.y === lastStep.y);
-    if (index !== -1) {
-        stamps['extension'].splice(index, 1); // Previous extension placement will be overwriten by the road placement
-    } else {
-        // Best placement for road is in link spot so put the link in any of the extensions spot
-        index = stamps['link'].findIndex((pos) => pos.x === lastStep.x && pos.y === lastStep.y);
-        if (index !== -1) {
-            stamps['link'].splice(index, 1); // Previous link placement will be overwriten by the road placement
-            stamps['link'].push(stamps['extension'].shift());
+    if (type === 'mineral') {
+        const lastStep = path.pop();
+        const pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName);
+        if (!isCloseToEdge(pos)) {
+            stamps.container.push({ type, rcl: 6, pos: new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName) });
         }
+    } else if (type?.includes('source') && path.length > 0) {
+        const lastStep = path[path.length - 1];
+        // Replace extension/link with a road (is already taken into account in previous methods so 60 extensions will still be placed)
+        const road = stamps.road.find((roadStamp) => roadStamp.type === type);
+        if (road.pos.x !== lastStep.x || road.pos.y !== lastStep.y) {
+            const extension = stamps.extension.find(
+                (extensionStamp) => extensionStamp.type === type && extensionStamp.pos.x === lastStep.x && extensionStamp.pos.y === lastStep.y
+            );
+            if (extension) {
+                // Swap Extension with Road Position
+                extension.pos = road.pos;
+            } else {
+                // Swap Link with Road Position
+                const link = stamps.link.find(
+                    (linkStamp) => linkStamp.type === type && linkStamp.pos.x === lastStep.x && linkStamp.pos.y === lastStep.y
+                );
+                if (link) {
+                    link.pos = road.pos;
+                }
+            }
+            road.pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName);
+        }
+    } else if (type === STRUCTURE_CONTROLLER && path.length > 0) {
+        const lastStep = path[path.length - 1];
+        const pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName);
+        const freePos = pos
+            .neighbors(false, true)
+            .find(
+                (neighborPos) =>
+                    (pos.x !== neighborPos.x || pos.y !== neighborPos.y) && !hasWalls(terrain, [neighborPos]) && !containsStamp(stamps, [neighborPos])
+            );
+        stamps.link.push({ type: 'controller', rcl: 8, pos: freePos });
     }
 
     //add unique road positions for next cost_matrix
-    stamps['road'] = stamps['road'].concat(
-        path
-            .filter((step) => Object.values(stamps['road']).map((pos) => pos.x === step.x && pos.y === step.y))
-            .map((step) => new RoomPosition(step.x, step.y, roomName))
-    );
+    path.forEach((step, index) => {
+        const road = stamps.road.find((roadDetail) => roadDetail.pos.x === step.x && roadDetail.pos.y === step.y);
+        if (!road) {
+            if (type === STRUCTURE_CONTROLLER && index === path.length - 1) {
+                addUniqueRoad(stamps, { type: 'notBuildable', rcl, pos: new RoomPosition(step.x, step.y, stamps.storage[0].pos.roomName) });
+            } else {
+                addUniqueRoad(stamps, { type, rcl, pos: new RoomPosition(step.x, step.y, stamps.storage[0].pos.roomName) });
+            }
+        } else if (road.rcl > rcl) {
+            // Override rcl
+            road.rcl = rcl;
+        }
+    });
 }
 
-// Can be done in later tick
-function addMissingRoads(starCenter: RoomPosition, sourcePos: RoomPosition, stamps: { [type: string]: RoomPosition[] }) {
+/**
+ * Costly but needed to ensure all stamps are connected via road
+ * @param starCenter
+ * @param sourcePos
+ * @param stamps
+ * @param rcl
+ */
+function addMissingRoads(starCenter: RoomPosition, sourcePos: RoomPosition, stamps: Stamps, rcl: number) {
     const path = sourcePos.findPathTo(starCenter, {
         plainCost: 3,
         swampCost: 5,
@@ -1081,27 +1553,78 @@ function addMissingRoads(starCenter: RoomPosition, sourcePos: RoomPosition, stam
         maxRooms: 1,
         costCallback: function (roomName, costMatrix) {
             const matrix = costMatrix.clone();
-            Object.values(stamps['road']).forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 1));
+            stamps.road.forEach((roadDetail) => matrix.set(roadDetail.pos.x, roadDetail.pos.y, 1));
             Object.entries(stamps)
-                .filter(([key, currentStamps]) => key !== 'road' && key !== 'rampart')
-                .forEach(([key, currentStamps]) => currentStamps.forEach((roadPos) => matrix.set(roadPos.x, roadPos.y, 255)));
+                .filter(([key, currentStamps]) => key !== STRUCTURE_ROAD && key !== STRUCTURE_RAMPART)
+                .forEach(([key, currentStamps]: [string, StampDetail[]]) =>
+                    currentStamps.forEach((roadDetail) => matrix.set(roadDetail.pos.x, roadDetail.pos.y, 50))
+                );
             return matrix;
         },
     });
 
     //add unique road positions for next cost_matrix
-    const newRoadPos = path
-        .filter((step) => !stamps['road'].some((road) => road.x === step.x && road.y === step.y))
-        .map((uniqueStep) => new RoomPosition(uniqueStep.x, uniqueStep.y, starCenter.roomName));
-    stamps['road'] = stamps['road'].concat(newRoadPos);
+    path.filter((step) => !stamps.road.some((roadDetail) => roadDetail.pos.x === step.x && roadDetail.pos.y === step.y)).forEach((uniqueStep) =>
+        addUniqueRoad(stamps, { rcl, pos: new RoomPosition(uniqueStep.x, uniqueStep.y, starCenter.roomName) })
+    );
 }
 
-// TODO: Link placement has to be in correct miner location see picture its 2 in the same one
+function setCenterExtensions(stamps: Stamps, starCenter: RoomPosition) {
+    const type = 'center';
+    // RCL 1
+    stamps.spawn.push({ type, rcl: 1, pos: new RoomPosition(starCenter.x - 2, starCenter.y - 1, starCenter.roomName) });
 
-// distributor not worry about miner and center extensions for refilling as soon as manager is there
-// miner add refilling of nearby extensions
-// manager add center and resource management logic (center has containers for fast refill so they should take from there and when not full request more from link)
-// store in memory with pos and id for easy check if still there and creating construction. Should be in order of placement. Also identify stamps for distributor ==> dont worry about mining or center extensions
+    // RCL 2
+    stamps.extension.push({ type, rcl: 2, pos: new RoomPosition(starCenter.x - 2, starCenter.y - 2, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 2, pos: new RoomPosition(starCenter.x - 1, starCenter.y - 2, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 2, pos: new RoomPosition(starCenter.x, starCenter.y - 2, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 2, pos: new RoomPosition(starCenter.x, starCenter.y - 1, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 2, pos: new RoomPosition(starCenter.x - 1, starCenter.y, starCenter.roomName) });
+    stamps.managers.push({ type, rcl: 2, pos: new RoomPosition(starCenter.x - 1, starCenter.y - 1, starCenter.roomName) });
+    stamps.container.push({ type, rcl: 2, pos: new RoomPosition(starCenter.x - 2, starCenter.y, starCenter.roomName) });
 
-// New stamp allows for filtering out certain types of stamps for distributor/link placement etc.
-// stamp = ["extension": [{type: "miner1", pos: []}, {type: "center", pos: []}, {type: "plus1", pos: []}, {type: "single", pos[]}]]
+    // RCL 3
+    stamps.extension.push({ type, rcl: 3, pos: new RoomPosition(starCenter.x + 1, starCenter.y + 2, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 3, pos: new RoomPosition(starCenter.x + 2, starCenter.y + 2, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 3, pos: new RoomPosition(starCenter.x + 2, starCenter.y + 1, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 3, pos: new RoomPosition(starCenter.x + 1, starCenter.y, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 3, pos: new RoomPosition(starCenter.x, starCenter.y + 1, starCenter.roomName) });
+    stamps.container.push({ type, rcl: 3, pos: new RoomPosition(starCenter.x + 2, starCenter.y, starCenter.roomName) });
+    stamps.managers.push({ type, rcl: 3, pos: new RoomPosition(starCenter.x + 1, starCenter.y + 1, starCenter.roomName) });
+
+    // RCL 4
+    stamps.extension.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x - 2, starCenter.y + 2, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x - 1, starCenter.y + 2, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x - 2, starCenter.y + 1, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x + 1, starCenter.y - 2, starCenter.roomName) });
+    stamps.extension.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x + 2, starCenter.y - 2, starCenter.roomName) });
+    stamps.managers.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x - 1, starCenter.y + 1, starCenter.roomName) });
+    stamps.managers.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x + 1, starCenter.y - 1, starCenter.roomName) });
+    stamps.rampart.push({ rcl: 4, pos: new RoomPosition(starCenter.x - 2, starCenter.y - 1, starCenter.roomName) });
+
+    // RCL 5
+    stamps.link.push({ type, rcl: 5, pos: new RoomPosition(starCenter.x, starCenter.y, starCenter.roomName) });
+
+    // RCL 7
+    stamps.spawn.push({ type, rcl: 7, pos: new RoomPosition(starCenter.x + 2, starCenter.y - 1, starCenter.roomName) });
+    stamps.rampart.push({ rcl: 7, pos: new RoomPosition(starCenter.x + 2, starCenter.y - 1, starCenter.roomName) });
+
+    // RCL 8
+    stamps.spawn.push({ type, rcl: 8, pos: new RoomPosition(starCenter.x, starCenter.y + 2, starCenter.roomName) });
+    stamps.rampart.push({ rcl: 8, pos: new RoomPosition(starCenter.x, starCenter.y + 2, starCenter.roomName) });
+}
+
+function addUniqueRoad(stamps: Stamps, roadDetail: StampDetail) {
+    const previousRoadIndex = stamps.road.findIndex((road) => road.pos.toMemSafe() === roadDetail.pos.toMemSafe());
+    if (previousRoadIndex === -1) {
+        stamps.road.push(roadDetail);
+    } else if (roadDetail.rcl < stamps.road[previousRoadIndex].rcl) {
+        stamps.road[previousRoadIndex].rcl = roadDetail.rcl; // override rcl
+    }
+}
+
+function logCpu(message: string) {
+    if (debug) {
+        console.log(`${message}: ${Game.cpu.getUsed()}`);
+    }
+}

@@ -79,6 +79,18 @@ interface TravelToOpts extends PathFinderOpts {
      * Retrieve paths roomPositions
      */
     pathsRoomPositions?: RoomPosition[];
+    /**
+     * Return value which stores a boolean for whether a faster route was avoided to go around temporary hostile units (player owned rooms do not count toward this)
+     */
+    avoidedTemporaryHostileRooms?: boolean;
+    /**
+     * If pathing is done in the same tick this can be used to provide the energy gathered during the tick
+     */
+    currentTickEnergy?: number;
+    /**
+     * Avoid edges (first two tiles from exits). Useful for stamp layouts as these use ramparts at exits
+     */
+    avoidEdges?: boolean;
 }
 
 interface CustomMatrixCost {
@@ -99,6 +111,7 @@ interface TravelState {
     lastMove?: number;
     visibleRooms?: string[];
     allowedRooms?: string[];
+    keepPath?: boolean;
 }
 
 interface Destination {

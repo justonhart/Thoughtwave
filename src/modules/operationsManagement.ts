@@ -309,6 +309,7 @@ function manageSecureRoomOperation(op: Operation) {
                     currentTaskPriority: Priority.MEDIUM,
                     combat: { flee: false },
                     room: op.targetRoom,
+                    portalLocations: op.portalLocations,
                 },
             },
         });
@@ -339,6 +340,7 @@ function manageRoomRecoveryOperation(op: Operation) {
                         role: Role.MINER,
                         assignment: key,
                         room: op.targetRoom,
+                        portalLocations: op.portalLocations,
                     },
                 },
             });
@@ -363,16 +365,22 @@ function manageRoomRecoveryOperation(op: Operation) {
                     role: Role.WORKER,
                     room: op.targetRoom,
                     operation: op.type,
+                    portalLocations: op.portalLocations,
                 },
             },
         });
     }
 
-    if (!roomNeedsCoreStructures(targetRoom)) {
+    if (targetRoom.memory.layout === RoomLayout.BUNKER && !roomNeedsCoreStructures(targetRoom)) {
         let opIndex = Memory.operations.findIndex((operation) => op === operation);
         Memory.operations[opIndex].stage = OperationStage.COMPLETE;
 
         placeBunkerConstructionSites(targetRoom);
+    } else if (targetRoom.memory.layout === RoomLayout.STAMP) {
+        // Simply send one recovery squad
+        targetRoom.memory.dontCheckConstructionsBefore = targetRoom.memory.dontCheckConstructionsBefore - 1000;
+        let opIndex = Memory.operations.findIndex((operation) => op === operation);
+        Memory.operations[opIndex].stage = OperationStage.COMPLETE;
     }
 }
 

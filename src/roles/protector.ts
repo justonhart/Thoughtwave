@@ -12,8 +12,19 @@ export class Protector extends CombatCreep {
         }
         if (this.travelToRoom(this.memory.assignment) === IN_ROOM || this.memory.targetId) {
             this.memory.targetId = this.findTarget();
-            if (!this.memory.targetId) {
-                this.healSelf(false);
+            if (!this.memory.targetId && this.getActiveBodyparts(HEAL)) {
+                if (this.hits < this.hitsMax) {
+                    this.healSelf(false);
+                } else {
+                    // Nothing to do so heal hurt creeps in the room
+                    const hurtCreep = this.room.find(FIND_MY_CREEPS).find((creep) => creep.hits < creep.hitsMax);
+                    if (hurtCreep) {
+                        const healing = this.heal(hurtCreep);
+                        if (healing === ERR_NOT_IN_RANGE) {
+                            this.travelTo(hurtCreep, { range: 1 });
+                        }
+                    }
+                }
                 return;
             }
             const target = Game.getObjectById(this.memory.targetId);
@@ -35,6 +46,18 @@ export class Protector extends CombatCreep {
             } else if (creepActionReturnCode === OK) {
                 this.healSelf(!!this.getActiveBodyparts(ATTACK));
             }
+        } else if (this.hits < this.hitsMax) {
+            // getting hit on the way => enable defense mode
+            const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
+            const enemy = this.pos
+                .findInRange(FIND_HOSTILE_CREEPS, range)
+                .find((creep) => creep.owner.username !== 'Invader' && (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)));
+            let hasMeleeAttacked = false;
+            if (enemy) {
+                hasMeleeAttacked = !!this.getActiveBodyparts(ATTACK);
+                this.attackCreep(enemy);
+            }
+            this.healSelf(hasMeleeAttacked);
         }
     }
 

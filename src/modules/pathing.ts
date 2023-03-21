@@ -130,7 +130,7 @@ export class Pathing {
             if (!opts.efficiency && (opts.preferRoadConstruction || opts.preferRamparts)) {
                 opts.efficiency = 0.8; // Make other tiles cost more
             } else if (!opts.efficiency) {
-                opts.efficiency = Pathing.getCreepMoveEfficiency(creep);
+                opts.efficiency = Pathing.getCreepMoveEfficiency(creep, opts.currentTickEnergy);
             }
             let pathFinder = Pathing.findTravelPath(creep.name, creep.pos, destination, opts);
             if (pathFinder.incomplete) {
@@ -169,6 +169,17 @@ export class Pathing {
                 Array.prototype.push.apply(opts.pathsRoomPositions, pathFinder.path);
             }
             creep.memory._m.stuckCount = 0;
+
+            // Do not remove next path if instantly going back to old room
+            if (
+                !creep.memory._m.keepPath &&
+                creep.memory._m.lastCoord &&
+                Pathing.isExit(posFromMem(creep.memory._m.lastCoord)) &&
+                (!Pathing.positionAtDirection(creep.pos, parseInt(creep.memory._m.path[0], 10) as DirectionConstant) ||
+                    Pathing.isExit(Pathing.positionAtDirection(creep.pos, parseInt(creep.memory._m.path[0], 10) as DirectionConstant)))
+            ) {
+                creep.memory._m.keepPath = true;
+            }
         }
 
         // Can be removed later but needed this for debugging
@@ -184,12 +195,15 @@ export class Pathing {
         }
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
         if (
+            !creep.memory._m.keepPath &&
             opts.avoidSourceKeepers &&
             creep.memory._m.lastCoord &&
             posFromMem(creep.memory._m.lastCoord).roomName !== creep.pos.roomName &&
             !creep.memory._m.visibleRooms.includes(creep.pos.roomName)
         ) {
             delete creep.memory._m.path; // Recalculate path in each new room as well if the creep should avoid hostiles in each room
+        } else if (creep.memory._m.lastCoord && posFromMem(creep.memory._m.lastCoord).roomName !== creep.pos.roomName && creep.memory._m.keepPath) {
+            creep.memory._m.keepPath = false;
         }
         return creep.move(nextDirection);
     }
@@ -203,10 +217,13 @@ export class Pathing {
      * @param creep -
      * @returns
      */
-    static getCreepMoveEfficiency(creep: Creep): number {
+    static getCreepMoveEfficiency(creep: Creep, currentTickEnergy?: number): number {
         let totalreduction = 0;
         let totalparts = 0;
         let used = creep.store.getUsedCapacity();
+        if (currentTickEnergy) {
+            used += currentTickEnergy;
+        }
         creep.body.forEach((body) => {
             switch (body.type) {
                 case MOVE:
@@ -301,6 +318,10 @@ export class Pathing {
 
             const room = Game.rooms[roomName];
             if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination.roomName && Pathing.checkAvoid(roomName)) {
+                if (!Memory.roomData[roomName]?.owner) {
+                    // Hostile but not owned room
+                    options.avoidedTemporaryHostileRooms = true;
+                }
                 return false;
             }
 
@@ -339,28 +360,44 @@ export class Pathing {
                 }
 
                 if (options.exitCost) {
+                    const terrain = Game.map.getRoomTerrain(roomName);
                     for (let x = 0; x < 50; x++) {
-                        if (!Game.map.getRoomTerrain(roomName).get(x, 0)) {
-                            matrix.set(x, 0, options.exitCost);
-                        }
-                        if (!Game.map.getRoomTerrain(roomName).get(x, 49)) {
-                            matrix.set(x, 49, options.exitCost);
-                        }
+                        Pathing.setMatrixIfNotWall(terrain, matrix, x, 0, options.exitCost);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, x, 49, options.exitCost);
                     }
                     for (let y = 0; y < 50; y++) {
-                        if (!Game.map.getRoomTerrain(roomName).get(0, y)) {
-                            matrix.set(0, y, options.exitCost);
-                        }
-                        if (!Game.map.getRoomTerrain(roomName).get(49, y)) {
-                            matrix.set(49, y, options.exitCost);
-                        }
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 0, y, options.exitCost);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 49, y, options.exitCost);
                     }
                 }
+
+                if (options.avoidEdges) {
+                    const terrain = Game.map.getRoomTerrain(roomName);
+                    for (let i = 0; i < 50; i++) {
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 0, i, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 1, i, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 48, i, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, 49, i, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, i, 0, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, i, 1, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, i, 48, 20);
+                        Pathing.setMatrixIfNotWall(terrain, matrix, i, 49, 20);
+                    }
+                }
+
                 if (Memory.rooms[room.name]?.anchorPoint || Memory.rooms[room.name]?.managerPos) {
                     let managerPos = posFromMem(room.memory.anchorPoint || room.memory.managerPos);
                     if (!Pathing.sameCoord(managerPos, destination)) {
                         matrix.set(managerPos.x, managerPos.y, 50);
                     }
+                }
+
+                if (Memory.rooms[room.name]?.layout === RoomLayout.STAMP) {
+                    room.stamps.managers.forEach((managerStamp) => {
+                        if (!Pathing.sameCoord(managerStamp.pos, destination)) {
+                            matrix.set(managerStamp.pos.x, managerStamp.pos.y, 20);
+                        }
+                    });
                 }
 
                 if (Memory.rooms[room.name]?.miningAssignments) {
@@ -426,6 +463,10 @@ export class Pathing {
         const route = Game.map.findRoute(originRoom, destination, {
             routeCallback: (roomName) => {
                 if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination && Pathing.checkAvoid(roomName)) {
+                    if (!Memory.roomData[roomName]?.owner) {
+                        // Hostile but not owned room
+                        options.avoidedTemporaryHostileRooms = true;
+                    }
                     return Infinity;
                 }
                 const isMyRoom = Game.rooms[roomName] && Game.rooms[roomName].controller && Game.rooms[roomName].controller.my;
@@ -648,7 +689,7 @@ export class Pathing {
                     obstacleCreep.memory._m = { repath: 0 };
                 }
                 obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
-                return Pathing.moveObstacleCreep(obstacleCreep, obstacleCreep.pos.getDirectionTo(creep));
+                return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
             }
         }
         return false;
@@ -691,5 +732,11 @@ export class Pathing {
             return;
         }
         return new RoomPosition(x, y, origin.roomName);
+    }
+
+    static setMatrixIfNotWall(terrain: RoomTerrain, matrix: CostMatrix, x: number, y: number, cost: number) {
+        if (terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+            matrix.set(x, y, cost);
+        }
     }
 }

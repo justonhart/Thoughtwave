@@ -4,7 +4,6 @@ import { posFromMem } from './data';
 import { PopulationManagement } from './populationManagement';
 import { manageRemoteRoom } from './remoteRoomManagement';
 import {
-    findBunkerLocation,
     placeBunkerOuterRamparts,
     placeBunkerConstructionSites,
     placeMinerLinks,
@@ -14,6 +13,8 @@ import {
     placeBunkerCoreRamparts,
     roomNeedsCoreStructures,
     placeUpgraderLink,
+    findStampLocation,
+    findBunkerLocation,
 } from './roomDesign';
 
 const BUILD_CHECK_PERIOD = 100;
@@ -73,6 +74,7 @@ export function driveRoom(room: Room) {
             }
 
             if (
+                room.memory.layout === RoomLayout.BUNKER &&
                 Game.cpu.bucket > 200 &&
                 !global.roomConstructionsChecked &&
                 (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
@@ -111,6 +113,100 @@ export function driveRoom(room: Room) {
                 global.roomConstructionsChecked = true;
                 room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
             }
+
+            if (
+                room.memory.layout === RoomLayout.STAMP &&
+                !global.roomConstructionsChecked &&
+                (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
+                (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
+                Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
+                room.find(FIND_MY_CONSTRUCTION_SITES).length < 15
+            ) {
+                // Cleanup any leftover storage/terminal that is in the way
+                if (
+                    room.stamps.spawn.some(
+                        (spawnStamp) =>
+                            spawnStamp.rcl <= room.controller.level &&
+                            !room
+                                .lookAt(spawnStamp.pos)
+                                .some(
+                                    (lookObj) =>
+                                        lookObj.constructionSite?.structureType === spawnStamp.type ||
+                                        lookObj.structure?.structureType === spawnStamp.type
+                                )
+                    )
+                ) {
+                    if (room.storage) {
+                        const destroyStorage = Object.values(room.stamps).some((stamps: StampDetail[]) =>
+                            stamps.some((stamp) => stamp.rcl < 4 && stamp.pos.x === room.storage.pos.x && stamp.pos.y === room.storage.pos.y)
+                        );
+                        if (destroyStorage) {
+                            room.storage.destroy();
+                        }
+                    }
+                    if (room.terminal) {
+                        const destroyTerminal = Object.values(room.stamps).some((stamps: StampDetail[]) =>
+                            stamps.some((stamp) => stamp.rcl < 4 && stamp.pos.x === room.terminal.pos.x && stamp.pos.y === room.terminal.pos.y)
+                        );
+                        if (destroyTerminal) {
+                            room.terminal.destroy();
+                        }
+                    }
+                }
+
+                // Cleanup left over storage/terminal
+                if (room.controller.level > 3 && room.storage && !room.storage?.my) {
+                    room.storage.destroy();
+                }
+                if (room.controller.level > 3 && room.terminal && !room.terminal?.my) {
+                    room.terminal.destroy();
+                }
+
+                // Check for any missing structures and add them
+                const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+                let constructionSitesCount = constructionSites.length;
+                if (constructionSitesCount < 15) {
+                    const structures = room.find(FIND_STRUCTURES);
+                    const constructionStamps: { pos: RoomPosition; key: StructureConstant }[] = [];
+                    // Check against all structures and construction sites currently in the room. If a stamp is not in either then add it as a construction site
+                    Object.entries(room.stamps)
+                        .filter(([key, stamps]: [string, StampDetail[]]) => key !== 'managers')
+                        .forEach(([key, stamps]: [string, StampDetail[]]) => {
+                            stamps
+                                .filter(
+                                    (stamp) =>
+                                        stamp.rcl <= room.controller.level &&
+                                        !structures.some(
+                                            (structure) =>
+                                                key === structure.structureType && stamp.pos.x === structure.pos.x && stamp.pos.y === structure.pos.y
+                                        ) &&
+                                        !constructionSites.some(
+                                            (structure) =>
+                                                key === structure.structureType && stamp.pos.x === structure.pos.x && stamp.pos.y === structure.pos.y
+                                        )
+                                )
+                                .forEach((stamp) => constructionStamps.push({ pos: stamp.pos, key: key as StructureConstant }));
+                        });
+                    constructionStamps.sort((a, b) => {
+                        return getStructurePriority(a.key) > getStructurePriority(b.key) ? 1 : -1;
+                    });
+                    while (constructionStamps?.length && constructionSitesCount < 15) {
+                        const nextConstructionSite = constructionStamps.pop();
+                        const result = room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
+                        if (result !== OK) {
+                            console.log(
+                                `Could not createConstruction for Stamp layout in room ${room.name}. Result: ${result}. Type: ${
+                                    nextConstructionSite.key
+                                }. Position: ${nextConstructionSite.pos.toMemSafe()}`
+                            );
+                        }
+                        constructionSitesCount++;
+                    }
+                }
+
+                global.roomConstructionsChecked = true;
+                room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
+            }
         }
 
         const isHomeUnderAttack = runHomeSecurity(room);
@@ -129,6 +225,21 @@ export function driveRoom(room: Room) {
             ) {
                 room.controller.activateSafeMode();
             }
+        } else if (room.memory.layout === RoomLayout.STAMP) {
+            const centerLink = room.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'center');
+            if (
+                centerLink &&
+                room
+                    .find(FIND_HOSTILE_CREEPS)
+                    .some(
+                        (creep) =>
+                            creep.owner.username !== 'Invader' &&
+                            (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
+                            (creep.pos.x > 2 || creep.pos.y > 2 || creep.pos.x < 47 || creep.pos.y < 47)
+                    )
+            ) {
+                room.controller.activateSafeMode();
+            }
         }
 
         if (room.memory.gates?.length) {
@@ -136,7 +247,7 @@ export function driveRoom(room: Room) {
         }
 
         if (room.observer) {
-            let visionRequestId = room.memory.visionRequests.find(
+            let visionRequestId = room.memory.visionRequests?.find(
                 (rq) => !Memory.visionRequests[rq].onTick || Memory.visionRequests[rq].onTick === Game.time + 1
             );
             if (visionRequestId) {
@@ -349,16 +460,54 @@ export function initRoom(room: Room) {
         room.memory.miningAssignments[pos.toMemSafe()] = AssignmentStatus.UNASSIGNED;
     });
 
-    let mineralMiningPosition = findMineralMiningPosition(room);
+    const mineralMiningPosition = findMineralMiningPosition(room);
     room.memory.mineralMiningAssignments[mineralMiningPosition.toMemSafe()] = AssignmentStatus.UNASSIGNED;
 
     //calculate room layout here
-    let anchorPoint = findBunkerLocation(room);
+    const anchorPoint = findBunkerLocation(room);
 
     if (anchorPoint) {
         room.memory.layout = RoomLayout.BUNKER;
         room.memory.anchorPoint = anchorPoint.toMemSafe();
         room.createConstructionSite(anchorPoint.x, anchorPoint.y - 1, STRUCTURE_SPAWN);
+    } else {
+        // Bunker layout can't fit so trying stamp layout instead in next tick
+        const findStampFunction = () => {
+            const valid = findStampLocation(room);
+            if (valid) {
+                room.memory.layout = RoomLayout.STAMP;
+                const spawn = room.stamps.spawn.find((spawnDetail) => spawnDetail.rcl === 1);
+                room.createConstructionSite(spawn, STRUCTURE_SPAWN);
+                room.memory.miningAssignments = {};
+                room.stamps.container
+                    .filter((containerStamp) => containerStamp.type?.includes('source'))
+                    .forEach((minerStamp) => (room.memory.miningAssignments[minerStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
+                room.memory.mineralMiningAssignments = {};
+                room.stamps.container
+                    .filter((containerStamp) => containerStamp.type === 'mineral')
+                    .forEach((mineralStamp) => (room.memory.mineralMiningAssignments[mineralStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
+            }
+        };
+        if (!global.nextTickFunctions) {
+            global.nextTickFunctions = [findStampFunction];
+        } else {
+            global.nextTickFunctions.push(findStampFunction);
+        }
+    }
+
+    const valid = findStampLocation(room);
+    if (valid) {
+        room.memory.layout = RoomLayout.STAMP;
+        const spawn = room.stamps.spawn.find((spawnDetail) => spawnDetail.rcl === 1);
+        room.createConstructionSite(spawn, STRUCTURE_SPAWN);
+        room.memory.miningAssignments = {};
+        room.stamps.container
+            .filter((containerStamp) => containerStamp.type?.includes('source'))
+            .forEach((minerStamp) => (room.memory.miningAssignments[minerStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
+        room.memory.mineralMiningAssignments = {};
+        room.stamps.container
+            .filter((containerStamp) => containerStamp.type === 'mineral')
+            .forEach((mineralStamp) => (room.memory.mineralMiningAssignments[mineralStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
     }
 }
 
@@ -474,11 +623,24 @@ function runSpawning(room: Room) {
     }
 
     if (PopulationManagement.needsManager(room)) {
-        if (room.memory.layout !== undefined) {
-            let suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(posFromMem(room.memory.anchorPoint)));
+        if (room.memory.layout === RoomLayout.BUNKER) {
+            const suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(posFromMem(room.memory.anchorPoint)));
             if (suitableSpawn) {
                 suitableSpawn.spawnManager();
                 availableSpawns = availableSpawns.filter((spawn) => spawn !== suitableSpawn);
+            }
+        } else if (room.memory.layout === RoomLayout.STAMP) {
+            // Look for spawn closest to new Manager if none found just spawn it
+            const newManagerPos = PopulationManagement.getNewStampManager(room)?.pos;
+            if (newManagerPos) {
+                const suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(newManagerPos));
+                if (suitableSpawn) {
+                    suitableSpawn.spawnManager();
+                    availableSpawns = availableSpawns.filter((spawn) => spawn !== suitableSpawn);
+                } else {
+                    let spawn = availableSpawns.pop();
+                    spawn?.spawnManager();
+                }
             }
         } else {
             let spawn = availableSpawns.pop();
@@ -716,5 +878,17 @@ function runVisionRequest(room: Room, requestId: string) {
     if (result === OK) {
         Memory.visionRequests[requestId].completed = true;
         room.memory.visionRequests = room.memory.visionRequests.filter((rq) => rq !== requestId);
+    }
+}
+
+function getStructurePriority(structureType: StructureConstant): number {
+    if (structureType === STRUCTURE_STORAGE) {
+        return 2;
+    } else if (structureType === STRUCTURE_SPAWN || structureType === STRUCTURE_EXTENSION || structureType === STRUCTURE_TOWER) {
+        return 1;
+    } else if (structureType === STRUCTURE_RAMPART) {
+        return -1;
+    } else {
+        return 0;
     }
 }

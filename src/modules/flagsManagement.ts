@@ -1,6 +1,6 @@
 import { addHostileRoom, addVisionRequest, unclaimRoom } from './data';
 import { addOperation } from './operationsManagement';
-import { findBunkerLocation } from './roomDesign';
+import { findBunkerLocation, findStampLocation } from './roomDesign';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
@@ -24,6 +24,11 @@ export default function manageFlags() {
             };
         }
 
+        addOperation(OperationType.SECURE, Game.flags.colonize.pos.roomName, {
+            operativeCount: 2,
+            expireAt: Game.time + 10000,
+            portalLocations: portalLocations,
+        });
         addOperation(OperationType.COLONIZE, Game.flags.colonize.pos.roomName, opts);
         Game.flags.colonize.remove();
     }
@@ -87,15 +92,44 @@ export default function manageFlags() {
     }
 
     if (Game.flags.secure) {
+        let portalLocations = [];
+
+        if (Game.flags.portal) {
+            portalLocations.push(Game.flags.portal.pos.toMemSafe());
+            Game.flags.portal.remove();
+        }
+
+        let opts: OperationOpts = {
+            portalLocations: portalLocations,
+        };
+
+        if (Game.flags.origin) {
+            opts.originRoom = Game.flags.origin.pos.roomName;
+            Game.flags.origin.remove();
+        } else {
+            opts.originOpts = {
+                selectionCriteria: OriginCriteria.CLOSEST,
+            };
+        }
         addOperation(OperationType.SECURE, Game.flags.secure.pos.roomName, {
             operativeCount: 2,
             expireAt: Game.time + 4500,
+            portalLocations: portalLocations,
         });
         Game.flags.secure.remove();
     }
 
     if (Game.flags.recover) {
-        let opts: OperationOpts = {};
+        let portalLocations = [];
+
+        if (Game.flags.portal) {
+            portalLocations.push(Game.flags.portal.pos.toMemSafe());
+            Game.flags.portal.remove();
+        }
+
+        let opts: OperationOpts = {
+            portalLocations: portalLocations,
+        };
 
         if (Game.flags.origin) {
             opts.originRoom = Game.flags.origin.pos.roomName;
@@ -213,13 +247,23 @@ export default function manageFlags() {
         Game.flags.clean.remove();
     }
 
-    if (Game.flags.layout) {
-        let result = addVisionRequest({ targetRoom: Game.flags.layout.pos.roomName });
+    if (Game.flags.bunker) {
+        let result = addVisionRequest({ targetRoom: Game.flags.bunker.pos.roomName });
 
         if (result === ERR_NOT_FOUND) {
             console.log('No observers in range');
-        } else if (Game.rooms[Game.flags.layout.pos.roomName]) {
-            findBunkerLocation(Game.rooms[Game.flags.layout.pos.roomName]);
+        } else if (Game.rooms[Game.flags.bunker.pos.roomName]) {
+            findBunkerLocation(Game.rooms[Game.flags.bunker.pos.roomName]);
+        }
+    }
+
+    if (Game.flags.stamp) {
+        let result = addVisionRequest({ targetRoom: Game.flags.stamp.pos.roomName });
+
+        if (result === ERR_NOT_FOUND) {
+            console.log('No observers in range');
+        } else if (Game.rooms[Game.flags.stamp.pos.roomName]) {
+            findStampLocation(Game.rooms[Game.flags.stamp.pos.roomName], false);
         }
     }
 }

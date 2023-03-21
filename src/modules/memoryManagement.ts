@@ -11,6 +11,13 @@ export function manageMemory() {
         }
     }
 
+    // Cleanup dead rooms
+    if (Game.time % 100 === 0) {
+        Object.keys(Memory.rooms)
+            .filter((roomName) => !Object.keys(Memory.rooms[roomName]).length)
+            .forEach((roomName) => delete Memory.rooms[roomName]);
+    }
+
     handleDeadSquads();
 
     // if(!!InterShardMemory.getLocal()){
@@ -265,7 +272,11 @@ function mangeVisionRequests() {
         if (!request.assigned) {
             let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 5);
             if (suitableRoom) {
-                Memory.rooms[suitableRoom].visionRequests.push(requestId);
+                if (!Memory.rooms[suitableRoom].visionRequests) {
+                    Memory.rooms[suitableRoom].visionRequests = [requestId];
+                } else {
+                    Memory.rooms[suitableRoom].visionRequests.push(requestId);
+                }
                 Memory.visionRequests[requestId].assigned = true;
             }
             return;

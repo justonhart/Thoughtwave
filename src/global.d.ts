@@ -13,6 +13,8 @@ declare global {
     //resource maps to first qualifying purchase order
     var qualifyingMarketOrders: { [resource: string]: string };
 
+    var nextTickFunctions: (() => void)[];
+
     var visionRequestIncrement: number;
 }
 
