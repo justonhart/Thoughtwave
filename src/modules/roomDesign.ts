@@ -1486,7 +1486,7 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
         if (!isCloseToEdge(pos)) {
             stamps.container.push({ type, rcl: 6, pos: new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName) });
         }
-    } else if (type?.includes('source')) {
+    } else if (type?.includes('source') && path.length > 0) {
         const lastStep = path[path.length - 1];
         // Replace extension/link with a road (is already taken into account in previous methods so 60 extensions will still be placed)
         const road = stamps.road.find((roadStamp) => roadStamp.type === type);
@@ -1508,7 +1508,7 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
             }
             road.pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName);
         }
-    } else if (type === STRUCTURE_CONTROLLER) {
+    } else if (type === STRUCTURE_CONTROLLER && path.length > 0) {
         const lastStep = path[path.length - 1];
         const pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName);
         const freePos = pos
