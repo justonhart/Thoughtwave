@@ -1504,6 +1504,16 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
                         .filter((nonRoadStamp) => nonRoadStamp.type !== type)
                         .forEach((nonRoadStamp) => matrix.set(nonRoadStamp.pos.x, nonRoadStamp.pos.y, 50))
                 );
+            for (let i = 0; i < 50; i++) {
+                Pathing.setMatrixIfNotWall(terrain, matrix, 0, i, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, 1, i, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, 48, i, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, 49, i, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, i, 0, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, i, 1, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, i, 48, 20);
+                Pathing.setMatrixIfNotWall(terrain, matrix, i, 49, 20);
+            }
             return matrix;
         },
     });
