@@ -707,7 +707,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
                 }
                 stamps.rampart.push({ rcl: 4, pos: section });
             });
-            addRoadToPois(section[0], stamps, 4, STRUCTURE_RAMPART, terrain);
+            addRoadToPois(section[Math.floor(section.length / 2)], stamps, 4, STRUCTURE_RAMPART, terrain);
         });
 
         addRoadToPois(room.controller.pos, stamps, 3, STRUCTURE_CONTROLLER, terrain, 3);
@@ -890,6 +890,28 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
         }
     }
 
+    // Remove any closing ramparts if there are adjacent ones already from a different section
+    if (rampartsPerSection.length > 1) {
+        pairwise(rampartsPerSection, (currentSection: RoomPosition[], nextSection: RoomPosition[]) => {
+            currentSection
+                .filter((pos) => pos.x === 1 || pos.x === 48 || pos.y === 1 || pos.y === 48)
+                .forEach((pos) =>
+                    nextSection
+                        .filter((nextPos) => nextPos.x === 1 || nextPos.x === 48 || nextPos.y === 1 || nextPos.y === 48)
+                        .forEach((nextPos) => {
+                            if (
+                                (pos.x === nextPos.x && Math.abs(pos.y - nextPos.y) === 1) ||
+                                (pos.y === nextPos.y && Math.abs(pos.x - nextPos.x) === 1)
+                            ) {
+                                // remove
+                                currentSection.splice(currentSection.indexOf(pos), 1);
+                                nextSection.splice(nextSection.indexOf(nextPos), 1);
+                            }
+                        })
+                );
+        });
+    }
+
     let index = 0;
     return rampartsPerSection.filter((section) => {
         const pos = JSON.parse(JSON.stringify(section[0]));
@@ -917,6 +939,12 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
         index++;
         return !path.incomplete;
     });
+}
+
+function pairwise(arr: any, func: any) {
+    for (let i = 0; i < arr.length - 1; i++) {
+        func(arr[i], arr[i + 1]);
+    }
 }
 
 // Add Ramparts on miningPosition and links outside of the stamp boundary ==> no longer used but left in case needed later
