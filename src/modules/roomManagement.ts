@@ -383,10 +383,6 @@ function runTowers(room: Room, isRoomUnderAttack: boolean) {
 
     //if no defensive use for towers, repair roads
     if (room.controller.safeMode || !isRoomUnderAttack) {
-        if (room.memory.towerRepairMap === undefined) {
-            room.memory.towerRepairMap = {};
-        }
-
         towers.forEach((tower) => {
             let repairQueue = room.memory.repairQueue;
 
@@ -737,10 +733,6 @@ function runSpawning(room: Room) {
 }
 
 export function findRepairTargets(room: Room): Id<Structure>[] {
-    if (!room.memory.repairQueue) {
-        room.memory.repairQueue = [];
-    }
-
     let repairTargetQueue: Id<Structure>[] = [];
 
     let damagedRoomStructures = room

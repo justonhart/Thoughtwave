@@ -1,14 +1,6 @@
 import { getResourceAmount } from './resourceManagement';
 
 export function runLabs(room: Room) {
-    if (!room.memory.labTasks) {
-        room.memory.labTasks = [];
-    }
-
-    if (!room.memory.labRequests) {
-        room.memory.labRequests = [];
-    }
-
     //manage queue
     room.memory.labTasks = room.memory.labTasks.filter((task) => task.status !== TaskStatus.COMPLETE);
 
