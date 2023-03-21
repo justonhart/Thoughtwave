@@ -235,7 +235,8 @@ export function driveRoom(room: Room) {
                         (creep) =>
                             creep.owner.username !== 'Invader' &&
                             (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
-                            (creep.pos.x > 2 || creep.pos.y > 2 || creep.pos.x < 47 || creep.pos.y < 47)
+                            (creep.pos.x > 2 || creep.pos.y > 2) &&
+                            (creep.pos.x < 47 || creep.pos.y < 47)
                     )
             ) {
                 room.controller.activateSafeMode();
