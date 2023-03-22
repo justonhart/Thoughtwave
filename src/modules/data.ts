@@ -159,3 +159,7 @@ export function addVisionRequest(request: VisionRequest): string | ScreepsReturn
         return ERR_NOT_FOUND;
     }
 }
+
+export function getExitDirections(roomName: string): DirectionConstant[] {
+    return Object.keys(Game.map.describeExits(roomName)).map((key) => parseInt(key)) as DirectionConstant[];
+}

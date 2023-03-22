@@ -25,6 +25,7 @@ interface RoomMemory {
     towerRepairMap?: { [towerId: string]: Id<StructureRoad> }; //maps towerId to roadId
     stampLayout?: Stamps;
     visionRequests?: string[]; //vision request Ids
+    outstandingClaim?: string; //roomName to be claimed
 }
 
 interface RemoteData {

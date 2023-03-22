@@ -257,6 +257,10 @@ function initMissingMemoryValues() {
     if (!Memory.visionRequests) {
         Memory.visionRequests = {};
     }
+
+    if (!Memory.remoteRoomClaims) {
+        Memory.remoteRoomClaims = {};
+    }
 }
 
 function mangeVisionRequests() {
