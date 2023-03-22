@@ -127,7 +127,7 @@ export class Gatherer extends TransportCreep {
                 this.onTaskFinished();
                 break;
         }
-        if (!opts.pathsRoomPositions || opts.avoidedTemporaryHostileRooms) {
+        if (!opts.pathsRoomPositions) {
             return [];
         }
         return opts.pathsRoomPositions;

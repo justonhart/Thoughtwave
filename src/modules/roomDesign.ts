@@ -746,7 +746,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
         ) {
             if (terrain.get(i, 0) !== TERRAIN_MASK_WALL) {
                 ramparts.push(new RoomPosition(i, 2, roomName));
-            } else if (terrain.get(i + 1, 0) !== TERRAIN_MASK_WALL) {
+            } else if (terrain.get(i + 1, 0) !== TERRAIN_MASK_WALL && i !== 1) {
                 ramparts.push(new RoomPosition(i, 2, roomName));
                 if (terrain.get(i - 1, 2) !== TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(i - 1, 2, roomName));
@@ -754,7 +754,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
                 if (terrain.get(i - 1, 1) !== TERRAIN_MASK_WALL && terrain.get(i - 2, 0) === TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(i - 1, 1, roomName));
                 }
-            } else if (terrain.get(i - 1, 0) !== TERRAIN_MASK_WALL) {
+            } else if (terrain.get(i - 1, 0) !== TERRAIN_MASK_WALL && i !== 48) {
                 ramparts.push(new RoomPosition(i, 2, roomName));
                 if (terrain.get(i + 1, 2) !== TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(i + 1, 2, roomName));
@@ -784,7 +784,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
         ) {
             if (terrain.get(i, 49) !== TERRAIN_MASK_WALL) {
                 ramparts.push(new RoomPosition(i, 47, roomName));
-            } else if (terrain.get(i + 1, 49) !== TERRAIN_MASK_WALL) {
+            } else if (terrain.get(i + 1, 49) !== TERRAIN_MASK_WALL && i !== 1) {
                 ramparts.push(new RoomPosition(i, 47, roomName));
                 if (terrain.get(i - 1, 47) !== TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(i - 1, 47, roomName));
@@ -792,7 +792,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
                 if (terrain.get(i - 1, 48) !== TERRAIN_MASK_WALL && terrain.get(i - 2, 49) === TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(i - 1, 48, roomName));
                 }
-            } else if (terrain.get(i - 1, 49) !== TERRAIN_MASK_WALL) {
+            } else if (terrain.get(i - 1, 49) !== TERRAIN_MASK_WALL && i !== 48) {
                 ramparts.push(new RoomPosition(i, 47, roomName));
                 if (terrain.get(i + 1, 47) !== TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(i + 1, 47, roomName));
@@ -822,7 +822,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
         ) {
             if (terrain.get(0, i) !== TERRAIN_MASK_WALL) {
                 ramparts.push(new RoomPosition(2, i, roomName));
-            } else if (terrain.get(0, i + 1) !== TERRAIN_MASK_WALL) {
+            } else if (terrain.get(0, i + 1) !== TERRAIN_MASK_WALL && i !== 1) {
                 ramparts.push(new RoomPosition(2, i, roomName));
                 if (terrain.get(2, i - 1) !== TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(2, i - 1, roomName));
@@ -830,7 +830,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
                 if (terrain.get(1, i - 1) !== TERRAIN_MASK_WALL && terrain.get(0, i - 2) === TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(1, i - 1, roomName));
                 }
-            } else if (terrain.get(0, i - 1) !== TERRAIN_MASK_WALL) {
+            } else if (terrain.get(0, i - 1) !== TERRAIN_MASK_WALL && i !== 48) {
                 ramparts.push(new RoomPosition(2, i, roomName));
                 if (terrain.get(2, i + 1) !== TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(2, i + 1, roomName));
@@ -860,7 +860,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
         ) {
             if (terrain.get(49, i) !== TERRAIN_MASK_WALL) {
                 ramparts.push(new RoomPosition(47, i, roomName));
-            } else if (terrain.get(49, i + 1) !== TERRAIN_MASK_WALL) {
+            } else if (terrain.get(49, i + 1) !== TERRAIN_MASK_WALL && i !== 1) {
                 ramparts.push(new RoomPosition(47, i, roomName));
                 if (terrain.get(47, i - 1) !== TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(47, i - 1, roomName));
@@ -868,7 +868,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
                 if (terrain.get(48, i - 1) !== TERRAIN_MASK_WALL && terrain.get(49, i - 2) === TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(48, i - 1, roomName));
                 }
-            } else if (terrain.get(49, i - 1) !== TERRAIN_MASK_WALL) {
+            } else if (terrain.get(49, i - 1) !== TERRAIN_MASK_WALL && i !== 48) {
                 ramparts.push(new RoomPosition(47, i, roomName));
                 if (terrain.get(47, i + 1) !== TERRAIN_MASK_WALL) {
                     ramparts.push(new RoomPosition(47, i + 1, roomName));

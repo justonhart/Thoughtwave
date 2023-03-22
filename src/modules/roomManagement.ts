@@ -528,21 +528,6 @@ export function initRoom(room: Room) {
             global.nextTickFunctions.push(findStampFunction);
         }
     }
-
-    const valid = findStampLocation(room);
-    if (valid) {
-        room.memory.layout = RoomLayout.STAMP;
-        const spawn = room.stamps.spawn.find((spawnDetail) => spawnDetail.rcl === 1);
-        room.createConstructionSite(spawn, STRUCTURE_SPAWN);
-        room.memory.miningAssignments = {};
-        room.stamps.container
-            .filter((containerStamp) => containerStamp.type?.includes('source'))
-            .forEach((minerStamp) => (room.memory.miningAssignments[minerStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
-        room.memory.mineralMiningAssignments = {};
-        room.stamps.container
-            .filter((containerStamp) => containerStamp.type === 'mineral')
-            .forEach((mineralStamp) => (room.memory.mineralMiningAssignments[mineralStamp.pos.toMemSafe()] = AssignmentStatus.UNASSIGNED));
-    }
 }
 
 function findMiningPostitions(room: Room) {
