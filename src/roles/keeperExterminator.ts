@@ -67,12 +67,12 @@ export class KeeperExterminator extends CombatCreep {
                 ((c.getActiveBodyparts(RANGED_ATTACK) || c.getActiveBodyparts(HEAL) > 0) && c.owner.username !== 'Source Keeper'),
         });
         if (invaders?.length) {
-            return this.pos.findClosestByPath(invaders).id;
+            return this.pos.findClosestByPath(invaders)?.id || this.pos.findClosestByRange(invaders)?.id;
         }
 
         let keepers = Game.rooms[this.memory.assignment]?.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username === 'Source Keeper' });
         if (keepers?.length) {
-            return this.pos.findClosestByPath(keepers)?.id;
+            return this.pos.findClosestByPath(keepers)?.id || this.pos.findClosestByRange(keepers)?.id;
         }
 
         let lairs = Object.values(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).map((lairId) =>
