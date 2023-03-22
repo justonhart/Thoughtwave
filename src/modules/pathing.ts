@@ -165,7 +165,7 @@ export class Pathing {
 
             creep.memory._m.path = Pathing.serializePath(creep.pos, pathFinder.path, { color: opts.pathColor, lineStyle: 'dashed' });
             // Get all roomPositions along the path
-            if (opts.pathsRoomPositions?.length === 0) {
+            if (opts.pathsRoomPositions?.length === 0 && creep.memory._m.path?.length && !opts.avoidedTemporaryHostileRooms) {
                 Array.prototype.push.apply(opts.pathsRoomPositions, pathFinder.path);
             }
             creep.memory._m.stuckCount = 0;
@@ -174,6 +174,7 @@ export class Pathing {
             if (
                 !creep.memory._m.keepPath &&
                 creep.memory._m.lastCoord &&
+                creep.memory._m.path?.length &&
                 Pathing.isExit(posFromMem(creep.memory._m.lastCoord)) &&
                 (!Pathing.positionAtDirection(creep.pos, parseInt(creep.memory._m.path[0], 10) as DirectionConstant) ||
                     Pathing.isExit(Pathing.positionAtDirection(creep.pos, parseInt(creep.memory._m.path[0], 10) as DirectionConstant)))
@@ -395,7 +396,7 @@ export class Pathing {
                 if (Memory.rooms[room.name]?.layout === RoomLayout.STAMP) {
                     room.stamps.managers.forEach((managerStamp) => {
                         if (!Pathing.sameCoord(managerStamp.pos, destination)) {
-                            matrix.set(managerStamp.pos.x, managerStamp.pos.y, 20);
+                            matrix.set(managerStamp.pos.x, managerStamp.pos.y, 50);
                         }
                     });
                 }

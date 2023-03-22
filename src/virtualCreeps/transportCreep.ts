@@ -247,9 +247,12 @@ export class TransportCreep extends WaveCreep {
                         this.homeroom.stamps.container.some(
                             (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.toMemSafe() === structure.pos.toMemSafe()
                         )
-                ).length > 1;
+                ).length ===
+                this.homeroom.stamps.container.filter(
+                    (containerStamp) => containerStamp.type === 'center' && containerStamp.rcl <= this.homeroom.controller.level
+                ).length;
         // If there is a manager with a container then do not refill center structures
-        if (this.homeroom.memory.layout === RoomLayout.STAMP && hasManagerWithContainer) {
+        if (hasManagerWithContainer) {
             targetStructureTypes = [STRUCTURE_EXTENSION];
             // Make Distributor fill up center containers as long as there is no center link yet
             if (
@@ -378,7 +381,7 @@ export class TransportCreep extends WaveCreep {
         this.memory.currentTaskPriority = Priority.HIGH;
         let targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
         if (targetFreeCapacity) {
-            if(!this.store.energy){
+            if (!this.store.energy) {
                 this.memory.gathering = true;
             } else if (!this.pos.isNearTo(target)) {
                 this.travelTo(target, { range: 1, currentTickEnergy: this.incomingResourceAmount });

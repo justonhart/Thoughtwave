@@ -89,7 +89,11 @@ export class RemoteMiner extends WaveCreep {
                 const lairPositions = Object.values(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).map((lairId) => {
                     return { pos: Game.getObjectById(lairId).pos, range: 0 };
                 });
-                this.travelTo(lairPositions.pop(), { range: 7, flee: true, goals: lairPositions }); // Travel back to home room
+                if (this.onEdge()) {
+                    this.travelToRoom(this.memory.assignment); // Prevent going in and out of the room
+                } else {
+                    this.travelTo(lairPositions.pop(), { range: 7, flee: true, goals: lairPositions, maxRooms: 1 }); // Travel out of harms way
+                }
             } else {
                 this.say('🚚 is SLOW!');
             }
