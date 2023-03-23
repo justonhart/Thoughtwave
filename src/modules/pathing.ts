@@ -110,9 +110,7 @@ export class Pathing {
             // First try pushing the creep in front closer to their target (stayOnPath will not recalculate new Path)
             if (!Pathing.pushForward(creep, opts) || creep.memory._m.stuckCount > 1) {
                 // When on edge keep path around creep to avoid going back and forth on the exit
-                if (creep.onEdge()) {
-                    creep.memory._m.keepPath = true;
-                }
+                creep.memory._m.keepPath = true;
                 creep.memory._m.repath++;
                 opts.pathColor = 'blue';
                 opts.ignoreCreeps = false;
@@ -135,7 +133,7 @@ export class Pathing {
             } else if (!opts.efficiency) {
                 opts.efficiency = Pathing.getCreepMoveEfficiency(creep, opts.currentTickEnergy);
             }
-            let pathFinder = Pathing.findTravelPath(creep.name, creep.pos, destination, opts);
+            let pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, opts);
             if (pathFinder.incomplete) {
                 // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
                 new RoomVisual(creep.pos.roomName).circle(creep.pos, {
@@ -147,7 +145,7 @@ export class Pathing {
                 });
                 if (!pathFinder.path) {
                     // Not even a partial path was found (for example close to the target but blocked by creeps)
-                    pathFinder = Pathing.findTravelPath(creep.name, creep.pos, destination, {
+                    pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, {
                         ...Pathing.defaultOpts,
                         range: opts.range,
                         efficiency: opts.efficiency,
@@ -273,11 +271,11 @@ export class Pathing {
      * @param options -
      * @returns -
      */
-    static findTravelPath(creepName: string, origin: HasPos | RoomPosition, destination: RoomPosition, options: TravelToOpts = {}) {
+    static findTravelPath(creep: Creep, origin: HasPos | RoomPosition, destination: RoomPosition, options: TravelToOpts = {}) {
         origin = Pathing.normalizePos(origin);
         destination = Pathing.normalizePos(destination);
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
-        if (origin.roomName !== destination.roomName && !options.allowedRooms) {
+        if (origin.roomName !== destination.roomName && !options.allowedRooms && !creep.memory._m.repath) {
             const roomDistance = Game.map.getRoomLinearDistance(origin.roomName, destination.roomName);
             if (roomDistance >= 2) {
                 const route = this.findRoute(origin.roomName, destination.roomName, options);
@@ -299,7 +297,7 @@ export class Pathing {
             maxOps: options.maxOps,
             plainCost: Math.ceil(2 / options.efficiency),
             swampCost: Math.ceil(10 / options.efficiency),
-            roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options, creepName),
+            roomCallback: Pathing.getRoomCallback(origin.roomName, destination, options, creep.name),
             flee: options.flee,
             maxRooms: options.maxRooms,
         });
@@ -673,7 +671,7 @@ export class Pathing {
                 }
 
                 // Find Path closer to target
-                const obstaclePathFinder = Pathing.findTravelPath(obstacleCreep.name, obstacleCreep.pos, obstacleCreepDestination, {
+                const obstaclePathFinder = Pathing.findTravelPath(obstacleCreep, obstacleCreep.pos, obstacleCreepDestination, {
                     ignoreCreeps: false,
                     range: 1,
                     efficiency: Pathing.getCreepMoveEfficiency(obstacleCreep),

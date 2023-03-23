@@ -360,21 +360,18 @@ function runTowers(room: Room, isRoomUnderAttack: boolean) {
             towers.forEach((tower) => tower.attack(Game.getObjectById(focus.memory.targetId2)));
         } else {
             // Towers do not attack creeps on the edge because this can cause them to simply waste energy if two attackers are in the room and the healers go in and out of the room
-            const hostileCreep = room
-                .find(FIND_HOSTILE_CREEPS)
-                .filter((creep) => creep.owner.username === 'Invader' || (creep.pos.x > 1 && creep.pos.y < 48 && creep.pos.y > 1 && creep.pos.x < 48))
-                .find((creep) => {
-                    const hostileCreepInfo = CombatIntel.getCreepCombatData(room, true, creep.pos);
-                    const myCreepInfo = CombatIntel.getCreepCombatData(room, false, creep.pos);
-                    const myTowerInfo = CombatIntel.getTowerCombatData(room, false, creep.pos);
-                    return (
-                        CombatIntel.getPredictedDamage(
-                            myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
-                            hostileCreepInfo.highestDmgMultiplier,
-                            hostileCreepInfo.highestToughHits
-                        ) > hostileCreepInfo.totalHeal && !Memory.playersToIgnore?.includes(creep.owner.username)
-                    );
-                });
+            const hostileCreep = room.find(FIND_HOSTILE_CREEPS).find((creep) => {
+                const hostileCreepInfo = CombatIntel.getCreepCombatData(room, true, creep.pos);
+                const myCreepInfo = CombatIntel.getCreepCombatData(room, false, creep.pos);
+                const myTowerInfo = CombatIntel.getTowerCombatData(room, false, creep.pos);
+                return (
+                    CombatIntel.getPredictedDamage(
+                        myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
+                        hostileCreepInfo.highestDmgMultiplier,
+                        hostileCreepInfo.highestToughHits
+                    ) > hostileCreepInfo.totalHeal && !Memory.playersToIgnore?.includes(creep.owner.username)
+                );
+            });
             if (hostileCreep) {
                 towers.forEach((tower) => tower.attack(hostileCreep));
             }
