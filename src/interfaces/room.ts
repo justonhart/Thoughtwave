@@ -45,6 +45,7 @@ interface RemoteData {
 interface RoomData {
     asOf: number;
     sourceCount?: number;
+    sources?: string[];
     mineralType?: MineralConstant;
     roomStatus?: RoomMemoryStatus;
     owner?: string;
