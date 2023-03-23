@@ -449,7 +449,7 @@ export class SquadManagement {
 
         if (Game.flags.squadMove?.pos?.roomName === this.assignment) {
             // Manual targeting (costMatrix disabled?)
-            return Pathing.findTravelPath(this.squadLeader.name, this.squadLeader.pos, Game.flags.squadMove.pos, { customMatrixCosts: matrix });
+            return Pathing.findTravelPath(this.squadLeader, this.squadLeader.pos, Game.flags.squadMove.pos, { customMatrixCosts: matrix });
         }
         if (posFromMem(this.squadLeader.memory._m.lastCoord).roomName !== this.squadLeader.pos.roomName) {
             delete this.squadLeader.memory._m.path;
@@ -462,7 +462,7 @@ export class SquadManagement {
             if (!target) {
                 options.range = 22;
                 return Pathing.findTravelPath(
-                    this.squadLeader.name,
+                    this.squadLeader,
                     this.squadLeader.pos,
                     new RoomPosition(25, 25, this.squadLeader.pos.roomName),
                     options
@@ -470,14 +470,14 @@ export class SquadManagement {
             } else if (target instanceof Creep) {
                 options.range = range;
                 options.ignoreStructures = true;
-                return Pathing.findTravelPath(this.squadLeader.name, this.squadLeader.pos, target.pos, options);
+                return Pathing.findTravelPath(this.squadLeader, this.squadLeader.pos, target.pos, options);
             } else {
                 options.ignoreStructures = true;
                 options.range = 1;
-                return Pathing.findTravelPath(this.squadLeader.name, this.squadLeader.pos, target.pos, options);
+                return Pathing.findTravelPath(this.squadLeader, this.squadLeader.pos, target.pos, options);
             }
         } else if (this.squadLeader.pos.roomName !== this.assignment) {
-            return Pathing.findTravelPath(this.squadLeader.name, this.squadLeader.pos, new RoomPosition(25, 25, this.squadLeader.pos.roomName), {
+            return Pathing.findTravelPath(this.squadLeader, this.squadLeader.pos, new RoomPosition(25, 25, this.squadLeader.pos.roomName), {
                 customMatrixCosts: matrix,
             });
         }
