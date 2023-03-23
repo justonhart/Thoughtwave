@@ -226,36 +226,39 @@ export class TransportCreep extends WaveCreep {
         }
 
         let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
-        // If there are center
-        const hasManagerWithContainer =
-            this.homeroom.memory.layout === RoomLayout.STAMP &&
-            this.homeroom.creeps.filter(
+
+        const isStampRoom = this.homeroom.memory.layout === RoomLayout.STAMP;
+        const hasMissingManagersOrContainers =
+            isStampRoom &&
+            this.homeroom.controller.level > 1 &&
+            (this.homeroom.creeps.filter(
                 (creep) =>
                     creep.memory.role === Role.MANAGER &&
                     this.homeroom.stamps.managers.some(
                         (managerStamp) => managerStamp.type === 'center' && managerStamp.pos.toMemSafe() === creep.memory.destination
                     )
-            ).length >=
-                this.homeroom.memory.stampLayout.managers
-                    .map((data) => data.rcl)
-                    .reduce((totalNeeded, nextRCL) => (nextRCL <= this.homeroom.controller.level ? totalNeeded + 1 : totalNeeded), 0) &&
-            this.homeroom
-                .find(FIND_STRUCTURES)
-                .filter(
-                    (structure) =>
-                        structure.structureType === STRUCTURE_CONTAINER &&
-                        this.homeroom.stamps.container.some(
-                            (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.toMemSafe() === structure.pos.toMemSafe()
-                        )
-                ).length ===
-                this.homeroom.stamps.container.filter(
-                    (containerStamp) => containerStamp.type === 'center' && containerStamp.rcl <= this.homeroom.controller.level
-                ).length;
-        // If there is a manager with a container then do not refill center structures
-        if (hasManagerWithContainer) {
+            ).length <
+                this.homeroom.memory.stampLayout.managers.filter((managerStamp) => managerStamp.rcl <= this.homeroom.controller.level).length ||
+                this.homeroom
+                    .find(FIND_STRUCTURES)
+                    .filter(
+                        (structure) =>
+                            structure.structureType === STRUCTURE_CONTAINER &&
+                            this.homeroom.stamps.container.some(
+                                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.toMemSafe() === structure.pos.toMemSafe()
+                            )
+                    ).length <
+                    this.homeroom.stamps.container.filter(
+                        (containerStamp) => containerStamp.type === 'center' && containerStamp.rcl <= this.homeroom.controller.level
+                    ).length);
+
+        if (isStampRoom && hasMissingManagersOrContainers) {
             targetStructureTypes = [STRUCTURE_EXTENSION];
-            // Make Distributor fill up center containers as long as there is no center link yet
-            if (
+        }
+        // If no center link is present in Stamp rooms then fill up containers
+        if (
+            isStampRoom &&
+            (this.homeroom.controller.level < 5 ||
                 !this.homeroom
                     .find(FIND_STRUCTURES)
                     .some(
@@ -264,10 +267,9 @@ export class TransportCreep extends WaveCreep {
                             this.homeroom.stamps.link.some(
                                 (linkStamp) => linkStamp.type === 'center' && linkStamp.pos.toMemSafe() === structure.pos.toMemSafe()
                             )
-                    )
-            ) {
-                targetStructureTypes.push(STRUCTURE_CONTAINER);
-            }
+                    ))
+        ) {
+            targetStructureTypes.push(STRUCTURE_CONTAINER);
         }
         let spawnStructures = this.homeroom.find(FIND_STRUCTURES).filter(
             (structure) =>
@@ -276,10 +278,10 @@ export class TransportCreep extends WaveCreep {
                 this.previousTargetId !== structure.id &&
                 // @ts-ignore
                 structure.store[RESOURCE_ENERGY] < structure.store.getCapacity(RESOURCE_ENERGY) &&
-                // Do not fill up center or miner extensions
-                (this.homeroom.memory.layout !== RoomLayout.STAMP ||
-                    !hasManagerWithContainer ||
+                // Remove center extensions if there are missing containers/extensions
+                (!isStampRoom ||
                     structure.structureType !== STRUCTURE_EXTENSION ||
+                    hasMissingManagersOrContainers ||
                     !this.homeroom.stamps.extension.some(
                         (extensionStamp) =>
                             extensionStamp.pos.x === structure.pos.x &&
@@ -287,7 +289,8 @@ export class TransportCreep extends WaveCreep {
                             (extensionStamp.type === 'center' || extensionStamp.type?.includes('source'))
                     )) &&
                 // Fill up center containers
-                (structure.structureType !== STRUCTURE_CONTAINER ||
+                (!isStampRoom ||
+                    structure.structureType !== STRUCTURE_CONTAINER ||
                     this.homeroom.stamps.container.some(
                         (containerStamp) =>
                             containerStamp.pos.x === structure.pos.x && containerStamp.pos.y === structure.pos.y && containerStamp.type === 'center'
@@ -296,7 +299,7 @@ export class TransportCreep extends WaveCreep {
 
         if (spawnStructures.length) {
             // Switch between containers which is important in early rcl
-            if (this.homeroom.memory.layout === RoomLayout.STAMP && this.homeroom.controller.level < 5 && hasManagerWithContainer) {
+            if (this.homeroom.memory.layout === RoomLayout.STAMP && this.homeroom.controller.level < 5 && !hasMissingManagersOrContainers) {
                 if (
                     spawnStructures.length > 1 &&
                     spawnStructures.every((structure) => structure.structureType === STRUCTURE_CONTAINER) &&
@@ -382,7 +385,8 @@ export class TransportCreep extends WaveCreep {
         let targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
         if (targetFreeCapacity) {
             if (!this.store.energy) {
-                this.memory.gathering = true;
+                this.memory.gathering = this.store.getUsedCapacity() === 0; // Gather energy or drop off minerals
+                delete this.memory.targetId;
             } else if (!this.pos.isNearTo(target)) {
                 this.travelTo(target, { range: 1, currentTickEnergy: this.incomingResourceAmount });
             } else if (!this.actionTaken) {
