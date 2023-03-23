@@ -231,17 +231,17 @@ export function driveRoom(room: Room) {
                 room.controller.activateSafeMode();
             }
         } else if (room.memory.layout === RoomLayout.STAMP) {
-            const centerLink = room.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'center');
             if (
-                centerLink &&
                 room
                     .find(FIND_HOSTILE_CREEPS)
                     .some(
                         (creep) =>
                             creep.owner.username !== 'Invader' &&
                             (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
-                            (creep.pos.x > 2 || creep.pos.y > 2) &&
-                            (creep.pos.x < 47 || creep.pos.y < 47)
+                            creep.pos.x > 2 &&
+                            creep.pos.y > 2 &&
+                            creep.pos.x < 47 &&
+                            creep.pos.y < 47
                     )
             ) {
                 room.controller.activateSafeMode();
