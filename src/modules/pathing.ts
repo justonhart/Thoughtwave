@@ -98,7 +98,6 @@ export class Pathing {
         // Stuck Logic
         if (!Pathing.isStuck(creep, posFromMem(creep.memory._m.lastCoord))) {
             creep.memory._m.stuckCount = 0;
-            // TODO: Info last moveset will not be removed as this logik is only run when a creep is still traveling
             if (creep.memory._m.path) {
                 creep.memory._m.path = creep.memory._m.path.slice(1);
             }
@@ -110,6 +109,10 @@ export class Pathing {
         if (creep.memory._m.path && creep.memory._m.stuckCount) {
             // First try pushing the creep in front closer to their target (stayOnPath will not recalculate new Path)
             if (!Pathing.pushForward(creep, opts) || creep.memory._m.stuckCount > 1) {
+                // When on edge keep path around creep to avoid going back and forth on the exit
+                if (creep.onEdge()) {
+                    creep.memory._m.keepPath = true;
+                }
                 creep.memory._m.repath++;
                 opts.pathColor = 'blue';
                 opts.ignoreCreeps = false;

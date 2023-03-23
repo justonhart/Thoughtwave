@@ -127,7 +127,10 @@ export class Gatherer extends TransportCreep {
                 this.onTaskFinished();
                 break;
         }
-        if (!opts.pathsRoomPositions) {
+        if (!opts.pathsRoomPositions || opts.avoidedTemporaryHostileRooms || this.memory._m.repath) {
+            if (opts.avoidedTemporaryHostileRooms || this.memory._m.repath) {
+                delete this.memory.storeRoadInMemory; // Do not store Roads when path went around temporary hostile room
+            }
             return [];
         }
         return opts.pathsRoomPositions;
