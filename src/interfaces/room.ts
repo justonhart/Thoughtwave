@@ -174,3 +174,14 @@ const enum RoomLayout {
     BUNKER,
     STAMP,
 }
+
+interface RemoteStats {
+    netIncome: number;
+    roadLength: number;
+    roadMaintenance: number;
+    containerMaintenance: number;
+    minerUpkeep: number;
+    gathererCount: number;
+    gathererUpkeep: number;
+    reserverUpkeep: number;
+}

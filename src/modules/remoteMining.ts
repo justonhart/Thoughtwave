@@ -53,6 +53,8 @@ export function calculateRoadStats(
 
     if (path.incomplete) {
         return { roadLength: -1, maintenanceCost: -1 };
+    } else {
+        path.path.pop();
     }
 
     let visualRooms = Array.from(new Set(path.path.map((pos) => pos.roomName)));
@@ -66,12 +68,15 @@ export function calculateRoadStats(
     return { roadLength: path.path.length, maintenanceCost: MAINTENANCE_COST_PER_CYCLE };
 }
 
-export function calculateRemoteSourceStats(sourcePos: RoomPosition, room: Room, ignoreRoomDataRoads = false) {
+export function calculateRemoteSourceStats(sourcePos: RoomPosition, room: Room, ignoreRoomDataRoads = false): RemoteStats {
     //Energy output of source per regen cycle
     const SOURCE_OUTPUT_PER_CYCLE =
         isKeeperRoom(sourcePos.roomName) || isCenterRoom(sourcePos.roomName) ? SOURCE_ENERGY_KEEPER_CAPACITY : SOURCE_ENERGY_CAPACITY;
 
     const roadStats = calculateRoadStats(sourcePos, room, ignoreRoomDataRoads);
+    if (roadStats.maintenanceCost === -1) {
+        return undefined;
+    }
 
     //Cost of road maintenance per source regen cycle
     const ROAD_MAINTENANCE_PER_CYCLE = roadStats.maintenanceCost;

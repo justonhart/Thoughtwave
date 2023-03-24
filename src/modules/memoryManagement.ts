@@ -255,6 +255,10 @@ function initMissingMemoryValues() {
     if (!Memory.remoteRoomClaims) {
         Memory.remoteRoomClaims = {};
     }
+
+    if (!Memory.remoteSourceAssignments) {
+        Memory.remoteSourceAssignments = {};
+    }
 }
 
 function mangeVisionRequests() {
