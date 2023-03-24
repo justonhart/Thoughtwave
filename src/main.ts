@@ -4,6 +4,7 @@ import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
 import { manageEmpireResources } from './modules/resourceManagement';
 import { driveRoom } from './modules/roomManagement';
+import { runVisuals } from './modules/visuals';
 import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
@@ -93,4 +94,13 @@ module.exports.loop = function () {
     if (Game.cpu.bucket === 10000) {
         Game.cpu.generatePixel();
     }
+
+    try {
+        runVisuals();
+    } catch (e) {
+        console.log(`Error caught running visuals: \n${e}`);
+    }
+
+    cpuUsageString += `visuals cpu: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
+    cpuUsed = Game.cpu.getUsed();
 };

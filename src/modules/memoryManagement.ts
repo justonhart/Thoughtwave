@@ -41,12 +41,6 @@ export function manageMemory() {
         InterShardMemory.setLocal(JSON.stringify({ outboundCreeps: { shard0: {}, shard1: {}, shard2: {}, shard3: {} } }));
     }
 
-    Object.keys(Memory.roomData)
-        .filter((roomName) => Memory.roomData[roomName].hostile)
-        .forEach((roomName) => {
-            Game.map.visual.rect(new RoomPosition(0, 0, roomName), 50, 50, { fill: '#8b0000', stroke: '#8b0000', strokeWidth: 2 });
-        });
-
     if (!Memory.priceMap || Game.time % 20000 === 0) {
         Memory.priceMap = getPriceMap();
     }
