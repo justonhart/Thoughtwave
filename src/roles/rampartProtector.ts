@@ -14,172 +14,180 @@ export class RampartProtector extends CombatCreep {
             return;
         }
 
-        // Assasination
-        if (this.memory.ready >= 5) {
-            const targetCreep = Game.getObjectById(this.memory.targetId2);
-            const secondProtector = Object.values(Game.creeps).find(
-                (creep) => creep.id !== this.id && creep.room.name === this.room.name && creep.pos.isNearTo(targetCreep)
-            ) as RampartProtector;
-            if (targetCreep && secondProtector) {
-                secondProtector.memory.ready = 0;
-                if (this.pos.isNearTo(targetCreep) && secondProtector.pos.isNearTo(targetCreep)) {
-                    secondProtector.memory.stop = true;
-                    this.attack(targetCreep);
-                    secondProtector.attack(targetCreep);
-                    this.pathingToRampart(this, Game.getObjectById(this.memory.targetId) as StructureRampart);
-                    this.pathingToRampart(secondProtector, Game.getObjectById(this.memory.targetId) as StructureRampart);
+        if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
+            // Assasination
+            if (this.memory.ready >= 5) {
+                const targetCreep = Game.getObjectById(this.memory.targetId2);
+                const secondProtector = Object.values(Game.creeps).find(
+                    (creep) => creep.id !== this.id && creep.room.name === this.room.name && creep.pos.isNearTo(targetCreep)
+                ) as RampartProtector;
+                if (targetCreep && secondProtector) {
+                    secondProtector.memory.ready = 0;
+                    if (this.pos.isNearTo(targetCreep) && secondProtector.pos.isNearTo(targetCreep)) {
+                        secondProtector.memory.stop = true;
+                        this.attack(targetCreep);
+                        secondProtector.attack(targetCreep);
+                        this.pathingToRampart(this, Game.getObjectById(this.memory.targetId) as StructureRampart);
+                        this.pathingToRampart(secondProtector, Game.getObjectById(this.memory.targetId) as StructureRampart);
+                    }
                 }
+                this.memory.ready = 0;
+                return;
             }
-            this.memory.ready = 0;
-            return;
-        }
 
-        // First find the targetedRampart. If none is present (for example gcl < 4), then find the hostileCreep
-        const hostileCreepId = this.findTarget();
-        this.memory.targetId2 = hostileCreepId;
+            // First find the targetedRampart. If none is present (for example gcl < 4), then find the hostileCreep
+            const hostileCreepId = this.findTarget();
+            this.memory.targetId2 = hostileCreepId;
 
-        this.memory.targetId = this.getTargetedRampart(hostileCreepId);
+            this.memory.targetId = this.getTargetedRampart(hostileCreepId);
 
-        if (!this.memory.targetId) {
-            this.memory.targetId = hostileCreepId;
-        }
-        if (!this.memory.targetId) {
-            this.memory.currentTaskPriority = Priority.LOW;
-            return;
-        }
-        this.memory.currentTaskPriority = Priority.HIGH;
-        const target = Game.getObjectById(this.memory.targetId);
-        let creepActionReturnCode: CreepActionReturnCode;
-        if (target instanceof StructureRampart) {
-            let targetCreep = Game.getObjectById(hostileCreepId);
-            if (!this.pos.isNearTo(targetCreep)) {
-                const nearCreep = this.room
-                    .lookForAtArea(LOOK_CREEPS, this.pos.y - 1, this.pos.x - 1, this.pos.y + 1, this.pos.x + 1, true)
-                    .filter((lookObject) => !lookObject.creep.my);
-                if (nearCreep.length) {
-                    targetCreep = nearCreep[0].creep;
+            if (!this.memory.targetId) {
+                this.memory.targetId = hostileCreepId;
+            }
+            if (!this.memory.targetId) {
+                this.memory.currentTaskPriority = Priority.LOW;
+                return;
+            }
+            this.memory.currentTaskPriority = Priority.HIGH;
+            const target = Game.getObjectById(this.memory.targetId);
+            let creepActionReturnCode: CreepActionReturnCode;
+            if (target instanceof StructureRampart) {
+                let targetCreep = Game.getObjectById(hostileCreepId);
+                if (!this.pos.isNearTo(targetCreep)) {
+                    const nearCreep = this.room
+                        .lookForAtArea(LOOK_CREEPS, this.pos.y - 1, this.pos.x - 1, this.pos.y + 1, this.pos.x + 1, true)
+                        .filter((lookObject) => !lookObject.creep.my);
+                    if (nearCreep.length) {
+                        targetCreep = nearCreep[0].creep;
+                    }
                 }
-            }
-            // Check for close Creeps to move toward and assasinate
-            if (
-                targetCreep &&
-                this.hits === this.hitsMax &&
-                this.ticksToLive > 7 &&
-                Pathing.sameCoord(this.pos, target.pos) &&
-                !Object.values(Game.creeps).some(
-                    (creep) => creep.id !== this.id && creep.memory.targetId2 === this.memory.targetId2 && creep.memory.ready > 0
-                ) &&
-                !targetCreep.getActiveBodyparts(ATTACK) &&
-                !this.fatigue &&
-                this.pos.getRangeTo(targetCreep) === 2
-            ) {
-                if (this.memory.ready === undefined) {
+                // Check for close Creeps to move toward and assasinate
+                if (
+                    targetCreep &&
+                    this.hits === this.hitsMax &&
+                    this.ticksToLive > 7 &&
+                    Pathing.sameCoord(this.pos, target.pos) &&
+                    !Object.values(Game.creeps).some(
+                        (creep) => creep.id !== this.id && creep.memory.targetId2 === this.memory.targetId2 && creep.memory.ready > 0
+                    ) &&
+                    !targetCreep.getActiveBodyparts(ATTACK) &&
+                    !this.fatigue &&
+                    this.pos.getRangeTo(targetCreep) === 2
+                ) {
+                    if (this.memory.ready === undefined) {
+                        this.memory.ready = 0;
+                    }
+                    this.memory.ready++;
+
+                    if (this.memory.ready >= 3) {
+                        const secondProtector = Object.values(Game.creeps).find(
+                            (creep) =>
+                                creep.id !== this.id &&
+                                creep.room.name === this.room.name &&
+                                creep.ticksToLive > 5 &&
+                                creep.pos.getRangeTo(targetCreep) === 2 &&
+                                !creep.fatigue &&
+                                creep.hits === creep.hitsMax
+                        ) as RampartProtector;
+                        if (secondProtector && !this.canKill(targetCreep.pos, this, secondProtector)) {
+                            this.memory.ready = 0;
+                        }
+                        if (secondProtector) {
+                            secondProtector.memory.stop = true;
+                        }
+                        if (secondProtector && this.memory.ready >= 4) {
+                            const directionToEnemy = this.pos.getDirectionTo(targetCreep);
+                            const direction = secondProtector.pos.getDirectionTo(targetCreep);
+                            if (
+                                !Pathing.sameCoord(
+                                    Pathing.positionAtDirection(this.pos, directionToEnemy),
+                                    Pathing.positionAtDirection(secondProtector.pos, secondProtector.pos.getDirectionTo(targetCreep))
+                                )
+                            ) {
+                                let survive = true;
+                                survive = this.canSurvive(Pathing.positionAtDirection(this.pos, directionToEnemy));
+                                survive = this.canSurvive(
+                                    Pathing.positionAtDirection(secondProtector.pos, secondProtector.pos.getDirectionTo(targetCreep))
+                                );
+                                if (!survive || Object.values(Game.creeps).some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
+                                    this.memory.ready = 0;
+                                    return;
+                                }
+                                this.memory.ready++;
+                                this.move(directionToEnemy);
+                                secondProtector.move(direction);
+                                secondProtector.memory.targetId2 = this.memory.targetId2;
+                                return;
+                            } else if (
+                                Pathing.positionAtDirection(
+                                    this.pos,
+                                    (directionToEnemy + 1 === 9 ? 1 : directionToEnemy + 1) as DirectionConstant
+                                ).getRangeTo(targetCreep) === 1
+                            ) {
+                                let survive = true;
+                                survive = this.canSurvive(Pathing.positionAtDirection(this.pos, directionToEnemy));
+                                survive = this.canSurvive(
+                                    Pathing.positionAtDirection(
+                                        this.pos,
+                                        (directionToEnemy + 1 === 9 ? 1 : directionToEnemy + 1) as DirectionConstant
+                                    )
+                                );
+                                if (!survive || Object.values(Game.creeps).some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
+                                    this.memory.ready = 0;
+                                    return;
+                                }
+                                this.memory.ready++;
+                                this.move(directionToEnemy + 1 === 9 ? 1 : ((directionToEnemy + 1) as DirectionConstant));
+                                secondProtector.move(direction);
+                                secondProtector.memory.targetId2 = this.memory.targetId2;
+                                return;
+                            } else if (
+                                Pathing.positionAtDirection(
+                                    this.pos,
+                                    (directionToEnemy - 1 === 0 ? 8 : directionToEnemy - 1) as DirectionConstant
+                                ).getRangeTo(targetCreep) === 1
+                            ) {
+                                let survive = true;
+                                survive = this.canSurvive(Pathing.positionAtDirection(this.pos, directionToEnemy));
+                                survive = this.canSurvive(
+                                    Pathing.positionAtDirection(
+                                        this.pos,
+                                        (directionToEnemy - 1 === 0 ? 8 : directionToEnemy - 1) as DirectionConstant
+                                    )
+                                );
+                                if (!survive || Object.values(Game.creeps).some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
+                                    this.memory.ready = 0;
+                                    return;
+                                }
+                                this.memory.ready++;
+                                this.move(directionToEnemy - 1 === 0 ? 8 : ((directionToEnemy - 1) as DirectionConstant));
+                                secondProtector.move(direction);
+                                secondProtector.memory.targetId2 = this.memory.targetId2;
+                                return;
+                            }
+                        } else if (!secondProtector) {
+                            this.memory.ready = 0;
+                        }
+                    }
+                } else {
                     this.memory.ready = 0;
                 }
-                this.memory.ready++;
 
-                if (this.memory.ready >= 3) {
-                    const secondProtector = Object.values(Game.creeps).find(
-                        (creep) =>
-                            creep.id !== this.id &&
-                            creep.room.name === this.room.name &&
-                            creep.ticksToLive > 5 &&
-                            creep.pos.getRangeTo(targetCreep) === 2 &&
-                            !creep.fatigue &&
-                            creep.hits === creep.hitsMax
-                    ) as RampartProtector;
-                    if (secondProtector && !this.canKill(targetCreep.pos, this, secondProtector)) {
-                        this.memory.ready = 0;
-                    }
-                    if (secondProtector) {
-                        secondProtector.memory.stop = true;
-                    }
-                    if (secondProtector && this.memory.ready >= 4) {
-                        const directionToEnemy = this.pos.getDirectionTo(targetCreep);
-                        const direction = secondProtector.pos.getDirectionTo(targetCreep);
-                        if (
-                            !Pathing.sameCoord(
-                                Pathing.positionAtDirection(this.pos, directionToEnemy),
-                                Pathing.positionAtDirection(secondProtector.pos, secondProtector.pos.getDirectionTo(targetCreep))
-                            )
-                        ) {
-                            let survive = true;
-                            survive = this.canSurvive(Pathing.positionAtDirection(this.pos, directionToEnemy));
-                            survive = this.canSurvive(
-                                Pathing.positionAtDirection(secondProtector.pos, secondProtector.pos.getDirectionTo(targetCreep))
-                            );
-                            if (!survive || Object.values(Game.creeps).some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
-                                this.memory.ready = 0;
-                                return;
-                            }
-                            this.memory.ready++;
-                            this.move(directionToEnemy);
-                            secondProtector.move(direction);
-                            secondProtector.memory.targetId2 = this.memory.targetId2;
-                            return;
-                        } else if (
-                            Pathing.positionAtDirection(
-                                this.pos,
-                                (directionToEnemy + 1 === 9 ? 1 : directionToEnemy + 1) as DirectionConstant
-                            ).getRangeTo(targetCreep) === 1
-                        ) {
-                            let survive = true;
-                            survive = this.canSurvive(Pathing.positionAtDirection(this.pos, directionToEnemy));
-                            survive = this.canSurvive(
-                                Pathing.positionAtDirection(this.pos, (directionToEnemy + 1 === 9 ? 1 : directionToEnemy + 1) as DirectionConstant)
-                            );
-                            if (!survive || Object.values(Game.creeps).some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
-                                this.memory.ready = 0;
-                                return;
-                            }
-                            this.memory.ready++;
-                            this.move(directionToEnemy + 1 === 9 ? 1 : ((directionToEnemy + 1) as DirectionConstant));
-                            secondProtector.move(direction);
-                            secondProtector.memory.targetId2 = this.memory.targetId2;
-                            return;
-                        } else if (
-                            Pathing.positionAtDirection(
-                                this.pos,
-                                (directionToEnemy - 1 === 0 ? 8 : directionToEnemy - 1) as DirectionConstant
-                            ).getRangeTo(targetCreep) === 1
-                        ) {
-                            let survive = true;
-                            survive = this.canSurvive(Pathing.positionAtDirection(this.pos, directionToEnemy));
-                            survive = this.canSurvive(
-                                Pathing.positionAtDirection(this.pos, (directionToEnemy - 1 === 0 ? 8 : directionToEnemy - 1) as DirectionConstant)
-                            );
-                            if (!survive || Object.values(Game.creeps).some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
-                                this.memory.ready = 0;
-                                return;
-                            }
-                            this.memory.ready++;
-                            this.move(directionToEnemy - 1 === 0 ? 8 : ((directionToEnemy - 1) as DirectionConstant));
-                            secondProtector.move(direction);
-                            secondProtector.memory.targetId2 = this.memory.targetId2;
-                            return;
-                        }
-                    } else if (!secondProtector) {
-                        this.memory.ready = 0;
-                    }
+                this.pathingToRampart(this, target);
+                creepActionReturnCode = this.attackCreep(targetCreep);
+                if (this.pos.getRangeTo(targetCreep) > 1) {
+                    creepActionReturnCode = ERR_NOT_IN_RANGE; // Creep should always reevaluate for closest rampart if there is no enemy creep in the vicinity (squads sometimes move to other parts that are only 2 blocks away so ranged will only attack one creep otherwise)
                 }
-            } else {
-                this.memory.ready = 0;
+            } else if (target instanceof Creep) {
+                this.combatPathing(target);
+                creepActionReturnCode = this.attackCreep(target);
             }
 
-            this.pathingToRampart(this, target);
-            creepActionReturnCode = this.attackCreep(targetCreep);
-            if (this.pos.getRangeTo(targetCreep) > 1) {
-                creepActionReturnCode = ERR_NOT_IN_RANGE; // Creep should always reevaluate for closest rampart if there is no enemy creep in the vicinity (squads sometimes move to other parts that are only 2 blocks away so ranged will only attack one creep otherwise)
-            }
-        } else if (target instanceof Creep) {
-            this.combatPathing(target);
-            creepActionReturnCode = this.attackCreep(target);
-        }
-
-        if (Game.flags.dot) {
-            const creeps = this.room.lookForAt(LOOK_CREEPS, Game.flags.dot.pos.x, Game.flags.dot.pos.y);
-            if (creeps.length) {
-                this.attackCreep(creeps[0]);
+            if (Game.flags.dot) {
+                const creeps = this.room.lookForAt(LOOK_CREEPS, Game.flags.dot.pos.x, Game.flags.dot.pos.y);
+                if (creeps.length) {
+                    this.attackCreep(creeps[0]);
+                }
             }
         }
     }
