@@ -96,7 +96,7 @@ export class Pathing {
         }
 
         // Stuck Logic
-        if (!Pathing.isStuck(creep, creep.memory._m.lastCoord.toRoomPos())) {
+        if (!Pathing.isStuck(creep, creep.memory._m.lastCoord?.toRoomPos())) {
             creep.memory._m.stuckCount = 0;
             if (creep.memory._m.path) {
                 creep.memory._m.path = creep.memory._m.path.slice(1);
@@ -176,7 +176,7 @@ export class Pathing {
                 !creep.memory._m.keepPath &&
                 creep.memory._m.lastCoord &&
                 creep.memory._m.path?.length &&
-                Pathing.isExit(creep.memory._m.lastCoord.toRoomPos()) &&
+                Pathing.isExit(creep.memory._m.lastCoord?.toRoomPos()) &&
                 (!Pathing.positionAtDirection(creep.pos, parseInt(creep.memory._m.path[0], 10) as DirectionConstant) ||
                     Pathing.isExit(Pathing.positionAtDirection(creep.pos, parseInt(creep.memory._m.path[0], 10) as DirectionConstant)))
             ) {
@@ -200,18 +200,18 @@ export class Pathing {
             !creep.memory._m.keepPath &&
             opts.avoidSourceKeepers &&
             creep.memory._m.lastCoord &&
-            creep.memory._m.lastCoord.toRoomPos().roomName !== creep.pos.roomName &&
+            creep.memory._m.lastCoord?.toRoomPos().roomName !== creep.pos.roomName &&
             !creep.memory._m.visibleRooms.includes(creep.pos.roomName)
         ) {
             delete creep.memory._m.path; // Recalculate path in each new room as well if the creep should avoid hostiles in each room
-        } else if (creep.memory._m.lastCoord && creep.memory._m.lastCoord.toRoomPos().roomName !== creep.pos.roomName && creep.memory._m.keepPath) {
+        } else if (creep.memory._m.lastCoord && creep.memory._m.lastCoord?.toRoomPos().roomName !== creep.pos.roomName && creep.memory._m.keepPath) {
             creep.memory._m.keepPath = false;
         }
         return creep.move(nextDirection);
     }
 
     static isSameDest(creep: Creep, destination: RoomPosition) {
-        return JSON.stringify(creep.memory._m.destination.toRoomPos()) === JSON.stringify(destination);
+        return JSON.stringify(creep.memory._m.destination?.toRoomPos()) === JSON.stringify(destination);
     }
 
     /**
@@ -404,7 +404,7 @@ export class Pathing {
 
                 if (Memory.rooms[room.name]?.miningAssignments) {
                     Object.keys(room.memory.miningAssignments)
-                        .map((pos) => pos.toRoomPos())
+                        .map((pos) => pos?.toRoomPos())
                         .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);
@@ -413,16 +413,7 @@ export class Pathing {
 
                 if (Memory.rooms[room.name]?.mineralMiningAssignments) {
                     Object.keys(room.memory.mineralMiningAssignments)
-                        .map((pos) => pos.toRoomPos())
-                        .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
-                        .forEach((pos) => {
-                            matrix.set(pos.x, pos.y, 50);
-                        });
-                }
-
-                if (Memory.remoteData[room.name]?.miningPositions) {
-                    Object.values(Memory.remoteData[room.name].miningPositions)
-                        .map((pos) => pos.toRoomPos())
+                        .map((pos) => pos?.toRoomPos())
                         .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);
@@ -659,7 +650,7 @@ export class Pathing {
                     return true;
                 }
 
-                const obstacleCreepDestination = obstacleCreep.memory._m.destination.toRoomPos();
+                const obstacleCreepDestination = obstacleCreep.memory._m.destination?.toRoomPos();
                 // Swap places if creep is closer to the destination than the obstacleCreep
                 if (obstacleCreep.pos.getRangeTo(obstacleCreepDestination) >= creep.pos.getRangeTo(obstacleCreepDestination)) {
                     return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));

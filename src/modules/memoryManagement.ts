@@ -1,4 +1,4 @@
-import { deleteExpiredRoadData, deleteExpiredRoomData } from './data';
+import { deleteExpiredRoomData } from './data';
 import { manageOperations } from './operationsManagement';
 import { getAllRoomNeeds } from './resourceManagement';
 
@@ -32,9 +32,6 @@ export function manageMemory() {
     global.visionRequestIncrement = 1;
 
     deleteExpiredRoomData();
-    if (Game.time % 100 === 0) {
-        deleteExpiredRoadData();
-    }
 
     let needToInitIntershard = !JSON.parse(InterShardMemory.getLocal())?.outboundCreeps;
     if (needToInitIntershard) {
@@ -65,18 +62,18 @@ export function validateAssignments() {
             }
         });
 
-        Memory.rooms[roomName].remoteMiningRooms?.forEach((remoteRoomName) => {
-            if (!Game.creeps[Memory.remoteData[remoteRoomName]?.gatherer]) {
-                Memory.remoteData[remoteRoomName].gatherer = AssignmentStatus.UNASSIGNED;
+        Object.keys(Memory.rooms[roomName].remoteSources).forEach((source) => {
+            let remoteRoomName = source.split('.')[2];
+            
+            if (!Game.creeps[Memory.rooms[roomName].remoteSources[source].miner]) {
+                Memory.rooms[roomName].remoteSources[source].miner = AssignmentStatus.UNASSIGNED;
             }
 
-            if (!Game.creeps[Memory.remoteData[remoteRoomName]?.gathererSK]) {
-                Memory.remoteData[remoteRoomName].gathererSK = AssignmentStatus.UNASSIGNED;
-            }
-
-            if (!Game.creeps[Memory.remoteData[remoteRoomName]?.miner]) {
-                Memory.remoteData[remoteRoomName].miner = AssignmentStatus.UNASSIGNED;
-            }
+            Memory.rooms[roomName].remoteSources[source].gatherers.forEach((gatherer, index) => {
+                if(!Game.creeps[gatherer]){
+                    Memory.rooms[roomName].remoteSources[source].gatherers[index] = AssignmentStatus.UNASSIGNED;
+                }
+            })
 
             if (Memory.remoteData[remoteRoomName]?.reserver && !Game.creeps[Memory.remoteData[remoteRoomName].reserver]) {
                 Memory.remoteData[remoteRoomName].reserver = AssignmentStatus.UNASSIGNED;
@@ -89,42 +86,40 @@ export function validateAssignments() {
     });
 }
 
-function handleDeadCreep(creepName: string) {
-    let deadCreepMemory = Memory.creeps[creepName];
+function handleDeadCreep(deadCreepName: string) {
+    let deadCreepMemory = Memory.creeps[deadCreepName];
 
-    if (Game.rooms[deadCreepMemory.room]?.controller?.my) {
+    if (Game.rooms[deadCreepMemory.room]?.controller?.my && Memory.rooms[deadCreepMemory.room]) {
         if (deadCreepMemory.role === Role.MINER && !deadCreepMemory.hasTTLReplacement) {
             Memory.rooms[deadCreepMemory.room].miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
         }
         if (
-            deadCreepMemory.role === Role.REMOTE_MINER &&
-            Memory.rooms[deadCreepMemory.room].remoteMiningRooms?.includes(deadCreepMemory.assignment)
+            deadCreepMemory.role === Role.REMOTE_MINER
         ) {
-            Memory.remoteData[deadCreepMemory.assignment].miner = AssignmentStatus.UNASSIGNED;
-        }
-        if (
-            deadCreepMemory.role === Role.GATHERER &&
-            Memory.rooms[deadCreepMemory.room].remoteMiningRooms?.includes(deadCreepMemory.assignment) &&
-            Object.values(Memory.creeps).filter(
-                (creep) => creep.room === deadCreepMemory.room && creep.role === Role.GATHERER && creep.assignment === deadCreepMemory.assignment
-            ).length
-        ) {
-            if (Memory.remoteData[deadCreepMemory.assignment].gatherer === creepName) {
-                Memory.remoteData[deadCreepMemory.assignment].gatherer = AssignmentStatus.UNASSIGNED;
-            } else if (Memory.remoteData[deadCreepMemory.assignment].gathererSK === creepName) {
-                Memory.remoteData[deadCreepMemory.assignment].gathererSK = AssignmentStatus.UNASSIGNED;
+            let source = Object.entries(Memory.rooms[deadCreepMemory.room].remoteSources).find(([key, value]) => value.miningPos === deadCreepMemory.assignment)?.[0];
+            if(source){
+                Memory.rooms[deadCreepMemory.room].remoteSources[source].miner = AssignmentStatus.UNASSIGNED;
             }
         }
-        if (deadCreepMemory.role === Role.RESERVER && Memory.rooms[deadCreepMemory.room].remoteMiningRooms?.includes(deadCreepMemory.assignment)) {
+        if (
+            deadCreepMemory.role === Role.GATHERER
+        ) {
+            let source = Object.entries(Memory.rooms[deadCreepMemory.room].remoteSources).find(([source, data]) => data.gatherers.includes(deadCreepName))?.[0];
+            let gathererIndex = Memory.rooms[deadCreepMemory.room].remoteSources[source]?.gatherers.findIndex(creepName => creepName === deadCreepName);
+            if(gathererIndex !== -1 && gathererIndex !== undefined){
+                Memory.rooms[deadCreepMemory.room].remoteSources[source].gatherers[gathererIndex] = AssignmentStatus.UNASSIGNED;
+            }
+        }
+        if (deadCreepMemory.role === Role.RESERVER && Memory.remoteData[deadCreepMemory.assignment]) {
             Memory.remoteData[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.role === Role.MINERAL_MINER) {
             Memory.rooms[deadCreepMemory.room].mineralMiningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
         }
-        if (deadCreepMemory.role === Role.KEEPER_EXTERMINATOR) {
+        if (deadCreepMemory.role === Role.KEEPER_EXTERMINATOR && Memory.remoteData[deadCreepMemory.assignment]) {
             Memory.remoteData[deadCreepMemory.assignment].keeperExterminator = AssignmentStatus.UNASSIGNED;
         }
-        if (deadCreepMemory.role === Role.REMOTE_MINERAL_MINER) {
+        if (deadCreepMemory.role === Role.REMOTE_MINERAL_MINER && Memory.remoteData[deadCreepMemory.assignment]) {
             Memory.remoteData[deadCreepMemory.assignment].mineralMiner = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.labRequests) {
@@ -138,7 +133,7 @@ function handleDeadCreep(creepName: string) {
         }
     }
 
-    delete Memory.creeps[creepName];
+    delete Memory.creeps[deadCreepName];
 }
 
 function handleDeadSquads() {
@@ -252,8 +247,8 @@ function initMissingMemoryValues() {
         Memory.visionRequests = {};
     }
 
-    if (!Memory.remoteRoomClaims) {
-        Memory.remoteRoomClaims = {};
+    if (!Memory.remoteSourceClaims) {
+        Memory.remoteSourceClaims = {};
     }
 
     if (!Memory.remoteSourceAssignments) {

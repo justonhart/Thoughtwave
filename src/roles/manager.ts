@@ -8,7 +8,7 @@ export class Manager extends WaveCreep {
 
     protected run() {
         const managerPos =
-            this.room.memory.layout === RoomLayout.STAMP ? this.memory.destination.toRoomPos() : this.room.memory?.managerPos.toRoomPos();
+            this.room.memory.layout === RoomLayout.STAMP ? this.memory.destination?.toRoomPos() : this.room.memory?.managerPos?.toRoomPos();
         const isCenterStampManager =
             this.room.memory.layout === RoomLayout.STAMP &&
             this.room.stamps.managers.some(

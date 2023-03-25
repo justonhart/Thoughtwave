@@ -181,6 +181,22 @@ Object.defineProperty(Room.prototype, 'stamps', {
     configurable: true,
 });
 
+Object.defineProperty(Room.prototype, 'remoteSources', {
+    get: function (this: Room) {
+        return Object.keys(this.memory.remoteSources);
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'remoteMiningRooms', {
+    get: function (this: Room) {
+        return this.remoteSources.map(s => s.split('.')[2]);
+    },
+    enumerable: false,
+    configurable: true,
+});
+
 Room.prototype.addLabTask = function (this: Room, opts: LabTaskOpts): ScreepsReturnCode {
     return addLabTask(this, opts);
 };

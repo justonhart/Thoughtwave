@@ -1,8 +1,9 @@
 import { CombatIntel } from './combatIntel';
+import { computeRoomNameFromDiff, isCenterRoom, isKeeperRoom } from './data';
 import { runLabs } from './labManagement';
-import { getExitDirections, isCenterRoom, isKeeperRoom } from './data';
 import { PopulationManagement } from './populationManagement';
-import { addRemoteRoom, manageRemoteRoom } from './remoteRoomManagement';
+import { assignRemoteSource, findSuitableRemoteSource } from './remoteMining';
+import { manageRemoteRoom } from './remoteRoomManagement';
 import {
     placeBunkerOuterRamparts,
     placeBunkerConstructionSites,
@@ -16,7 +17,6 @@ import {
     findStampLocation,
     findBunkerLocation,
 } from './roomDesign';
-import { calculateRemoteSourceStats } from './remoteMining';
 
 const BUILD_CHECK_PERIOD = 100;
 const REPAIR_QUEUE_REFRESH_PERIOD = 500;
@@ -254,34 +254,17 @@ export function driveRoom(room: Room) {
         }
 
         //if this room doesn't have any outstanding claims
-        // if (canSupportRemoteRoom(room) && !room.memory.outstandingClaim) {
-        //     let roomToClaim = findSuitableRemoteSource(room);
+        if (canSupportRemoteRoom(room) && !room.memory.outstandingClaim && Game.time % 25 === 0) {
+            
+        }
 
-        //     //if a room to claim is found, claim it if available and no closer claimant
-        //     if (roomToClaim) {
-        //         let existingClaim = Memory.remoteRoomClaims[roomToClaim.name];
-        //         if (existingClaim) {
-        //             if (existingClaim.depth > roomToClaim.depth) {
-        //                 Memory.remoteRoomClaims[roomToClaim.name] = { claimant: room.name, depth: roomToClaim.depth };
-        //                 room.memory.outstandingClaim = roomToClaim.name;
-        //                 delete Memory.rooms[existingClaim.claimant].outstandingClaim;
-        //             }
-        //         } else {
-        //             Memory.remoteRoomClaims[roomToClaim.name] = { claimant: room.name, depth: roomToClaim.depth };
-        //             room.memory.outstandingClaim = roomToClaim.name;
-        //         }
-        //     }
-        // }
-
-        // if (room.memory.outstandingClaim && Game.rooms[room.memory.outstandingClaim]) {
-        //     try {
-        //         let result = addRemoteRoom(room.name, room.memory.outstandingClaim);
-        //         if (result === OK) {
-        //             delete Memory.remoteRoomClaims[room.memory.outstandingClaim];
-        //             delete room.memory.outstandingClaim;
-        //         }
-        //     } catch (e) {
-        //         console.log(`Error caught adding ${room.memory.outstandingClaim} as remote room assignment for ${room.name}: ${e}`);
+        // if (room.memory.outstandingClaim && Game.time % 300 === 0) {
+        //     let result = assignRemoteSource(room.memory.outstandingClaim, room.name);
+        //     if (result === OK) {
+        //         delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
+        //         delete room.memory.outstandingClaim;
+        //     } else {
+        //         console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
         //     }
         // }
 
@@ -478,7 +461,7 @@ export function initRoom(room: Room) {
         repairQueue: [],
         miningAssignments: {},
         mineralMiningAssignments: {},
-        remoteMiningRooms: [],
+        remoteSources: {},
         towerRepairMap: {},
     };
 
@@ -650,7 +633,7 @@ function runSpawning(room: Room) {
             }
         });
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING && room.memory.remoteMiningRooms?.length && !roomUnderAttack) {
+        if (room.energyStatus >= EnergyStatus.RECOVERING && room.remoteSources.length && !roomUnderAttack) {
             let exterminatorNeed = PopulationManagement.findExterminatorNeed(room);
             if (exterminatorNeed) {
                 let spawn = availableSpawns.pop();
@@ -790,7 +773,7 @@ export function getStructuresToProtect(nukes: Nuke[]) {
 }
 
 function runRemoteRooms(room: Room) {
-    let remoteRooms = room.memory.remoteMiningRooms;
+    let remoteRooms = room.remoteMiningRooms;
     remoteRooms?.forEach((remoteRoomName) => {
         try {
             manageRemoteRoom(room.name, remoteRoomName);
@@ -826,37 +809,6 @@ function scanArea(room: Room) {
     room.memory.scanProgress = `${xDiff}.${yDiff}`;
 }
 
-export function computeRoomNameFromDiff(startingRoomName: string, xDiff: number, yDiff: number) {
-    //lets say W0 = E(-1), S1 = N(-1)
-
-    let values = startingRoomName
-        .replace('N', '.N')
-        .replace('S', '.S')
-        .split('.')
-        .map((v) => {
-            if (v.startsWith('E') || v.startsWith('N')) {
-                return parseInt(v.slice(1));
-            } else {
-                return -1 * parseInt(v.slice(1)) - 1;
-            }
-        });
-
-    let startX = values[0];
-    let startY = values[1];
-
-    let targetValues = [startX + xDiff, startY + yDiff];
-
-    return targetValues
-        .map((v, index) => {
-            if (v >= 0) {
-                return index === 0 ? 'E' + v : 'N' + v;
-            } else {
-                return index === 0 ? 'W' + (-1 * v - 1) : 'S' + (-1 * v - 1);
-            }
-        })
-        .reduce((sum, next) => sum + next);
-}
-
 function runVisionRequest(room: Room, requestId: string) {
     let result = room.observer.observeRoom(Memory.visionRequests[requestId].targetRoom);
     if (result === OK) {
@@ -877,103 +829,12 @@ function getStructurePriority(structureType: StructureConstant): number {
     }
 }
 
-export function findRemoteMiningOptions(room: Room): { source: string; stats: RemoteStats }[] {
-    let exits = getExitDirections(room.name);
-    let safeRoomsDepthOne: string[] = []; //rooms we can pass through for mining
-    for (let exit of exits) {
-        let nextRoomName =
-            exit === LEFT || exit === RIGHT
-                ? computeRoomNameFromDiff(room.name, exit === LEFT ? -1 : 1, 0)
-                : computeRoomNameFromDiff(room.name, 0, exit === BOTTOM ? -1 : 1);
-        if (
-            [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
-                Memory.roomData[nextRoomName]?.roomStatus
-            )
-        ) {
-            safeRoomsDepthOne.push(nextRoomName);
-        }
-    }
-
-    let safeRoomsDepthTwo: string[] = [];
-    for (let depthOneRoomName of safeRoomsDepthOne) {
-        let depthOneExits = getExitDirections(depthOneRoomName);
-        for (let exit of depthOneExits) {
-            let nextRoomName =
-                exit === LEFT || exit === RIGHT
-                    ? computeRoomNameFromDiff(depthOneRoomName, exit === LEFT ? -1 : 1, 0)
-                    : computeRoomNameFromDiff(depthOneRoomName, 0, exit === BOTTOM ? -1 : 1);
-            if (
-                [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
-                    Memory.roomData[nextRoomName]?.roomStatus
-                ) &&
-                !safeRoomsDepthOne.includes(nextRoomName)
-            ) {
-                safeRoomsDepthTwo.push(nextRoomName);
-            }
-        }
-    }
-
-    let safeRoomsDepthThree: string[] = [];
-    for (let depthTwoRoomName of safeRoomsDepthTwo) {
-        let depthTwoExits = getExitDirections(depthTwoRoomName);
-        for (let exit of depthTwoExits) {
-            let nextRoomName =
-                exit === LEFT || exit === RIGHT
-                    ? computeRoomNameFromDiff(depthTwoRoomName, exit === LEFT ? -1 : 1, 0)
-                    : computeRoomNameFromDiff(depthTwoRoomName, 0, exit === BOTTOM ? -1 : 1);
-            if (
-                [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
-                    Memory.roomData[nextRoomName]?.roomStatus
-                ) &&
-                !safeRoomsDepthOne.includes(nextRoomName) &&
-                !safeRoomsDepthTwo.includes(nextRoomName)
-            ) {
-                safeRoomsDepthThree.push(nextRoomName);
-            }
-        }
-    }
-
-    let openSources: { source: string; stats: RemoteStats }[] = [
-        ..._.flatten(safeRoomsDepthOne.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
-        ..._.flatten(safeRoomsDepthTwo.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
-        ..._.flatten(safeRoomsDepthThree.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
-    ]
-        .filter((source) => !Memory.remoteSourceAssignments[source])
-        .map((source) => {
-            console.log(source);
-            let sourcePos = source.toRoomPos();
-            let stats = calculateRemoteSourceStats(sourcePos, room);
-            return { source, stats };
-        });
-
-    return openSources;
-}
-
-function canSupportRemoteRoom(room: Room) {
+export function canSupportRemoteRoom(room: Room) {
     //calculate a 'score' for total rooms mined
-    let score = room.memory.remoteMiningRooms.reduce((total, next) => (isCenterRoom(next) || isKeeperRoom(next) ? total + 2 : total + 1), 0);
+    let score = room.remoteMiningRooms.reduce((total, next) => (isCenterRoom(next) || isKeeperRoom(next) ? total + 2 : total + 1), 0);
     const MAX_SCORE = room.controller.level - 3;
     return score < MAX_SCORE;
 }
-
-// export function findSuitableRemoteSource(room: Room, noKeeperRooms: boolean = false) {
-//     let options = findRemoteMiningOptions(room);
-
-//     let keeperRoomsMined = room.memory.remoteMiningRooms.reduce((sum, next) => (isCenterRoom(next) || isKeeperRoom(next) ? sum + 1 : sum), 0);
-//     let otherRoomsMined = room.memory.remoteMiningRooms.length - keeperRoomsMined;
-
-//     if (noKeeperRooms || room.controller.level < 7 || keeperRoomsMined >= 2) {
-//         //pre-7 rooms can't handle central room upkeep
-//         options = options.filter((room) => !(isCenterRoom(room.name) || isKeeperRoom(room.name)));
-//     } else {
-//         //only mine center or keeper rooms in range 2
-//         options = options.filter((room) => !(isCenterRoom(room.name) || isKeeperRoom(room.name)) || room.depth < 3);
-//     }
-
-//     //prefer central rooms over other rooms and prefer closer to farther
-//     options.sort((a, b) => Memory.roomData[b.name].sourceCount - Memory.roomData[a.name].sourceCount || a.depth - b.depth);
-//     return options.shift();
-// }
 
 function initMissingMemoryValues(room: Room) {
     if (!room.memory.labRequests) {
@@ -996,10 +857,6 @@ function initMissingMemoryValues(room: Room) {
         room.memory.mineralMiningAssignments = {};
     }
 
-    if (!room.memory.remoteMiningRooms) {
-        room.memory.remoteMiningRooms = [];
-    }
-
     if (!room.memory.labTasks) {
         room.memory.labTasks = [];
     }
@@ -1015,4 +872,40 @@ function initMissingMemoryValues(room: Room) {
     if (!room.memory.visionRequests) {
         room.memory.visionRequests = [];
     }
+
+    if(!room.memory.remoteSources) {
+        room.memory.remoteSources = {};
+    }
+}
+
+export function addRemoteSourceClaim(room: Room){
+    let sourceToClaim = findSuitableRemoteSource(room, true);
+
+    //if a room to claim is found, claim it if available and no closer claimant
+    if (sourceToClaim) {
+        let existingClaim = Memory.remoteSourceClaims[sourceToClaim.source];
+        if (existingClaim) {
+            if (existingClaim.netIncome < sourceToClaim.stats.netIncome) {
+                Memory.remoteSourceClaims[sourceToClaim.source] = { claimant: room.name, netIncome: sourceToClaim.stats.netIncome };
+                room.memory.outstandingClaim = sourceToClaim.source;
+                delete Memory.rooms[existingClaim.claimant].outstandingClaim;
+            }
+        } else {
+            Memory.remoteSourceClaims[sourceToClaim.source] = { claimant: room.name, netIncome: sourceToClaim.stats.netIncome };
+            room.memory.outstandingClaim = sourceToClaim.source;
+        }
+    }
+
+    return sourceToClaim;
+}
+
+export function executeRemoteSourceClaim(room: Room){
+    let result = assignRemoteSource(room.memory.outstandingClaim, room.name);
+    if (result === OK) {
+        delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
+        delete room.memory.outstandingClaim;
+    } else {
+        console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
+    }
+    return result;
 }

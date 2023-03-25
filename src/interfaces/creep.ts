@@ -10,7 +10,7 @@ interface CreepMemory {
     link?: Id<StructureLink>;
     destination?: string;
     assignment?: string;
-    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral>;
+    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral> | Id<Source>;
     miningPos?: string;
     hasTTLReplacement?: boolean;
     gathering?: boolean;

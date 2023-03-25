@@ -191,6 +191,19 @@ export function getSpawnPos(room: Room) {
     }
 }
 
+export function getBunkerPositions(room: Room): RoomPosition[]{
+    if(room.memory.anchorPoint){
+        let anchor = room.memory.anchorPoint.toRoomPos();
+        let posArr = [];
+        for(let i = -6; i < 7; i++){
+            for (let j = -6; j < 7; j++){
+                posArr.push(room.getPositionAt(anchor.x + i, anchor.y + j));
+            }
+        }
+        return posArr;
+    }
+}
+
 export function getStoragePos(room: Room) {
     switch (room.memory.layout) {
         case RoomLayout.BUNKER:
@@ -1066,7 +1079,7 @@ function containsNonRoadStamp(stamps: Stamps, targetPositions: RoomPosition[]): 
     );
 }
 
-function drawLayout(roomVisual: RoomVisual, stamps: Stamps) {
+export function drawLayout(roomVisual: RoomVisual, stamps: Stamps) {
     Object.entries(stamps)
         .filter(([type, stampDetails]: [string, StampDetail[]]) => type !== STRUCTURE_ROAD)
         .forEach(([type, stampDetails]: [string, StampDetail[]]) => {
@@ -1126,7 +1139,7 @@ function drawLayout(roomVisual: RoomVisual, stamps: Stamps) {
     for (let i = 0; i < roadPositions.length; i++) {
         for (let j = i + 1; j < roadPositions.length; j++) {
             if (roadPositions[i].isNearTo(roadPositions[j])) {
-                roomVisual.line(roadPositions[i], roadPositions[j], { width: 0.3, opacity: 0.8, lineStyle: 'solid' });
+                roomVisual.line(roadPositions[i], roadPositions[j], { width: 0.3, opacity: 0.1, lineStyle: 'solid' });
             }
         }
     }

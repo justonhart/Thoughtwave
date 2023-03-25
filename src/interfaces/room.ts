@@ -14,7 +14,6 @@ interface RoomMemory {
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: { [posString: string]: string };
     mineralMiningAssignments: { [posString: string]: string };
-    remoteMiningRooms?: string[];
     reservedEnergy?: number;
     layout?: RoomLayout;
     labTasks?: LabTask[];
@@ -25,15 +24,24 @@ interface RoomMemory {
     towerRepairMap?: { [towerId: string]: Id<StructureRoad> }; //maps towerId to roadId
     stampLayout?: Stamps;
     visionRequests?: string[]; //vision request Ids
-    outstandingClaim?: string; //roomName to be claimed
+    outstandingClaim?: string; //source to be claimed
+    remoteSources?: { [sourcePos: string]: RemoteSourceData };
+}
+
+interface RemoteSourceData {
+    miner: string;
+    gatherers: string[];
+    miningPos: string;
+    setupStatus?: RemoteSourceSetupStatus; //delete when done to save memory
+}
+
+const enum RemoteSourceSetupStatus {
+    BUILDING_CONTAINER = 1,
+    BUILDING_ROAD
 }
 
 interface RemoteData {
     reservationState?: RemoteRoomReservationStatus;
-    miningPositions: { [id: Id<Source>]: string }; // sourceId: miningPos
-    miner: string;
-    gatherer: string;
-    gathererSK?: string;
     reserver?: string;
     mineralMiner?: string;
     mineralAvailableAt?: number;
@@ -44,14 +52,13 @@ interface RemoteData {
 
 interface RoomData {
     asOf: number;
-    sourceCount?: number;
     sources?: string[];
     mineralType?: MineralConstant;
     roomStatus?: RoomMemoryStatus;
     owner?: string;
     hostile?: boolean;
     roomLevel?: number;
-    roads?: { [id: Id<Structure>]: string }; // RoomPosition: coordinates separated by delimiter
+    roads?: { [roadKey: string]: string }; // [startPos:endPos]: roadCode[]
 }
 
 const enum RoomMemoryStatus {
@@ -85,6 +92,8 @@ interface Room {
     observer: StructureObserver;
     powerSpawn: StructurePowerSpawn;
     stamps: Stamps;
+    remoteMiningRooms: string[];
+    remoteSources: string[];
 }
 
 interface RoomPosition {
@@ -177,6 +186,8 @@ const enum RoomLayout {
 
 interface RemoteStats {
     netIncome: number;
+    sourceSize: number
+    road: RoomPosition[];
     roadLength: number;
     roadMaintenance: number;
     containerMaintenance: number;
@@ -184,4 +195,5 @@ interface RemoteStats {
     gathererCount: number;
     gathererUpkeep: number;
     reserverUpkeep: number;
+    miningPos: RoomPosition
 }

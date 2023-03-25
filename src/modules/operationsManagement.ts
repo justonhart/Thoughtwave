@@ -1,7 +1,6 @@
 import { addVisionRequest } from './data';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
-import { addRemoteRoom } from './remoteRoomManagement';
 import { getSpawnPos, placeBunkerConstructionSites, roomNeedsCoreStructures } from './roomDesign';
 
 const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } = {
@@ -667,7 +666,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
 function manageAddRemoteMiningOperation(op: Operation) {
     //if target room has vision, perform functions
     if(Game.rooms[op.targetRoom]){
-        let result = addRemoteRoom(op.originRoom, op.targetRoom);
+        let result = undefined;//addRemoteRoom(op.originRoom, op.targetRoom);
         if(result != OK){
             console.log(`Problem assigning remote room ${op.targetRoom} to ${op.originRoom}: ${result}`);
         }

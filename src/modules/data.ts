@@ -1,6 +1,6 @@
 export function addRoomData(room: Room) {
     let data: RoomData = {
-        sourceCount: room.find(FIND_SOURCES).length,
+        sources: room.find(FIND_SOURCES).map(source => `${source.pos.x}.${source.pos.y}`),
         mineralType: room.mineral?.mineralType,
         asOf: Game.time,
     };
@@ -8,6 +8,37 @@ export function addRoomData(room: Room) {
     Memory.roomData[room.name] = data;
 
     updateRoomData(room);
+}
+
+export function computeRoomNameFromDiff(startingRoomName: string, xDiff: number, yDiff: number) {
+    //lets say W0 = E(-1), S1 = N(-1)
+
+    let values = startingRoomName
+        .replace('N', '.N')
+        .replace('S', '.S')
+        .split('.')
+        .map((v) => {
+            if (v.startsWith('E') || v.startsWith('N')) {
+                return parseInt(v.slice(1));
+            } else {
+                return -1 * parseInt(v.slice(1)) - 1;
+            }
+        });
+
+    let startX = values[0];
+    let startY = values[1];
+
+    let targetValues = [startX + xDiff, startY + yDiff];
+
+    return targetValues
+        .map((v, index) => {
+            if (v >= 0) {
+                return index === 0 ? 'E' + v : 'N' + v;
+            } else {
+                return index === 0 ? 'W' + (-1 * v - 1) : 'S' + (-1 * v - 1);
+            }
+        })
+        .reduce((sum, next) => sum + next);
 }
 
 export function updateRoomData(room: Room) {
@@ -73,16 +104,6 @@ export function deleteExpiredRoomData() {
             delete Memory.roomData[roomName].roomLevel;
             delete Memory.roomData[roomName].asOf;
         });
-}
-
-export function deleteExpiredRoadData() {
-    Object.keys(Memory.roomData)
-        .filter((roomName) => Game.rooms[roomName] && Memory.roomData[roomName].roads)
-        .forEach((roomName) =>
-            Object.keys(Memory.roomData[roomName].roads)
-                .filter((containerId) => !Game.getObjectById(containerId))
-                .forEach((containerId) => delete Memory.roomData[roomName].roads[containerId])
-        );
 }
 
 export function isKeeperRoom(roomName: string) {

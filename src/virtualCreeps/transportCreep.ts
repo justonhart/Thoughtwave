@@ -1,7 +1,7 @@
 import { WaveCreep } from './waveCreep';
 
 export class TransportCreep extends WaveCreep {
-    private previousTargetId: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral>;
+    private previousTargetId: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral> | Id<Source>;
     protected incomingEnergyAmount: number = 0; // Picked up energy in same tick to do proper retargeting
     protected incomingMineralAmount: number = 0; // Picked up non-energy in same tick to do proper retargeting
     protected outgoingResourceAmount: number = 0; // Dropped off energy in the same tick to do proper retargeting

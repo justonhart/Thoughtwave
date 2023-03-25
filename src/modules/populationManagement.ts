@@ -1,6 +1,7 @@
 import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { getResourceBoostsAvailable } from './labManagement';
-import { roomNeedsCoreStructures } from './roomDesign';
+import { roadIsPaved } from './roads';
+import { getStoragePos, roomNeedsCoreStructures } from './roomDesign';
 
 const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
     1: ATTACK,
@@ -285,26 +286,26 @@ export class PopulationManagement {
     }
 
     static findRemoteMinerNeed(room: Room): string {
-        return room.memory.remoteMiningRooms.find(
-            (remoteRoom) =>
-                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
-                Memory.remoteData[remoteRoom].miner === AssignmentStatus.UNASSIGNED
+        return room.remoteSources.find(s => 
+            room.memory.remoteSources[s].miner === AssignmentStatus.UNASSIGNED &&
+            Memory.roomData[s.toRoomPos().roomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+            Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+            Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY
         );
     }
 
-    static spawnRemoteMiner(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
+    static spawnRemoteMiner(spawn: StructureSpawn, source: string): ScreepsReturnCode {
+        const miningPos = spawn.room.memory.remoteSources[source].miningPos;
         let options: SpawnOptions = {
             memory: {
-                assignment: remoteRoomName,
+                assignment: miningPos,
                 room: spawn.room.name,
                 role: Role.REMOTE_MINER,
                 currentTaskPriority: Priority.HIGH,
             },
         };
 
-        let workNeeded = this.calculateRemoteMinerWorkNeeded(remoteRoomName);
+        let workNeeded = this.calculateRemoteMinerWorkNeeded(miningPos);
         let work = [];
         let move = [];
         let energyLeft = spawn.room.energyCapacityAvailable - 100;
@@ -325,50 +326,60 @@ export class PopulationManagement {
 
         let result = spawn.smartSpawn(minerBody, name, options);
         if (result === OK) {
-            Memory.remoteData[remoteRoomName].miner = name;
+            spawn.room.memory.remoteSources[source].miner = name;
         }
 
         return result;
     }
 
     static findGathererNeed(room: Room): string {
-        return room.memory.remoteMiningRooms.find(
-            (remoteRoom) =>
-                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
-                (Memory.remoteData[remoteRoom].gatherer === AssignmentStatus.UNASSIGNED ||
-                    Memory.remoteData[remoteRoom].gathererSK === AssignmentStatus.UNASSIGNED)
+        return room.remoteSources.find(
+            (s) =>
+                Memory.roomData[s.toRoomPos().roomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY &&
+                room.memory.remoteSources[s].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER &&
+                room.memory.remoteSources[s].gatherers.some(g => g === AssignmentStatus.UNASSIGNED)
         );
     }
 
-    static spawnGatherer(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
+    static spawnGatherer(spawn: StructureSpawn, source: string): ScreepsReturnCode {
+        let miningPos = spawn.room.memory.remoteSources[source].miningPos;
         let options: SpawnOptions = {
             memory: {
-                assignment: remoteRoomName,
+                assignment: miningPos,
                 room: spawn.room.name,
                 role: Role.GATHERER,
             },
         };
 
         let name = this.generateName(options.memory.role, spawn.name);
-        let PARTS = PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9);
-        PARTS.push(WORK, WORK, CARRY, CARRY, MOVE);
+
+        //if road is marked as in-progress, check to see if it is done
+        if(spawn.room.memory.remoteSources[source].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD){
+            let roadFinished = roadIsPaved(`${getStoragePos(spawn.room).toMemSafe()}:${source}`);
+            if(roadFinished === true){
+                delete spawn.room.memory.remoteSources[source].setupStatus;
+            }
+        }
+
+        let PARTS = spawn.room.memory.remoteSources[source].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD
+                ? PopulationManagement.createPartsArray([WORK, CARRY, MOVE], spawn.room.energyAvailable, 10)
+                : [WORK, WORK, CARRY, CARRY, MOVE, ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9)];
         let result = spawn.smartSpawn(PARTS, name, options);
 
         if (result === OK) {
-            if (Memory.remoteData[remoteRoomName].gatherer === AssignmentStatus.UNASSIGNED) {
-                Memory.remoteData[remoteRoomName].gatherer = name;
-            } else {
-                Memory.remoteData[remoteRoomName].gathererSK = name;
-            }
+            let unassignedIndex = spawn.room.memory.remoteSources[source].gatherers.findIndex(g => g === AssignmentStatus.UNASSIGNED);
+            if (unassignedIndex !== -1) {
+                spawn.room.memory.remoteSources[source].gatherers[unassignedIndex] = name;
+            } 
         }
 
         return result;
     }
 
     static findReserverNeed(room: Room): string {
-        return Object.values(room.memory.remoteMiningRooms).find(
+        return room.remoteMiningRooms.find(
             (remoteRoom) =>
                 Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
@@ -401,6 +412,7 @@ export class PopulationManagement {
         return result;
     }
 
+    // generates creep bodies by repeating a defined pattern up to n times, where n = levelCap
     static createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailable: number, levelCap: number = 15): BodyPartConstant[] {
         let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
         let partsArray = [];
@@ -955,7 +967,7 @@ export class PopulationManagement {
             return false;
         }
 
-        return room.memory.remoteMiningRooms.find(
+        return room.remoteMiningRooms.find(
             (remoteRoom) =>
                 Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
@@ -984,7 +996,7 @@ export class PopulationManagement {
     }
 
     static findExterminatorNeed(room: Room): string {
-        return Object.values(room.memory.remoteMiningRooms).find(
+        return room.remoteMiningRooms.find(
             (remoteRoom) =>
                 Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
@@ -1065,11 +1077,10 @@ export class PopulationManagement {
         return result;
     }
 
-    static calculateRemoteMinerWorkNeeded(roomName: string) {
-        let data = Memory.roomData[roomName];
-        let energyPotential = isKeeperRoom(roomName) ? 4000 * 3 : 3000 * data.sourceCount;
+    static calculateRemoteMinerWorkNeeded(miningPos: string) {
+        let energyPotential = isKeeperRoom(miningPos.toRoomPos().roomName) || isCenterRoom(miningPos.toRoomPos().roomName) ? 4000 * 3 : 3000;
         let workNeeded = energyPotential / (HARVEST_POWER * 300);
 
-        return workNeeded > 5 ? workNeeded * 1.2 : workNeeded;
+        return 1 + workNeeded > 5 ? 7 : 5;
     }
 }

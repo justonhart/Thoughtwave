@@ -1,7 +1,11 @@
+import { decodeRoad, getRoadSegments } from "./roads";
+import { drawLayout } from "./roomDesign";
+
 export function runVisuals() {
     highlightHostileRooms();
     drawRoadsFromRoomData();
     drawLinesToRemoteRooms();
+    drawRoomVisuals();
 }
 
 function drawRoadsFromRoomData() {
@@ -10,20 +14,11 @@ function drawRoadsFromRoomData() {
         let roads = Memory.roomData[room]?.roads ? Object.values(Memory.roomData[room].roads) : [];
         if (roads?.length) {
             let rvRoads = [];
-            roads.forEach((road) => {
-                let arr = [];
-                road.split(',').forEach((posString) => {
-                    let split = posString.split(':').map((v) => parseInt(v));
-
-                    let pos;
-                    try {
-                        pos = new RoomPosition(split[0], split[1], room);
-                        arr.push(pos);
-                    } catch (e) {}
-                });
-                rvRoads.push(arr);
+            roads.forEach((roadCode) => {
+                let road = decodeRoad(roadCode, room);
+                getRoadSegments(road).forEach(segment => rvRoads.push(segment));
             });
-            rvRoads.forEach((road) => rv.poly(road, { lineStyle: 'dotted' }));
+            rvRoads.forEach((roadSegment) => rv.poly(roadSegment, { lineStyle: 'dotted', stroke: '#63FF00', opacity: 100 }));
         }
     });
 }
@@ -40,8 +35,17 @@ function drawLinesToRemoteRooms() {
     Object.keys(Game.rooms)
         .filter((room) => Game.rooms[room]?.controller?.my)
         .forEach((room) => {
-            Memory.rooms[room].remoteMiningRooms.forEach((remoteRoom) => {
+            Game.rooms[room].remoteMiningRooms.forEach((remoteRoom) => {
                 Game.map.visual.line(new RoomPosition(25, 25, room), new RoomPosition(25, 25, remoteRoom), { color: '3333ff', opacity: 100 });
             });
         });
+}
+
+function drawRoomVisuals(){
+    Object.keys(Memory.rooms).filter(room => Memory.rooms[room].stampLayout).forEach(stampRoom => {
+        let rv = Game.rooms[stampRoom]?.visual;
+        if(rv){
+            drawLayout(rv, Game.rooms[stampRoom].stamps);
+        }
+    })
 }

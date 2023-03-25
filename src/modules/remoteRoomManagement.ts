@@ -1,20 +1,14 @@
 import { CombatIntel } from './combatIntel';
-import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
+import { isKeeperRoom as isKeeperRoom } from './data';
 import { PopulationManagement } from './populationManagement';
-import { getStoragePos } from './roomDesign';
 
 export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: string) {
     let remoteRoom = Game.rooms[remoteRoomName];
     if (remoteRoom) {
-        Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
-
-        const mineralAvailableAt = Memory.remoteData[remoteRoomName].mineralAvailableAt;
-        if ((isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) && mineralAvailableAt === undefined) {
-            // TODO: delete after intial conversion
-            Memory.remoteData[remoteRoomName].mineralMiner = AssignmentStatus.UNASSIGNED;
-            Memory.remoteData[remoteRoomName].mineralAvailableAt = Game.time;
-            Memory.remoteData[remoteRoomName].miningPositions = createMiningPositionData(controllingRoomName, remoteRoomName);
+        if(isKeeperRoom(remoteRoomName) && !Memory.remoteData[remoteRoomName].sourceKeeperLairs){
+            Memory.remoteData[remoteRoomName].sourceKeeperLairs = createKeeperLairData(remoteRoomName);
         }
+        Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
     }
 
     const threatLevel = Memory.remoteData[remoteRoomName].threatLevel;
@@ -107,10 +101,10 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
 
 export function calculateRemoteMinerWorkNeeded(roomName: string) {
     let data = Memory.roomData[roomName];
-    let energyPotential = isKeeperRoom(roomName) ? 4000 * 3 : 3000 * data.sourceCount;
+    let energyPotential = isKeeperRoom(roomName) ? 4000 * 3 : 3000;
     let workNeeded = energyPotential / (HARVEST_POWER * 300);
 
-    return workNeeded > 5 ? workNeeded * 1.2 : workNeeded;
+    return 1 + (workNeeded > 5 ? 7 : workNeeded);
 }
 
 function monitorThreatLevel(room: Room) {
@@ -129,76 +123,6 @@ function monitorThreatLevel(room: Room) {
         : hasInvaderCore
         ? RemoteRoomThreatLevel.INVADER_CORE
         : RemoteRoomThreatLevel.SAFE;
-}
-
-//requires room visibility to find mining positions
-export function addRemoteRoom(controllingRoomName: string, remoteRoomName: string) {
-    if (!Game.rooms[remoteRoomName]) {
-        return ERR_NOT_FOUND;
-    }
-
-    if (!Memory.rooms[controllingRoomName].remoteMiningRooms) {
-        Memory.rooms[controllingRoomName].remoteMiningRooms = [];
-    }
-
-    if (Memory.rooms[controllingRoomName].remoteMiningRooms[remoteRoomName]) {
-        return ERR_NAME_EXISTS;
-    } else {
-        Memory.rooms[controllingRoomName].remoteMiningRooms.push(remoteRoomName);
-    }
-
-    let miningPositions = createMiningPositionData(controllingRoomName, remoteRoomName);
-
-    let remoteData: RemoteData = {
-        gatherer: AssignmentStatus.UNASSIGNED,
-        miner: AssignmentStatus.UNASSIGNED,
-        threatLevel: RemoteRoomThreatLevel.SAFE,
-        miningPositions: miningPositions,
-    };
-
-    if (isKeeperRoom(remoteRoomName)) {
-        remoteData.keeperExterminator = AssignmentStatus.UNASSIGNED;
-        remoteData.sourceKeeperLairs = createKeeperLairData(remoteRoomName);
-    } else if (!isCenterRoom(remoteRoomName)) {
-        remoteData.reservationState = RemoteRoomReservationStatus.LOW;
-        remoteData.reserver = AssignmentStatus.UNASSIGNED;
-    }
-    if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
-        remoteData.gathererSK = AssignmentStatus.UNASSIGNED;
-        remoteData.mineralMiner = AssignmentStatus.UNASSIGNED;
-        remoteData.mineralAvailableAt = Game.time;
-    }
-
-    Memory.remoteData[remoteRoomName] = remoteData;
-    return OK;
-}
-
-function createMiningPositionData(controllingRoomName: string, remoteRoomName: string): { [id: Id<Source>]: string } {
-    let controllingRoom = Game.rooms[controllingRoomName];
-    let remoteRoom = Game.rooms[remoteRoomName];
-
-    let harvestTargets: Source[] = remoteRoom.find(FIND_SOURCES);
-    let miningPositions: { [id: Id<Source>]: string } = {};
-
-    harvestTargets.forEach((target) => {
-        const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
-        if (!path.incomplete) {
-            miningPositions[target.id] = path.path.pop().toMemSafe();
-        }
-    });
-
-    // Only add minerals for keeper/center rooms
-    if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
-        const mineralTargets: Mineral[] = remoteRoom.find(FIND_MINERALS);
-        mineralTargets.forEach((target) => {
-            const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
-            if (!path.incomplete) {
-                miningPositions[target.id] = path.path.pop().toMemSafe();
-            }
-        });
-    }
-
-    return miningPositions;
 }
 
 function createKeeperLairData(remoteRoomName: string): { [id: Id<Source> | Id<Mineral>]: Id<StructureKeeperLair> } {
@@ -252,10 +176,7 @@ function reassignIdleProtector(controllingRoomName: string, remoteRoomName: stri
 }
 
 export function removeRemoteRoom(hostName: string, remoteRoomName: string) {
-    Memory.rooms[hostName].remoteMiningRooms = Memory.rooms[hostName].remoteMiningRooms.filter((name) => name !== remoteRoomName);
-
     delete Memory.remoteData[remoteRoomName];
-
     Memory.roomData[remoteRoomName].asOf = Game.time;
     Memory.roomData[remoteRoomName].roomStatus = RoomMemoryStatus.VACANT;
     delete Memory.roomData[remoteRoomName].owner;

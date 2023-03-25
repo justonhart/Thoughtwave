@@ -1,6 +1,9 @@
+import { getAllRoomNeeds } from "./resourceManagement";
+import { getBunkerPositions, getStructureForPos } from "./roomDesign";
+
 const MAPPING = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-export function createRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: RoadOpts): ScreepsReturnCode{
+export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: RoadOpts): PathFinderPath {
 
     if(opts === undefined){
         opts = {};
@@ -16,12 +19,14 @@ export function createRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: 
 
     const pathSearch = PathFinder.search(
         startPos,
-        endPos,
+        opts.destRange ? {range: opts.destRange, pos: endPos} : endPos,
         {
             plainCost: (2 * ROAD_DECAY_AMOUNT) / REPAIR_POWER,
             swampCost: (2 * ROAD_DECAY_AMOUNT * 5) / REPAIR_POWER,
             roomCallback: (roomName: string) => {
                 if (
+                    roomName !== startPos.roomName &&
+                    roomName !== endPos.roomName &&
                     !opts.allowedStatuses.includes(
                         Memory.roomData[roomName]?.roomStatus
                     )
@@ -32,9 +37,13 @@ export function createRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: 
                 let matrix = new PathFinder.CostMatrix();
 
                 if (Memory.roomData[roomName]?.roomStatus === RoomMemoryStatus.OWNED_ME) {
-                    Game.rooms[roomName].stamps?.road.forEach((r) => {
-                        matrix.set(r.pos.x, r.pos.y, 1);
-                    });
+                    if(Memory.rooms[roomName].layout === RoomLayout.BUNKER){
+                        getBunkerPositions(Game.rooms[roomName]).forEach(pos => matrix.set(pos.x, pos.y, getStructureForPos(RoomLayout.BUNKER, pos, Memory.rooms[roomName].anchorPoint.toRoomPos()) === STRUCTURE_ROAD ? 1 : 255));
+                    } else if (Memory.rooms[roomName].layout === RoomLayout.STAMP){
+                        Object.entries(Game.rooms[roomName].stamps).forEach(([key, stampsDetails]: [string, StampDetail[]]) =>
+                            stampsDetails.forEach(detail => matrix.set(detail.pos.x, detail.pos.y, key === 'road' || key === 'rampart' ? 1 : 255))
+                        );
+                    }
                 }
 
                 if (!opts.ignoreOtherRoads) {
@@ -56,22 +65,30 @@ export function createRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: 
         }
     );
 
-    if(pathSearch.incomplete){
-        return ERR_NOT_FOUND;
-    }
+    return pathSearch;
+}
 
-    const path = pathSearch.path;
+export function storeRoadInMemory(startPos: RoomPosition, endPos: RoomPosition, road: RoomPosition[]): ScreepsReturnCode{
+    if(!startPos || !endPos || !road || !road.length){
+        return ERR_INVALID_ARGS;
+    }
+    
     const roadKey = `${startPos.toMemSafe()}:${endPos.toMemSafe()}`;
     
-    const encodedRoadSegments = encodeRoad(path);
-    encodedRoadSegments.forEach(segment => {
+    try{
+        const encodedRoadSegments = encodeRoad(road);
+        encodedRoadSegments.forEach(segment => {
 
-        if(!Memory.roomData[segment.roomName].roads){
-            Memory.roomData[segment.roomName].roads = {};
-        }
+            if(!Memory.roomData[segment.roomName].roads){
+                Memory.roomData[segment.roomName].roads = {};
+            }
 
-        Memory.roomData[segment.roomName].roads[roadKey] = segment.roadCode;
-    })
+            Memory.roomData[segment.roomName].roads[roadKey] = segment.roadCode;
+        })
+    } catch (e) {
+        console.log(`Error encoding road: ${startPos}:${endPos}`);
+        return ERR_INVALID_ARGS;
+    }
 
     return OK;
 }
@@ -104,7 +121,7 @@ function encodeRoad(road: RoomPosition[]): {roomName: string, roadCode: string}[
 }
 
 //separate road into contiguous segments
-function getRoadSegments(road: RoomPosition[]): RoomPosition[][]{
+export function getRoadSegments(road: RoomPosition[]): RoomPosition[][]{
     let startingIndices = [0];
     let segments = [];
     for(let i = 1; i < road.length; i++){
@@ -132,8 +149,63 @@ function encode(int: number): string{
     return MAPPING.charAt(int);
 }
 
-function posExistsOnRoad(pos: RoomPosition): boolean{
+export function posExistsOnRoad(pos: RoomPosition): boolean{
     let roads = Object.values(Memory.roomData[pos.roomName].roads).map(roadCode => decodeRoad(roadCode, pos.roomName));
 
-    return roads.some(road => road.some(roadPos => roadPos === pos));
+    return roads.some(road => road.some(roadPos => roadPos.isEqualTo(pos)));
+}
+
+//trace a road through all rooms from starting point to return RoomPosition array
+export function getFullRoad(roadKey: string): RoomPosition[]{
+    let startingRoomName = roadKey.split(':')[0].toRoomPos().roomName;
+    return recursiveRoadGet(roadKey, startingRoomName);
+}
+
+function recursiveRoadGet(roadKey: string, roomName: string): RoomPosition[]{
+    const roadCode = Memory.roomData[roomName]?.roads[roadKey];
+    if(!roadCode){
+        console.log(`Error tracing road ${roadKey} through ${roomName}`);
+        return [];
+    }
+
+    let road = decodeRoad(roadCode, roomName);
+
+    let destination = roadKey.split(':')[1].toRoomPos();
+
+    if(road[road.length-1].isNearTo(destination)){
+        return road;
+    } else {
+        let nextRoomName = Game.map.describeExits(roomName)[getExitDirection(road[road.length-1])];
+        if(nextRoomName !== ERR_INVALID_ARGS){
+            return [...road,...recursiveRoadGet(roadKey, nextRoomName)];
+        } else {
+            return undefined;
+        }
+    }
+}
+
+function getExitDirection(exitPos: RoomPosition) : DirectionConstant | ScreepsReturnCode{
+    return exitPos.x === 0 ? LEFT 
+        : exitPos.x === 49 ? RIGHT
+        : exitPos.y === 0 ? TOP
+        : exitPos.y === 49 ? BOTTOM
+        : ERR_INVALID_ARGS;
+}
+
+export function getAllRoadRooms(roadKey: string): string[]{
+    return Array.from(new Set(getFullRoad(roadKey).map(pos => pos.roomName)));
+}
+
+export function roadIsPaved(roadKey: string): boolean | ScreepsReturnCode {
+    let road = getFullRoad(roadKey);
+    let canSeeAllRooms = road.every(pos => Game.rooms[pos.roomName]);
+    if(canSeeAllRooms) {
+        return road.every(pos => pos.lookFor(LOOK_STRUCTURES).some(structure => structure.structureType === STRUCTURE_ROAD));
+    } else {
+        return ERR_NOT_FOUND;
+    }
+}
+
+export function roadIsSafe(roadKey: string){
+    return getAllRoadRooms(roadKey).every(room => Memory.roomData[room]?.hostile !== true);
 }

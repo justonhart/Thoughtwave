@@ -1,71 +1,31 @@
-import { isCenterRoom, isKeeperRoom } from './data';
+import { computeRoomNameFromDiff, getExitDirections, isCenterRoom, isKeeperRoom } from './data';
+import { getRoad, storeRoadInMemory } from './roads';
 import { getStoragePos } from './roomDesign';
 
 //Calculate maintenance cost of road to source per road decay cycle. Considers pre-existing roads in homeroom and roomData to be .5 cost of plains. Doesn't consider travel wear
-export function calculateRoadStats(
+function calculateSourceRoadStats(
     sourcePos: RoomPosition,
     room: Room,
     ignoreRoomDataRoads = false
-): { roadLength: number; maintenanceCost: number } {
+): { road: RoomPosition[], roadLength: number; maintenanceCost: number; miningPos: RoomPosition } {
     let storagePos = getStoragePos(room);
 
-    const path = PathFinder.search(
-        storagePos,
-        { pos: sourcePos, range: 1 },
-        {
-            plainCost: (2 * ROAD_DECAY_AMOUNT) / REPAIR_POWER,
-            swampCost: (2 * ROAD_DECAY_AMOUNT * 5) / REPAIR_POWER,
-            roomCallback: (roomName: string) => {
-                if (
-                    roomName !== room.name &&
-                    ![RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER, RoomMemoryStatus.VACANT].includes(
-                        Memory.roomData[roomName]?.roomStatus
-                    )
-                ) {
-                    return false;
-                }
+    const road = getRoad(storagePos, sourcePos, {allowedStatuses: [RoomMemoryStatus.OWNED_INVADER, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT], ignoreOtherRoads: ignoreRoomDataRoads, destRange: 1});
 
-                let matrix = new PathFinder.CostMatrix();
-
-                if (roomName === room.name) {
-                    room.stamps?.road.forEach((r) => {
-                        if (r.rcl <= room.controller.level) matrix.set(r.pos.x, r.pos.y, 1);
-                    });
-                }
-
-                if (!ignoreRoomDataRoads) {
-                    let roads = Memory.roomData[roomName]?.roads ? Object.values(Memory.roomData[roomName].roads) : [];
-                    if (roads?.length) {
-                        roads.forEach((road) =>
-                            road.split(',').forEach((posString) => {
-                                let split = posString.split(':').map((v) => parseInt(v));
-                                matrix.set(split[0], split[1], 1);
-                            })
-                        );
-                    }
-                }
-
-                return matrix;
-            },
-            maxOps: 10000,
-        }
-    );
-
-    if (path.incomplete) {
-        return { roadLength: -1, maintenanceCost: -1 };
-    } else {
-        path.path.pop();
+    if (road.incomplete) {
+        return { roadLength: -1, maintenanceCost: -1, miningPos: undefined, road: undefined };
     }
+    let miningPos = road.path.pop();
 
-    let visualRooms = Array.from(new Set(path.path.map((pos) => pos.roomName)));
-    visualRooms.forEach((r) => {
-        let rv = new RoomVisual(r);
-        rv.poly(path.path.filter((p) => p.roomName === r));
-    });
+    // let visualRooms = Array.from(new Set(path.path.map((pos) => pos.roomName)));
+    // visualRooms.forEach((r) => {
+    //     let rv = new RoomVisual(r);
+    //     rv.poly(path.path.filter((p) => p.roomName === r));
+    // });
 
-    const MAINTENANCE_COST = path.cost / 2; //the cost matrix values for plains and swamp are 5x the decay value to prioritize pre-existing roads.
+    const MAINTENANCE_COST = road.cost / 2; //the cost matrix values for plains and swamp are 5x the decay value to prioritize pre-existing roads.
     const MAINTENANCE_COST_PER_CYCLE = (MAINTENANCE_COST / ROAD_DECAY_TIME) * ENERGY_REGEN_TIME; //roads decay every 1k ticks, whereas sources regen every 300
-    return { roadLength: path.path.length, maintenanceCost: MAINTENANCE_COST_PER_CYCLE };
+    return { road: road.path, roadLength: road.path.length, maintenanceCost: MAINTENANCE_COST_PER_CYCLE, miningPos: miningPos };
 }
 
 export function calculateRemoteSourceStats(sourcePos: RoomPosition, room: Room, ignoreRoomDataRoads = false): RemoteStats {
@@ -73,7 +33,7 @@ export function calculateRemoteSourceStats(sourcePos: RoomPosition, room: Room, 
     const SOURCE_OUTPUT_PER_CYCLE =
         isKeeperRoom(sourcePos.roomName) || isCenterRoom(sourcePos.roomName) ? SOURCE_ENERGY_KEEPER_CAPACITY : SOURCE_ENERGY_CAPACITY;
 
-    const roadStats = calculateRoadStats(sourcePos, room, ignoreRoomDataRoads);
+    const roadStats = calculateSourceRoadStats(sourcePos, room, ignoreRoomDataRoads);
     if (roadStats.maintenanceCost === -1) {
         return undefined;
     }
@@ -120,7 +80,8 @@ export function calculateRemoteSourceStats(sourcePos: RoomPosition, room: Room, 
         ROAD_MAINTENANCE_PER_CYCLE;
     const NET_INCOME_PER_CYCLE = SOURCE_OUTPUT_PER_CYCLE - TOTAL_COSTS_PER_CYCLE;
 
-    let stats = {
+    let stats: RemoteStats = {
+        sourceSize: SOURCE_OUTPUT_PER_CYCLE,
         netIncome: NET_INCOME_PER_CYCLE,
         roadLength: ROAD_LENGTH,
         roadMaintenance: ROAD_MAINTENANCE_PER_CYCLE,
@@ -129,11 +90,176 @@ export function calculateRemoteSourceStats(sourcePos: RoomPosition, room: Room, 
         gathererCount: GATHERERS_NEEDED,
         gathererUpkeep: GATHERER_COST_PER_CYCLE,
         reserverUpkeep: RESERVER_COST_PER_CYCLE,
+        miningPos: roadStats.miningPos,
+        road: roadStats.road
     };
 
-    for (let [key, value] of Object.entries(stats)) {
-        console.log(`${key}: ${value}`);
-    }
+    // for (let [key, value] of Object.entries(stats)) {
+    //     console.log(`${key}: ${value}`);
+    // }
 
     return stats;
+}
+
+export function assignRemoteSource(source: string, roomName: string){
+    let current = Memory.remoteSourceAssignments[source];
+    if(current){
+        removeCurrentAssignment(source);
+    }
+    try{
+        let stats: RemoteStats;
+        try{
+            stats = calculateRemoteSourceStats(source.toRoomPos(), Game.rooms[roomName]);
+        } catch(e){
+            console.log(e);
+            return ERR_INVALID_ARGS;
+        }
+
+        try{
+            let result = storeRoadInMemory(getStoragePos(Game.rooms[roomName]),stats.miningPos,stats.road);
+            if(result !== OK){
+                console.log('problem storing road to source in memory');
+                return ERR_INVALID_ARGS;
+            }
+        } catch (e){
+            console.log(e);
+            return ERR_INVALID_ARGS;
+        }
+
+        let gatherers = [];
+        for(let i = 0; i < stats.gathererCount; i++){
+            gatherers.push(AssignmentStatus.UNASSIGNED);
+        }
+
+        Memory.remoteSourceAssignments[source] = roomName;
+
+        Memory.rooms[roomName].remoteSources[source] = {
+            gatherers: gatherers,
+            miner: AssignmentStatus.UNASSIGNED,
+            miningPos: stats.miningPos.toMemSafe(),
+            setupStatus: RemoteSourceSetupStatus.BUILDING_CONTAINER
+        };
+
+        let remoteRoomName = source.toRoomPos().roomName;
+        let remoteData: RemoteData = {
+            threatLevel: RemoteRoomThreatLevel.SAFE,
+        };
+
+        if(!Memory.remoteData[remoteRoomName]){
+            if (isKeeperRoom(remoteRoomName)) {
+                remoteData.keeperExterminator = AssignmentStatus.UNASSIGNED;
+            } else if (!isCenterRoom(remoteRoomName)) {
+                remoteData.reservationState = RemoteRoomReservationStatus.LOW;
+                remoteData.reserver = AssignmentStatus.UNASSIGNED;
+            }
+            if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
+                remoteData.mineralMiner = AssignmentStatus.UNASSIGNED;
+                remoteData.mineralAvailableAt = Game.time;
+            }
+        
+            Memory.remoteData[remoteRoomName] = remoteData;
+        }
+        return OK;
+    } catch(e){
+        console.log(e);
+        return ERR_INVALID_ARGS;
+    }
+}
+
+export function removeCurrentAssignment(source: string){
+    let current = Memory.remoteSourceAssignments[source];
+    Game.creeps[Memory.rooms[current].remoteSources[source].miner]?.suicide();
+    delete Memory.rooms[current].remoteSources[source];
+    delete Memory.remoteSourceAssignments[source];
+}
+
+export function findRemoteMiningOptions(room: Room): { source: string; stats: RemoteStats }[] {
+    let exits = getExitDirections(room.name);
+    let safeRoomsDepthOne: string[] = []; //rooms we can pass through for mining
+    for (let exit of exits) {
+        let nextRoomName =
+            exit === LEFT || exit === RIGHT
+                ? computeRoomNameFromDiff(room.name, exit === LEFT ? -1 : 1, 0)
+                : computeRoomNameFromDiff(room.name, 0, exit === BOTTOM ? -1 : 1);
+        if (
+            [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
+                Memory.roomData[nextRoomName]?.roomStatus
+            )
+        ) {
+            safeRoomsDepthOne.push(nextRoomName);
+        }
+    }
+
+    let safeRoomsDepthTwo: string[] = [];
+    for (let depthOneRoomName of safeRoomsDepthOne) {
+        let depthOneExits = getExitDirections(depthOneRoomName);
+        for (let exit of depthOneExits) {
+            let nextRoomName =
+                exit === LEFT || exit === RIGHT
+                    ? computeRoomNameFromDiff(depthOneRoomName, exit === LEFT ? -1 : 1, 0)
+                    : computeRoomNameFromDiff(depthOneRoomName, 0, exit === BOTTOM ? -1 : 1);
+            if (
+                [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
+                    Memory.roomData[nextRoomName]?.roomStatus
+                ) &&
+                !safeRoomsDepthOne.includes(nextRoomName)
+            ) {
+                safeRoomsDepthTwo.push(nextRoomName);
+            }
+        }
+    }
+
+    let safeRoomsDepthThree: string[] = [];
+    for (let depthTwoRoomName of safeRoomsDepthTwo) {
+        let depthTwoExits = getExitDirections(depthTwoRoomName);
+        for (let exit of depthTwoExits) {
+            let nextRoomName =
+                exit === LEFT || exit === RIGHT
+                    ? computeRoomNameFromDiff(depthTwoRoomName, exit === LEFT ? -1 : 1, 0)
+                    : computeRoomNameFromDiff(depthTwoRoomName, 0, exit === BOTTOM ? -1 : 1);
+            if (
+                [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
+                    Memory.roomData[nextRoomName]?.roomStatus
+                ) &&
+                !safeRoomsDepthOne.includes(nextRoomName) &&
+                !safeRoomsDepthTwo.includes(nextRoomName)
+            ) {
+                safeRoomsDepthThree.push(nextRoomName);
+            }
+        }
+    }
+
+    let openSources: { source: string; stats: RemoteStats }[] = [
+        ..._.flatten(safeRoomsDepthOne.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
+        ..._.flatten(safeRoomsDepthTwo.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
+        ..._.flatten(safeRoomsDepthThree.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
+    ]
+        .filter((source) => !Memory.remoteSourceAssignments[source])
+        .map((source) => {
+            let sourcePos = source.toRoomPos();
+            let stats = calculateRemoteSourceStats(sourcePos, room, true);
+            return { source, stats };
+        });
+
+    return openSources;
+}
+
+export function findSuitableRemoteSource(room: Room, noKeeperRooms: boolean = false): {source: string, stats: RemoteStats} {
+    let options = findRemoteMiningOptions(room);
+
+    let remoteRooms = new Set(Object.keys(room.memory.remoteSources).map(pos => pos.split('.')[2]));
+    let keeperRoomsMined = 0;
+    let otherRoomsMined = 0;
+
+    remoteRooms.forEach(remoteRoom => isKeeperRoom(remoteRoom) || isCenterRoom(remoteRoom) ? keeperRoomsMined++ : otherRoomsMined++);
+
+    if (noKeeperRooms || room.controller.level < 7 || keeperRoomsMined >= 2) {
+        //pre-7 rooms can't handle central room upkeep
+        options = options.filter((option) => option.stats.sourceSize === 3000);
+    } 
+
+    //prefer central rooms over other rooms and prefer closer to farther
+    options.sort((a, b) => b.stats.netIncome - a.stats.netIncome);
+
+    return options.shift();
 }
