@@ -14,7 +14,7 @@ export class RampartProtector extends CombatCreep {
             return;
         }
 
-        if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
+        if (!this.memory.assignment || this.travelToRoom(this.memory.assignment) === IN_ROOM) {
             // Assasination
             if (this.memory.ready >= 5) {
                 const targetCreep = Game.getObjectById(this.memory.targetId2);
