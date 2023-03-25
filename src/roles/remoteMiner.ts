@@ -94,7 +94,10 @@ export class RemoteMiner extends WaveCreep {
                     this.travelTo(lairPositions.pop(), { range: 7, flee: true, goals: lairPositions, maxRooms: 1 }); // Travel out of harms way
                 }
             } else {
-                this.say('🚚 is SLOW!');
+                if (this.travelToRoom(this.memory.assignment) === IN_ROOM) {
+                    // Keep remote Miners from being around spawn
+                    this.say('🚚 is SLOW!');
+                }
             }
         } else {
             this.travelToRoom(this.memory.assignment);
