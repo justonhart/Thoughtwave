@@ -626,9 +626,9 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     } as Stamps;
     // 15 center extensions. If it goes above 20 then itll be in rcl 5
     let extensionCount = 15;
+    let linkRcl = 6;
     // Block all available spots around sources for link and extension
     findBestMiningPostitions(room, terrain).forEach((bestSpot) => {
-        let linkRcl = 6;
         addUniqueRoad(stamps, { type: `source${stamps.container.length}`, rcl: 3, pos: bestSpot.adjacentSpaces.shift() });
         stamps.link.push({ type: `source${stamps.container.length}`, rcl: linkRcl, pos: bestSpot.adjacentSpaces.shift() });
         linkRcl++;

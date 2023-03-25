@@ -26,7 +26,7 @@ export function driveRoom(room: Room) {
         return;
     }
 
-    if (!Memory.rooms[room.name]) {
+    if (!Memory.rooms[room.name] || Object.keys(Memory.rooms[room.name])?.length === 0) {
         initRoom(room);
     } else {
         initMissingMemoryValues(room);
@@ -471,12 +471,6 @@ function runHomeSecurity(homeRoom: Room): boolean {
 }
 
 export function initRoom(room: Room) {
-    let miningPostitions = findMiningPostitions(room);
-
-    if (!miningPostitions) {
-        return;
-    }
-
     Memory.rooms[room.name] = {
         gates: [],
         repairSearchCooldown: 0,
@@ -487,19 +481,12 @@ export function initRoom(room: Room) {
         towerRepairMap: {},
     };
 
-    miningPostitions.forEach((pos) => {
-        room.memory.miningAssignments[pos.toMemSafe()] = AssignmentStatus.UNASSIGNED;
-    });
-
-    const mineralMiningPosition = findMineralMiningPosition(room);
-    room.memory.mineralMiningAssignments[mineralMiningPosition.toMemSafe()] = AssignmentStatus.UNASSIGNED;
-
     //calculate room layout here
     const valid = findStampLocation(room);
     if (valid) {
         room.memory.layout = RoomLayout.STAMP;
         const spawn = room.stamps.spawn.find((spawnDetail) => spawnDetail.rcl === 1);
-        room.createConstructionSite(spawn, STRUCTURE_SPAWN);
+        room.createConstructionSite(spawn.pos, STRUCTURE_SPAWN);
         room.memory.miningAssignments = {};
         room.stamps.container
             .filter((containerStamp) => containerStamp.type?.includes('source'))

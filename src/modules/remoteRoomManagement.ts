@@ -187,13 +187,16 @@ function createMiningPositionData(controllingRoomName: string, remoteRoomName: s
         }
     });
 
-    const mineralTargets: Mineral[] = remoteRoom.find(FIND_MINERALS);
-    mineralTargets.forEach((target) => {
-        const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
-        if (!path.incomplete) {
-            miningPositions[target.id] = path.path.pop().toMemSafe();
-        }
-    });
+    // Only add minerals for keeper/center rooms
+    if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
+        const mineralTargets: Mineral[] = remoteRoom.find(FIND_MINERALS);
+        mineralTargets.forEach((target) => {
+            const path = PathFinder.search(getStoragePos(controllingRoom), { pos: target.pos, range: 1 });
+            if (!path.incomplete) {
+                miningPositions[target.id] = path.path.pop().toMemSafe();
+            }
+        });
+    }
 
     return miningPositions;
 }
