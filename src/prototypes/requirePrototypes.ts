@@ -4,3 +4,4 @@ require('./structureSpawn');
 require('./structureController');
 require('./structureLab');
 require('./structure');
+require('./string');

@@ -1,6 +1,6 @@
 import { CombatIntel } from './combatIntel';
 import { runLabs } from './labManagement';
-import { getExitDirections, isCenterRoom, isKeeperRoom, posFromMem } from './data';
+import { getExitDirections, isCenterRoom, isKeeperRoom } from './data';
 import { PopulationManagement } from './populationManagement';
 import { addRemoteRoom, manageRemoteRoom } from './remoteRoomManagement';
 import {
@@ -219,7 +219,7 @@ export function driveRoom(room: Room) {
         runTowers(room, isHomeUnderAttack);
 
         if (room.memory.anchorPoint) {
-            let anchorPoint = posFromMem(room.memory.anchorPoint);
+            let anchorPoint = room.memory.anchorPoint.toRoomPos();
             if (
                 anchorPoint
                     .findInRange(FIND_HOSTILE_CREEPS, 6)
@@ -522,7 +522,7 @@ function findMiningPostitions(room: Room) {
             .map((terrain) => new RoomPosition(terrain.x, terrain.y, source.room.name));
 
         //set closest position to storage as container position
-        let anchorPoint = posFromMem(room.memory.anchorPoint);
+        let anchorPoint = room.memory.anchorPoint.toRoomPos();
         let referencePos = anchorPoint ? new RoomPosition(anchorPoint.x + 1, anchorPoint.y - 1, room.name) : room.controller.pos;
         let candidate = referencePos.findClosestByPath(possiblePositions, { ignoreCreeps: true });
         if (candidate) {
@@ -545,7 +545,7 @@ function findMineralMiningPosition(room: Room): RoomPosition {
         .map((terrain) => new RoomPosition(terrain.x, terrain.y, room.mineral.room.name));
 
     //set closest position to storage as container position
-    let anchorPoint = posFromMem(room.memory.anchorPoint);
+    let anchorPoint = room.memory.anchorPoint.toRoomPos();
     let referencePos = anchorPoint ? new RoomPosition(anchorPoint.x + 1, anchorPoint.y - 1, room.name) : room.controller.pos;
     let candidate = referencePos.findClosestByPath(possiblePositions, { ignoreCreeps: true });
     if (candidate) {
@@ -625,7 +625,7 @@ function runSpawning(room: Room) {
 
     if (PopulationManagement.needsManager(room)) {
         if (room.memory.layout === RoomLayout.BUNKER) {
-            const suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(posFromMem(room.memory.anchorPoint)));
+            const suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(room.memory.anchorPoint.toRoomPos()));
             if (suitableSpawn) {
                 suitableSpawn.spawnManager();
                 availableSpawns = availableSpawns.filter((spawn) => spawn !== suitableSpawn);
@@ -742,14 +742,14 @@ function runGates(room: Room): void {
 }
 
 function placeMiningPositionContainers(room: Room) {
-    let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos));
+    let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => pos.toRoomPos());
     miningPositions.forEach((pos) => {
         room.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
     });
 }
 
 function placeMiningRamparts(room: Room) {
-    let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos));
+    let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => pos.toRoomPos());
     miningPositions.forEach((pos) => {
         room.createConstructionSite(pos.x, pos.y, STRUCTURE_RAMPART);
     });
@@ -762,7 +762,7 @@ function placeMineralContainers(room: Room) {
         room.memory.mineralMiningAssignments[mineralMiningPos.toMemSafe()] = AssignmentStatus.UNASSIGNED;
     }
 
-    let miningPositions = Object.keys(room.memory.mineralMiningAssignments).map((pos) => posFromMem(pos));
+    let miningPositions = Object.keys(room.memory.mineralMiningAssignments).map((pos) => pos.toRoomPos());
     miningPositions.forEach((pos) => {
         Game.rooms[pos.roomName]?.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
     });
@@ -954,7 +954,7 @@ export function findRemoteMiningOptions(room: Room): { source: string; stats: Re
         .filter((source) => !Memory.remoteSourceAssignments[source])
         .map((source) => {
             console.log(source);
-            let sourcePos = posFromMem(source);
+            let sourcePos = source.toRoomPos();
             let stats = calculateRemoteSourceStats(sourcePos, room);
             return { source, stats };
         });

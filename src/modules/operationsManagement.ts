@@ -1,4 +1,4 @@
-import { addVisionRequest, posFromMem } from './data';
+import { addVisionRequest } from './data';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
 import { addRemoteRoom } from './remoteRoomManagement';
@@ -244,7 +244,7 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
     delete opts?.originRoom;
 
     if (!originRoom) {
-        const originResult = findOperationOrigin(posFromMem(opts?.portalLocations?.[0])?.roomName ?? targetRoom, opts?.originOpts);
+        const originResult = findOperationOrigin(opts?.portalLocations?.[0]?.toRoomPos()?.roomName ?? targetRoom, opts?.originOpts);
         originRoom = originResult?.roomName;
         if (!opts?.pathCost) {
             if (!opts) {
@@ -596,7 +596,7 @@ function sortByBodyPart(prioritizedBodyPart: BodyPartConstant, bodyA: BodyPartCo
 }
 
 export function launchIntershardParty(portalLocations: string[], destinationRoom: string) {
-    let origin = findOperationOrigin(posFromMem(portalLocations[0]).roomName)?.roomName;
+    let origin = findOperationOrigin(portalLocations[0].toRoomPos().roomName)?.roomName;
 
     console.log(`launching intershard from ${origin}`);
 

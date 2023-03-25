@@ -1,5 +1,4 @@
 import { isKeeperRoom } from '../modules/data';
-import { posFromMem } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class RemoteMiner extends WaveCreep {
     protected run() {
@@ -29,7 +28,7 @@ export class RemoteMiner extends WaveCreep {
                 this.memory.destination = this.findNextMiningPos(isAKeeperRoom);
             }
 
-            let targetPos = posFromMem(this.memory.destination);
+            let targetPos = this.memory.destination.toRoomPos();
             if (targetPos) {
                 if (!this.pos.isEqualTo(targetPos)) {
                     if (isAKeeperRoom && this.destinationSpawningKeeper(this.memory.destination)) {
@@ -104,7 +103,7 @@ export class RemoteMiner extends WaveCreep {
 
     private findNextMiningPos(isKeeperRoom: boolean): string {
         const nextPos = Object.entries(Memory.remoteData[this.memory.assignment]?.miningPositions)?.find(([sourceId, miningPosString]) => {
-            const pos = posFromMem(miningPosString);
+            const pos = miningPosString.toRoomPos();
             if (isKeeperRoom) {
                 // LAIR
                 const lairId = Memory.remoteData[this.memory.assignment]?.sourceKeeperLairs[sourceId];

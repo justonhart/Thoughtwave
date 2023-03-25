@@ -1,5 +1,4 @@
 import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
-import { posFromMem } from '../modules/data';
 import { PopulationManagement } from '../modules/populationManagement';
 import { getFactoryResourcesNeeded } from '../modules/resourceManagement';
 import { findRepairTargets, getStructuresToProtect } from '../modules/roomManagement';
@@ -95,7 +94,7 @@ Object.defineProperty(Room.prototype, 'mineral', {
 
 Object.defineProperty(Room.prototype, 'managerLink', {
     get: function (this: Room) {
-        let posToCheck = posFromMem(this.memory.anchorPoint || this.memory.managerPos);
+        let posToCheck = this.memory.anchorPoint?.toRoomPos() || this.memory.managerPos?.toRoomPos();
         if (this.memory.layout === RoomLayout.STAMP) {
             posToCheck = this.stamps.link.find((linkDetail) => linkDetail.type === 'rm')?.pos;
         } else if (this.memory.managerLink) {
@@ -119,7 +118,7 @@ Object.defineProperty(Room.prototype, 'upgraderLink', {
         if (this.memory.layout === RoomLayout.STAMP) {
             posToCheck = this.stamps.link.find((linkDetail) => linkDetail.type === 'controller')?.pos;
         } else {
-            posToCheck = posFromMem(this.memory.upgraderLinkPos);
+            posToCheck = this.memory.upgraderLinkPos.toRoomPos();
         }
 
         let link = posToCheck

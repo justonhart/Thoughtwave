@@ -1,5 +1,4 @@
 import { CombatCreep } from '../virtualCreeps/combatCreep';
-import { posFromMem } from './data';
 import { Pathing } from './pathing';
 
 export class SquadManagement {
@@ -332,7 +331,7 @@ export class SquadManagement {
                     Memory.squads[this.squadId].forcedDestinations = this.forcedDestinations.slice(1);
                     nextDestination = this.forcedDestinations[0];
                 }
-                this.squadLeader.travelTo(posFromMem(nextDestination));
+                this.squadLeader.travelTo(nextDestination.toRoomPos());
             } else if (Game.flags.squadMove?.pos?.roomName === this.assignment) {
                 // Manual Pathing
                 this.squadLeader.travelTo(Game.flags.squadMove);
@@ -451,7 +450,7 @@ export class SquadManagement {
             // Manual targeting (costMatrix disabled?)
             return Pathing.findTravelPath(this.squadLeader, this.squadLeader.pos, Game.flags.squadMove.pos, { customMatrixCosts: matrix });
         }
-        if (posFromMem(this.squadLeader.memory._m.lastCoord).roomName !== this.squadLeader.pos.roomName) {
+        if (this.squadLeader.memory._m.lastCoord.toRoomPos().roomName !== this.squadLeader.pos.roomName) {
             delete this.squadLeader.memory._m.path;
         }
         if (target && !this.squadLeader.memory._m.path) {
@@ -812,9 +811,9 @@ export class SquadManagement {
                     Memory.squads[this.squadId].forcedDestinations = this.forcedDestinations.slice(1);
                     nextDestination = this.forcedDestinations[0];
                 }
-                this.squadLeader.travelTo(posFromMem(nextDestination));
+                this.squadLeader.travelTo(nextDestination.toRoomPos());
             } else if (this.squadLeader.pos.roomName === this.assignment) {
-                this.squadLeader.travelTo(posFromMem(this.squadLeader.memory._m.destination));
+                this.squadLeader.travelTo(this.squadLeader.memory._m.destination.toRoomPos());
             } else {
                 const exits = Game.map.describeExits(this.squadLeader.room.name);
                 if (Object.values(exits).find((exit) => exit === this.assignment)) {

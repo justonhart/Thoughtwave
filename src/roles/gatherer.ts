@@ -1,5 +1,4 @@
 import { isKeeperRoom } from '../modules/data';
-import { posFromMem } from '../modules/data';
 import { Pathing } from '../modules/pathing';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
@@ -57,7 +56,7 @@ export class Gatherer extends TransportCreep {
                 (this.onEdge() || this.pos.isNearTo(Game.getObjectById(this.memory.storeRoadInMemory)))
         );
         // Going back to storage
-        if (posFromMem(this.memory._m.destination)?.roomName === this.memory.room) {
+        if (this.memory._m.destination?.toRoomPos()?.roomName === this.memory.room) {
             this.storeRoadInMemory(roomPositions);
         }
 
@@ -174,7 +173,7 @@ export class Gatherer extends TransportCreep {
         const targets: { id: Id<Resource> | Id<Structure> | Id<Tombstone>; amount: number }[] = [];
 
         Object.values(miningPositions).forEach((posString) => {
-            const pos = posFromMem(posString);
+            const pos = posString.toRoomPos();
             const areaInRange = Pathing.getArea(pos, 3);
             const lookArea = Game.rooms[roomName].lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);
             if (

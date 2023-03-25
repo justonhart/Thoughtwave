@@ -1,6 +1,5 @@
 import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { getResourceBoostsAvailable } from './labManagement';
-import { posFromMem } from './data';
 import { roomNeedsCoreStructures } from './roomDesign';
 
 const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
@@ -186,7 +185,7 @@ export class PopulationManagement {
         //             creep.memory.room === room.name &&
         //             !creep.memory.hasTTLReplacement &&
         //             creep.ticksToLive <
-        //                 PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), room.energyCapacityAvailable).length * 3
+        //                 PopulationManagement.getMinerBody(creep.memory.assignment.toRoomPos(), room.energyCapacityAvailable).length * 3
         //     );
         // }
         return roomNeedsMiner;
@@ -237,7 +236,7 @@ export class PopulationManagement {
         //             creep.memory.role === Role.MINER &&
         //             creep.memory.room === spawn.room.name &&
         //             creep.ticksToLive <
-        //                 PopulationManagement.getMinerBody(posFromMem(creep.memory.assignment), spawn.room.energyCapacityAvailable).length * 3
+        //                 PopulationManagement.getMinerBody(creep.memory.assignment.toRoomPos(), spawn.room.energyCapacityAvailable).length * 3
         //     );
         //     assigment = currentMiner?.memory.assignment;
         // }
@@ -250,7 +249,7 @@ export class PopulationManagement {
             },
         };
 
-        let assigmentPos = posFromMem(assigment);
+        let assigmentPos = assigment.toRoomPos();
         let link = assigmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((s) => s.structureType === STRUCTURE_LINK) as StructureLink;
         if (link) {
             options.memory.link = link.id;
@@ -769,7 +768,7 @@ export class PopulationManagement {
         // find safe spawn direction in predefined layouts
         if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
             if (!opts.directions) {
-                let anchorPoint = posFromMem(spawn.room.memory.anchorPoint);
+                let anchorPoint = spawn.room.memory.anchorPoint.toRoomPos();
 
                 if (spawn.pos.x - anchorPoint.x === 0) {
                     opts.directions = [TOP_LEFT, TOP_RIGHT];
@@ -833,7 +832,7 @@ export class PopulationManagement {
 
         let levelCap = 8;
         if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
-            let anchorPoint = posFromMem(spawn.room.memory.anchorPoint);
+            let anchorPoint = spawn.room.memory.anchorPoint.toRoomPos();
 
             if (spawn.pos.x - anchorPoint.x === 0) {
                 options.directions = [BOTTOM];
@@ -920,11 +919,11 @@ export class PopulationManagement {
         return Object.keys(mineralMiningAssignments).some(
             (k) =>
                 mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED &&
-                (Game.rooms[posFromMem(k)?.roomName]
-                    ? posFromMem(k)
+                (Game.rooms[k.toRoomPos()?.roomName]
+                    ? k.toRoomPos()
                           .findInRange(FIND_STRUCTURES, 1)
                           .filter((struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.isActive()).length &&
-                      Game.rooms[posFromMem(k)?.roomName].mineral.mineralAmount > 0
+                      Game.rooms[k.toRoomPos()?.roomName].mineral.mineralAmount > 0
                     : true)
         );
     }

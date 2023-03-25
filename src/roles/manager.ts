@@ -1,4 +1,3 @@
-import { posFromMem } from '../modules/data';
 import { getFactoryResourcesNeeded, shipmentReady } from '../modules/resourceManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
@@ -9,7 +8,7 @@ export class Manager extends WaveCreep {
 
     protected run() {
         const managerPos =
-            this.room.memory.layout === RoomLayout.STAMP ? posFromMem(this.memory.destination) : posFromMem(this.room.memory?.managerPos);
+            this.room.memory.layout === RoomLayout.STAMP ? this.memory.destination.toRoomPos() : this.room.memory?.managerPos.toRoomPos();
         const isCenterStampManager =
             this.room.memory.layout === RoomLayout.STAMP &&
             this.room.stamps.managers.some(

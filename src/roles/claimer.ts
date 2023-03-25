@@ -1,4 +1,3 @@
-import { posFromMem } from '../modules/data';
 import { PopulationManagement } from '../modules/populationManagement';
 import { posInsideBunker } from '../modules/roomDesign';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
@@ -10,7 +9,7 @@ export class Claimer extends WaveCreep {
                 this.memory.assignment = this.room.controller.pos.toMemSafe();
             }
         } else {
-            let targetPos = posFromMem(this.memory.assignment);
+            let targetPos = this.memory.assignment.toRoomPos();
 
             if (this.room.name === this.memory.destination) {
                 // If there is an invader claimer in the room send a cleanup creep

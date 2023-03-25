@@ -1,4 +1,3 @@
-import { posFromMem } from './data';
 import { Pathing } from './pathing';
 
 export function calculateRoomSpace(room: Room) {
@@ -185,7 +184,7 @@ export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, 
 export function getSpawnPos(room: Room) {
     switch (room.memory.layout) {
         case RoomLayout.BUNKER:
-            let anchorPoint = posFromMem(room.memory.anchorPoint);
+            let anchorPoint = room.memory.anchorPoint.toRoomPos();
             return new RoomPosition(anchorPoint.x, anchorPoint.y - 1, room.name);
         case RoomLayout.STAMP:
             return room.stamps.spawn.find((spawnStamp) => spawnStamp.rcl === 1).pos;
@@ -195,7 +194,7 @@ export function getSpawnPos(room: Room) {
 export function getStoragePos(room: Room) {
     switch (room.memory.layout) {
         case RoomLayout.BUNKER:
-            let anchorPoint = posFromMem(room.memory.anchorPoint);
+            let anchorPoint = room.memory.anchorPoint.toRoomPos();
             return new RoomPosition(anchorPoint.x + 1, anchorPoint.y - 1, room.name);
         case RoomLayout.STAMP:
             return room.stamps.storage[0].pos;
@@ -232,7 +231,7 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
         pois.push(room.controller);
 
         if (Memory.rooms[room.name]) {
-            pois.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
+            pois.push(...Object.keys(room.memory.miningAssignments).map((pos) => pos.toRoomPos()));
         } else {
             pois.push(...room.find(FIND_SOURCES).map((s) => s.pos));
         }
@@ -257,7 +256,7 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
         roadPositions.push(...room.find(FIND_MY_CONSTRUCTION_SITES).filter((site) => site.structureType === STRUCTURE_ROAD));
 
         if (Memory.rooms[room.name]) {
-            blockedPositions.push(...Object.keys(room.memory.miningAssignments).map((pos) => posFromMem(pos)));
+            blockedPositions.push(...Object.keys(room.memory.miningAssignments).map((pos) => pos.toRoomPos()));
         }
 
         let findPathToStorage = (poi: RoomPosition | Mineral | StructureController) => {
@@ -294,7 +293,7 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
 
         let sourcePaths;
         if (Memory.rooms[room.name]) {
-            sourcePaths = Object.keys(room.memory.miningAssignments).map((pos) => findPathToStorage(posFromMem(pos)));
+            sourcePaths = Object.keys(room.memory.miningAssignments).map((pos) => findPathToStorage(pos.toRoomPos()));
         } else {
             sourcePaths = room
                 .find(FIND_SOURCES)
@@ -321,7 +320,7 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
 
 export function drawRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
     if (!anchorPos) {
-        anchorPos = posFromMem(room.memory.anchorPoint);
+        anchorPos = room.memory.anchorPoint.toRoomPos();
     }
 
     let paths = getBunkerRoadsToPOIs(anchorPos);
@@ -334,7 +333,7 @@ export function drawRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
 
 export function placeRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
     if (!anchorPos) {
-        anchorPos = posFromMem(room.memory.anchorPoint);
+        anchorPos = room.memory.anchorPoint.toRoomPos();
     }
 
     let paths = getBunkerRoadsToPOIs(anchorPos);
@@ -347,14 +346,14 @@ export function placeRoadsToPOIs(room: Room, anchorPos?: RoomPosition) {
 
 export function posInsideBunker(pos: RoomPosition, anchorPos?: RoomPosition) {
     if (!anchorPos) {
-        anchorPos = posFromMem(Game.rooms[pos.roomName].memory.anchorPoint);
+        anchorPos = Game.rooms[pos.roomName].memory.anchorPoint.toRoomPos();
     }
 
     return !!anchorPos ? pos.x <= anchorPos.x + 6 && pos.x >= anchorPos.x - 6 && pos.y <= anchorPos.y + 6 && pos.y >= anchorPos.y - 6 : false;
 }
 
 export function placeBunkerOuterRamparts(room: Room) {
-    let anchor = posFromMem(room.memory.anchorPoint);
+    let anchor = room.memory.anchorPoint.toRoomPos();
 
     if (anchor) {
         let topLeft = new RoomPosition(anchor.x - 6, anchor.y - 6, room.name);
@@ -373,7 +372,7 @@ export function placeBunkerOuterRamparts(room: Room) {
 }
 
 export function placeBunkerInnerRamparts(room: Room) {
-    let anchor = posFromMem(room.memory.anchorPoint);
+    let anchor = room.memory.anchorPoint.toRoomPos();
 
     if (anchor) {
         let topLeft = new RoomPosition(anchor.x - 5, anchor.y - 5, room.name);
@@ -392,7 +391,7 @@ export function placeBunkerInnerRamparts(room: Room) {
 }
 
 export function placeBunkerCoreRamparts(room: Room) {
-    let anchor = posFromMem(room.memory.anchorPoint);
+    let anchor = room.memory.anchorPoint.toRoomPos();
 
     if (anchor) {
         let topLeft = new RoomPosition(anchor.x - 3, anchor.y - 3, room.name);
@@ -411,9 +410,9 @@ export function placeBunkerCoreRamparts(room: Room) {
 export function placeMinerLinks(room: Room) {
     if (room.managerLink) {
         Object.keys(room.memory.miningAssignments)
-            .sort((posA, posB) => room.managerLink.pos.getRangeTo(posFromMem(posB)) - room.managerLink.pos.getRangeTo(posFromMem(posA)))
+            .sort((posA, posB) => room.managerLink.pos.getRangeTo(posB.toRoomPos()) - room.managerLink.pos.getRangeTo(posA.toRoomPos()))
             .forEach((assignmentString) => {
-                let assignmentPos = posFromMem(assignmentString);
+                let assignmentPos = assignmentString.toRoomPos();
 
                 let linkNeeded =
                     !assignmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((structure) => structure.structureType === STRUCTURE_LINK) &&
@@ -457,7 +456,7 @@ export function placeUpgraderLink(room: Room) {
             room.memory.upgraderLinkPos = closest.toMemSafe();
         }
 
-        let linkPos = posFromMem(room.memory.upgraderLinkPos);
+        let linkPos = room.memory.upgraderLinkPos.toRoomPos();
 
         room.createConstructionSite(linkPos, STRUCTURE_LINK);
     }
@@ -475,10 +474,10 @@ export function roomNeedsCoreStructures(room: Room) {
     let labCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_LAB).length;
     let towerCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER).length;
     let managerLink =
-        posFromMem(room.memory.anchorPoint || room.memory.managerPos)
+        room.memory.anchorPoint?.toRoomPos() || room.memory.managerPos?.toRoomPos()
             ?.findInRange(FIND_MY_STRUCTURES, 1)
             .filter((s) => s.structureType === STRUCTURE_LINK).length +
-            posFromMem(room.memory.anchorPoint || room.memory.managerPos)
+            (room.memory.anchorPoint?.toRoomPos() || room.memory.managerPos?.toRoomPos())
                 ?.findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
                 .filter((s) => s.structureType === STRUCTURE_LINK).length >=
         1;
@@ -522,7 +521,7 @@ export function roomNeedsCoreStructures(room: Room) {
 }
 
 export function placeBunkerConstructionSites(room: Room) {
-    let referencePos = posFromMem(room.memory.anchorPoint);
+    let referencePos = room.memory.anchorPoint.toRoomPos();
 
     if (referencePos) {
         let placed = 0;
@@ -567,7 +566,7 @@ export function placeBunkerConstructionSites(room: Room) {
 
 //remove structures that aren't where they need to be (for example, storage structures that used to contain energy)
 export function cleanRoom(room: Room) {
-    let anchorPoint = posFromMem(room.memory.anchorPoint);
+    let anchorPoint = room.memory.anchorPoint.toRoomPos();
 
     if (anchorPoint) {
         let structuresToCheck: (StructureStorage | StructureTerminal)[] = [];
@@ -988,7 +987,7 @@ export function readStampLayoutFromMemory(room: Room): Stamps {
     Object.values(stamps).map((stampsDetails: StampDetail[]) =>
         stampsDetails
             .filter((stampDetail) => stampDetail.pos)
-            .forEach((stampDetail) => (stampDetail.pos = posFromMem(stampDetail.pos as unknown as string)))
+            .forEach((stampDetail) => (stampDetail.pos = (stampDetail.pos as unknown as string).toRoomPos()))
     );
     return stamps;
 }

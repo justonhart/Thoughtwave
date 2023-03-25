@@ -1,4 +1,4 @@
-import { isKeeperRoom, posFromMem } from '../modules/data';
+import { isKeeperRoom } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class RemoteMineralMiner extends WaveCreep {
@@ -9,7 +9,7 @@ export class RemoteMineralMiner extends WaveCreep {
         }
 
         // Store Cargo
-        if (this.memory.destination && posFromMem(this.memory.destination).roomName === this.memory.room) {
+        if (this.memory.destination && this.memory.destination.toRoomPos().roomName === this.memory.room) {
             this.storeCargo();
             if (!this.store.getUsedCapacity()) {
                 const minTicks = isKeeperRoom(this.memory.assignment) ? 200 : 250;
@@ -26,7 +26,7 @@ export class RemoteMineralMiner extends WaveCreep {
                 this.memory.destination = this.findTarget();
             }
 
-            let targetPos = posFromMem(this.memory.destination);
+            let targetPos = this.memory.destination.toRoomPos();
             if (targetPos) {
                 if (!this.pos.isEqualTo(targetPos)) {
                     if (
@@ -81,7 +81,7 @@ export class RemoteMineralMiner extends WaveCreep {
             }
             return true;
         });
-        if (!nextPos || this.hasKeeper(posFromMem(nextPos[1]))) {
+        if (!nextPos || this.hasKeeper(nextPos[1].toRoomPos())) {
             return undefined;
         }
         return nextPos[1];

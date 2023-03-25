@@ -1,4 +1,3 @@
-import { posFromMem } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Scout extends WaveCreep {
@@ -115,7 +114,7 @@ export class Scout extends WaveCreep {
      */
     private getPath(target: RoomPosition): PathFinderPath {
         return PathFinder.search(
-            posFromMem(this.memory.scout.spawn),
+            this.memory.scout.spawn.toRoomPos(),
             { pos: target, range: 1 },
             { plainCost: 1, swampCost: 2, maxCost: this.homeroom.controller.level < 7 ? 70 : 90 }
         );
