@@ -682,7 +682,18 @@ function runSpawning(room: Room) {
         }
     }
 
-    availableSpawns.forEach((spawn) => spawn.spawnWorker(roomUnderAttack));
+    availableSpawns.forEach((spawn) => {
+        const result = spawn.spawnWorker(roomUnderAttack);
+        if (result === undefined && !spawn.store.getFreeCapacity()) {
+            // did not spawn any workers so check if we can renew managers
+            const renewableManager = room.creeps.find(
+                (creep) => creep.memory.role === Role.MANAGER && creep.ticksToLive < 1000 && spawn.pos.getRangeTo(creep) === 1
+            );
+            if (renewableManager) {
+                spawn.renewCreep(renewableManager);
+            }
+        }
+    });
 }
 
 export function findRepairTargets(room: Room): Id<Structure>[] {
