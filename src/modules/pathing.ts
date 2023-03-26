@@ -1,4 +1,4 @@
-import { isKeeperRoom, posFromMem } from '../modules/data';
+import { isHighway, isKeeperRoom, posFromMem } from '../modules/data';
 
 //@ts-ignore
 global.IN_ROOM = -20;
@@ -477,9 +477,7 @@ export class Pathing {
                     return 1;
                 }
                 if (options.preferHighway) {
-                    const parsed = /^[WE]([0-9]+)[NS]([0-9]+)$/.exec(roomName) as unknown;
-                    const isHighway = parsed[1] % 10 === 0 || parsed[2] % 10 === 0;
-                    if (isHighway) {
+                    if (isHighway(roomName)) {
                         return 1;
                     }
                 }

@@ -50,6 +50,8 @@ interface RoomData {
     owner?: string;
     hostile?: boolean;
     roomLevel?: number;
+    powerBank?: boolean;
+    deposits?: DepositConstant[];
     roads?: { [id: Id<Structure>]: string }; // RoomPosition: coordinates separated by delimiter
 }
 

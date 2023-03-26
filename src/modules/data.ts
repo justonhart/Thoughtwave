@@ -55,6 +55,20 @@ export function updateRoomData(room: Room) {
         delete data.hostile;
     }
 
+    if (isHighway(room.name)) {
+        delete data.powerBank;
+        delete data.deposits;
+        const hasPowerBank = room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK }).length > 0;
+        if (hasPowerBank) {
+            data.powerBank = true;
+        }
+
+        const deposits = room.find(FIND_DEPOSITS);
+        if (deposits.length) {
+            data.deposits = deposits.map((deposit) => deposit.depositType);
+        }
+    }
+
     data.asOf = Game.time;
 
     Memory.roomData[room.name] = data;
@@ -162,4 +176,9 @@ export function addVisionRequest(request: VisionRequest): string | ScreepsReturn
 
 export function getExitDirections(roomName: string): DirectionConstant[] {
     return Object.keys(Game.map.describeExits(roomName)).map((key) => parseInt(key)) as DirectionConstant[];
+}
+
+export function isHighway(roomName: string): boolean {
+    const parsed = /^[WE]([0-9]+)[NS]([0-9]+)$/.exec(roomName) as unknown;
+    return parsed[1] % 10 === 0 || parsed[2] % 10 === 0;
 }
