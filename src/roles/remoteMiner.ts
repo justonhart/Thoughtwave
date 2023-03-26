@@ -44,10 +44,10 @@ export class RemoteMiner extends WaveCreep {
                         if(this.homeroom.memory.remoteSources[source.pos.toMemSafe()].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER){
                             this.homeroom.memory.remoteSources[source.pos.toMemSafe()].setupStatus = RemoteSourceSetupStatus.BUILDING_ROAD;
                         }
-                        if(source.energy && (container.store.getFreeCapacity() || this.store.getFreeCapacity())){
-                            this.harvest(source);
-                        } else if (container.hits < container.hitsMax){
+                        if (this.store.energy && container.hits < container.hitsMax){
                             this.repair(container);
+                        } else if(source.energy && (container.store.getFreeCapacity() || this.store.getFreeCapacity())){
+                            this.harvest(source);
                         } else {
                             this.say('...');
                         }
