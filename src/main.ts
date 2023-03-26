@@ -87,14 +87,6 @@ module.exports.loop = function () {
         Game.creeps[creepName].runPriorityQueueTask();
     });
 
-    if (Memory.logCPU) {
-        console.log(cpuUsageString + `total: ${Game.cpu.getUsed().toFixed(2)}`);
-    }
-
-    if (Game.cpu.bucket === 10000) {
-        Game.cpu.generatePixel();
-    }
-
     try {
         runVisuals();
     } catch (e) {
@@ -103,4 +95,12 @@ module.exports.loop = function () {
 
     cpuUsageString += `visuals cpu: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
     cpuUsed = Game.cpu.getUsed();
+
+    if (Memory.debug?.logCpu) {
+        console.log(cpuUsageString + `total: ${Game.cpu.getUsed().toFixed(2)}`);
+    }
+
+    if (Game.cpu.bucket === 10000) {
+        Game.cpu.generatePixel();
+    }
 };

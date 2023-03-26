@@ -254,6 +254,10 @@ function initMissingMemoryValues() {
     if (!Memory.remoteSourceAssignments) {
         Memory.remoteSourceAssignments = {};
     }
+
+    if (!Memory.debug){
+        Memory.debug = {};
+    }
 }
 
 function mangeVisionRequests() {

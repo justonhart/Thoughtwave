@@ -12,6 +12,7 @@ interface Memory {
     visionRequests?: { [id: string]: VisionRequest };
     remoteSourceClaims?: { [sourcePos: string]: { claimant: string; netIncome: number } }; //map of potential remote rooms to rooms intending to claim them and their anticipated net income - higher income gets priority
     remoteSourceAssignments?: { [sourcePos: string]: string }; //maps sources in other rooms to owned rooms mining them
+    debug?: DebugSettings;
 }
 
 interface EmpireIntershard {
@@ -152,4 +153,11 @@ interface VisionRequest {
     assigned?: boolean;
     onTick?: number; //what tick is the vision required? undefined = immediately
     completed?: boolean; //once need is done, mark completed to remove
+}
+
+interface DebugSettings {
+    drawStamps?: boolean;
+    logCpu?: boolean;
+    drawRoads?: boolean;
+    drawRemoteConnections?: boolean;
 }

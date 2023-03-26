@@ -3,9 +3,17 @@ import { drawLayout } from "./roomDesign";
 
 export function runVisuals() {
     highlightHostileRooms();
-    drawRoadsFromRoomData();
-    drawLinesToRemoteRooms();
-    drawRoomVisuals();
+    if(Memory.debug?.drawRoads){
+        drawRoadsFromRoomData();
+    }
+
+    if(Memory.debug?.drawRemoteConnections){
+        drawLinesToRemoteRooms();
+    }
+
+    if(Memory.debug?.drawStamps){
+        drawRoomVisuals();
+    }
 }
 
 function drawRoadsFromRoomData() {
