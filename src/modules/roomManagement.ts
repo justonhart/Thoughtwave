@@ -88,6 +88,7 @@ export function driveRoom(room: Room) {
                 Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
                 room.find(FIND_MY_CONSTRUCTION_SITES).length < 15
             ) {
+                let cpuUsed = Game.cpu.getUsed();
                 switch (room.controller.level) {
                     case 8:
                         if (!roomNeedsCoreStructures(room)) {
@@ -118,6 +119,10 @@ export function driveRoom(room: Room) {
                 }
                 global.roomConstructionsChecked = true;
                 room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
+                cpuUsed = Game.cpu.getUsed() - cpuUsed;
+                if (Memory.debug.logRoomPlacementCpu) {
+                    console.log(`CPU used on ${room.name} bunker layout: ${cpuUsed}`);
+                }
             }
 
             if (
@@ -128,6 +133,7 @@ export function driveRoom(room: Room) {
                 Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
                 room.find(FIND_MY_CONSTRUCTION_SITES).length < 15
             ) {
+                let cpuUsed = 0;
                 // Cleanup any leftover storage/terminal that is in the way
                 if (
                     room.stamps.spawn.some(
@@ -212,6 +218,10 @@ export function driveRoom(room: Room) {
 
                 global.roomConstructionsChecked = true;
                 room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
+                cpuUsed = Game.cpu.getUsed() - cpuUsed;
+                if (Memory.debug.logRoomPlacementCpu) {
+                    console.log(`CPU used on ${room.name} stamp layout: ${cpuUsed}`);
+                }
             }
         }
 
@@ -255,7 +265,6 @@ export function driveRoom(room: Room) {
 
         //if this room doesn't have any outstanding claims
         if (canSupportRemoteRoom(room) && !room.memory.outstandingClaim && Game.time % 25 === 0) {
-            
         }
 
         // if (room.memory.outstandingClaim && Game.time % 300 === 0) {
@@ -873,12 +882,12 @@ function initMissingMemoryValues(room: Room) {
         room.memory.visionRequests = [];
     }
 
-    if(!room.memory.remoteSources) {
+    if (!room.memory.remoteSources) {
         room.memory.remoteSources = {};
     }
 }
 
-export function addRemoteSourceClaim(room: Room){
+export function addRemoteSourceClaim(room: Room) {
     let sourceToClaim = findSuitableRemoteSource(room, true);
 
     //if a room to claim is found, claim it if available and no closer claimant
@@ -899,7 +908,7 @@ export function addRemoteSourceClaim(room: Room){
     return sourceToClaim;
 }
 
-export function executeRemoteSourceClaim(room: Room){
+export function executeRemoteSourceClaim(room: Room) {
     let result = assignRemoteSource(room.memory.outstandingClaim, room.name);
     if (result === OK) {
         delete Memory.remoteSourceClaims[room.memory.outstandingClaim];

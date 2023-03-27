@@ -160,4 +160,5 @@ interface DebugSettings {
     logCpu?: boolean;
     drawRoads?: boolean;
     drawRemoteConnections?: boolean;
+    logRoomPlacementCpu?: boolean;
 }
