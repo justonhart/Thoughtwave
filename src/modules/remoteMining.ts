@@ -10,7 +10,7 @@ function calculateSourceRoadStats(
 ): { road: RoomPosition[], roadLength: number; maintenanceCost: number; miningPos: RoomPosition } {
     let storagePos = getStoragePos(room);
 
-    const road = getRoad(storagePos, sourcePos, {allowedStatuses: [RoomMemoryStatus.OWNED_INVADER, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT], ignoreOtherRoads: ignoreRoomDataRoads, destRange: 1});
+    const road = getRoad(storagePos, sourcePos, {allowedStatuses: [RoomMemoryStatus.RESERVED_INVADER, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT], ignoreOtherRoads: ignoreRoomDataRoads, destRange: 1});
 
     if (road.incomplete) {
         return { roadLength: -1, maintenanceCost: -1, miningPos: undefined, road: undefined };
@@ -253,9 +253,11 @@ export function findSuitableRemoteSource(room: Room, noKeeperRooms: boolean = fa
 
     remoteRooms.forEach(remoteRoom => isKeeperRoom(remoteRoom) || isCenterRoom(remoteRoom) ? keeperRoomsMined++ : otherRoomsMined++);
 
+    options.forEach(option => console.log(`${option.source}: ${option.stats?.netIncome}`))
+
     if (noKeeperRooms || room.controller.level < 7 || keeperRoomsMined >= 2) {
         //pre-7 rooms can't handle central room upkeep
-        options = options.filter((option) => option.stats.sourceSize === 3000);
+        options = options.filter((option) => option.stats?.sourceSize === 3000);
     } 
 
     //prefer central rooms over other rooms and prefer closer to farther
