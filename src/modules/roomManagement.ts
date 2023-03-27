@@ -4,6 +4,7 @@ import { runLabs } from './labManagement';
 import { PopulationManagement } from './populationManagement';
 import { assignRemoteSource, findSuitableRemoteSource } from './remoteMining';
 import { manageRemoteRoom } from './remoteRoomManagement';
+import { deleteRoad } from './roads';
 import {
     placeBunkerOuterRamparts,
     placeBunkerConstructionSites,
@@ -917,4 +918,45 @@ export function executeRemoteSourceClaim(room: Room) {
         console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
     }
     return result;
+}
+
+export function destructiveReset(roomName: string) {
+    if (Game.rooms[roomName]?.controller?.my) {
+        const room = Game.rooms[roomName];
+        //unassign remote sources
+        Object.keys(room.memory.remoteSources).forEach((source) => {
+            delete Memory.remoteSourceAssignments[source];
+        });
+
+        if (room.memory.outstandingClaim) {
+            delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
+        }
+
+        delete Memory.rooms[room.name];
+
+        const structuresToDestroy = room.find(FIND_STRUCTURES, {
+            filter: (s) =>
+                s.structureType !== STRUCTURE_SPAWN &&
+                s.structureType !== STRUCTURE_STORAGE &&
+                s.structureType !== STRUCTURE_TERMINAL &&
+                s.structureType !== STRUCTURE_EXTRACTOR &&
+                s.structureType !== STRUCTURE_NUKER,
+        });
+
+        let spawns = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN });
+        spawns.slice(1).forEach((spawn) => spawn.destroy());
+
+        structuresToDestroy.forEach((struct) => struct.destroy());
+
+        const creeps = Object.keys(Memory.creeps).filter((c) => Memory.creeps[c].room === room.name);
+        creeps.forEach((c) => {
+            Memory.creeps[c] = {};
+            Game.creeps[c].suicide();
+        });
+
+        let roadsStartingHere = Object.keys(Memory.roomData[roomName].roads).filter(
+            (roadKey) => roadKey.split(':')[0].toRoomPos().roomName === roomName
+        );
+        roadsStartingHere.forEach((road) => deleteRoad(road));
+    }
 }
