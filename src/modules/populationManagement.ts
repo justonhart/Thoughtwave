@@ -286,11 +286,12 @@ export class PopulationManagement {
     }
 
     static findRemoteMinerNeed(room: Room): string {
-        return room.remoteSources.find(s => 
-            room.memory.remoteSources[s].miner === AssignmentStatus.UNASSIGNED &&
-            Memory.roomData[s.toRoomPos().roomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-            Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-            Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY
+        return room.remoteSources.find(
+            (s) =>
+                room.memory.remoteSources[s].miner === AssignmentStatus.UNASSIGNED &&
+                [RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT].includes(Memory.roomData[s.toRoomPos().roomName].roomStatus) &&
+                Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY
         );
     }
 
@@ -339,7 +340,7 @@ export class PopulationManagement {
                 Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY &&
                 room.memory.remoteSources[s].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER &&
-                room.memory.remoteSources[s].gatherers.some(g => g === AssignmentStatus.UNASSIGNED)
+                room.memory.remoteSources[s].gatherers.some((g) => g === AssignmentStatus.UNASSIGNED)
         );
     }
 
@@ -367,14 +368,21 @@ export class PopulationManagement {
         //         ? PopulationManagement.createPartsArray([WORK, CARRY, MOVE], spawn.room.energyAvailable, 10)
         //         : [WORK, WORK, CARRY, CARRY, MOVE, ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9)];
 
-        let PARTS = [WORK, WORK, CARRY, CARRY, MOVE, ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9)];
+        let PARTS = [
+            WORK,
+            WORK,
+            CARRY,
+            CARRY,
+            MOVE,
+            ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9),
+        ];
         let result = spawn.smartSpawn(PARTS, name, options);
 
         if (result === OK) {
-            let unassignedIndex = spawn.room.memory.remoteSources[source].gatherers.findIndex(g => g === AssignmentStatus.UNASSIGNED);
+            let unassignedIndex = spawn.room.memory.remoteSources[source].gatherers.findIndex((g) => g === AssignmentStatus.UNASSIGNED);
             if (unassignedIndex !== -1) {
                 spawn.room.memory.remoteSources[source].gatherers[unassignedIndex] = name;
-            } 
+            }
         }
 
         return result;
@@ -934,7 +942,8 @@ export class PopulationManagement {
             (k) =>
                 mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED &&
                 (Game.rooms[k.toRoomPos()?.roomName]
-                    ? k.toRoomPos()
+                    ? k
+                          .toRoomPos()
                           .findInRange(FIND_STRUCTURES, 1)
                           .filter((struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.isActive()).length &&
                       Game.rooms[k.toRoomPos()?.roomName].mineral.mineralAmount > 0
