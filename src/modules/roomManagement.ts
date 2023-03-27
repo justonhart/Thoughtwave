@@ -265,18 +265,29 @@ export function driveRoom(room: Room) {
         }
 
         //if this room doesn't have any outstanding claims
-        if (canSupportRemoteRoom(room) && !room.memory.outstandingClaim && Game.time % 25 === 0) {
+        if (
+            Game.time % 1000 !== 0 &&
+            !room.memory.outstandingClaim &&
+            canSupportRemoteRoom(room) &&
+            Game.time % 25 === 0 &&
+            !global.remoteSourcesChecked &&
+            Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000
+        ) {
+            console.log('checking remote sources for ' + room.name);
+            let result = addRemoteSourceClaim(room);
+            room.memory.lastRemoteSourceCheck = Game.time;
+            global.remoteSourcesChecked = true;
         }
 
-        // if (room.memory.outstandingClaim && Game.time % 300 === 0) {
-        //     let result = assignRemoteSource(room.memory.outstandingClaim, room.name);
-        //     if (result === OK) {
-        //         delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
-        //         delete room.memory.outstandingClaim;
-        //     } else {
-        //         console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
-        //     }
-        // }
+        if (room.memory.outstandingClaim && Game.time % 1000 === 0) {
+            let result = executeRemoteSourceClaim(room);
+            if (result === OK) {
+                delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
+                delete room.memory.outstandingClaim;
+            } else {
+                console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
+            }
+        }
 
         if (room.observer) {
             let visionRequestId = room.memory.visionRequests?.find(
@@ -840,10 +851,7 @@ function getStructurePriority(structureType: StructureConstant): number {
 }
 
 export function canSupportRemoteRoom(room: Room) {
-    //calculate a 'score' for total rooms mined
-    let score = room.remoteMiningRooms.reduce((total, next) => (isCenterRoom(next) || isKeeperRoom(next) ? total + 2 : total + 1), 0);
-    const MAX_SCORE = room.controller.level - 3;
-    return score < MAX_SCORE;
+    return room.remoteSources.length < 2;
 }
 
 function initMissingMemoryValues(room: Room) {

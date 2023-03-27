@@ -16,6 +16,8 @@ declare global {
     var nextTickFunctions: (() => void)[];
 
     var visionRequestIncrement: number;
+
+    var remoteSourcesChecked: boolean;
 }
 
 export {};

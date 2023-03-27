@@ -26,6 +26,7 @@ interface RoomMemory {
     visionRequests?: string[]; //vision request Ids
     outstandingClaim?: string; //source to be claimed
     remoteSources?: { [sourcePos: string]: RemoteSourceData };
+    lastRemoteSourceCheck?: number;
 }
 
 interface RemoteSourceData {
@@ -37,7 +38,7 @@ interface RemoteSourceData {
 
 const enum RemoteSourceSetupStatus {
     BUILDING_CONTAINER = 1,
-    BUILDING_ROAD
+    BUILDING_ROAD,
 }
 
 interface RemoteData {
@@ -186,7 +187,7 @@ const enum RoomLayout {
 
 interface RemoteStats {
     netIncome: number;
-    sourceSize: number
+    sourceSize: number;
     road: RoomPosition[];
     roadLength: number;
     roadMaintenance: number;
@@ -195,5 +196,5 @@ interface RemoteStats {
     gathererCount: number;
     gathererUpkeep: number;
     reserverUpkeep: number;
-    miningPos: RoomPosition
+    miningPos: RoomPosition;
 }

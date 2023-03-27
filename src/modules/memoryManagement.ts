@@ -31,6 +31,8 @@ export function manageMemory() {
 
     global.visionRequestIncrement = 1;
 
+    global.remoteSourcesChecked = false;
+
     deleteExpiredRoomData();
 
     let needToInitIntershard = !JSON.parse(InterShardMemory.getLocal())?.outboundCreeps;
@@ -64,16 +66,16 @@ export function validateAssignments() {
 
         Object.keys(Memory.rooms[roomName].remoteSources).forEach((source) => {
             let remoteRoomName = source.split('.')[2];
-            
+
             if (!Game.creeps[Memory.rooms[roomName].remoteSources[source].miner]) {
                 Memory.rooms[roomName].remoteSources[source].miner = AssignmentStatus.UNASSIGNED;
             }
 
             Memory.rooms[roomName].remoteSources[source].gatherers.forEach((gatherer, index) => {
-                if(!Game.creeps[gatherer]){
+                if (!Game.creeps[gatherer]) {
                     Memory.rooms[roomName].remoteSources[source].gatherers[index] = AssignmentStatus.UNASSIGNED;
                 }
-            })
+            });
 
             if (Memory.remoteData[remoteRoomName]?.reserver && !Game.creeps[Memory.remoteData[remoteRoomName].reserver]) {
                 Memory.remoteData[remoteRoomName].reserver = AssignmentStatus.UNASSIGNED;
@@ -93,20 +95,22 @@ function handleDeadCreep(deadCreepName: string) {
         if (deadCreepMemory.role === Role.MINER && !deadCreepMemory.hasTTLReplacement) {
             Memory.rooms[deadCreepMemory.room].miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
         }
-        if (
-            deadCreepMemory.role === Role.REMOTE_MINER
-        ) {
-            let source = Object.entries(Memory.rooms[deadCreepMemory.room].remoteSources).find(([key, value]) => value.miningPos === deadCreepMemory.assignment)?.[0];
-            if(source){
+        if (deadCreepMemory.role === Role.REMOTE_MINER) {
+            let source = Object.entries(Memory.rooms[deadCreepMemory.room].remoteSources).find(
+                ([key, value]) => value.miningPos === deadCreepMemory.assignment
+            )?.[0];
+            if (source) {
                 Memory.rooms[deadCreepMemory.room].remoteSources[source].miner = AssignmentStatus.UNASSIGNED;
             }
         }
-        if (
-            deadCreepMemory.role === Role.GATHERER
-        ) {
-            let source = Object.entries(Memory.rooms[deadCreepMemory.room].remoteSources).find(([source, data]) => data.gatherers.includes(deadCreepName))?.[0];
-            let gathererIndex = Memory.rooms[deadCreepMemory.room].remoteSources[source]?.gatherers.findIndex(creepName => creepName === deadCreepName);
-            if(gathererIndex !== -1 && gathererIndex !== undefined){
+        if (deadCreepMemory.role === Role.GATHERER) {
+            let source = Object.entries(Memory.rooms[deadCreepMemory.room].remoteSources).find(([source, data]) =>
+                data.gatherers.includes(deadCreepName)
+            )?.[0];
+            let gathererIndex = Memory.rooms[deadCreepMemory.room].remoteSources[source]?.gatherers.findIndex(
+                (creepName) => creepName === deadCreepName
+            );
+            if (gathererIndex !== -1 && gathererIndex !== undefined) {
                 Memory.rooms[deadCreepMemory.room].remoteSources[source].gatherers[gathererIndex] = AssignmentStatus.UNASSIGNED;
             }
         }
@@ -255,7 +259,7 @@ function initMissingMemoryValues() {
         Memory.remoteSourceAssignments = {};
     }
 
-    if (!Memory.debug){
+    if (!Memory.debug) {
         Memory.debug = {};
     }
 }
