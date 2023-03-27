@@ -356,16 +356,18 @@ export class PopulationManagement {
         let name = this.generateName(options.memory.role, spawn.name);
 
         //if road is marked as in-progress, check to see if it is done
-        if(spawn.room.memory.remoteSources[source].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD){
-            let roadFinished = roadIsPaved(`${getStoragePos(spawn.room).toMemSafe()}:${source}`);
-            if(roadFinished === true){
-                delete spawn.room.memory.remoteSources[source].setupStatus;
-            }
-        }
+        // if(spawn.room.memory.remoteSources[source].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD){
+        //     let roadFinished = roadIsPaved(`${getStoragePos(spawn.room).toMemSafe()}:${source}`);
+        //     if(roadFinished === true){
+        //         delete spawn.room.memory.remoteSources[source].setupStatus;
+        //     }
+        // }
 
-        let PARTS = spawn.room.memory.remoteSources[source].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD
-                ? PopulationManagement.createPartsArray([WORK, CARRY, MOVE], spawn.room.energyAvailable, 10)
-                : [WORK, WORK, CARRY, CARRY, MOVE, ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9)];
+        // let PARTS = spawn.room.memory.remoteSources[source].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD
+        //         ? PopulationManagement.createPartsArray([WORK, CARRY, MOVE], spawn.room.energyAvailable, 10)
+        //         : [WORK, WORK, CARRY, CARRY, MOVE, ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9)];
+
+        let PARTS = [WORK, WORK, CARRY, CARRY, MOVE, ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9)];
         let result = spawn.smartSpawn(PARTS, name, options);
 
         if (result === OK) {
