@@ -45,10 +45,10 @@ export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: Roa
                 }
             }
 
-            if (!opts.ignoreOtherRoads) {
-                let otherRoadKeys = Object.keys(Memory.roomData[roomName]?.roads).filter((k) => k !== `${startPos}:${endPos}`);
-                let roads = otherRoadKeys?.map((key) => Memory.roomData[roomName].roads[key]);
-                if (roads?.length) {
+            if (!opts.ignoreOtherRoads && Memory.roomData[roomName]?.roads) {
+                let otherRoadKeys = Object.keys(Memory.roomData[roomName].roads).filter((k) => k !== `${startPos}:${endPos}`);
+                let roads = otherRoadKeys.map((key) => Memory.roomData[roomName].roads[key]);
+                if (roads.length) {
                     roads.forEach((roadCode) => {
                         try {
                             decodeRoad(roadCode, roomName).forEach((pos) => matrix.set(pos.x, pos.y, 1));
