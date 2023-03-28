@@ -1,17 +1,17 @@
-import { decodeRoad, getRoadSegments } from "./roads";
-import { drawLayout } from "./roomDesign";
+import { decodeRoad, getRoadSegments } from './roads';
+import { drawLayout } from './roomDesign';
 
 export function runVisuals() {
     highlightHostileRooms();
-    if(Memory.debug?.drawRoads){
+    if (Memory.debug?.drawRoads) {
         drawRoadsFromRoomData();
     }
 
-    if(Memory.debug?.drawRemoteConnections){
+    if (Memory.debug?.drawRemoteConnections) {
         drawLinesToRemoteRooms();
     }
 
-    if(Memory.debug?.drawStamps){
+    if (Memory.debug?.drawStamps) {
         drawRoomVisuals();
     }
 }
@@ -21,12 +21,15 @@ function drawRoadsFromRoomData() {
         let rv = new RoomVisual(room);
         let roads = Memory.roomData[room]?.roads ? Object.values(Memory.roomData[room].roads) : [];
         if (roads?.length) {
-            let rvRoads = [];
+            let roadSegments = [];
             roads.forEach((roadCode) => {
                 let road = decodeRoad(roadCode, room);
-                getRoadSegments(road).forEach(segment => rvRoads.push(segment));
+                getRoadSegments(road).forEach((segment) => roadSegments.push(segment));
             });
-            rvRoads.forEach((roadSegment) => rv.poly(roadSegment, { lineStyle: 'dotted', stroke: '#63FF00', opacity: 100 }));
+            roadSegments.forEach((roadSegment) => {
+                rv.poly(roadSegment, { lineStyle: 'dotted', stroke: '#63FF00', opacity: 100 });
+                Game.map.visual.poly(roadSegment, { lineStyle: 'dotted', stroke: '#63FF00', opacity: 100 });
+            });
         }
     });
 }
@@ -49,11 +52,13 @@ function drawLinesToRemoteRooms() {
         });
 }
 
-function drawRoomVisuals(){
-    Object.keys(Memory.rooms).filter(room => Memory.rooms[room].stampLayout).forEach(stampRoom => {
-        let rv = Game.rooms[stampRoom]?.visual;
-        if(rv){
-            drawLayout(rv, Game.rooms[stampRoom].stamps);
-        }
-    })
+function drawRoomVisuals() {
+    Object.keys(Memory.rooms)
+        .filter((room) => Memory.rooms[room].stampLayout)
+        .forEach((stampRoom) => {
+            let rv = Game.rooms[stampRoom]?.visual;
+            if (rv) {
+                drawLayout(rv, Game.rooms[stampRoom].stamps);
+            }
+        });
 }
