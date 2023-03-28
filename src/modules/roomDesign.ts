@@ -1,3 +1,4 @@
+import { getStructureForPos } from './data';
 import { Pathing } from './pathing';
 
 export function calculateRoomSpace(room: Room) {
@@ -102,85 +103,6 @@ export function drawBunker(anchorPoint: RoomPosition) {
     roomVis.rect(anchorPoint.x - 6 - 0.5, anchorPoint.y - 6 - 0.5, 13, 13, { fill: '#00E2FF', opacity: 0.1 });
 }
 
-export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, anchorPoint: RoomPosition): BuildableStructureConstant {
-    switch (layout) {
-        case RoomLayout.BUNKER:
-            let xdif = targetPos.x - anchorPoint.x;
-            let ydif = targetPos.y - anchorPoint.y;
-
-            if (targetPos === anchorPoint || Math.abs(xdif) >= 7 || Math.abs(ydif) >= 7) {
-                return undefined;
-            }
-
-            if (xdif === 0) {
-                switch (ydif) {
-                    case 1:
-                        return STRUCTURE_TERMINAL;
-                    case -1:
-                        return STRUCTURE_SPAWN;
-                    case -2:
-                    case 2:
-                    case -6:
-                    case 6:
-                        return STRUCTURE_EXTENSION;
-                    default:
-                        return STRUCTURE_ROAD;
-                }
-            }
-
-            if (ydif === 0) {
-                switch (xdif) {
-                    case -2:
-                        return STRUCTURE_OBSERVER;
-                    case -1:
-                        return STRUCTURE_LINK;
-                    case 1:
-                        return STRUCTURE_FACTORY;
-                    case 2:
-                        return STRUCTURE_SPAWN;
-                    default:
-                        return STRUCTURE_ROAD;
-                }
-            }
-
-            if (Math.abs(xdif) === 6 || Math.abs(ydif) === 6) {
-                return STRUCTURE_ROAD;
-            }
-
-            if (ydif === -1 && xdif === -1) {
-                return STRUCTURE_SPAWN;
-            }
-            if (ydif === -1 && xdif === 1) {
-                return STRUCTURE_STORAGE;
-            }
-            if (ydif === 1 && xdif === 1) {
-                return STRUCTURE_POWER_SPAWN;
-            }
-            if (ydif === 1 && xdif === -1) {
-                return STRUCTURE_NUKER;
-            }
-
-            if (Math.abs(ydif) === Math.abs(xdif) && Math.abs(ydif) <= 5) {
-                return STRUCTURE_ROAD;
-            }
-            if ((ydif === -3 && xdif >= -1 && xdif <= 2) || (xdif === 3 && ydif >= -2 && ydif <= 1)) {
-                return STRUCTURE_TOWER;
-            }
-            if (ydif <= -2 && ydif >= -5 && xdif <= -3 && xdif >= -4) {
-                return STRUCTURE_LAB;
-            }
-            if (ydif <= -3 && ydif >= -4 && (xdif === -2 || xdif === -5)) {
-                return STRUCTURE_LAB;
-            }
-
-            if ((Math.abs(ydif) === 2 && Math.abs(xdif) === 1) || (Math.abs(xdif) === 2 && Math.abs(ydif) === 1)) {
-                return STRUCTURE_ROAD;
-            }
-
-            return STRUCTURE_EXTENSION;
-    }
-}
-
 export function getSpawnPos(room: Room) {
     switch (room.memory.layout) {
         case RoomLayout.BUNKER:
@@ -188,19 +110,6 @@ export function getSpawnPos(room: Room) {
             return new RoomPosition(anchorPoint.x, anchorPoint.y - 1, room.name);
         case RoomLayout.STAMP:
             return room.stamps.spawn.find((spawnStamp) => spawnStamp.rcl === 1).pos;
-    }
-}
-
-export function getBunkerPositions(room: Room): RoomPosition[]{
-    if(room.memory.anchorPoint){
-        let anchor = room.memory.anchorPoint.toRoomPos();
-        let posArr = [];
-        for(let i = -6; i < 7; i++){
-            for (let j = -6; j < 7; j++){
-                posArr.push(room.getPositionAt(anchor.x + i, anchor.y + j));
-            }
-        }
-        return posArr;
     }
 }
 
@@ -487,13 +396,15 @@ export function roomNeedsCoreStructures(room: Room) {
     let labCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_LAB).length;
     let towerCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER).length;
     let managerLink =
-        room.memory.anchorPoint?.toRoomPos() || room.memory.managerPos?.toRoomPos()
+        room.memory.anchorPoint?.toRoomPos() ||
+        room.memory.managerPos
+            ?.toRoomPos()
             ?.findInRange(FIND_MY_STRUCTURES, 1)
             .filter((s) => s.structureType === STRUCTURE_LINK).length +
             (room.memory.anchorPoint?.toRoomPos() || room.memory.managerPos?.toRoomPos())
                 ?.findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
                 .filter((s) => s.structureType === STRUCTURE_LINK).length >=
-        1;
+            1;
     let observer = roomStructures.filter((structure) => structure.structureType === STRUCTURE_OBSERVER).length;
     let pSpawn = roomStructures.filter((structure) => structure.structureType === STRUCTURE_POWER_SPAWN).length;
 

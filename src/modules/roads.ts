@@ -1,4 +1,4 @@
-import { getBunkerPositions, getStructureForPos } from './roomDesign';
+import { getBunkerPositions, getStructureForPos } from './data';
 
 const MAPPING = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -212,4 +212,20 @@ export function roadIsSafe(roadKey: string) {
 export function deleteRoad(roadKey: string) {
     let roadRooms = Object.keys(Memory.roomData).filter((room) => Memory.roomData[room]?.roads?.[roadKey]);
     roadRooms.forEach((room) => delete Memory.roomData[room].roads[roadKey]);
+}
+
+export function getRoadPathFromPos(roadKey: string, startPos: RoomPosition, destination: string): RoomPosition[] {
+    const fullRoad = getFullRoad(roadKey);
+    const startPosIndex = fullRoad.findIndex((pos) => pos.isEqualTo(startPos));
+    const direction = roadKey.split(':')[0] === destination ? -1 : 1;
+
+    let path: RoomPosition[] = [];
+
+    if (direction === 1) {
+        path = fullRoad.slice(startPosIndex);
+    } else {
+        path = fullRoad.slice(0, startPosIndex).reverse();
+    }
+
+    return path;
 }
