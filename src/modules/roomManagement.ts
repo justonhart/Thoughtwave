@@ -264,28 +264,30 @@ export function driveRoom(room: Room) {
             runGates(room);
         }
 
-        //if this room doesn't have any outstanding claims
-        if (
-            Game.time % 1000 !== 0 &&
-            !room.memory.outstandingClaim &&
-            canSupportRemoteRoom(room) &&
-            Game.time % 25 === 0 &&
-            !global.remoteSourcesChecked &&
-            Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000
-        ) {
-            console.log('checking remote sources for ' + room.name);
-            let result = addRemoteSourceClaim(room);
-            room.memory.lastRemoteSourceCheck = Game.time;
-            global.remoteSourcesChecked = true;
-        }
+        if (room.energyStatus >= EnergyStatus.RECOVERING) {
+            //if this room doesn't have any outstanding claims
+            if (
+                Game.time % 1000 !== 0 &&
+                !room.memory.outstandingClaim &&
+                canSupportRemoteRoom(room) &&
+                Game.time % 25 === 0 &&
+                !global.remoteSourcesChecked &&
+                Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000
+            ) {
+                console.log('checking remote sources for ' + room.name);
+                let result = addRemoteSourceClaim(room);
+                room.memory.lastRemoteSourceCheck = Game.time;
+                global.remoteSourcesChecked = true;
+            }
 
-        if (room.memory.outstandingClaim && Game.time % 1000 === 0) {
-            let result = executeRemoteSourceClaim(room);
-            if (result === OK) {
-                delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
-                delete room.memory.outstandingClaim;
-            } else {
-                console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
+            if (room.memory.outstandingClaim && Game.time % 1000 === 0) {
+                let result = executeRemoteSourceClaim(room);
+                if (result === OK) {
+                    delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
+                    delete room.memory.outstandingClaim;
+                } else {
+                    console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
+                }
             }
         }
 
