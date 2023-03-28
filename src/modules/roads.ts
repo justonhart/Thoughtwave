@@ -95,7 +95,12 @@ export function storeRoadInMemory(startPos: RoomPosition, endPos: RoomPosition, 
 export function decodeRoad(roadString: string, roomName: string): RoomPosition[] {
     let arr = [];
     for (let i = 0; i < roadString.length; i += 2) {
-        arr.push(new RoomPosition(decode(roadString.charAt(i)), decode(roadString.charAt(i + 1)), roomName));
+        try {
+            arr.push(new RoomPosition(decode(roadString.charAt(i)), decode(roadString.charAt(i + 1)), roomName));
+        } catch (e) {
+            console.log(`Error decoding road: ${roadString} - ${e}`);
+            console.log(`${roadString.charAt(i)}${roadString.charAt(i + 1)} => ${decode(roadString.charAt(i))}.${decode(roadString.charAt(i + 1))}`);
+        }
     }
     return arr;
 }
@@ -222,7 +227,7 @@ export function getRoadPathFromPos(roadKey: string, startPos: RoomPosition, dest
     let path: RoomPosition[] = [];
 
     if (direction === 1) {
-        path = fullRoad.slice(startPosIndex);
+        path = fullRoad.slice(startPosIndex + 1);
     } else {
         path = fullRoad.slice(0, startPosIndex).reverse();
     }

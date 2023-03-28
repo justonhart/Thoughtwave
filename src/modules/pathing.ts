@@ -1,4 +1,5 @@
 import { isKeeperRoom } from '../modules/data';
+import { decodeRoad, getRoadPathFromPos } from './roads';
 
 //@ts-ignore
 global.IN_ROOM = -20;
@@ -133,33 +134,59 @@ export class Pathing {
             } else if (!opts.efficiency) {
                 opts.efficiency = Pathing.getCreepMoveEfficiency(creep, opts.currentTickEnergy);
             }
-            let pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, opts);
-            if (pathFinder.incomplete) {
-                // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
-                new RoomVisual(creep.pos.roomName).circle(creep.pos, {
-                    radius: 0.45,
-                    fill: 'transparent',
-                    stroke: 'orange',
-                    strokeWidth: 0.15,
-                    opacity: 0.3,
-                });
-                if (!pathFinder.path) {
-                    // Not even a partial path was found (for example close to the target but blocked by creeps)
-                    pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, {
-                        ...Pathing.defaultOpts,
-                        range: opts.range,
-                        efficiency: opts.efficiency,
-                    }); // Try to find path with default options (for example creeps could be blocking the target so this should at least find a path closer to the target)
+
+            let pathFinder: any;
+
+            if (opts.useMemoryRoads && Memory.roomData[creep.room.name].roads) {
+                const roadsToDestination = Object.entries(Memory.roomData[creep.room.name].roads).filter(([key, value]) =>
+                    key.includes(destination.toMemSafe())
+                );
+                console.log(`${creep.name + ': ' + roadsToDestination.length}`);
+                if (roadsToDestination.length) {
+                    let roadThruCurrentPos = roadsToDestination.find(([key, value]) =>
+                        decodeRoad(value, creep.room.name).some((pos) => pos.isEqualTo(creep.pos))
+                    );
+                    //if pos on road to destination, store directions from current pos in mem
+                    if (roadThruCurrentPos) {
+                        pathFinder = { path: getRoadPathFromPos(roadThruCurrentPos[0], creep.pos, destination.toMemSafe()) };
+                    } else {
+                        //else find path to nearest pos on road
+                        pathFinder = PathFinder.search(
+                            creep.pos,
+                            _.flatten(roadsToDestination.map(([key, value]) => decodeRoad(value, creep.room.name)))
+                        );
+                    }
+                }
+            }
+            if (!pathFinder) {
+                pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, opts);
+                if (pathFinder.incomplete) {
+                    // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
+                    new RoomVisual(creep.pos.roomName).circle(creep.pos, {
+                        radius: 0.45,
+                        fill: 'transparent',
+                        stroke: 'orange',
+                        strokeWidth: 0.15,
+                        opacity: 0.3,
+                    });
                     if (!pathFinder.path) {
-                        // Error (hopefully shouldn't happen)
-                        new RoomVisual(creep.pos.roomName).circle(creep.pos, {
-                            radius: 0.45,
-                            fill: 'transparent',
-                            stroke: 'red',
-                            strokeWidth: 0.15,
-                            opacity: 0.3,
-                        });
-                        console.log(`Could not find a path for ${creep.name}`);
+                        // Not even a partial path was found (for example close to the target but blocked by creeps)
+                        pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, {
+                            ...Pathing.defaultOpts,
+                            range: opts.range,
+                            efficiency: opts.efficiency,
+                        }); // Try to find path with default options (for example creeps could be blocking the target so this should at least find a path closer to the target)
+                        if (!pathFinder.path) {
+                            // Error (hopefully shouldn't happen)
+                            new RoomVisual(creep.pos.roomName).circle(creep.pos, {
+                                radius: 0.45,
+                                fill: 'transparent',
+                                stroke: 'red',
+                                strokeWidth: 0.15,
+                                opacity: 0.3,
+                            });
+                            console.log(`Could not find a path for ${creep.name}`);
+                        }
                     }
                 }
             }
@@ -167,6 +194,7 @@ export class Pathing {
             creep.memory._m.path = Pathing.serializePath(creep.pos, pathFinder.path, { color: opts.pathColor, lineStyle: 'dashed' });
             // Get all roomPositions along the path
             if (opts.pathsRoomPositions?.length === 0 && creep.memory._m.path?.length && !opts.avoidedTemporaryHostileRooms) {
+                if (pathFinder.path[0] === undefined) console.log(`${creep.name}`);
                 Array.prototype.push.apply(opts.pathsRoomPositions, pathFinder.path);
             }
             creep.memory._m.stuckCount = 0;
@@ -587,8 +615,10 @@ export class Pathing {
     static serializePath(startPos: RoomPosition, path: RoomPosition[], lineStyle?: LineStyle): string {
         let serializedPath = '';
         let lastPosition = startPos;
+
         for (let position of path) {
-            if (position.roomName === lastPosition.roomName) {
+            if (lastPosition.getDirectionTo(position) === undefined) console.log(lastPosition + ' -> ' + position);
+            if (position.roomName === lastPosition.roomName && !position.isEqualTo(lastPosition)) {
                 if (lineStyle) {
                     new RoomVisual(position.roomName).line(position, lastPosition, lineStyle);
                 }
