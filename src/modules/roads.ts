@@ -146,10 +146,16 @@ function encode(int: number): string {
     return MAPPING.charAt(int);
 }
 
-export function posExistsOnRoad(pos: RoomPosition): boolean {
-    let roads = Object.values(Memory.roomData[pos.roomName].roads).map((roadCode) => decodeRoad(roadCode, pos.roomName));
+//checks certain road for pos. If no road provided, checks all roads in room
+export function posExistsOnRoad(pos: RoomPosition, roadKey?: string): boolean {
+    if (!Memory.roomData[pos.roomName]?.roads) {
+        return false;
+    }
+    let roadPositions: RoomPosition[] = roadKey
+        ? decodeRoad(Memory.roomData[pos.roomName].roads[roadKey], pos.roomName)
+        : _.flatten(Object.values(Memory.roomData[pos.roomName].roads).map((roadCode) => decodeRoad(roadCode, pos.roomName)));
 
-    return roads.some((road) => road.some((roadPos) => roadPos.isEqualTo(pos)));
+    return roadPositions.some((roadPos) => roadPos.isEqualTo(pos));
 }
 
 //trace a road through all rooms from starting point to return RoomPosition array
