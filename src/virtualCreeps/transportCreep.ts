@@ -1,7 +1,7 @@
 import { WaveCreep } from './waveCreep';
 
 export class TransportCreep extends WaveCreep {
-    private previousTargetId: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral>;
+    private previousTargetId: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral> | Id<Source>;
     protected incomingEnergyAmount: number = 0; // Picked up energy in same tick to do proper retargeting
     protected incomingMineralAmount: number = 0; // Picked up non-energy in same tick to do proper retargeting
     protected outgoingResourceAmount: number = 0; // Dropped off energy in the same tick to do proper retargeting
@@ -29,13 +29,15 @@ export class TransportCreep extends WaveCreep {
             target = Game.getObjectById(this.memory.targetId);
         }
 
+        let stop = false;
+
         if (this.memory.labRequests?.length) {
             this.prepareLabs();
         } else {
-            this.runNonLabPrepTasks();
+            stop = this.runNonLabPrepTasks();
 
             //round 2
-            if (!this.memory.targetId) {
+            if (!stop && !this.memory.targetId) {
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
 
@@ -72,6 +74,8 @@ export class TransportCreep extends WaveCreep {
         } else if (target instanceof StructureStorage) {
             this.storeCargo();
         }
+
+        return true;
     }
 
     protected findTarget(): any {
@@ -210,9 +214,8 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findRefillTarget(): Id<Structure> {
-        const towers = this.homeroom
-            .find(FIND_MY_STRUCTURES)
-            .filter(
+        const MY_STRUCTURES = this.homeroom.find(FIND_MY_STRUCTURES);
+        const towers = MY_STRUCTURES.filter(
                 (structure) => structure.structureType === STRUCTURE_TOWER && this.previousTargetId !== structure.id && structure.store.energy < 900
             ) as StructureTower[];
         if (towers.some((tower) => tower.store.energy < 300)) {
@@ -222,9 +225,7 @@ export class TransportCreep extends WaveCreep {
             ).id;
         }
 
-        let labs = this.homeroom
-            .find(FIND_MY_STRUCTURES)
-            .filter(
+        let labs = MY_STRUCTURES.filter(
                 (structure) =>
                     structure.structureType === STRUCTURE_LAB &&
                     this.previousTargetId !== structure.id &&
@@ -234,100 +235,96 @@ export class TransportCreep extends WaveCreep {
             return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
         }
 
-        let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
+        if(this.room.energyAvailable < (this.memory.refillBelow ?? this.room.energyCapacityAvailable) || this.room.memory.layout === RoomLayout.STAMP && this.room.controller.level < 5){
 
-        const isStampRoom = this.homeroom.memory.layout === RoomLayout.STAMP;
-        const hasMissingManagersOrContainers =
-            isStampRoom &&
-            this.homeroom.controller.level > 1 &&
-            // Number of center managers
-            (this.homeroom.creeps.filter(
-                (creep) =>
-                    creep.memory.role === Role.MANAGER &&
-                    this.homeroom.stamps.managers.some(
-                        (managerStamp) => managerStamp.type === 'center' && managerStamp.pos.toMemSafe() === creep.memory.destination
-                    )
-            ).length <
-                // Number of center managers the room should have
-                this.homeroom.memory.stampLayout.managers.filter(
-                    (managerStamp) => managerStamp.type === 'center' && managerStamp.rcl <= this.homeroom.controller.level
-                ).length ||
-                // Number of center containers
-                this.homeroom
-                    .find(FIND_STRUCTURES)
-                    .filter(
-                        (structure) =>
-                            structure.structureType === STRUCTURE_CONTAINER &&
-                            this.homeroom.stamps.container.some(
-                                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.toMemSafe() === structure.pos.toMemSafe()
-                            )
-                    ).length <
-                    // Number of containers the room should have
-                    this.homeroom.stamps.container.filter(
-                        (containerStamp) => containerStamp.type === 'center' && containerStamp.rcl <= this.homeroom.controller.level
-                    ).length);
+            let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
 
-        // Do not refill spawn when all containers/managers are present
-        if (isStampRoom && !hasMissingManagersOrContainers) {
-            targetStructureTypes = [STRUCTURE_EXTENSION];
-        }
-        // If no center link is present in Stamp rooms then fill up containers
-        if (
-            isStampRoom &&
-            (this.homeroom.controller.level < 5 ||
-                !this.homeroom
-                    .find(FIND_STRUCTURES)
-                    .some(
-                        (structure) =>
-                            structure.structureType === STRUCTURE_LINK &&
-                            this.homeroom.stamps.link.some(
-                                (linkStamp) => linkStamp.type === 'center' && linkStamp.pos.toMemSafe() === structure.pos.toMemSafe()
-                            )
-                    ))
-        ) {
-            targetStructureTypes.push(STRUCTURE_CONTAINER);
-        }
-        let spawnStructures = this.homeroom.find(FIND_STRUCTURES).filter(
-            (structure) =>
-                // @ts-ignore
-                targetStructureTypes.includes(structure.structureType) &&
-                this.previousTargetId !== structure.id &&
-                // @ts-ignore
-                structure.store[RESOURCE_ENERGY] < structure.store.getCapacity(RESOURCE_ENERGY) &&
-                // Remove center extensions if there are missing containers/extensions
-                (!isStampRoom ||
-                    structure.structureType !== STRUCTURE_EXTENSION ||
-                    hasMissingManagersOrContainers ||
-                    !this.homeroom.stamps.extension.some(
-                        (extensionStamp) =>
-                            extensionStamp.pos.x === structure.pos.x &&
-                            extensionStamp.pos.y === structure.pos.y &&
-                            (extensionStamp.type === 'center' || extensionStamp.type?.includes('source'))
-                    )) &&
-                // Fill up center containers
-                (!isStampRoom ||
-                    structure.structureType !== STRUCTURE_CONTAINER ||
-                    this.homeroom.stamps.container.some(
-                        (containerStamp) =>
-                            containerStamp.pos.x === structure.pos.x && containerStamp.pos.y === structure.pos.y && containerStamp.type === 'center'
-                    ))
-        ) as AnyStructure[];
-
-        if (spawnStructures.length) {
-            // Switch between containers which is important in early rcl
-            if (this.homeroom.memory.layout === RoomLayout.STAMP && this.homeroom.controller.level < 5 && !hasMissingManagersOrContainers) {
-                if (
-                    spawnStructures.length > 1 &&
-                    spawnStructures.every((structure) => structure.structureType === STRUCTURE_CONTAINER) &&
-                    spawnStructures.some((structure: StructureContainer) => structure.store.energy)
-                ) {
-                    return spawnStructures.reduce((lowestContainer: StructureContainer, nextContainer: StructureContainer) =>
-                        lowestContainer.store.energy < nextContainer.store.energy ? lowestContainer : nextContainer
-                    ).id;
-                }
+            const isStampRoom = this.homeroom.memory.layout === RoomLayout.STAMP;
+            const hasMissingManagersOrContainers =
+                isStampRoom &&
+                this.homeroom.controller.level > 1 &&
+                // Number of center managers
+                (this.homeroom.creeps.reduce(
+                    (sum: number, nextCreep: Creep) =>
+                        (nextCreep.memory.role === Role.MANAGER &&
+                        this.homeroom.stamps.managers.some(
+                            (managerStamp) => managerStamp.type === 'center' && managerStamp.pos.toMemSafe() === nextCreep.memory.destination) ? sum + 1: sum
+                        ), 0) <
+                    // Number of center managers the room should have
+                    this.homeroom.memory.stampLayout.managers.reduce((sum, nextStamp) => (nextStamp.type === 'center' && nextStamp.rcl <= this.homeroom.controller.level ? sum + 1 : sum), 0) ||
+                    // Number of center containers
+                    MY_STRUCTURES.reduce(
+                            (sum, structure) => (
+                                structure.structureType === STRUCTURE_CONTAINER as StructureConstant &&
+                                this.homeroom.stamps.container.some((containerStamp) => containerStamp.type === 'center' && containerStamp.pos.toMemSafe() === structure.pos.toMemSafe()) ? sum + 1: sum
+                                ), 0)
+                        ) <
+                        // Number of containers the room should have
+                        this.homeroom.stamps.container.reduce((sum, containerStamp) => (containerStamp.type === 'center' && containerStamp.rcl <= this.homeroom.controller.level ? sum + 1 : sum),0)
+            // Do not refill spawn when all containers/managers are present
+            if (isStampRoom && !hasMissingManagersOrContainers) {
+                targetStructureTypes = [STRUCTURE_EXTENSION];
             }
-            return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
+            // If no center link is present in Stamp rooms then fill up containers
+            if (
+                isStampRoom &&
+                (this.homeroom.controller.level < 5 ||
+                    !MY_STRUCTURES.some(
+                            (structure) =>
+                                structure.structureType === STRUCTURE_LINK &&
+                                this.homeroom.stamps.link.some(
+                                    (linkStamp) => linkStamp.type === 'center' && linkStamp.pos.toMemSafe() === structure.pos.toMemSafe()
+                                )
+                        ))
+            ) {
+                targetStructureTypes.push(STRUCTURE_CONTAINER);
+            }
+            
+            let spawnStructures = MY_STRUCTURES.filter(
+                (structure) =>
+                    // @ts-ignore
+                    targetStructureTypes.includes(structure.structureType) &&
+                    this.previousTargetId !== structure.id &&
+                    // @ts-ignore
+                    structure.store[RESOURCE_ENERGY] < structure.store.getCapacity(RESOURCE_ENERGY) &&
+                    // Remove center extensions if there are missing containers/extensions
+                    (!isStampRoom ||
+                        structure.structureType !== STRUCTURE_EXTENSION ||
+                        hasMissingManagersOrContainers ||
+                        !this.homeroom.stamps.extension.some(
+                            (extensionStamp) =>
+                                extensionStamp.pos.x === structure.pos.x &&
+                                extensionStamp.pos.y === structure.pos.y &&
+                                (extensionStamp.type === 'center' || extensionStamp.type?.includes('source'))
+                        )) &&
+                    // Fill up center containers
+                    (!isStampRoom ||
+                        structure.structureType !== STRUCTURE_CONTAINER as StructureConstant ||
+                        this.homeroom.stamps.container.some(
+                            (containerStamp) =>
+                                containerStamp.pos.x === structure.pos.x && containerStamp.pos.y === structure.pos.y && containerStamp.type === 'center'
+                        ))
+            ) as AnyStructure[];
+    
+            if (spawnStructures.length) {
+                // Switch between containers which is important in early rcl
+                if (this.homeroom.memory.layout === RoomLayout.STAMP && this.homeroom.controller.level < 5 && !hasMissingManagersOrContainers) {
+                    if (
+                        spawnStructures.length > 1 &&
+                        spawnStructures.every((structure) => structure.structureType === STRUCTURE_CONTAINER) &&
+                        spawnStructures.some((structure: StructureContainer) => structure.store.energy)
+                    ) {
+                        return spawnStructures.reduce((lowestContainer: StructureContainer, nextContainer: StructureContainer) =>
+                            lowestContainer.store.energy < nextContainer.store.energy ? lowestContainer : nextContainer
+                        ).id;
+                    }
+                }
+                return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
+            }
+
+            this.memory.refillBelow = this.room.energyAvailable;
         }
+        
 
         // Now fill them completely
         if (towers.length) {
@@ -336,6 +333,11 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> | Id<Tombstone> {
+
+        if(Game.time < this.memory.sleepCollectTil){
+            return;
+        }
+
         let room = this.homeroom;
         if (roomName) {
             room = Game.rooms[roomName];
@@ -398,6 +400,8 @@ export class TransportCreep extends WaveCreep {
                 .filter((r) => room.storage || r.resourceType === RESOURCE_ENERGY)
                 .reduce((most, next) => (most.amount > next.amount ? most : next)).id;
         }
+
+        this.memory.sleepCollectTil = Game.time + 10;
     }
 
     protected runRefillJob(target: StructureSpawn | StructureExtension | StructureTower | StructureStorage | StructureLab | StructureContainer) {
