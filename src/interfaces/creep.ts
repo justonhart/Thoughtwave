@@ -23,7 +23,6 @@ interface CreepMemory {
     combat?: CombatMemory;
     nextRole?: Role;
     storeRoadInMemory?: Id<StructureContainer>;
-    refillBelow?: number;
     sleepCollectTil?: number;
     stop?: boolean;
 }

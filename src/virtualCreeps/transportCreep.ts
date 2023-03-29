@@ -238,7 +238,7 @@ export class TransportCreep extends WaveCreep {
         }
 
         if (
-            this.room.energyAvailable < (this.memory.refillBelow ?? this.room.energyCapacityAvailable) ||
+            this.room.energyAvailable < this.room.energyCapacityAvailable ||
             (this.room.memory.layout === RoomLayout.STAMP && this.room.controller.level < 5)
         ) {
             let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
@@ -342,8 +342,6 @@ export class TransportCreep extends WaveCreep {
                 }
                 return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
             }
-
-            this.memory.refillBelow = this.room.energyAvailable;
         }
 
         // Now fill them completely
