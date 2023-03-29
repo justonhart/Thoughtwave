@@ -29,6 +29,14 @@ export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: Roa
 
             let matrix = new PathFinder.CostMatrix();
 
+            if (Memory.remoteData[roomName]) {
+                let miningRoomsWithPos = Object.entries(Memory.remoteSourceAssignments).filter(
+                    ([source, miningRoom]) => source.split('.')[2] === roomName
+                );
+                let miningPositions = miningRoomsWithPos.map(([source, room]) => Memory.rooms[room].remoteSources[source].miningPos);
+                miningPositions.forEach((pos) => matrix.set(pos.toRoomPos().x, pos.toRoomPos().y, 255));
+            }
+
             if (Memory.roomData[roomName]?.roomStatus === RoomMemoryStatus.OWNED_ME) {
                 if (Memory.rooms[roomName].layout === RoomLayout.BUNKER) {
                     getBunkerPositions(Game.rooms[roomName]).forEach((pos) =>
