@@ -149,17 +149,17 @@ export class Pathing {
                     if (roadThruCurrentPos) {
                         pathFinder = { path: getRoadPathFromPos(roadThruCurrentPos[0], creep.pos, destination.toMemSafe()) };
                     } else {
-                        let roadPositions = _.flatten(roadsToDestination.map(([key, value]) => decodeRoad(value, creep.room.name)))
+                        let roadPositions = _.flatten(roadsToDestination.map(([key, value]) => decodeRoad(value, creep.room.name)));
                         //else find path to nearest pos on road
-                        pathFinder = PathFinder.search(
-                            creep.pos,
-                            roadPositions,
-                            {roomCallback: Pathing.getRoomCallback(creep.room.name, roadPositions.shift(), {}, creep.name) }
-                        );
+                        pathFinder = PathFinder.search(creep.pos, roadPositions, {
+                            roomCallback: Pathing.getRoomCallback(creep.room.name, roadPositions.shift(), {}, creep.name),
+                        });
                     }
                 }
             }
-            if (!pathFinder) {
+
+            //path could be empty if the creep is at the end of the road
+            if (!pathFinder?.path?.length) {
                 pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, opts);
                 if (pathFinder.incomplete) {
                     // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
@@ -289,7 +289,7 @@ export class Pathing {
     }
     //check two coordinates match
     static sameCoord(pos1: RoomPosition, pos2: RoomPosition): boolean {
-        return pos1.x === pos2.x && pos1.y === pos2.y;
+        return pos1.isEqualTo(pos2);
     }
 
     /**
