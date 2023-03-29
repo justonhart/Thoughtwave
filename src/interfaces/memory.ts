@@ -77,6 +77,8 @@ interface OriginOpts {
     needsBoost?: boolean;
     selectionCriteria?: OriginCriteria;
     operationCriteria?: OperationCriteria;
+    ignoreTerrain?: boolean;
+    ignoreRoomData?: boolean; // TODO: implement this to set highways to 1?
 }
 
 interface OperationCriteria {

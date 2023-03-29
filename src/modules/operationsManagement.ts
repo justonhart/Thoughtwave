@@ -186,7 +186,8 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
                 { pos: new RoomPosition(25, 25, targetRoom), range: 23 },
                 {
                     maxRooms: 25,
-                    swampCost: 1,
+                    swampCost: opts.ignoreTerrain ? 1 : 10,
+                    plainCost: opts.ignoreTerrain ? 1 : 2,
                     maxOps: 100000,
                     roomCallback(roomName) {
                         if (allowedRooms) {
@@ -252,7 +253,7 @@ function manageSimpleOperation(op: Operation) {
     }
 }
 
-export function addOperation(operationType: OperationType, targetRoom: string, opts?: OperationOpts) {
+export function addOperation(operationType: OperationType, targetRoom: string, opts?: OperationOpts): boolean {
     let originRoom = opts?.originRoom;
     delete opts?.originRoom;
 
@@ -283,9 +284,11 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
         }
 
         Memory.operations.push(newOp);
+        return true;
     } else if (!opts.disableLogging) {
         console.log('No suitable origin found');
     }
+    return false;
 }
 
 function manageSecureRoomOperation(op: Operation) {
@@ -536,6 +539,7 @@ function manageAddPowerBankOperation(op: Operation) {
     const targetRoom = Game.rooms[op.targetRoom];
     switch (op.stage) {
         case OperationStage.PREPARE:
+            // TODO: delete this
             if (Memory.operations.some((operation) => operation.type === OperationType.POWER_BANK && operation.stage >= 2)) {
                 op.stage = OperationStage.COMPLETE;
                 return;
@@ -552,22 +556,9 @@ function manageAddPowerBankOperation(op: Operation) {
                             .filter((lookPos) => lookPos.terrain !== 'wall').length,
                         4
                     );
-                    const operationResult = findOperationOrigin(op.targetRoom, {
-                        minEnergyStatus: EnergyStatus.STABLE,
-                        multipleSpawns: true,
-                        selectionCriteria: OriginCriteria.CLOSEST,
-                        maxThreatLevel: HomeRoomThreatLevel.ENEMY_INVADERS,
-                        maxLinearDistance: 6,
-                        operationCriteria: { type: OperationType.POWER_BANK, maxCount: 1, stage: OperationStage.ACTIVE },
-                    });
-                    // check travelCost
-                    if (operationResult) {
-                        op.originRoom = operationResult.roomName;
-                        op.pathCost = operationResult.cost;
-                        op.operativeCount = numFreeSpaces;
-                        op.stage = OperationStage.ACTIVE;
-                        return;
-                    }
+                    op.operativeCount = numFreeSpaces;
+                    op.stage = OperationStage.ACTIVE;
+                    return;
                 }
                 Memory.roomData[op.targetRoom].powerBank = false;
                 op.stage = OperationStage.COMPLETE;
@@ -632,13 +623,15 @@ function manageAddPowerBankOperation(op: Operation) {
                         needReinforcements = CombatIntel.getMaxDmgOverLifetime(targetRoom) < powerBank.hits;
                     }
 
-                    // If creeps can kill powerBank in the next 500 ticks TODO: 500 or less check highest ttl
+                    // Collectors spawn time (assuming 3 spawns are used it will need 150 ticks for 3 collectors) + path cost (powercreeps ignored for now)
+                    const numCollectors = Math.ceil(powerBank.power / 1250);
+                    const timeNeededForCollectors = op.pathCost + Math.ceil(numCollectors / 3) * 150;
                     if (
                         !Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE) &&
-                        (powerBank.hits < CombatIntel.getMaxDmgOverLifetime(targetRoom, 500) || powerBank.ticksToDecay < 500)
+                        (powerBank.hits < CombatIntel.getMaxDmgOverLifetime(targetRoom, timeNeededForCollectors) ||
+                            powerBank.ticksToDecay < timeNeededForCollectors)
                     ) {
                         // Spawn in Collectors
-                        const numCollectors = Math.ceil(powerBank.power / 1250);
                         for (let i = 0; i < numCollectors; i++) {
                             Memory.spawnAssignments.push({
                                 designee: op.originRoom,

@@ -402,6 +402,10 @@ function runTowers(room: Room, isRoomUnderAttack: boolean) {
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {
+    if (homeRoom.controller.safeMode) {
+        return false;
+    }
+
     const towerData = CombatIntel.getTowerCombatData(homeRoom, false);
     const hostileCreepData = CombatIntel.getCreepCombatData(homeRoom, true);
 
