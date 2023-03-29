@@ -90,6 +90,12 @@ export class SquadAttacker extends CombatCreep {
                 return obstacleStructure;
             }
 
+            if (this.memory.combat.squadTarget === SquadTarget.POWER_BANK) {
+                target = this.pos.findClosestByRange(FIND_STRUCTURES, {
+                    filter: (struct) => struct.structureType === STRUCTURE_POWER_BANK,
+                });
+            }
+
             if (!target) {
                 target = this.pos.findClosestByRange(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
             }

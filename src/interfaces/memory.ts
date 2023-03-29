@@ -66,14 +66,23 @@ interface OperationOpts {
     portalLocations?: string[];
     forcedDestinations?: string[];
     pathCost?: number;
+    disableLogging?: boolean;
 }
 
 interface OriginOpts {
+    maxThreatLevel?: HomeRoomThreatLevel;
     minEnergyStatus?: EnergyStatus;
     maxLinearDistance?: number;
     multipleSpawns?: boolean;
     needsBoost?: boolean;
     selectionCriteria?: OriginCriteria;
+    operationCriteria?: OperationCriteria;
+}
+
+interface OperationCriteria {
+    type: OperationType;
+    maxCount: number;
+    stage?: OperationStage;
 }
 
 interface OriginResult {
@@ -136,6 +145,7 @@ const enum OperationType {
     REMOTE_BUILD,
     CLEAN,
     ADD_REMOTE_MINING,
+    POWER_BANK,
 }
 
 const enum OperationStage {

@@ -1,3 +1,4 @@
+import { CombatIntel } from './combatIntel';
 import { addVisionRequest, posFromMem } from './data';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
@@ -15,7 +16,8 @@ const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } 
     [OperationType.UPGRADE_BOOST]: OperationStage.ACTIVE,
     [OperationType.REMOTE_BUILD]: OperationStage.ACTIVE,
     [OperationType.CLEAN]: OperationStage.ACTIVE,
-    [OperationType.ADD_REMOTE_MINING]: OperationStage.ACTIVE
+    [OperationType.ADD_REMOTE_MINING]: OperationStage.ACTIVE,
+    [OperationType.POWER_BANK]: OperationStage.PREPARE,
 };
 
 const OPERATOR_PARTS_MAP: { [key in OperationType]?: BodyPartConstant[] } = {
@@ -60,6 +62,9 @@ export function manageOperations() {
                     break;
                 case OperationType.ADD_REMOTE_MINING:
                     manageAddRemoteMiningOperation(op);
+                    break;
+                case OperationType.POWER_BANK:
+                    manageAddPowerBankOperation(op);
                     break;
                 case OperationType.COLLECTION:
                 case OperationType.UPGRADE_BOOST:
@@ -154,6 +159,14 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
             room.controller?.my &&
             room.canSpawn() &&
             room.energyStatus >= (opts?.minEnergyStatus ?? EnergyStatus.RECOVERING) &&
+            (!opts?.maxThreatLevel || room.memory.threatLevel <= opts.maxThreatLevel) &&
+            (!opts?.operationCriteria ||
+                Memory.operations.filter(
+                    (operation) =>
+                        operation.originRoom === room.name &&
+                        opts.operationCriteria.type === operation.type &&
+                        (!opts.operationCriteria.stage || opts.operationCriteria.stage === operation.stage)
+                ).length < opts.operationCriteria.maxCount) &&
             Game.map.getRoomLinearDistance(room.name, targetRoom) <= (opts?.maxLinearDistance ?? 10) &&
             (opts?.multipleSpawns ? room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN }).length >= 2 : true) &&
             (opts?.needsBoost ? room.labs.length > 0 : true)
@@ -265,10 +278,12 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
             ...opts,
         };
 
-        console.log(`${originRoom} selected for operation targeting ${targetRoom}`);
+        if (!opts.disableLogging) {
+            console.log(`${originRoom} selected for operation targeting ${targetRoom}`);
+        }
 
         Memory.operations.push(newOp);
-    } else {
+    } else if (!opts.disableLogging) {
         console.log('No suitable origin found');
     }
 }
@@ -392,195 +407,22 @@ function manageRoomRecoveryOperation(op: Operation) {
 
 function manageAttackRoomOperation(op: Operation) {
     const originRoom = Game.rooms[op.originRoom];
-    const squadId = 's2' + Game.shard.name.slice(-1) + originRoom.name + Game.time.toString().slice(-4);
-    const hasSquadAttacker =
-        originRoom.creeps.find((creep) => creep.memory.role === Role.SQUAD_ATTACKER && creep.memory.assignment === op.targetRoom) ||
-        Memory.spawnAssignments.find(
-            (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.SQUAD_ATTACKER
-        );
-    if (!hasSquadAttacker) {
-        Memory.spawnAssignments.push({
-            designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-                sortByBodyPart(MOVE, bodyA, bodyB)
-            ),
-            spawnOpts: {
-                memory: {
-                    role: Role.SQUAD_ATTACKER,
-                    room: originRoom.name,
-                    currentTaskPriority: Priority.MEDIUM,
-                    combat: {
-                        flee: false,
-                        squadId: squadId,
-                        squadMemberType: SquadMemberType.SQUAD_LEADER,
-                    },
-                },
-                boosts: [BoostType.DISMANTLE],
-            },
-        });
-    }
-
-    const hasSquadHealer =
-        originRoom.creeps.find(
-            (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER && creep.memory.assignment === op.targetRoom
-        ) ||
-        Memory.spawnAssignments.find(
-            (creep) =>
-                creep.spawnOpts.memory.assignment === op.targetRoom &&
-                creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER
-        );
-    if (!hasSquadHealer) {
-        Memory.spawnAssignments.push({
-            designee: originRoom.name,
-            body: [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)],
-            spawnOpts: {
-                memory: {
-                    role: Role.SQUAD_ATTACKER,
-                    room: originRoom.name,
-                    currentTaskPriority: Priority.MEDIUM,
-                    combat: {
-                        flee: false,
-                        squadId: squadId,
-                        squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
-                    },
-                },
-                boosts: [BoostType.HEAL],
-            },
-        });
-    }
-    if (!Memory.squads) {
-        Memory.squads = {};
-    }
-    Memory.squads[squadId] = { squadType: SquadType.DUO, forcedDestinations: op.forcedDestinations, assignment: op.targetRoom };
+    const attackerBody = PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
+        sortByBodyPart(MOVE, bodyA, bodyB)
+    );
+    const healerBody = [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)];
+    createSquad(op, SquadType.DUO, attackerBody, healerBody, [BoostType.DISMANTLE], [BoostType.HEAL]);
     const opIndex = Memory.operations.findIndex((operation) => op === operation);
     Memory.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
 }
 
 function manageQuadAttackRoomOperation(op: Operation) {
     const originRoom = Game.rooms[op.originRoom];
-    const squadId = 's4' + Game.shard.name.slice(-1) + originRoom.name + Game.time.toString().slice(-4);
-    const hasSquadLeader =
-        originRoom.creeps.filter(
-            (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_LEADER && creep.memory.assignment === op.targetRoom
-        ).length +
-        Memory.spawnAssignments.filter(
-            (creep) =>
-                creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_LEADER
-        ).length;
-    if (!hasSquadLeader) {
-        Memory.spawnAssignments.push({
-            designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-                sortByBodyPart(MOVE, bodyA, bodyB)
-            ),
-            spawnOpts: {
-                memory: {
-                    role: Role.SQUAD_ATTACKER,
-                    room: originRoom.name,
-                    currentTaskPriority: Priority.HIGH,
-                    combat: {
-                        flee: false,
-                        squadId: squadId,
-                        squadMemberType: SquadMemberType.SQUAD_LEADER,
-                    },
-                },
-                boosts: [BoostType.DISMANTLE],
-            },
-        });
-    }
-
-    const hasSecondSquadLeader =
-        originRoom.creeps.filter(
-            (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_LEADER && creep.memory.assignment === op.targetRoom
-        ).length +
-        Memory.spawnAssignments.filter(
-            (creep) =>
-                creep.spawnOpts.memory.assignment === op.targetRoom &&
-                creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_LEADER
-        ).length;
-    if (!hasSecondSquadLeader) {
-        Memory.spawnAssignments.push({
-            designee: originRoom.name,
-            body: PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-                sortByBodyPart(MOVE, bodyA, bodyB)
-            ),
-            spawnOpts: {
-                memory: {
-                    role: Role.SQUAD_ATTACKER,
-                    room: originRoom.name,
-                    currentTaskPriority: Priority.MEDIUM,
-                    combat: {
-                        flee: false,
-                        squadId: squadId,
-                        squadMemberType: SquadMemberType.SQUAD_SECOND_LEADER,
-                    },
-                },
-                boosts: [BoostType.DISMANTLE],
-            },
-        });
-    }
-
-    const hasSquadFollower =
-        originRoom.creeps.filter(
-            (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER && creep.memory.assignment === op.targetRoom
-        ).length +
-        Memory.spawnAssignments.filter(
-            (creep) =>
-                creep.spawnOpts.memory.assignment === op.targetRoom &&
-                creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER
-        ).length;
-    if (!hasSquadFollower) {
-        Memory.spawnAssignments.push({
-            designee: originRoom.name,
-            body: [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)],
-            spawnOpts: {
-                memory: {
-                    role: Role.SQUAD_ATTACKER,
-                    room: originRoom.name,
-                    currentTaskPriority: Priority.MEDIUM,
-                    combat: {
-                        flee: false,
-                        squadId: squadId,
-                        squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
-                    },
-                },
-                boosts: [BoostType.HEAL],
-            },
-        });
-    }
-
-    const hasSecondSquadFollower =
-        originRoom.creeps.filter(
-            (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_FOLLOWER && creep.memory.assignment === op.targetRoom
-        ).length +
-        Memory.spawnAssignments.filter(
-            (creep) =>
-                creep.spawnOpts.memory.assignment === op.targetRoom &&
-                creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_FOLLOWER
-        ).length;
-    if (!hasSecondSquadFollower) {
-        Memory.spawnAssignments.push({
-            designee: originRoom.name,
-            body: [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)],
-            spawnOpts: {
-                memory: {
-                    role: Role.SQUAD_ATTACKER,
-                    room: originRoom.name,
-                    currentTaskPriority: Priority.MEDIUM,
-                    combat: {
-                        flee: false,
-                        squadId: squadId,
-                        squadMemberType: SquadMemberType.SQUAD_SECOND_FOLLOWER,
-                    },
-                },
-                boosts: [BoostType.HEAL],
-            },
-        });
-    }
-    if (!Memory.squads) {
-        Memory.squads = {};
-    }
-    Memory.squads[squadId] = { squadType: SquadType.QUAD, forcedDestinations: op.forcedDestinations, assignment: op.targetRoom };
+    const attackerBody = PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
+        sortByBodyPart(MOVE, bodyA, bodyB)
+    );
+    const healerBody = [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)];
+    createSquad(op, SquadType.QUAD, attackerBody, healerBody, [BoostType.DISMANTLE], [BoostType.HEAL]);
     const opIndex = Memory.operations.findIndex((operation) => op === operation);
     Memory.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
 }
@@ -666,18 +508,312 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
 }
 function manageAddRemoteMiningOperation(op: Operation) {
     //if target room has vision, perform functions
-    if(Game.rooms[op.targetRoom]){
+    if (Game.rooms[op.targetRoom]) {
         let result = addRemoteRoom(op.originRoom, op.targetRoom);
-        if(result != OK){
+        if (result != OK) {
             console.log(`Problem assigning remote room ${op.targetRoom} to ${op.originRoom}: ${result}`);
         }
         op.stage = OperationStage.COMPLETE;
-    } else if(!op.visionRequests?.some(id => Memory.visionRequests[id])){
+    } else if (!op.visionRequests?.some((id) => Memory.visionRequests[id])) {
         //add vision request
-        let result = addVisionRequest({targetRoom: op.targetRoom});
-        if(result !== ERR_NOT_FOUND){
+        let result = addVisionRequest({ targetRoom: op.targetRoom });
+        if (result !== ERR_NOT_FOUND) {
             op.visionRequests.push(result as string);
         }
     } // else wait for rq to resolve
 }
 
+/**
+ * Add a PowerBank Operation
+ * Checks:
+ *  - PowerBank is still present
+ *  - Enough time before powerBank decays (time needed to destroy + travelCost)
+ *  - Available homeroom in range
+ * If PowerBank Operation is not doable for some reason, then set it to false to avoid calculating this again
+ * @param op
+ */
+function manageAddPowerBankOperation(op: Operation) {
+    const targetRoom = Game.rooms[op.targetRoom];
+    switch (op.stage) {
+        case OperationStage.PREPARE:
+            if (Memory.operations.some((operation) => operation.type === OperationType.POWER_BANK && operation.stage >= 2)) {
+                op.stage = OperationStage.COMPLETE;
+                return;
+            }
+            if (targetRoom) {
+                op.visionRequests = [];
+                const powerBank = targetRoom
+                    .find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })
+                    .pop() as unknown as StructurePowerBank;
+                if (powerBank && powerBank.ticksToDecay > 2000) {
+                    const numFreeSpaces = Math.min(
+                        targetRoom
+                            .lookForAtArea(LOOK_TERRAIN, powerBank.pos.y - 1, powerBank.pos.x - 1, powerBank.pos.y + 1, powerBank.pos.x + 1, true)
+                            .filter((lookPos) => lookPos.terrain !== 'wall').length,
+                        4
+                    );
+                    const operationResult = findOperationOrigin(op.targetRoom, {
+                        minEnergyStatus: EnergyStatus.STABLE,
+                        multipleSpawns: true,
+                        selectionCriteria: OriginCriteria.CLOSEST,
+                        maxThreatLevel: HomeRoomThreatLevel.ENEMY_INVADERS,
+                        maxLinearDistance: 6,
+                        operationCriteria: { type: OperationType.POWER_BANK, maxCount: 1, stage: OperationStage.ACTIVE },
+                    });
+                    // check travelCost
+                    if (operationResult) {
+                        op.originRoom = operationResult.roomName;
+                        op.pathCost = operationResult.cost;
+                        op.operativeCount = numFreeSpaces;
+                        op.stage = OperationStage.ACTIVE;
+                        return;
+                    }
+                }
+                Memory.roomData[op.targetRoom].powerBank = false;
+                op.stage = OperationStage.COMPLETE;
+            } else if (!op.visionRequests?.some((id) => Memory.visionRequests[id]?.targetRoom === op.targetRoom)) {
+                // TODO: check this: only one gets added as false every time?
+                //add vision request
+                let result = addVisionRequest({ targetRoom: op.targetRoom });
+                if (result !== ERR_NOT_FOUND) {
+                    op.visionRequests.push(result as string);
+                }
+            }
+            break;
+        case OperationStage.ACTIVE:
+            // Add 1 Protector that is able to kill typical healers (25 heal parts)
+            const assignedProtectorCount =
+                Object.values(Game.creeps).filter(
+                    (creep) =>
+                        creep.memory.assignment === op.targetRoom &&
+                        creep.memory.role === Role.PROTECTOR &&
+                        (creep.spawning || creep.ticksToLive > op.pathCost)
+                ).length +
+                Memory.spawnAssignments.filter(
+                    (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.PROTECTOR
+                ).length;
+
+            if (
+                !assignedProtectorCount &&
+                !Object.values(Memory.creeps).some((creep) => creep.destination === op.targetRoom && creep.role === Role.OPERATIVE)
+            ) {
+                const body = PopulationManagement.createDynamicCreepBody(Game.rooms[op.originRoom], [RANGED_ATTACK, HEAL, MOVE], 300, 160, {
+                    boosts: [BoostType.RANGED_ATTACK],
+                });
+
+                Memory.spawnAssignments.push({
+                    designee: op.originRoom,
+                    body: body,
+                    spawnOpts: {
+                        memory: {
+                            role: Role.PROTECTOR,
+                            assignment: op.targetRoom,
+                            currentTaskPriority: Priority.MEDIUM,
+                            combat: { flee: false },
+                            room: op.originRoom,
+                        },
+                    },
+                });
+            }
+
+            const originRoom = Game.rooms[op.originRoom];
+            const squads = Object.values(Memory.squads).filter(
+                (squad) => squad.assignment === op.targetRoom && (!squad.members || squad.members[SquadMemberType.SQUAD_LEADER])
+            );
+            let needReinforcements = false; // ttl spawning
+
+            if (targetRoom) {
+                const powerBank = targetRoom
+                    .find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })
+                    .pop() as unknown as StructurePowerBank;
+
+                if (Game.time % 49 === 0 && powerBank) {
+                    if (squads.some((squad) => squad.members && squad.members[SquadMemberType.SQUAD_LEADER]?.ticksToLive < op.pathCost + 150)) {
+                        needReinforcements = CombatIntel.getMaxDmgOverLifetime(targetRoom) < powerBank.hits;
+                    }
+
+                    // If creeps can kill powerBank in the next 500 ticks TODO: 500 or less check highest ttl
+                    if (
+                        !Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE) &&
+                        (powerBank.hits < CombatIntel.getMaxDmgOverLifetime(targetRoom, 500) || powerBank.ticksToDecay < 500)
+                    ) {
+                        // Spawn in Collectors
+                        const numCollectors = Math.ceil(powerBank.power / 1250);
+                        for (let i = 0; i < numCollectors; i++) {
+                            Memory.spawnAssignments.push({
+                                designee: op.originRoom,
+                                body: PopulationManagement.createPartsArray([CARRY, MOVE], originRoom.energyCapacityAvailable, 25),
+                                spawnOpts: {
+                                    memory: {
+                                        role: Role.OPERATIVE,
+                                        room: op.originRoom,
+                                        operation: OperationType.POWER_BANK,
+                                        destination: op.targetRoom,
+                                        currentTaskPriority: Priority.MEDIUM,
+                                    },
+                                },
+                            });
+                        }
+                    }
+                } else if (!powerBank) {
+                    Object.values(Memory.creeps)
+                        .filter((creep) => creep.assignment === targetRoom.name && creep.role !== Role.OPERATIVE)
+                        .forEach((creep) => (creep.recycle = true));
+                    Object.values(Memory.squads)
+                        .filter((squad) => squad.assignment === targetRoom.name)
+                        .forEach((squad) => Object.values(squad.members).forEach((creepName) => (Memory.creeps[creepName].recycle = true)));
+                    op.stage = OperationStage.CLAIM;
+                }
+            }
+
+            if (
+                (squads.length < op.operativeCount || needReinforcements) &&
+                !Object.values(Memory.spawnAssignments).some((assignment) => assignment.designee === op.originRoom) &&
+                !Object.values(Memory.creeps).some((creep) => creep.destination === op.targetRoom && creep.role === Role.OPERATIVE)
+            ) {
+                const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], originRoom.energyCapacityAvailable, 20);
+                const healerBody = PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25);
+                createSquad(op, SquadType.DUO, attackerBody, healerBody, [], [], SquadTarget.POWER_BANK);
+            }
+            break;
+        case OperationStage.CLAIM:
+            if (!Object.values(Memory.creeps).some((creep) => creep.destination === op.targetRoom && creep.role === Role.OPERATIVE)) {
+                op.stage = OperationStage.COMPLETE;
+            }
+            break;
+    }
+}
+
+function createSquad(
+    op: Operation,
+    type: SquadType,
+    attackerBody: BodyPartConstant[],
+    healerBody: BodyPartConstant[],
+    attackerBoost: BoostType[],
+    healerBoost: BoostType[],
+    target?: SquadTarget
+) {
+    const originRoom = Game.rooms[op.originRoom];
+    let squadId = 's2' + Game.shard.name.slice(-1) + originRoom.name + Game.time.toString().slice(-4);
+    if (type === SquadType.QUAD) {
+        squadId = 's4' + Game.shard.name.slice(-1) + originRoom.name + Game.time.toString().slice(-4);
+    }
+    const hasSquadLeader =
+        originRoom.creeps.find((creep) => creep.memory.role === Role.SQUAD_ATTACKER && creep.memory.assignment === op.targetRoom) ||
+        Memory.spawnAssignments.find(
+            (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.SQUAD_ATTACKER
+        );
+    if (!hasSquadLeader) {
+        Memory.spawnAssignments.push({
+            designee: originRoom.name,
+            body: attackerBody,
+            spawnOpts: {
+                memory: {
+                    role: Role.SQUAD_ATTACKER,
+                    room: originRoom.name,
+                    currentTaskPriority: Priority.HIGH,
+                    combat: {
+                        flee: false,
+                        squadId: squadId,
+                        squadMemberType: SquadMemberType.SQUAD_LEADER,
+                        squadTarget: target,
+                    },
+                },
+                boosts: attackerBoost,
+            },
+        });
+    }
+
+    const hasSquadFollower =
+        originRoom.creeps.find(
+            (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER && creep.memory.assignment === op.targetRoom
+        ) ||
+        Memory.spawnAssignments.find(
+            (creep) =>
+                creep.spawnOpts.memory.assignment === op.targetRoom &&
+                creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER
+        );
+    if (!hasSquadFollower) {
+        Memory.spawnAssignments.push({
+            designee: originRoom.name,
+            body: healerBody,
+            spawnOpts: {
+                memory: {
+                    role: Role.SQUAD_ATTACKER,
+                    room: originRoom.name,
+                    currentTaskPriority: Priority.MEDIUM,
+                    combat: {
+                        flee: false,
+                        squadId: squadId,
+                        squadMemberType: SquadMemberType.SQUAD_FOLLOWER,
+                    },
+                },
+                boosts: healerBoost,
+            },
+        });
+    }
+
+    if (type === SquadType.QUAD) {
+        const hasSecondSquadLeader =
+            originRoom.creeps.filter(
+                (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_LEADER && creep.memory.assignment === op.targetRoom
+            ).length +
+            Memory.spawnAssignments.filter(
+                (creep) =>
+                    creep.spawnOpts.memory.assignment === op.targetRoom &&
+                    creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_LEADER
+            ).length;
+        if (!hasSecondSquadLeader) {
+            Memory.spawnAssignments.push({
+                designee: originRoom.name,
+                body: attackerBody,
+                spawnOpts: {
+                    memory: {
+                        role: Role.SQUAD_ATTACKER,
+                        room: originRoom.name,
+                        currentTaskPriority: Priority.MEDIUM,
+                        combat: {
+                            flee: false,
+                            squadId: squadId,
+                            squadMemberType: SquadMemberType.SQUAD_SECOND_LEADER,
+                        },
+                    },
+                    boosts: attackerBoost,
+                },
+            });
+        }
+
+        const hasSecondSquadFollower =
+            originRoom.creeps.filter(
+                (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_FOLLOWER && creep.memory.assignment === op.targetRoom
+            ).length +
+            Memory.spawnAssignments.filter(
+                (creep) =>
+                    creep.spawnOpts.memory.assignment === op.targetRoom &&
+                    creep.spawnOpts.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_FOLLOWER
+            ).length;
+        if (!hasSecondSquadFollower) {
+            Memory.spawnAssignments.push({
+                designee: originRoom.name,
+                body: healerBody,
+                spawnOpts: {
+                    memory: {
+                        role: Role.SQUAD_ATTACKER,
+                        room: originRoom.name,
+                        currentTaskPriority: Priority.MEDIUM,
+                        combat: {
+                            flee: false,
+                            squadId: squadId,
+                            squadMemberType: SquadMemberType.SQUAD_SECOND_FOLLOWER,
+                        },
+                    },
+                    boosts: healerBoost,
+                },
+            });
+        }
+    }
+    if (!Memory.squads) {
+        Memory.squads = {};
+    }
+    Memory.squads[squadId] = { squadType: SquadType.DUO, forcedDestinations: op.forcedDestinations, assignment: op.targetRoom };
+}

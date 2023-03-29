@@ -14,7 +14,6 @@ import {
     roomNeedsCoreStructures,
     placeUpgraderLink,
     findStampLocation,
-    findBunkerLocation,
 } from './roomDesign';
 
 const BUILD_CHECK_PERIOD = 100;
@@ -32,9 +31,7 @@ export function driveRoom(room: Room) {
         initMissingMemoryValues(room);
     }
 
-    // if room doesn't have memory, init room memory at appropriate stage
-    if (!Memory.rooms[room.name].gates) {
-    }
+    setThreatLevel(room);
 
     if (!room.canSpawn()) {
         // fail state - if a room has unexpectedly lost all spawns
@@ -303,7 +300,7 @@ export function driveRoom(room: Room) {
             }
         }
 
-        if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50) {
+        if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50 && room.energyStatus >= EnergyStatus.STABLE) {
             try {
                 room.powerSpawn.processPower();
             } catch (e) {
@@ -472,6 +469,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
 
 export function initRoom(room: Room) {
     Memory.rooms[room.name] = {
+        threatLevel: HomeRoomThreatLevel.SAFE,
         gates: [],
         repairSearchCooldown: 0,
         repairQueue: [],
@@ -563,9 +561,6 @@ function runSpawning(room: Room) {
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
     let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER || creep.memory.role === Role.UPGRADER).length;
     let assignments = Memory.spawnAssignments.filter((assignment) => assignment.designee === room.name);
-    let roomUnderAttack =
-        room.find(FIND_HOSTILE_CREEPS).filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)).length > 0 &&
-        !room.controller.safeMode;
 
     if (distributor === undefined) {
         let spawn = availableSpawns.pop();
@@ -578,6 +573,7 @@ function runSpawning(room: Room) {
             .reduce((sum, next) => sum + next);
     }
 
+    const roomUnderAttack = room.memory.threatLevel > HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS && !room.controller.safeMode;
     if (roomUnderAttack) {
         let protectorAssignments = assignments.filter(
             (assignment) =>
@@ -643,7 +639,15 @@ function runSpawning(room: Room) {
     if (workerCount >= room.workerCapacity && !roomUnderAttack) {
         assignments.forEach((assignment) => {
             let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
-            if (canSpawnAssignment) {
+            // In addition to canSpawn it also checks if it is spawning a squad. If so it should only spawn them if at least 2 spawners are available or there is only one creep left to complete the squad (this is done in order to maximize ttl)
+            if (
+                canSpawnAssignment &&
+                (assignment?.spawnOpts?.memory?.role !== Role.SQUAD_ATTACKER ||
+                    availableSpawns.length > 1 ||
+                    assignments.filter(
+                        (otherAssignment) => otherAssignment.spawnOpts?.memory?.combat?.squadId === otherAssignment.spawnOpts?.memory?.combat?.squadId
+                    ).length === 1)
+            ) {
                 let spawn = availableSpawns.pop();
                 spawn?.spawnAssignedCreep(assignment);
             }
@@ -1023,4 +1027,23 @@ function initMissingMemoryValues(room: Room) {
     if (!room.memory.visionRequests) {
         room.memory.visionRequests = [];
     }
+}
+
+function setThreatLevel(room: Room) {
+    let threatLevel = HomeRoomThreatLevel.SAFE;
+
+    const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
+    if (hostileCreeps.length) {
+        if (hostileCreeps.some((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))) {
+            threatLevel = HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS;
+        } else if (hostileCreeps.some((creep) => creep.getActiveBodyparts(WORK))) {
+            threatLevel = HomeRoomThreatLevel.ENEMY_DISMANTLERS;
+        } else if (hostileCreeps.some((creep) => creep.owner.username === 'Invader')) {
+            threatLevel = HomeRoomThreatLevel.ENEMY_INVADERS;
+        } else {
+            threatLevel = HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS;
+        }
+    }
+
+    room.memory.threatLevel = threatLevel;
 }

@@ -630,14 +630,24 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     // Block all available spots around sources for link and extension
     findBestMiningPostitions(room, terrain).forEach((bestSpot) => {
         addUniqueRoad(stamps, { type: `source${stamps.container.length}`, rcl: 3, pos: bestSpot.adjacentSpaces.shift() });
-        stamps.link.push({ type: `source${stamps.container.length}`, rcl: linkRcl, pos: bestSpot.adjacentSpaces.shift() });
+        const linkPos = bestSpot.adjacentSpaces.shift();
+        stamps.link.push({ type: `source${stamps.container.length}`, rcl: linkRcl, pos: linkPos });
+        if (!positionsInStampBoundary([linkPos])) {
+            stamps.rampart.push({ rcl: 4, pos: linkPos });
+        }
         linkRcl++;
         bestSpot.adjacentSpaces.forEach((extensionPos) => {
             const rcl = extensionCount < 20 ? 4 : 5;
             stamps.extension.push({ type: `source${stamps.container.length}`, rcl, pos: extensionPos });
+            if (!positionsInStampBoundary([extensionPos])) {
+                stamps.rampart.push({ rcl: 4, pos: extensionPos });
+            }
             extensionCount++;
         });
         stamps.container.push({ type: `source${stamps.container.length}`, rcl: 3, pos: bestSpot.pos });
+        if (!positionsInStampBoundary([bestSpot.pos])) {
+            stamps.rampart.push({ rcl: 4, pos: bestSpot.pos });
+        }
     });
 
     let targetPositions = [];

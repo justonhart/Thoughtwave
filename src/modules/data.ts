@@ -56,11 +56,13 @@ export function updateRoomData(room: Room) {
     }
 
     if (isHighway(room.name)) {
-        delete data.powerBank;
         delete data.deposits;
+
         const hasPowerBank = room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK }).length > 0;
-        if (hasPowerBank) {
+        if (hasPowerBank && data.powerBank !== false) {
             data.powerBank = true;
+        } else if (!hasPowerBank) {
+            delete data.powerBank; // only delete it when there is none since it will be set to false if it is not a powerBank we want to get (saves cpu)
         }
 
         const deposits = room.find(FIND_DEPOSITS);
@@ -164,7 +166,7 @@ export function unclaimRoom(roomName: string) {
 //returns id
 export function addVisionRequest(request: VisionRequest): string | ScreepsReturnCode {
     let observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room].observer);
-    let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 5);
+    let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 10);
     if (suitableRoom) {
         let requestId = `${Game.time}_${visionRequestIncrement++}`;
         Memory.visionRequests[requestId] = request;

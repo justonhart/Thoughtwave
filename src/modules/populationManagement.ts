@@ -423,7 +423,13 @@ export class PopulationManagement {
      * @param opts normal spawnOptions
      * @returns Creep Body Part Array
      */
-    public static createDynamicCreepBody(room: Room, parts: BodyPartConstant[], damageNeeded: number, healNeeded: number, opts?: SpawnOptions) {
+    public static createDynamicCreepBody(
+        room: Room,
+        parts: BodyPartConstant[],
+        damageNeeded: number,
+        healNeeded: number,
+        opts?: SpawnOptions
+    ): BodyPartConstant[] {
         const getSortValue = (part: BodyPartConstant): number => (part === MOVE ? 2 : part === TOUGH ? 1 : 0);
         parts = parts.filter((part, index) => parts.indexOf(part) === index).sort((a, b) => getSortValue(b) - getSortValue(a));
         let energyAvailable = room.energyCapacityAvailable;

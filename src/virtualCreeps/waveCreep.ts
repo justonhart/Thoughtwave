@@ -6,6 +6,12 @@ export class WaveCreep extends Creep {
         //disable notifications for all creeps
         this.notifyWhenAttacked(false);
 
+        // recycle creep
+        if (this.memory.recycle) {
+            this.recycleCreep();
+            return;
+        }
+
         if (this.memory.needsBoosted) {
             this.getNextBoost();
         } else if (this.memory.portalLocations?.[0]) {
@@ -117,6 +123,25 @@ export class WaveCreep extends Creep {
         } else {
             delete this.memory.needsBoosted;
             delete this.memory.currentTaskPriority;
+        }
+    }
+
+    private recycleCreep() {
+        if (this.travelToRoom(this.homeroom.name) === IN_ROOM) {
+            const availableSpawns = this.homeroom.find(FIND_MY_SPAWNS).filter((spawn) => !spawn.spawning);
+            if (availableSpawns.length) {
+                if (this.pos.isNearTo(availableSpawns[0])) {
+                    availableSpawns[0].recycleCreep(this);
+                } else if (this.homeroom.memory.layout === RoomLayout.STAMP) {
+                    this.travelTo(
+                        this.homeroom.stamps.container.find(
+                            (containerStamp) => containerStamp.type === 'center' && availableSpawns[0].pos.isNearTo(containerStamp.pos)
+                        ).pos
+                    );
+                } else {
+                    this.travelTo(availableSpawns[0], { range: 1 });
+                }
+            }
         }
     }
 

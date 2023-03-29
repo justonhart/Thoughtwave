@@ -35,7 +35,10 @@ export class Protector extends CombatCreep {
                 creepActionReturnCode = this.attackCreep(target);
             } else if (target instanceof Structure) {
                 creepActionReturnCode = this.attackStructure(target);
-                if (creepActionReturnCode === ERR_NOT_IN_RANGE || !this.pos.isNearTo(target.pos.x, target.pos.y)) {
+                if (
+                    creepActionReturnCode === ERR_NOT_IN_RANGE ||
+                    (target.structureType !== STRUCTURE_POWER_BANK && !this.pos.isNearTo(target.pos.x, target.pos.y))
+                ) {
                     this.travelTo(target, { range: 1 });
                 }
             }

@@ -337,7 +337,7 @@ export class Pathing {
                     if (!options.ignoreCreeps) {
                         Pathing.addCreepsToMatrix(room, matrix);
                     }
-                } else if (options.ignoreCreeps || roomName !== originRoom) {
+                } else if (options.ignoreCreeps) {
                     matrix = Pathing.getStructureMatrix(room, options);
                 } else {
                     matrix = Pathing.getCreepMatrix(room);

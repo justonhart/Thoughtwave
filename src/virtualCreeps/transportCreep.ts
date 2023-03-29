@@ -54,25 +54,25 @@ export class TransportCreep extends WaveCreep {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (target instanceof Resource) {
             this.runPickupJob(target);
-        } else if (
-            target instanceof StructureContainer &&
-            this.homeroom.memory.layout === RoomLayout.STAMP &&
-            this.homeroom.stamps.container.some(
-                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.x === target.pos.x && containerStamp.pos.y === target.pos.y
-            )
-        ) {
-            this.runRefillJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer || target?.status === LabStatus.NEEDS_EMPTYING) {
             this.runCollectionJob(target);
         } else if (
             target instanceof StructureSpawn ||
             target instanceof StructureExtension ||
             target instanceof StructureTower ||
-            target instanceof StructureLab
+            target instanceof StructureLab ||
+            (target instanceof StructureContainer &&
+                this.homeroom.memory.layout === RoomLayout.STAMP &&
+                this.homeroom.stamps.container.some(
+                    (containerStamp) =>
+                        containerStamp.type === 'center' && containerStamp.pos.x === target.pos.x && containerStamp.pos.y === target.pos.y
+                ))
         ) {
             this.runRefillJob(target);
         } else if (target instanceof StructureStorage) {
             this.storeCargo();
+        } else if (target instanceof StructurePowerSpawn) {
+            this.runRefillPowerSpawnJob(target);
         }
 
         return true;
@@ -348,6 +348,28 @@ export class TransportCreep extends WaveCreep {
         if (towers.length) {
             return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
         }
+
+        // Bunker layouts dont need this since the manager takes care of it
+        if (this.homeroom.memory.layout !== RoomLayout.BUNKER && this.homeroom.controller.level === 8) {
+            const powerSpawn = this.homeroom
+                .find(FIND_MY_STRUCTURES)
+                .filter(
+                    (structure) =>
+                        structure.structureType === STRUCTURE_POWER_SPAWN &&
+                        (!structure.store.getUsedCapacity(RESOURCE_ENERGY) ||
+                            (!structure.store.getUsedCapacity(RESOURCE_POWER) &&
+                                this.homeroom
+                                    .find(FIND_MY_STRUCTURES)
+                                    .some(
+                                        (structure) =>
+                                            (structure.structureType === STRUCTURE_STORAGE || structure.structureType === STRUCTURE_TERMINAL) &&
+                                            structure.store.power
+                                    )))
+                ) as StructurePowerSpawn[];
+            if (powerSpawn.length) {
+                return powerSpawn[0].id;
+            }
+        }
     }
 
     protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> | Id<Tombstone> {
@@ -441,6 +463,67 @@ export class TransportCreep extends WaveCreep {
                     case OK:
                         this.actionTaken = true;
                         this.outgoingResourceAmount += Math.min(this.store.energy, targetFreeCapacity);
+                        this.onTaskFinished();
+                        break;
+                }
+            }
+        } else {
+            this.onTaskFinished();
+        }
+    }
+
+    protected runRefillPowerSpawnJob(target: StructurePowerSpawn) {
+        this.memory.currentTaskPriority = Priority.HIGH;
+        let targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_ENERGY);
+        if (targetFreeCapacity) {
+            if (!this.store.energy) {
+                this.memory.gathering = this.store.getUsedCapacity() === 0; // Gather energy or drop off minerals
+                delete this.memory.targetId;
+            } else if (!this.pos.isNearTo(target)) {
+                this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
+            } else if (!this.actionTaken) {
+                let result = this.transfer(target, RESOURCE_ENERGY);
+                switch (result) {
+                    case ERR_NOT_ENOUGH_RESOURCES:
+                        this.memory.gathering = true;
+                    case ERR_FULL:
+                        this.onTaskFinished();
+                        break;
+                    case OK:
+                        this.actionTaken = true;
+                        this.outgoingResourceAmount += Math.min(this.store.energy, targetFreeCapacity);
+                        this.onTaskFinished();
+                        break;
+                }
+            }
+        } else if (target.store.getFreeCapacity(RESOURCE_POWER)) {
+            targetFreeCapacity = target.store.getFreeCapacity(RESOURCE_POWER);
+            if (!this.store.power) {
+                const target = [this.room.storage, this.room.terminal].find((struct) => struct.store[RESOURCE_POWER]);
+                if (!target) {
+                    this.onTaskFinished();
+                } else if (!this.pos.isNearTo(target)) {
+                    this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
+                } else {
+                    let amountToWithdraw = Math.min(targetFreeCapacity, this.store.getFreeCapacity());
+                    let result = this.withdraw(target, RESOURCE_POWER, amountToWithdraw);
+                    if (result === OK) {
+                        this.incomingMineralAmount += amountToWithdraw;
+                    } else {
+                        this.onTaskFinished();
+                    }
+                }
+            } else if (!this.pos.isNearTo(target)) {
+                this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
+            } else if (!this.actionTaken) {
+                let result = this.transfer(target, RESOURCE_POWER);
+                switch (result) {
+                    case ERR_FULL:
+                        this.onTaskFinished();
+                        break;
+                    case OK:
+                        this.actionTaken = true;
+                        this.outgoingResourceAmount += Math.min(this.store.power, targetFreeCapacity);
                         this.onTaskFinished();
                         break;
                 }

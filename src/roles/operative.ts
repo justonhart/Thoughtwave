@@ -3,6 +3,7 @@ import { WorkerCreep } from '../virtualCreeps/workerCreep';
 export class Operative extends WorkerCreep {
     protected run() {
         if (!this.operation) {
+            this.memory.recycle = true;
             delete this.memory.operation;
             delete this.memory.destination;
         }
@@ -12,6 +13,7 @@ export class Operative extends WorkerCreep {
                 this.runSterilize();
                 break;
             case OperationType.COLLECTION:
+            case OperationType.POWER_BANK:
                 this.runCollect();
                 break;
             case OperationType.UPGRADE_BOOST:
@@ -116,6 +118,10 @@ export class Operative extends WorkerCreep {
             let storage = Game.rooms[this.operation.originRoom].storage;
             if (this.pos.isNearTo(storage)) {
                 this.transfer(storage, Object.keys(this.store).pop() as ResourceConstant);
+                if (this.operation.type === OperationType.POWER_BANK) {
+                    // recycle after dropping off power
+                    this.memory.recycle = true;
+                }
             } else {
                 this.travelTo(storage);
             }
@@ -157,22 +163,35 @@ export class Operative extends WorkerCreep {
                 } else {
                     this.travelTo(target, { range: 1 });
                 }
+            } else if (target instanceof StructurePowerBank) {
+                this.travelTo(target, { range: 4 });
             } else {
                 delete this.memory.targetId;
-                this.terminateOperation();
+                if (this.memory.operation !== OperationType.POWER_BANK) {
+                    // Gets terminated in operationsManagement when all operatives are dead (recycled)
+                    this.terminateOperation();
+                } else {
+                    this.memory.recycle = true;
+                }
             }
         }
     }
 
     private findCollectionTarget(): Id<Structure> | Id<Ruin> | Id<Resource> {
-        let resource = this.room
-            .find(FIND_DROPPED_RESOURCES, {
-                filter: (r) =>
-                    (this.operation.resource ? r.resourceType === this.operation.resource : true) && r.amount > this.store.getFreeCapacity() / 2,
-            })
-            ?.shift();
-        if (resource) {
-            return resource.id;
+        if (this.memory.operation === OperationType.POWER_BANK) {
+            const powerbank = this.room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })?.shift();
+            if (powerbank) {
+                return powerbank.id; // Go towards powerbank (easier to protect)
+            }
+        }
+
+        let resource = this.room.find(FIND_DROPPED_RESOURCES, {
+            filter: (r) => (this.operation.resource ? r.resourceType === this.operation.resource : true),
+        });
+
+        let bigResource = resource.filter((r) => r.amount > this.store.getFreeCapacity() / 2)?.shift();
+        if (bigResource) {
+            return bigResource.id;
         }
 
         let ruin = this.room
@@ -181,6 +200,7 @@ export class Operative extends WorkerCreep {
                 (r) =>
                     (r.structure.structureType === STRUCTURE_STORAGE ||
                         r.structure.structureType === STRUCTURE_TERMINAL ||
+                        r.structure.structureType === STRUCTURE_POWER_BANK ||
                         r.structure.structureType === STRUCTURE_LAB ||
                         r.structure.structureType === STRUCTURE_NUKER) &&
                     r.store.getUsedCapacity()
@@ -203,6 +223,10 @@ export class Operative extends WorkerCreep {
         if (structure) {
             return structure.id;
         }
+
+        if (resource.length) {
+            return resource[0].id;
+        }
     }
 
     private findCleanTarget(): Id<Structure> {
@@ -219,13 +243,17 @@ export class Operative extends WorkerCreep {
     }
 
     private terminateOperation() {
-        let opIndex = Memory.operations.findIndex((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
+        let opIndex = this.getOperationIndex();
         if (opIndex > -1) {
             Memory.operations[opIndex].stage = OperationStage.COMPLETE;
         }
 
         delete this.memory.destination;
         delete this.memory.operation;
+    }
+
+    private getOperationIndex() {
+        return Memory.operations.findIndex((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
     }
 
     private gatherResourceFromOrigin(resource: ResourceConstant) {
