@@ -57,6 +57,10 @@ export class Gatherer extends TransportCreep {
                 this.travelTo(this.homeroom.storage, opts);
                 break;
             case 0:
+                let source = Object.keys(this.homeroom.memory.remoteSources).find(
+                    (s) => this.homeroom.memory.remoteSources[s].miningPos === this.memory.assignment
+                );
+                delete Memory.rooms[this.memory.room].remoteSources[source].setupStatus;
                 break;
         }
     }
