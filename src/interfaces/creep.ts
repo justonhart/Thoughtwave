@@ -1,5 +1,4 @@
 interface CreepMemory {
-    stop?: boolean;
     ready?: number;
     targetId2?: Id<Creep>;
     gatheringLabResources?: boolean;
@@ -24,6 +23,9 @@ interface CreepMemory {
     combat?: CombatMemory;
     nextRole?: Role;
     storeRoadInMemory?: Id<StructureContainer>;
+    refillBelow: number;
+    sleepCollectTil: number;
+    stop?: boolean;
 }
 
 interface Creep {
