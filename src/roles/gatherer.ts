@@ -32,6 +32,7 @@ export class Gatherer extends TransportCreep {
                 this.storeCargo();
             }
         } else {
+            this.memory.currentTaskPriority = Priority.MEDIUM;
             if (this.pos.isNearTo(this.memory.assignment.toRoomPos())) {
                 let container = Game.getObjectById(this.getContainerId()) as StructureContainer;
                 if (container) {
