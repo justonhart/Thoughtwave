@@ -141,7 +141,6 @@ export class Pathing {
                 const roadsToDestination = Object.entries(Memory.roomData[creep.room.name].roads).filter(([key, value]) =>
                     key.includes(destination.toMemSafe())
                 );
-                console.log(`${creep.name + ': ' + roadsToDestination.length}`);
                 if (roadsToDestination.length) {
                     let roadThruCurrentPos = roadsToDestination.find(([key, value]) =>
                         decodeRoad(value, creep.room.name).some((pos) => pos.isEqualTo(creep.pos))
@@ -150,10 +149,12 @@ export class Pathing {
                     if (roadThruCurrentPos) {
                         pathFinder = { path: getRoadPathFromPos(roadThruCurrentPos[0], creep.pos, destination.toMemSafe()) };
                     } else {
+                        let roadPositions = _.flatten(roadsToDestination.map(([key, value]) => decodeRoad(value, creep.room.name)))
                         //else find path to nearest pos on road
                         pathFinder = PathFinder.search(
                             creep.pos,
-                            _.flatten(roadsToDestination.map(([key, value]) => decodeRoad(value, creep.room.name)))
+                            roadPositions,
+                            {roomCallback: Pathing.getRoomCallback(creep.room.name, roadPositions.shift(), {}, creep.name) }
                         );
                     }
                 }
@@ -194,7 +195,6 @@ export class Pathing {
             creep.memory._m.path = Pathing.serializePath(creep.pos, pathFinder.path, { color: opts.pathColor, lineStyle: 'dashed' });
             // Get all roomPositions along the path
             if (opts.pathsRoomPositions?.length === 0 && creep.memory._m.path?.length && !opts.avoidedTemporaryHostileRooms) {
-                if (pathFinder.path[0] === undefined) console.log(`${creep.name}`);
                 Array.prototype.push.apply(opts.pathsRoomPositions, pathFinder.path);
             }
             creep.memory._m.stuckCount = 0;
