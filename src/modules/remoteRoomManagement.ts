@@ -5,7 +5,7 @@ import { PopulationManagement } from './populationManagement';
 export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: string) {
     let remoteRoom = Game.rooms[remoteRoomName];
     if (remoteRoom) {
-        if(isKeeperRoom(remoteRoomName) && !Memory.remoteData[remoteRoomName].sourceKeeperLairs){
+        if (isKeeperRoom(remoteRoomName) && !Memory.remoteData[remoteRoomName].sourceKeeperLairs) {
             Memory.remoteData[remoteRoomName].sourceKeeperLairs = createKeeperLairData(remoteRoomName);
         }
         Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
@@ -175,7 +175,7 @@ function reassignIdleProtector(controllingRoomName: string, remoteRoomName: stri
     return false;
 }
 
-export function removeRemoteRoom(hostName: string, remoteRoomName: string) {
+export function removeRemoteRoomMemory(remoteRoomName: string) {
     delete Memory.remoteData[remoteRoomName];
     Memory.roomData[remoteRoomName].asOf = Game.time;
     Memory.roomData[remoteRoomName].roomStatus = RoomMemoryStatus.VACANT;
