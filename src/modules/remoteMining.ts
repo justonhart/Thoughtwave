@@ -88,7 +88,9 @@ export function calculateRemoteSourceStats(sourcePos: RoomPosition, room: Room, 
             CREEP_LIFE_TIME) *
         ENERGY_REGEN_TIME;
 
-    const RESERVER_COST_PER_CYCLE = ((BODYPART_COST[CLAIM] + BODYPART_COST[MOVE]) / CREEP_CLAIM_LIFE_TIME) * ENERGY_REGEN_TIME;
+    const RESERVER_COST_PER_CYCLE = otherAssignedSourceInRoom(sourcePos.toMemSafe())
+        ? ((BODYPART_COST[CLAIM] + BODYPART_COST[MOVE]) / CREEP_CLAIM_LIFE_TIME) * ENERGY_REGEN_TIME
+        : 0;
 
     const TOTAL_COSTS_PER_CYCLE =
         MINER_COST_PER_CYCLE +
@@ -191,8 +193,7 @@ export function removeSourceAssignment(source: string) {
     delete Memory.rooms[current].remoteSources[source];
     delete Memory.remoteSourceAssignments[source];
     let roomName = source.split('.')[2];
-    const someOtherAssignmentInRoom = Object.keys(Memory.remoteSourceAssignments).some((a) => a.split('.')[2] === roomName);
-    if (!someOtherAssignmentInRoom) {
+    if (!otherAssignedSourceInRoom(source)) {
         removeRemoteRoomMemory(roomName);
     }
 }
@@ -208,7 +209,9 @@ export function findRemoteMiningOptions(room: Room): { source: string; stats: Re
         if (
             [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
                 Memory.roomData[nextRoomName]?.roomStatus
-            )
+            ) &&
+            !isKeeperRoom(nextRoomName) &&
+            !isCenterRoom(nextRoomName)
         ) {
             safeRoomsDepthOne.push(nextRoomName);
         }
@@ -226,7 +229,9 @@ export function findRemoteMiningOptions(room: Room): { source: string; stats: Re
                 [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
                     Memory.roomData[nextRoomName]?.roomStatus
                 ) &&
-                !safeRoomsDepthOne.includes(nextRoomName)
+                !safeRoomsDepthOne.includes(nextRoomName) &&
+                !isKeeperRoom(nextRoomName) &&
+                !isCenterRoom(nextRoomName)
             ) {
                 safeRoomsDepthTwo.push(nextRoomName);
             }
@@ -246,7 +251,9 @@ export function findRemoteMiningOptions(room: Room): { source: string; stats: Re
                     Memory.roomData[nextRoomName]?.roomStatus
                 ) &&
                 !safeRoomsDepthOne.includes(nextRoomName) &&
-                !safeRoomsDepthTwo.includes(nextRoomName)
+                !safeRoomsDepthTwo.includes(nextRoomName) &&
+                !isKeeperRoom(nextRoomName) &&
+                !isCenterRoom(nextRoomName)
             ) {
                 safeRoomsDepthThree.push(nextRoomName);
             }
@@ -284,8 +291,16 @@ export function findSuitableRemoteSource(room: Room, noKeeperRooms: boolean = fa
         options = options.filter((option) => option.stats?.sourceSize === 3000);
     }
 
+    options = options.filter((option) => option.stats.netIncome >= 750);
+
     //prefer central rooms over other rooms and prefer closer to farther
     options.sort((a, b) => b.stats.netIncome - a.stats.netIncome);
 
     return options.shift();
+}
+
+export function otherAssignedSourceInRoom(source: string): boolean {
+    return Object.keys(Memory.remoteSourceAssignments).some(
+        (otherSource) => otherSource.split('.')[2] === source.split('.')[2] && otherSource !== source
+    );
 }
