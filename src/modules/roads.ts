@@ -173,11 +173,24 @@ export function posExistsOnRoad(pos: RoomPosition, roadKey?: string): boolean {
 
 //trace a road through all rooms from starting point to return RoomPosition array
 export function getFullRoad(roadKey: string): RoomPosition[] {
-    let startingRoomName = roadKey.split(':')[0].toRoomPos().roomName;
-    return recursiveRoadGet(roadKey, startingRoomName);
+    const startingRoomName = roadKey.split(':')[0].toRoomPos().roomName;
+    const roadCode = Memory.roomData[startingRoomName].roads[roadKey];
+
+    let road = decodeRoad(roadCode, startingRoomName);
+    const segments = getRoadSegments(road);
+    if(segments.length > 1){
+        road = segments[0];
+    } 
+
+    let nextRoomName = Game.map.describeExits(startingRoomName)[getExitDirection(road[road.length - 1])];
+    if (nextRoomName !== ERR_INVALID_ARGS) {
+        return [...road, ...recursiveRoadGet(roadKey, nextRoomName, road[road.length - 1])];
+    } else {
+        return undefined;
+    }
 }
 
-function recursiveRoadGet(roadKey: string, roomName: string): RoomPosition[] {
+function recursiveRoadGet(roadKey: string, roomName: string, lastPos: RoomPosition): RoomPosition[] {
     const roadCode = Memory.roomData[roomName]?.roads[roadKey];
     if (!roadCode) {
         console.log(`Error tracing road ${roadKey} through ${roomName}`);
@@ -185,7 +198,15 @@ function recursiveRoadGet(roadKey: string, roomName: string): RoomPosition[] {
     }
 
     let road = decodeRoad(roadCode, roomName);
-
+    let segments = getRoadSegments(road);
+    
+    if(segments.length > 1){
+        let currentSegment = segments.find(seg => 
+            (Math.abs(seg[0].x - lastPos.x) <= 1 || Math.abs(seg[0].y - lastPos.y) <= 1)
+        );
+        road = currentSegment;
+    } 
+    
     let destination = roadKey.split(':')[1].toRoomPos();
 
     if (road[road.length - 1].isNearTo(destination)) {
@@ -193,7 +214,7 @@ function recursiveRoadGet(roadKey: string, roomName: string): RoomPosition[] {
     } else {
         let nextRoomName = Game.map.describeExits(roomName)[getExitDirection(road[road.length - 1])];
         if (nextRoomName !== ERR_INVALID_ARGS) {
-            return [...road, ...recursiveRoadGet(roadKey, nextRoomName)];
+            return [...road, ...recursiveRoadGet(roadKey, nextRoomName, road[road.length - 1])];
         } else {
             return undefined;
         }
@@ -241,4 +262,13 @@ export function getRoadPathFromPos(roadKey: string, startPos: RoomPosition, dest
     }
 
     return path;
+}
+
+export function roadCodeContainsMultipleSegments(roadCode: string): boolean {
+    for(let i = 2; i < roadCode.length; i += 2){
+        if((Math.abs(MAPPING.indexOf(roadCode[i-2]) - MAPPING.indexOf(roadCode[i])) > 1) || Math.abs(MAPPING.indexOf(roadCode[i-1]) - MAPPING.indexOf(roadCode[i+1])) > 1){
+            return true;
+        }
+    }
+    return false;
 }
