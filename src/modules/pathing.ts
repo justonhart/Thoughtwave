@@ -137,7 +137,7 @@ export class Pathing {
 
             let pathFinder: any;
 
-            if (opts.useMemoryRoads && Memory.roomData[creep.room.name].roads) {
+            if (opts.useMemoryRoads && Memory.roomData[creep.room.name].roads && creep.memory._m.stuckCount < 3) {
                 const roadsToDestination = Object.entries(Memory.roomData[creep.room.name].roads).filter(([key, value]) =>
                     key.includes(destination.toMemSafe())
                 );
@@ -197,7 +197,7 @@ export class Pathing {
             if (opts.pathsRoomPositions?.length === 0 && creep.memory._m.path?.length && !opts.avoidedTemporaryHostileRooms) {
                 Array.prototype.push.apply(opts.pathsRoomPositions, pathFinder.path);
             }
-            creep.memory._m.stuckCount = 0;
+            //creep.memory._m.stuckCount = 0;
 
             // Do not remove next path if instantly going back to old room
             if (

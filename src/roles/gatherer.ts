@@ -5,9 +5,14 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
     protected run() {
+        if (this.memory?.spawnReplacementAt === Game.time) {
+            this.triggerReplacementSpawn();
+        }
+
         if (
             this.damaged() ||
-            Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
+            (Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                !this.store.getUsedCapacity())
         ) {
             delete this.memory.targetId;
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
@@ -35,7 +40,7 @@ export class Gatherer extends TransportCreep {
             this.memory.currentTaskPriority = Priority.MEDIUM;
             if (this.pos.isNearTo(this.getMiningPosition())) {
                 let container = Game.getObjectById(this.getContainerId()) as StructureContainer;
-                if (container) {
+                if (container && (container.store.getUsedCapacity() > 1000 || container.store.getUsedCapacity() >= this.store.getCapacity())) {
                     this.withdraw(container, Object.keys(container.store).shift() as ResourceConstant);
                     let road = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_ROAD) as StructureRoad;
                     this.repairRoad(road);
@@ -58,6 +63,7 @@ export class Gatherer extends TransportCreep {
                 break;
             case 0:
                 delete Memory.rooms[this.memory.room].remoteSources[this.memory.assignment].setupStatus;
+                this.manageLifecycle();
                 break;
         }
     }
@@ -100,8 +106,31 @@ export class Gatherer extends TransportCreep {
         }
     }
 
-    private canCompleteAnotherTrip(): boolean {
-        return Memory.remoteSourceAssignments[this.memory.assignment].roadLength * 3 > this.ticksToLive;
+    private manageLifecycle(): void {
+        const TRIP_LENGTH = Memory.remoteSourceAssignments[this.memory.assignment].roadLength * 3;
+        const TICKS_TO_SPAWN = this.body.length * CREEP_SPAWN_TIME;
+        const TRIPS_REMAINING = Math.floor(this.ticksToLive / TRIP_LENGTH);
+        const TRIPS_PER_SPAWN_CYCLE = TICKS_TO_SPAWN / TRIP_LENGTH;
+        const COMPLETION_OF_LAST_TRIP = Game.time + TRIPS_REMAINING * TRIP_LENGTH;
+        const START_SPAWNING_REPLACEMENT_AT = COMPLETION_OF_LAST_TRIP - TICKS_TO_SPAWN;
+        const SPAWN_CYCLES_REMAINING = Math.floor(TRIPS_REMAINING / TRIPS_PER_SPAWN_CYCLE);
+        this.say(TRIPS_REMAINING.toString());
+
+        //determine when to spawn replacement toward end of lifecycle
+        if (TRIPS_REMAINING === 0) {
+            this.suicide();
+        } else if (SPAWN_CYCLES_REMAINING <= 1 || TRIPS_REMAINING === 1) {
+            this.memory.spawnReplacementAt = START_SPAWNING_REPLACEMENT_AT > Game.time ? START_SPAWNING_REPLACEMENT_AT : Game.time;
+        }
+    }
+
+    private triggerReplacementSpawn() {
+        console.log('Replacing ' + this.name);
+        for (let i = 0; i < this.homeroom.memory.remoteSources[this.memory.assignment].gatherers.length; i++) {
+            if (this.homeroom.memory.remoteSources[this.memory.assignment].gatherers[i] === this.name) {
+                this.homeroom.memory.remoteSources[this.memory.assignment].gatherers[i] === AssignmentStatus.UNASSIGNED;
+            }
+        }
     }
 
     private getMiningPosition(): RoomPosition {

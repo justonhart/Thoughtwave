@@ -364,7 +364,7 @@ export class PopulationManagement {
 
         let PARTS =
             spawn.room.memory.remoteSources[source].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD
-                ? PopulationManagement.createPartsArray([WORK, CARRY, MOVE], spawn.room.energyAvailable, 10)
+                ? PopulationManagement.createPartsArray([WORK, CARRY, MOVE], spawn.room.energyCapacityAvailable, 10)
                 : [
                       WORK,
                       WORK,

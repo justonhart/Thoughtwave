@@ -25,6 +25,7 @@ interface CreepMemory {
     storeRoadInMemory?: Id<StructureContainer>;
     sleepCollectTil?: number;
     stop?: boolean;
+    spawnReplacementAt?: number;
 }
 
 interface Creep {
