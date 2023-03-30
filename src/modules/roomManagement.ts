@@ -853,7 +853,7 @@ function getStructurePriority(structureType: StructureConstant): number {
 }
 
 export function canSupportRemoteRoom(room: Room) {
-    return true;
+    return Object.keys(room.memory.remoteSources).length < room.find(FIND_MY_SPAWNS).length * 3;
 }
 
 function initMissingMemoryValues(room: Room) {
