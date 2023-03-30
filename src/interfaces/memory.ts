@@ -11,7 +11,7 @@ interface Memory {
     blacklistedRooms?: string[]; //room names we don't sell to
     visionRequests?: { [id: string]: VisionRequest };
     remoteSourceClaims?: { [sourcePos: string]: { claimant: string; netIncome: number } }; //map of potential remote rooms to rooms intending to claim them and their anticipated net income - higher income gets priority
-    remoteSourceAssignments?: { [sourcePos: string]: string }; //maps sources in other rooms to owned rooms mining them
+    remoteSourceAssignments?: { [sourcePos: string]: RemoteAssignmentData }; //maps sources in other rooms to owned rooms mining them
     debug?: DebugSettings;
 }
 
@@ -161,4 +161,10 @@ interface DebugSettings {
     drawRoads?: boolean;
     drawRemoteConnections?: boolean;
     logRoomPlacementCpu?: boolean;
+}
+
+interface RemoteAssignmentData {
+    controllingRoom: string;
+    estimatedIncome: number;
+    roadLength: number;
 }
