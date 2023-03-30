@@ -296,17 +296,16 @@ export class PopulationManagement {
     }
 
     static spawnRemoteMiner(spawn: StructureSpawn, source: string): ScreepsReturnCode {
-        const miningPos = spawn.room.memory.remoteSources[source].miningPos;
         let options: SpawnOptions = {
             memory: {
-                assignment: miningPos,
+                assignment: source,
                 room: spawn.room.name,
                 role: Role.REMOTE_MINER,
                 currentTaskPriority: Priority.HIGH,
             },
         };
 
-        let workNeeded = this.calculateRemoteMinerWorkNeeded(miningPos);
+        let workNeeded = this.calculateRemoteMinerWorkNeeded(source);
         let work = [];
         let move = [];
         let energyLeft = spawn.room.energyCapacityAvailable - 100;
@@ -345,10 +344,9 @@ export class PopulationManagement {
     }
 
     static spawnGatherer(spawn: StructureSpawn, source: string): ScreepsReturnCode {
-        let miningPos = spawn.room.memory.remoteSources[source].miningPos;
         let options: SpawnOptions = {
             memory: {
-                assignment: miningPos,
+                assignment: source,
                 room: spawn.room.name,
                 role: Role.GATHERER,
             },
