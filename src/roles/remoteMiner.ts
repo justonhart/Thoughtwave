@@ -11,20 +11,20 @@ export class RemoteMiner extends WaveCreep {
         }
 
         //if we have visibility in assigned room
-        if (Game.rooms[this.memory.assignment.toRoomPos().roomName]) {
+        if (Game.rooms[this.getMiningPosition().roomName]) {
             const isAKeeperRoom = isKeeperRoom(this.memory.assignment.toRoomPos().roomName);
             if (isAKeeperRoom && this.keeperSpawning()) {
                 const lairPositions = Object.values(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).map((lairId) => {
                     return { pos: Game.getObjectById(lairId).pos, range: 0 };
                 });
                 if (this.onEdge()) {
-                    this.travelToRoom(this.memory.assignment); // Prevent going in and out of the room
+                    this.travelToRoom(this.memory.assignment.toRoomPos().roomName); // Prevent going in and out of the room
                 } else {
                     this.travelTo(lairPositions.pop(), { range: 7, flee: true, goals: lairPositions, maxRooms: 1 }); // Travel out of harms way
                 }
             } else {
-                if (!this.pos.isEqualTo(this.memory.assignment.toRoomPos())) {
-                    this.travelTo(this.memory.assignment.toRoomPos(), { useMemoryRoads: true });
+                if (!this.pos.isEqualTo(this.getMiningPosition())) {
+                    this.travelTo(this.getMiningPosition(), { useMemoryRoads: true });
                 } else {
                     let container = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
                     if (!container) {
@@ -39,14 +39,14 @@ export class RemoteMiner extends WaveCreep {
                             }
                         } else {
                             this.pos.createConstructionSite(STRUCTURE_CONTAINER);
-                            this.homeroom.memory.remoteSources[Game.getObjectById(this.getSourceId()).pos.toMemSafe()].setupStatus =
-                                RemoteSourceSetupStatus.BUILDING_CONTAINER;
+                            this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus = RemoteSourceSetupStatus.BUILDING_CONTAINER;
                         }
                     } else {
-                        let source = Game.getObjectById(this.getSourceId());
-                        if (this.homeroom.memory.remoteSources[source.pos.toMemSafe()].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) {
-                            this.homeroom.memory.remoteSources[source.pos.toMemSafe()].setupStatus = RemoteSourceSetupStatus.BUILDING_ROAD;
+                        if (this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) {
+                            this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus = RemoteSourceSetupStatus.BUILDING_ROAD;
                         }
+
+                        let source = Game.getObjectById(this.getSourceId());
                         if (this.store.energy && container.hits < container.hitsMax) {
                             this.repair(container);
                         } else if (source.energy && (container.store.getFreeCapacity() || this.store.getFreeCapacity())) {
@@ -78,9 +78,13 @@ export class RemoteMiner extends WaveCreep {
         }
 
         if (Game.rooms[this.memory.assignment.toRoomPos().roomName]) {
-            let id = this.memory.assignment.toRoomPos().findInRange(FIND_SOURCES, 1)?.pop().id;
+            let id = this.memory.assignment.toRoomPos().lookFor(LOOK_SOURCES)?.pop().id;
             this.memory.targetId = id;
             return id;
         }
+    }
+
+    private getMiningPosition(): RoomPosition {
+        return this.homeroom.memory.remoteSources[this.memory.assignment].miningPos.toRoomPos();
     }
 }

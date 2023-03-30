@@ -33,7 +33,7 @@ export class Gatherer extends TransportCreep {
             }
         } else {
             this.memory.currentTaskPriority = Priority.MEDIUM;
-            if (this.pos.isNearTo(this.memory.assignment.toRoomPos())) {
+            if (this.pos.isNearTo(this.getMiningPosition())) {
                 let container = Game.getObjectById(this.getContainerId()) as StructureContainer;
                 if (container) {
                     this.withdraw(container, Object.keys(container.store).shift() as ResourceConstant);
@@ -42,7 +42,7 @@ export class Gatherer extends TransportCreep {
                     this.storeCargo();
                 }
             } else {
-                this.travelTo(this.memory.assignment.toRoomPos(), { range: 1, useMemoryRoads: true, reusePath: 10000 });
+                this.travelTo(this.getMiningPosition(), { range: 1, useMemoryRoads: true, reusePath: 10000 });
             }
         }
     }
@@ -57,10 +57,7 @@ export class Gatherer extends TransportCreep {
                 this.travelTo(this.homeroom.storage, opts);
                 break;
             case 0:
-                let source = Object.keys(this.homeroom.memory.remoteSources).find(
-                    (s) => this.homeroom.memory.remoteSources[s].miningPos === this.memory.assignment
-                );
-                delete Memory.rooms[this.memory.room].remoteSources[source].setupStatus;
+                delete Memory.rooms[this.memory.room].remoteSources[this.memory.assignment].setupStatus;
                 break;
         }
     }
@@ -76,14 +73,14 @@ export class Gatherer extends TransportCreep {
     }
 
     private destinationSpawningKeeper(): boolean {
-        const lairId = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[this.getSourceId()];
+        const lairId = Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs[this.getSourceId()];
         const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
         return lairInRange?.ticksToSpawn < 20;
     }
 
     private getSourceId(): Id<Source> {
         if (Game.rooms[this.memory.assignment.toRoomPos().roomName]) {
-            let id = this.memory.assignment.toRoomPos().findInRange(FIND_SOURCES, 1)?.pop().id;
+            let id = this.memory.assignment.toRoomPos().lookFor(LOOK_SOURCES)?.pop().id;
             this.memory.targetId = id;
             return id;
         }
@@ -95,11 +92,19 @@ export class Gatherer extends TransportCreep {
         }
 
         if (Game.rooms[this.memory.assignment.toRoomPos().roomName]) {
-            let id = this.memory.assignment
-                .toRoomPos()
+            let id = this.getMiningPosition()
                 .lookFor(LOOK_STRUCTURES)
                 .find((s) => s.structureType === STRUCTURE_CONTAINER)?.id;
+            this.memory.targetId = id;
             return id;
         }
+    }
+
+    private canCompleteAnotherTrip(): boolean {
+        return Memory.remoteSourceAssignments[this.memory.assignment].roadLength * 3 > this.ticksToLive;
+    }
+
+    private getMiningPosition(): RoomPosition {
+        return this.homeroom.memory.remoteSources[this.memory.assignment].miningPos.toRoomPos();
     }
 }
