@@ -188,7 +188,7 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
                 { pos: new RoomPosition(25, 25, targetRoom), range: 23 },
                 {
                     maxRooms: 25,
-                    swampCost: opts.ignoreTerrain ? 1 : 5,
+                    swampCost: opts?.ignoreTerrain ? 1 : 5,
                     maxOps: 100000,
                     roomCallback(roomName) {
                         if (allowedRooms) {
@@ -539,17 +539,12 @@ function manageAddPowerBankOperation(op: Operation) {
     const originRoom = Game.rooms[op.originRoom];
     switch (op.stage) {
         case OperationStage.PREPARE:
-            // TODO: delete this
-            if (Memory.operations.some((operation) => operation.type === OperationType.POWER_BANK && operation.stage >= 2)) {
-                op.stage = OperationStage.COMPLETE;
-                return;
-            }
             if (targetRoom) {
                 op.visionRequests = [];
                 const powerBank = targetRoom
                     .find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })
                     .pop() as unknown as StructurePowerBank;
-                if (powerBank && powerBank.ticksToDecay > 2500 && powerBank.power > 1000) {
+                if (powerBank && powerBank.ticksToDecay > 2500 && powerBank.power > 2000) {
                     const numFreeSpaces = Math.min(
                         targetRoom
                             .lookForAtArea(LOOK_TERRAIN, powerBank.pos.y - 1, powerBank.pos.x - 1, powerBank.pos.y + 1, powerBank.pos.x + 1, true)
@@ -579,11 +574,22 @@ function manageAddPowerBankOperation(op: Operation) {
             }
             break;
         case OperationStage.ACTIVE:
-            spawnPowerBankProtector(op, targetRoom, originRoom);
-
+            // Alive or currently spawning squads
             const squads = Object.values(Memory.squads).filter(
                 (squad) => squad.assignment === op.targetRoom && (!squad.members || squad.members[SquadMemberType.SQUAD_LEADER])
             );
+
+            // If attackers are dying then abandon operation
+            const squadLeaders = squads.filter((squad) => squad.members).map((squad) => Game.creeps[squad.members[SquadMemberType.SQUAD_LEADER]]);
+            squadLeaders.forEach((squadLeader) => {
+                if (squadLeader.hits < squadLeader.hitsMax / 2) {
+                    op.stage = OperationStage.COMPLETE;
+                    return;
+                }
+            });
+
+            // Spawn 1 protector
+            spawnPowerBankProtector(op, targetRoom, originRoom);
 
             // Spawn Squads
             if (
@@ -602,48 +608,57 @@ function manageAddPowerBankOperation(op: Operation) {
                     .find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })
                     .pop() as unknown as StructurePowerBank;
 
-                if (Game.time % 50 === 0 && powerBank) {
-                    if (!Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE)) {
-                        // TTL Spawning
-                        const aliveSquads = squads.filter((squad) => squad.members && Game.creeps[squad.members[SquadMemberType.SQUAD_LEADER]]);
-                        if (
-                            CombatIntel.getMaxDmgForSquads(aliveSquads) < powerBank.hits &&
-                            aliveSquads.some((squad) => Game.creeps[squad.members[SquadMemberType.SQUAD_LEADER]].ticksToLive < op.pathCost + 150) &&
-                            squads.length < 2 * op.operativeCount
-                        ) {
-                            const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], originRoom.energyCapacityAvailable, 20);
-                            const healerBody = PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25);
-                            createSquad(op, SquadType.DUO, attackerBody, healerBody, [], [], SquadTarget.POWER_BANK);
+                // No need to check every tick since damage is consistent
+                if (
+                    Game.time % 50 === 0 &&
+                    powerBank &&
+                    !Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE)
+                ) {
+                    // TTL Spawning
+                    if (
+                        squadLeaders.length === squads.length && // No more squads currently spawning in
+                        CombatIntel.getMaxDmgOverLifetime(squadLeaders) < powerBank.hits && // Damage is not enough
+                        squadLeaders.some((squadLeader) => squadLeader.ticksToLive < op.pathCost + 150) && // New squad can replace an old one
+                        squads.length < op.operativeCount + 2 // Only allow at most 2 ttl spawn
+                    ) {
+                        const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], originRoom.energyCapacityAvailable, 20);
+                        const healerBody = PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25);
+                        createSquad(op, SquadType.DUO, attackerBody, healerBody, [], [], SquadTarget.POWER_BANK);
+                    }
+
+                    // Collectors spawn time (assuming 3 spawns are used it will need at least 150 ticks for every 3 collectors + 50 ticks since this is not checked every tick) + path cost (powercreeps ignored for now)
+                    let numCollectors = Math.ceil(powerBank.power / 1250);
+                    const timeNeededForCollectors = op.pathCost + Math.ceil(numCollectors / 3) * 150 + 50;
+                    if (
+                        powerBank.hits < CombatIntel.getMaxDmgOverLifetime(squadLeaders, timeNeededForCollectors) ||
+                        powerBank.ticksToDecay < timeNeededForCollectors
+                    ) {
+                        // Calculate how many collectors are needed when powerBank decays before being destroyed
+                        if (powerBank.ticksToDecay < timeNeededForCollectors) {
+                            const dmgDone =
+                                (powerBank.hitsMax - (powerBank.hits - CombatIntel.getMaxDmgOverLifetime(squadLeaders, timeNeededForCollectors))) /
+                                powerBank.hitsMax;
+                            numCollectors = Math.ceil((powerBank.power * dmgDone) / 1250);
                         }
-                        // Collectors spawn time (assuming 3 spawns are used it will need 150 ticks for 3 collectors) + path cost (powercreeps ignored for now)
-                        let numCollectors = Math.ceil(powerBank.power / 1250);
-                        const timeNeededForCollectors = op.pathCost + Math.ceil(numCollectors / 3) * 150;
-                        if (powerBank.hits < CombatIntel.getMaxDmgOverLifetime(targetRoom, 500) || powerBank.ticksToDecay < timeNeededForCollectors) {
-                            // Calculate how many collectors are needed when powerBank decays before being destroyed
-                            if (powerBank.ticksToDecay < timeNeededForCollectors) {
-                                const dmgDone =
-                                    (powerBank.hitsMax - (powerBank.hits - CombatIntel.getMaxDmgOverLifetime(targetRoom))) / powerBank.hitsMax;
-                                numCollectors = Math.ceil((powerBank.power * dmgDone) / 1250);
-                            }
-                            // Spawn in Collectors
-                            for (let i = 0; i < numCollectors; i++) {
-                                Memory.spawnAssignments.push({
-                                    designee: op.originRoom,
-                                    body: PopulationManagement.createPartsArray([CARRY, MOVE], originRoom.energyCapacityAvailable, 25),
-                                    spawnOpts: {
-                                        memory: {
-                                            role: Role.OPERATIVE,
-                                            room: op.originRoom,
-                                            operation: OperationType.POWER_BANK,
-                                            destination: op.targetRoom,
-                                            currentTaskPriority: Priority.MEDIUM,
-                                        },
+                        // Spawn in Collectors
+                        for (let i = 0; i < numCollectors; i++) {
+                            Memory.spawnAssignments.push({
+                                designee: op.originRoom,
+                                body: PopulationManagement.createPartsArray([CARRY, MOVE], originRoom.energyCapacityAvailable, 25),
+                                spawnOpts: {
+                                    memory: {
+                                        role: Role.OPERATIVE,
+                                        room: op.originRoom,
+                                        operation: OperationType.POWER_BANK,
+                                        destination: op.targetRoom,
+                                        currentTaskPriority: Priority.MEDIUM,
                                     },
-                                });
-                            }
+                                },
+                            });
                         }
                     }
                 } else if (!powerBank) {
+                    // Recycle Creeps after destroying powerbank
                     Object.values(Memory.creeps)
                         .filter((creep) => creep.assignment === targetRoom.name && creep.role !== Role.OPERATIVE)
                         .forEach((creep) => (creep.recycle = true));
@@ -651,6 +666,33 @@ function manageAddPowerBankOperation(op: Operation) {
                         .filter((squad) => squad.assignment === targetRoom.name)
                         .forEach((squad) => Object.values(squad.members).forEach((creepName) => (Memory.creeps[creepName].recycle = true)));
                     op.stage = OperationStage.CLAIM;
+                }
+
+                // Wait until all operatives are in the room to avoid wasting power (should not happen but sometimes spawning takes too long for collectors)
+                if (
+                    powerBank &&
+                    powerBank.hits < 10000 &&
+                    Math.ceil(powerBank.power / 1250) !==
+                        Object.values(Memory.creeps).filter(
+                            (creep) =>
+                                creep.destination === op.targetRoom && creep.role === Role.OPERATIVE && creep._m?.lastCoord?.includes(op.targetRoom)
+                        ).length
+                ) {
+                    squadLeaders.forEach((squadLeader) => (squadLeader.memory.stop = true));
+                    Object.values(Memory.creeps)
+                        .filter(
+                            (creep) =>
+                                creep.assignment === op.targetRoom && creep.role === Role.PROTECTOR && creep._m?.lastCoord?.includes(op.targetRoom)
+                        )
+                        .forEach((protector) => (protector.stop = true));
+                } else {
+                    squadLeaders.forEach((squadLeader) => delete squadLeader.memory.stop);
+                    Object.values(Memory.creeps)
+                        .filter(
+                            (creep) =>
+                                creep.assignment === op.targetRoom && creep.role === Role.PROTECTOR && creep._m?.lastCoord?.includes(op.targetRoom)
+                        )
+                        .forEach((protector) => delete protector.stop);
                 }
             }
             break;

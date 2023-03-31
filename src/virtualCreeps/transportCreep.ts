@@ -54,19 +54,21 @@ export class TransportCreep extends WaveCreep {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (target instanceof Resource) {
             this.runPickupJob(target);
+        } else if (
+            target instanceof StructureContainer &&
+            this.homeroom.memory.layout === RoomLayout.STAMP &&
+            this.homeroom.stamps.container.some(
+                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.x === target.pos.x && containerStamp.pos.y === target.pos.y
+            )
+        ) {
+            this.runRefillJob(target);
         } else if (target instanceof Tombstone || target instanceof StructureContainer || target?.status === LabStatus.NEEDS_EMPTYING) {
             this.runCollectionJob(target);
         } else if (
             target instanceof StructureSpawn ||
             target instanceof StructureExtension ||
             target instanceof StructureTower ||
-            target instanceof StructureLab ||
-            (target instanceof StructureContainer &&
-                this.homeroom.memory.layout === RoomLayout.STAMP &&
-                this.homeroom.stamps.container.some(
-                    (containerStamp) =>
-                        containerStamp.type === 'center' && containerStamp.pos.x === target.pos.x && containerStamp.pos.y === target.pos.y
-                ))
+            target instanceof StructureLab
         ) {
             this.runRefillJob(target);
         } else if (target instanceof StructureStorage) {
@@ -349,25 +351,21 @@ export class TransportCreep extends WaveCreep {
             return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
         }
 
-        // Bunker layouts dont need this since the manager takes care of it
+        // Bunker layouts dont need this since the manager takes care of it ELSE see if a powerSpawn needs energy or power (if power is available)
         if (this.homeroom.memory.layout !== RoomLayout.BUNKER && this.homeroom.controller.level === 8) {
-            const powerSpawn = this.homeroom
-                .find(FIND_MY_STRUCTURES)
-                .filter(
-                    (structure) =>
-                        structure.structureType === STRUCTURE_POWER_SPAWN &&
-                        (!structure.store.getUsedCapacity(RESOURCE_ENERGY) ||
-                            (!structure.store.getUsedCapacity(RESOURCE_POWER) &&
-                                this.homeroom
-                                    .find(FIND_MY_STRUCTURES)
-                                    .some(
-                                        (structure) =>
-                                            (structure.structureType === STRUCTURE_STORAGE || structure.structureType === STRUCTURE_TERMINAL) &&
-                                            structure.store.power
-                                    )))
-                ) as StructurePowerSpawn[];
-            if (powerSpawn.length) {
-                return powerSpawn[0].id;
+            const powerSpawnInNeed = ROOM_STRUCTURES.filter(
+                (structure) =>
+                    structure.structureType === STRUCTURE_POWER_SPAWN &&
+                    (!structure.store.getUsedCapacity(RESOURCE_ENERGY) ||
+                        (!structure.store.getUsedCapacity(RESOURCE_POWER) &&
+                            ROOM_STRUCTURES.some(
+                                (structure) =>
+                                    (structure.structureType === STRUCTURE_STORAGE || structure.structureType === STRUCTURE_TERMINAL) &&
+                                    structure.store.power
+                            )))
+            ) as StructurePowerSpawn[];
+            if (powerSpawnInNeed.length) {
+                return powerSpawnInNeed[0].id;
             }
         }
     }

@@ -10,10 +10,10 @@ export class CombatCreep extends WaveCreep {
                 this.room
                     .lookForAtArea(
                         LOOK_CREEPS,
-                        Math.min(this.pos.y - 1, 0),
-                        Math.min(this.pos.x - 1),
-                        Math.max(this.pos.y + 1, 49),
-                        Math.max(this.pos.x + 1, 49),
+                        this.pos.y - 1 < 0 ? 0 : this.pos.y - 1,
+                        this.pos.x - 1 < 0 ? 0 : this.pos.x - 1,
+                        this.pos.y + 1 > 49 ? 49 : this.pos.y + 1,
+                        this.pos.x + 1 > 49 ? 49 : this.pos.x + 1,
                         true
                     )
                     .filter((lookObject) => lookObject.creep.owner?.username !== this.owner.username && !lookObject.creep?.spawning).length
@@ -48,11 +48,12 @@ export class CombatCreep extends WaveCreep {
             const exitCost = 10;
             let shouldFlee = true;
 
-            const hostilesInSquadRange = this.pos.findInRange(FIND_HOSTILE_CREEPS, 4); // check around target for proper massAttack pathing
+            const hostilesInSquadRange = target.pos.findInRange(FIND_HOSTILE_CREEPS, 4); // check around target for proper massAttack pathing
             const rangeToTarget = this.pos.getRangeTo(target);
 
             // If not in range or a squad without melee creep, then go closer to enable massAttack
             if (
+                !(target.getActiveBodyparts(ATTACK) || target.getActiveBodyparts(RANGED_ATTACK)) ||
                 rangeToTarget > range ||
                 (hostilesInSquadRange.length > 1 && !hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(ATTACK)))
             ) {

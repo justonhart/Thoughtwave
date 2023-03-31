@@ -33,7 +33,7 @@ export class Protector extends CombatCreep {
             if (target instanceof Creep) {
                 this.combatPathing(target);
                 creepActionReturnCode = this.attackCreep(target);
-            } else if (target instanceof Structure) {
+            } else if (target instanceof Structure && (!(target instanceof StructurePowerBank) || !this.memory.stop)) {
                 creepActionReturnCode = this.attackStructure(target);
                 if (
                     creepActionReturnCode === ERR_NOT_IN_RANGE ||

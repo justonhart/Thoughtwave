@@ -24,7 +24,7 @@ export class SquadAttacker extends CombatCreep {
         }
 
         // Attacking (WORK/ATTACK/RANGED_ATTACK)
-        if (!healingTarget) {
+        if (!healingTarget && !this.memory.stop) {
             if (this.getActiveBodyparts(WORK)) {
                 this.dismantleTarget(sq);
             } else if (this.getActiveBodyparts(ATTACK)) {

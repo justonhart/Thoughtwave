@@ -642,17 +642,25 @@ function runSpawning(room: Room) {
 
     if (workerCount >= room.workerCapacity && !roomUnderAttack) {
         assignments.forEach((assignment) => {
-            const spawnCost = assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
-            const canSpawnAssignment = room.energyAvailable >= spawnCost;
-            // If its a squad and there are still 2 or more creeps left to spawn then wait until it can spawn both at the same time (only for room 8 where there is plenty of energy and spawns)
-            const canSquadSpawn =
-                room.controller.level < 8 ||
-                assignment?.spawnOpts?.memory?.role !== Role.SQUAD_ATTACKER ||
-                (availableSpawns.length > 1 && room.energyAvailable >= 2 * spawnCost) ||
-                assignments.filter(
-                    (otherAssignment) => otherAssignment.spawnOpts?.memory?.combat?.squadId === otherAssignment.spawnOpts?.memory?.combat?.squadId
-                ).length === 1;
-            if (canSpawnAssignment && canSquadSpawn) {
+            const assignmentCost = assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
+            const canSpawnAssignment = room.energyAvailable >= assignmentCost;
+            let canSpawnSquad = true;
+            // Optimize TTL for squads by only spawning them if both can be spawned at the same time (only enforced in max rooms due to energy concerns)
+            if (room.controller.level >= 8 && assignment?.spawnOpts?.memory?.role === Role.SQUAD_ATTACKER) {
+                const sameSquadAssignments = assignments.filter(
+                    (otherAssignment) => otherAssignment.spawnOpts?.memory?.combat?.squadId === assignment.spawnOpts?.memory?.combat?.squadId
+                );
+                if (
+                    sameSquadAssignments.length > 1 &&
+                    (availableSpawns.length < 2 ||
+                        room.energyAvailable <
+                            sameSquadAssignments[1].body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost) + assignmentCost)
+                ) {
+                    canSpawnSquad = false;
+                }
+            }
+
+            if (canSpawnAssignment && canSpawnSquad) {
                 let spawn = availableSpawns.pop();
                 spawn?.spawnAssignedCreep(assignment);
             }
