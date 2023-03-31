@@ -395,16 +395,7 @@ export function roomNeedsCoreStructures(room: Room) {
     let factory = roomStructures.filter((structure) => structure.structureType === STRUCTURE_FACTORY).length;
     let labCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_LAB).length;
     let towerCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER).length;
-    let managerLink =
-        room.memory.anchorPoint?.toRoomPos() ||
-        room.memory.managerPos
-            ?.toRoomPos()
-            ?.findInRange(FIND_MY_STRUCTURES, 1)
-            .filter((s) => s.structureType === STRUCTURE_LINK).length +
-            (room.memory.anchorPoint?.toRoomPos() || room.memory.managerPos?.toRoomPos())
-                ?.findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
-                .filter((s) => s.structureType === STRUCTURE_LINK).length >=
-            1;
+    let managerLink = room.memory.managerLink;
     let observer = roomStructures.filter((structure) => structure.structureType === STRUCTURE_OBSERVER).length;
     let pSpawn = roomStructures.filter((structure) => structure.structureType === STRUCTURE_POWER_SPAWN).length;
 
