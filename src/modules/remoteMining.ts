@@ -5,14 +5,15 @@ import { getStoragePos } from './roomDesign';
 
 //Calculate maintenance cost of road to source per road decay cycle. Considers pre-existing roads in homeroom and roomData to be .5 cost of plains. Doesn't consider travel wear
 function calculateSourceRoadStats(
-    sourcePos: RoomPosition,
-    room: Room,
+    source: string,
+    roomName: string,
     ignoreRoomDataRoads = false
 ): { road: RoomPosition[]; roadLength: number; maintenanceCost: number; miningPos: RoomPosition } {
     let storagePos: RoomPosition;
+    let sourcePos = source.toRoomPos();
 
     try {
-        storagePos = getStoragePos(room);
+        storagePos = getStoragePos(Game.rooms[roomName]);
     } catch (e) {
         console.log(`Error getting storage pos: ${e}`);
         return { roadLength: -1, maintenanceCost: -1, miningPos: undefined, road: undefined };
@@ -40,14 +41,16 @@ function calculateSourceRoadStats(
     return { road: road.path, roadLength: road.path.length, maintenanceCost: MAINTENANCE_COST_PER_CYCLE, miningPos: miningPos };
 }
 
-export function calculateRemoteSourceStats(sourcePos: RoomPosition, room: Room, ignoreRoomDataRoads = false): RemoteStats {
+export function calculateRemoteSourceStats(source: string, roomName: string, ignoreRoomDataRoads = false): RemoteStats {
     //Energy output of source per regen cycle
     const SOURCE_OUTPUT_PER_CYCLE =
-        isKeeperRoom(sourcePos.roomName) || isCenterRoom(sourcePos.roomName) ? SOURCE_ENERGY_KEEPER_CAPACITY : SOURCE_ENERGY_CAPACITY;
+        isKeeperRoom(source.toRoomPos().roomName) || isCenterRoom(source.toRoomPos().roomName)
+            ? SOURCE_ENERGY_KEEPER_CAPACITY
+            : SOURCE_ENERGY_CAPACITY;
 
     let roadStats;
     try {
-        roadStats = calculateSourceRoadStats(sourcePos, room, ignoreRoomDataRoads);
+        roadStats = calculateSourceRoadStats(source, roomName, ignoreRoomDataRoads);
         if (roadStats.maintenanceCost === -1) {
             return undefined;
         }
@@ -55,6 +58,9 @@ export function calculateRemoteSourceStats(sourcePos: RoomPosition, room: Room, 
         console.log(`Caught error calculating road stats: ${e}`);
         return undefined;
     }
+
+    //if another source is already being mined in this room, we can remove costs for room-level creeps: reserver, exterminator
+    const ROOM_ALREADY_OPERATED = otherAssignedSourceInRoom(source);
 
     //Cost of road maintenance per source regen cycle
     const ROAD_MAINTENANCE_PER_CYCLE = roadStats.maintenanceCost;
@@ -88,35 +94,42 @@ export function calculateRemoteSourceStats(sourcePos: RoomPosition, room: Room, 
             CREEP_LIFE_TIME) *
         ENERGY_REGEN_TIME;
 
-    const RESERVER_COST_PER_CYCLE = otherAssignedSourceInRoom(sourcePos.toMemSafe())
-        ? ((BODYPART_COST[CLAIM] + BODYPART_COST[MOVE]) / CREEP_CLAIM_LIFE_TIME) * ENERGY_REGEN_TIME
-        : 0;
+    const RESERVER_COST_PER_CYCLE = ROOM_ALREADY_OPERATED
+        ? 0
+        : ((BODYPART_COST[CLAIM] + BODYPART_COST[MOVE]) / CREEP_CLAIM_LIFE_TIME) * ENERGY_REGEN_TIME;
+
+    const EXTERMINATOR_COST_PER_CYCLE =
+        !isKeeperRoom(source.toRoomPos().roomName) || ROOM_ALREADY_OPERATED
+            ? 0
+            : ((BODYPART_COST[ATTACK] * 19 + BODYPART_COST[MOVE] * 25 + BODYPART_COST[HEAL] * 6) / CREEP_LIFE_TIME) * ENERGY_REGEN_TIME;
 
     const TOTAL_COSTS_PER_CYCLE =
         MINER_COST_PER_CYCLE +
         GATHERERS_NEEDED * GATHERER_COST_PER_CYCLE +
         RESERVER_COST_PER_CYCLE +
+        EXTERMINATOR_COST_PER_CYCLE +
         CONTAINER_MAINTENANCE_PER_CYCLE +
         ROAD_MAINTENANCE_PER_CYCLE;
-    const NET_INCOME_PER_CYCLE = SOURCE_OUTPUT_PER_CYCLE - TOTAL_COSTS_PER_CYCLE;
+    const ESTIMATED_INCOME_PER_CYCLE = SOURCE_OUTPUT_PER_CYCLE - TOTAL_COSTS_PER_CYCLE;
 
     let stats: RemoteStats = {
         sourceSize: SOURCE_OUTPUT_PER_CYCLE,
-        netIncome: NET_INCOME_PER_CYCLE,
+        estimatedIncome: ESTIMATED_INCOME_PER_CYCLE,
         roadLength: ROAD_LENGTH,
         roadMaintenance: ROAD_MAINTENANCE_PER_CYCLE,
         containerMaintenance: CONTAINER_MAINTENANCE_PER_CYCLE,
         minerUpkeep: MINER_COST_PER_CYCLE,
         gathererCount: GATHERERS_NEEDED,
-        gathererUpkeep: GATHERER_COST_PER_CYCLE,
+        gathererUpkeep: GATHERERS_NEEDED * GATHERER_COST_PER_CYCLE,
         reserverUpkeep: RESERVER_COST_PER_CYCLE,
+        exterminatorUpkeep: EXTERMINATOR_COST_PER_CYCLE,
         miningPos: roadStats.miningPos,
         road: roadStats.road,
     };
 
-    // for (let [key, value] of Object.entries(stats)) {
-    //     console.log(`${key}: ${value}`);
-    // }
+    for (let [key, value] of Object.entries(stats)) {
+        if (key !== 'road') console.log(`${key}: ${value}`);
+    }
 
     return stats;
 }
@@ -129,7 +142,7 @@ export function assignRemoteSource(source: string, roomName: string) {
     try {
         let stats: RemoteStats;
         try {
-            stats = calculateRemoteSourceStats(source.toRoomPos(), Game.rooms[roomName]);
+            stats = calculateRemoteSourceStats(source, roomName);
         } catch (e) {
             console.log('problem calculating source stats: ' + e);
             return ERR_INVALID_ARGS;
@@ -153,7 +166,7 @@ export function assignRemoteSource(source: string, roomName: string) {
 
         Memory.remoteSourceAssignments[source] = {
             controllingRoom: roomName,
-            estimatedIncome: stats.netIncome,
+            estimatedIncome: stats.estimatedIncome,
             roadLength: stats.roadLength,
         };
 
@@ -202,20 +215,20 @@ export function removeSourceAssignment(source: string) {
     }
 }
 
-export function findRemoteMiningOptions(room: Room): { source: string; stats: RemoteStats }[] {
-    let exits = getExitDirections(room.name);
+export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolean): { source: string; stats: RemoteStats }[] {
+    let exits = getExitDirections(roomName);
     let safeRoomsDepthOne: string[] = []; //rooms we can pass through for mining
     for (let exit of exits) {
         let nextRoomName =
             exit === LEFT || exit === RIGHT
-                ? computeRoomNameFromDiff(room.name, exit === LEFT ? -1 : 1, 0)
-                : computeRoomNameFromDiff(room.name, 0, exit === BOTTOM ? -1 : 1);
+                ? computeRoomNameFromDiff(roomName, exit === LEFT ? -1 : 1, 0)
+                : computeRoomNameFromDiff(roomName, 0, exit === BOTTOM ? -1 : 1);
         if (
             [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
                 Memory.roomData[nextRoomName]?.roomStatus
-            ) &&
-            !isKeeperRoom(nextRoomName) &&
-            !isCenterRoom(nextRoomName)
+            ) && noKeeperRooms
+                ? !isKeeperRoom(nextRoomName) && !isCenterRoom(nextRoomName)
+                : true
         ) {
             safeRoomsDepthOne.push(nextRoomName);
         }
@@ -234,8 +247,7 @@ export function findRemoteMiningOptions(room: Room): { source: string; stats: Re
                     Memory.roomData[nextRoomName]?.roomStatus
                 ) &&
                 !safeRoomsDepthOne.includes(nextRoomName) &&
-                !isKeeperRoom(nextRoomName) &&
-                !isCenterRoom(nextRoomName)
+                (noKeeperRooms ? !isKeeperRoom(nextRoomName) && !isCenterRoom(nextRoomName) : true)
             ) {
                 safeRoomsDepthTwo.push(nextRoomName);
             }
@@ -256,8 +268,9 @@ export function findRemoteMiningOptions(room: Room): { source: string; stats: Re
                 ) &&
                 !safeRoomsDepthOne.includes(nextRoomName) &&
                 !safeRoomsDepthTwo.includes(nextRoomName) &&
-                !isKeeperRoom(nextRoomName) &&
-                !isCenterRoom(nextRoomName)
+                noKeeperRooms
+                    ? !isKeeperRoom(nextRoomName) && !isCenterRoom(nextRoomName)
+                    : true
             ) {
                 safeRoomsDepthThree.push(nextRoomName);
             }
@@ -271,18 +284,17 @@ export function findRemoteMiningOptions(room: Room): { source: string; stats: Re
     ]
         .filter((source) => !Memory.remoteSourceAssignments[source])
         .map((source) => {
-            let sourcePos = source.toRoomPos();
-            let stats = calculateRemoteSourceStats(sourcePos, room, true);
+            let stats = calculateRemoteSourceStats(source, roomName, true);
             return { source, stats };
         });
 
     return openSources;
 }
 
-export function findSuitableRemoteSource(room: Room, noKeeperRooms: boolean = false): { source: string; stats: RemoteStats } {
-    let options = findRemoteMiningOptions(room);
+export function findSuitableRemoteSource(roomName: string, noKeeperRooms: boolean = false): { source: string; stats: RemoteStats } {
+    let options = findRemoteMiningOptions(roomName, noKeeperRooms);
 
-    let remoteRooms = new Set(Object.keys(room.memory.remoteSources).map((pos) => pos.split('.')[2]));
+    let remoteRooms = new Set(Object.keys(Memory.rooms[roomName].remoteSources).map((pos) => pos.split('.')[2]));
     let keeperRoomsMined = 0;
     let otherRoomsMined = 0;
 
@@ -290,15 +302,15 @@ export function findSuitableRemoteSource(room: Room, noKeeperRooms: boolean = fa
 
     //options.forEach(option => console.log(`${option.source}: ${option.stats?.netIncome}`))
 
-    if (noKeeperRooms || room.controller.level < 7 || keeperRoomsMined >= 2) {
+    if (noKeeperRooms || Game.rooms[roomName].controller.level < 7 || keeperRoomsMined >= 2) {
         //pre-7 rooms can't handle central room upkeep
         options = options.filter((option) => option.stats?.sourceSize === 3000);
     }
 
-    options = options.filter((option) => option.stats.netIncome >= 750);
+    options = options.filter((option) => option.stats.estimatedIncome >= 750);
 
     //prefer central rooms over other rooms and prefer closer to farther
-    options.sort((a, b) => b.stats.netIncome - a.stats.netIncome);
+    options.sort((a, b) => b.stats.estimatedIncome - a.stats.estimatedIncome);
 
     return options.shift();
 }

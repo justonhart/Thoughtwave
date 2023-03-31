@@ -125,7 +125,6 @@ export class Gatherer extends TransportCreep {
     }
 
     private triggerReplacementSpawn() {
-        console.log('Replacing ' + this.name);
         for (let i = 0; i < this.homeroom.memory.remoteSources[this.memory.assignment].gatherers.length; i++) {
             if (this.homeroom.memory.remoteSources[this.memory.assignment].gatherers[i] === this.name) {
                 this.homeroom.memory.remoteSources[this.memory.assignment].gatherers[i] === AssignmentStatus.UNASSIGNED;

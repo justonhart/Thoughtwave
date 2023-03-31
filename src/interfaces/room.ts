@@ -186,7 +186,7 @@ const enum RoomLayout {
 }
 
 interface RemoteStats {
-    netIncome: number;
+    estimatedIncome: number;
     sourceSize: number;
     road: RoomPosition[];
     roadLength: number;
@@ -196,5 +196,6 @@ interface RemoteStats {
     gathererCount: number;
     gathererUpkeep: number;
     reserverUpkeep: number;
+    exterminatorUpkeep: number;
     miningPos: RoomPosition;
 }
