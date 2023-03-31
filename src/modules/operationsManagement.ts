@@ -168,7 +168,9 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
                         (!opts.operationCriteria.stage || opts.operationCriteria.stage === operation.stage)
                 ).length < opts.operationCriteria.maxCount) &&
             Game.map.getRoomLinearDistance(room.name, targetRoom) <= (opts?.maxLinearDistance ?? 10) &&
-            (opts?.multipleSpawns ? room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN }).length >= 2 : true) &&
+            (opts?.minSpawnCount
+                ? room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN }).length >= opts.minSpawnCount
+                : true) &&
             (opts?.needsBoost ? room.labs.length > 0 : true)
     );
 
@@ -186,8 +188,7 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
                 { pos: new RoomPosition(25, 25, targetRoom), range: 23 },
                 {
                     maxRooms: 25,
-                    swampCost: opts.ignoreTerrain ? 1 : 10,
-                    plainCost: opts.ignoreTerrain ? 1 : 2,
+                    swampCost: opts.ignoreTerrain ? 1 : 5,
                     maxOps: 100000,
                     roomCallback(roomName) {
                         if (allowedRooms) {
@@ -253,7 +254,7 @@ function manageSimpleOperation(op: Operation) {
     }
 }
 
-export function addOperation(operationType: OperationType, targetRoom: string, opts?: OperationOpts): boolean {
+export function addOperation(operationType: OperationType, targetRoom: string, opts?: OperationOpts) {
     let originRoom = opts?.originRoom;
     delete opts?.originRoom;
 
@@ -284,11 +285,9 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
         }
 
         Memory.operations.push(newOp);
-        return true;
     } else if (!opts.disableLogging) {
         console.log('No suitable origin found');
     }
-    return false;
 }
 
 function manageSecureRoomOperation(op: Operation) {
@@ -537,6 +536,7 @@ function manageAddRemoteMiningOperation(op: Operation) {
  */
 function manageAddPowerBankOperation(op: Operation) {
     const targetRoom = Game.rooms[op.targetRoom];
+    const originRoom = Game.rooms[op.originRoom];
     switch (op.stage) {
         case OperationStage.PREPARE:
             // TODO: delete this
@@ -549,21 +549,28 @@ function manageAddPowerBankOperation(op: Operation) {
                 const powerBank = targetRoom
                     .find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })
                     .pop() as unknown as StructurePowerBank;
-                if (powerBank && powerBank.ticksToDecay > 2000) {
+                if (powerBank && powerBank.ticksToDecay > 2500 && powerBank.power > 1000) {
                     const numFreeSpaces = Math.min(
                         targetRoom
                             .lookForAtArea(LOOK_TERRAIN, powerBank.pos.y - 1, powerBank.pos.x - 1, powerBank.pos.y + 1, powerBank.pos.x + 1, true)
                             .filter((lookPos) => lookPos.terrain !== 'wall').length,
                         4
                     );
-                    op.operativeCount = numFreeSpaces;
-                    op.stage = OperationStage.ACTIVE;
-                    return;
+
+                    // Avoid conflict
+                    const hasEnemies = targetRoom
+                        .find(FIND_HOSTILE_CREEPS)
+                        .some((creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK));
+                    // Don't bother getting powerbanks with only one space of access (could do that later but will have to boost healer/attacker)
+                    if (numFreeSpaces > 1 && !hasEnemies) {
+                        op.operativeCount = numFreeSpaces;
+                        op.stage = OperationStage.ACTIVE;
+                        return;
+                    }
                 }
                 Memory.roomData[op.targetRoom].powerBank = false;
                 op.stage = OperationStage.COMPLETE;
-            } else if (!op.visionRequests?.some((id) => Memory.visionRequests[id]?.targetRoom === op.targetRoom)) {
-                // TODO: check this: only one gets added as false every time?
+            } else if (!op.visionRequests?.some((id) => Memory.visionRequests[id])) {
                 //add vision request
                 let result = addVisionRequest({ targetRoom: op.targetRoom });
                 if (result !== ERR_NOT_FOUND) {
@@ -572,80 +579,68 @@ function manageAddPowerBankOperation(op: Operation) {
             }
             break;
         case OperationStage.ACTIVE:
-            // Add 1 Protector that is able to kill typical healers (25 heal parts)
-            const assignedProtectorCount =
-                Object.values(Game.creeps).filter(
-                    (creep) =>
-                        creep.memory.assignment === op.targetRoom &&
-                        creep.memory.role === Role.PROTECTOR &&
-                        (creep.spawning || creep.ticksToLive > op.pathCost)
-                ).length +
-                Memory.spawnAssignments.filter(
-                    (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.PROTECTOR
-                ).length;
+            spawnPowerBankProtector(op, targetRoom, originRoom);
 
-            if (
-                !assignedProtectorCount &&
-                !Object.values(Memory.creeps).some((creep) => creep.destination === op.targetRoom && creep.role === Role.OPERATIVE)
-            ) {
-                const body = PopulationManagement.createDynamicCreepBody(Game.rooms[op.originRoom], [RANGED_ATTACK, HEAL, MOVE], 300, 160, {
-                    boosts: [BoostType.RANGED_ATTACK],
-                });
-
-                Memory.spawnAssignments.push({
-                    designee: op.originRoom,
-                    body: body,
-                    spawnOpts: {
-                        memory: {
-                            role: Role.PROTECTOR,
-                            assignment: op.targetRoom,
-                            currentTaskPriority: Priority.MEDIUM,
-                            combat: { flee: false },
-                            room: op.originRoom,
-                        },
-                    },
-                });
-            }
-
-            const originRoom = Game.rooms[op.originRoom];
             const squads = Object.values(Memory.squads).filter(
                 (squad) => squad.assignment === op.targetRoom && (!squad.members || squad.members[SquadMemberType.SQUAD_LEADER])
             );
-            let needReinforcements = false; // ttl spawning
 
+            // Spawn Squads
+            if (
+                squads.length < op.operativeCount &&
+                !Object.values(Memory.spawnAssignments).some((assignment) => assignment.designee === op.originRoom) &&
+                !Object.values(Memory.creeps).some((creep) => creep.destination === op.targetRoom && creep.role === Role.OPERATIVE)
+            ) {
+                const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], originRoom.energyCapacityAvailable, 20);
+                const healerBody = PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25);
+                createSquad(op, SquadType.DUO, attackerBody, healerBody, [], [], SquadTarget.POWER_BANK);
+            }
+
+            // Spawn Collectors
             if (targetRoom) {
                 const powerBank = targetRoom
                     .find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })
                     .pop() as unknown as StructurePowerBank;
 
-                if (Game.time % 49 === 0 && powerBank) {
-                    if (squads.some((squad) => squad.members && squad.members[SquadMemberType.SQUAD_LEADER]?.ticksToLive < op.pathCost + 150)) {
-                        needReinforcements = CombatIntel.getMaxDmgOverLifetime(targetRoom) < powerBank.hits;
-                    }
-
-                    // Collectors spawn time (assuming 3 spawns are used it will need 150 ticks for 3 collectors) + path cost (powercreeps ignored for now)
-                    const numCollectors = Math.ceil(powerBank.power / 1250);
-                    const timeNeededForCollectors = op.pathCost + Math.ceil(numCollectors / 3) * 150;
-                    if (
-                        !Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE) &&
-                        (powerBank.hits < CombatIntel.getMaxDmgOverLifetime(targetRoom, timeNeededForCollectors) ||
-                            powerBank.ticksToDecay < timeNeededForCollectors)
-                    ) {
-                        // Spawn in Collectors
-                        for (let i = 0; i < numCollectors; i++) {
-                            Memory.spawnAssignments.push({
-                                designee: op.originRoom,
-                                body: PopulationManagement.createPartsArray([CARRY, MOVE], originRoom.energyCapacityAvailable, 25),
-                                spawnOpts: {
-                                    memory: {
-                                        role: Role.OPERATIVE,
-                                        room: op.originRoom,
-                                        operation: OperationType.POWER_BANK,
-                                        destination: op.targetRoom,
-                                        currentTaskPriority: Priority.MEDIUM,
+                if (Game.time % 50 === 0 && powerBank) {
+                    if (!Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE)) {
+                        // TTL Spawning
+                        const aliveSquads = squads.filter((squad) => squad.members && Game.creeps[squad.members[SquadMemberType.SQUAD_LEADER]]);
+                        if (
+                            CombatIntel.getMaxDmgForSquads(aliveSquads) < powerBank.hits &&
+                            aliveSquads.some((squad) => Game.creeps[squad.members[SquadMemberType.SQUAD_LEADER]].ticksToLive < op.pathCost + 150) &&
+                            squads.length < 2 * op.operativeCount
+                        ) {
+                            const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], originRoom.energyCapacityAvailable, 20);
+                            const healerBody = PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25);
+                            createSquad(op, SquadType.DUO, attackerBody, healerBody, [], [], SquadTarget.POWER_BANK);
+                        }
+                        // Collectors spawn time (assuming 3 spawns are used it will need 150 ticks for 3 collectors) + path cost (powercreeps ignored for now)
+                        let numCollectors = Math.ceil(powerBank.power / 1250);
+                        const timeNeededForCollectors = op.pathCost + Math.ceil(numCollectors / 3) * 150;
+                        if (powerBank.hits < CombatIntel.getMaxDmgOverLifetime(targetRoom, 500) || powerBank.ticksToDecay < timeNeededForCollectors) {
+                            // Calculate how many collectors are needed when powerBank decays before being destroyed
+                            if (powerBank.ticksToDecay < timeNeededForCollectors) {
+                                const dmgDone =
+                                    (powerBank.hitsMax - (powerBank.hits - CombatIntel.getMaxDmgOverLifetime(targetRoom))) / powerBank.hitsMax;
+                                numCollectors = Math.ceil((powerBank.power * dmgDone) / 1250);
+                            }
+                            // Spawn in Collectors
+                            for (let i = 0; i < numCollectors; i++) {
+                                Memory.spawnAssignments.push({
+                                    designee: op.originRoom,
+                                    body: PopulationManagement.createPartsArray([CARRY, MOVE], originRoom.energyCapacityAvailable, 25),
+                                    spawnOpts: {
+                                        memory: {
+                                            role: Role.OPERATIVE,
+                                            room: op.originRoom,
+                                            operation: OperationType.POWER_BANK,
+                                            destination: op.targetRoom,
+                                            currentTaskPriority: Priority.MEDIUM,
+                                        },
                                     },
-                                },
-                            });
+                                });
+                            }
                         }
                     }
                 } else if (!powerBank) {
@@ -658,22 +653,85 @@ function manageAddPowerBankOperation(op: Operation) {
                     op.stage = OperationStage.CLAIM;
                 }
             }
-
-            if (
-                (squads.length < op.operativeCount || needReinforcements) &&
-                !Object.values(Memory.spawnAssignments).some((assignment) => assignment.designee === op.originRoom) &&
-                !Object.values(Memory.creeps).some((creep) => creep.destination === op.targetRoom && creep.role === Role.OPERATIVE)
-            ) {
-                const attackerBody = PopulationManagement.createPartsArray([ATTACK, MOVE], originRoom.energyCapacityAvailable, 20);
-                const healerBody = PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable, 25);
-                createSquad(op, SquadType.DUO, attackerBody, healerBody, [], [], SquadTarget.POWER_BANK);
-            }
             break;
         case OperationStage.CLAIM:
             if (!Object.values(Memory.creeps).some((creep) => creep.destination === op.targetRoom && creep.role === Role.OPERATIVE)) {
                 op.stage = OperationStage.COMPLETE;
             }
             break;
+    }
+}
+
+/**
+ * Send in one protector with each powerBank operation. By default it will be enough to kill other attack units.
+ * If there is an enemy present then it will adjust the protector body.
+ *
+ * @param op
+ * @param targetRoom
+ */
+function spawnPowerBankProtector(op: Operation, targetRoom: Room, originRoom: Room) {
+    const assignedProtectorCount =
+        Object.values(Game.creeps).filter(
+            (creep) =>
+                creep.memory.assignment === op.targetRoom &&
+                creep.memory.role === Role.PROTECTOR &&
+                (creep.spawning || creep.ticksToLive > op.pathCost + 150)
+        ).length +
+        Memory.spawnAssignments.filter(
+            (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.PROTECTOR
+        ).length;
+
+    if (
+        !assignedProtectorCount &&
+        !Object.values(Memory.creeps).some((creep) => creep.destination === op.targetRoom && creep.role === Role.OPERATIVE)
+    ) {
+        let notSpawned = true;
+        if (targetRoom) {
+            const combatIntel = CombatIntel.getCreepCombatData(targetRoom, true);
+            if (combatIntel && combatIntel.totalAttack > 300) {
+                const dmgNeeded =
+                    CombatIntel.getPredictedDamageNeeded(combatIntel.totalHeal, combatIntel.highestDmgMultiplier, combatIntel.highestToughHits) +
+                    Math.ceil(combatIntel.highestHP / 25);
+                let body: BodyPartConstant[];
+                let boosts = [];
+                if (combatIntel.totalRanged > 200) {
+                    boosts.push(BoostType.TOUGH);
+                }
+                if (combatIntel.totalRanged >= 120) {
+                    boosts.push(BoostType.HEAL);
+                }
+                if (dmgNeeded >= 180) {
+                    boosts.push(BoostType.RANGED_ATTACK);
+                }
+                body = PopulationManagement.createDynamicCreepBody(
+                    originRoom,
+                    [RANGED_ATTACK, HEAL, MOVE, TOUGH],
+                    dmgNeeded,
+                    Math.max(combatIntel.totalRanged, dmgNeeded / 2),
+                    { boosts: boosts }
+                );
+                notSpawned = false;
+            }
+        }
+
+        if (notSpawned) {
+            const body = PopulationManagement.createDynamicCreepBody(Game.rooms[op.originRoom], [RANGED_ATTACK, HEAL, MOVE], 300, 160, {
+                boosts: [BoostType.RANGED_ATTACK],
+            });
+            Memory.spawnAssignments.push({
+                designee: op.originRoom,
+                body: body,
+                spawnOpts: {
+                    memory: {
+                        role: Role.PROTECTOR,
+                        assignment: op.targetRoom,
+                        currentTaskPriority: Priority.MEDIUM,
+                        combat: { flee: false },
+                        room: op.originRoom,
+                    },
+                },
+            });
+        }
     }
 }
 

@@ -84,30 +84,25 @@ module.exports.loop = function () {
     cpuUsageString += `resource cpu: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
     cpuUsed = Game.cpu.getUsed();
 
-    // TODO: do we want to avoid rooms with enemies already inthem and be scared? Also how often to check?
     // TODO: remove operation.stage >=2 and instead limit it to one per room ==> operation.targetRoom === roomName
     // TODO: cancel operation if squad died from enemy attack?
     if (Game.time % 49 === 0) {
         Object.entries(Memory.roomData)
-            .filter(([roomName, roomData]) => roomData.powerBank === true)
+            .filter(([roomName, roomData]) => roomData.powerBank === true && Math.abs(Game.time - roomData.asOf) < 500)
             .forEach(([roomName, roomData]) => {
                 if (!Memory.operations.some((operation) => operation.type === OperationType.POWER_BANK && operation.stage >= 2)) {
-                    const result = addOperation(OperationType.POWER_BANK, roomName, {
-                        expireAt: Game.time + 5000,
+                    addOperation(OperationType.POWER_BANK, roomName, {
                         disableLogging: true,
                         resource: RESOURCE_POWER,
                         originOpts: {
                             minEnergyStatus: EnergyStatus.STABLE,
-                            multipleSpawns: true,
+                            minSpawnCount: 3,
                             selectionCriteria: OriginCriteria.CLOSEST,
                             maxThreatLevel: HomeRoomThreatLevel.ENEMY_INVADERS,
                             maxLinearDistance: 6,
                             operationCriteria: { type: OperationType.POWER_BANK, maxCount: 1, stage: OperationStage.PREPARE },
                         },
                     });
-                    if (!result) {
-                        roomData.powerBank = false; // No valid origin found
-                    }
                 }
             });
     }

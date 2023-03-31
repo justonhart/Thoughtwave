@@ -126,21 +126,26 @@ export class WaveCreep extends Creep {
         }
     }
 
-    private recycleCreep() {
+    protected recycleCreep() {
         if (this.travelToRoom(this.homeroom.name) === IN_ROOM) {
-            const availableSpawns = this.homeroom.find(FIND_MY_SPAWNS).filter((spawn) => !spawn.spawning);
-            if (availableSpawns.length) {
-                if (this.pos.isNearTo(availableSpawns[0])) {
-                    availableSpawns[0].recycleCreep(this);
-                } else if (this.homeroom.memory.layout === RoomLayout.STAMP) {
-                    this.travelTo(
-                        this.homeroom.stamps.container.find(
-                            (containerStamp) => containerStamp.type === 'center' && availableSpawns[0].pos.isNearTo(containerStamp.pos)
-                        ).pos
-                    );
-                } else {
-                    this.travelTo(availableSpawns[0], { range: 1 });
-                }
+            this.memory.targetId = this.homeroom
+                .find(FIND_MY_SPAWNS)
+                .filter((spawn) => !spawn.spawning)
+                ?.shift()?.id;
+        }
+
+        const target = Game.getObjectById(this.memory.targetId) as StructureSpawn;
+        if (target instanceof StructureSpawn) {
+            if (this.pos.isNearTo(target)) {
+                target.recycleCreep(this);
+            } else if (this.homeroom.memory.layout === RoomLayout.STAMP) {
+                this.travelTo(
+                    this.homeroom.stamps.container.find(
+                        (containerStamp) => containerStamp.type === 'center' && target.pos.isNearTo(containerStamp.pos)
+                    ).pos
+                );
+            } else {
+                this.travelTo(target, { range: 1 });
             }
         }
     }

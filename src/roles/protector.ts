@@ -64,12 +64,6 @@ export class Protector extends CombatCreep {
         }
     }
 
-    private healSelf(hasMeleeAttacked: boolean) {
-        if (!hasMeleeAttacked && (this.hits < this.hitsMax || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
-            this.heal(this);
-        }
-    }
-
     private findTarget() {
         const hostileCreeps = this.room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
         if (hostileCreeps.length) {

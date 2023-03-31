@@ -1,6 +1,4 @@
 interface CreepMemory {
-    recycle?: boolean;
-    stop?: boolean;
     ready?: number;
     targetId2?: Id<Creep>;
     gatheringLabResources?: boolean;
@@ -27,6 +25,7 @@ interface CreepMemory {
     storeRoadInMemory?: Id<StructureContainer>;
     sleepCollectTil?: number;
     stop?: boolean;
+    recycle?: boolean;
 }
 
 interface Creep {

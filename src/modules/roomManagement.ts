@@ -642,16 +642,17 @@ function runSpawning(room: Room) {
 
     if (workerCount >= room.workerCapacity && !roomUnderAttack) {
         assignments.forEach((assignment) => {
-            let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
-            // In addition to canSpawn it also checks if it is spawning a squad. If so it should only spawn them if at least 2 spawners are available or there is only one creep left to complete the squad (this is done in order to maximize ttl)
-            if (
-                canSpawnAssignment &&
-                (assignment?.spawnOpts?.memory?.role !== Role.SQUAD_ATTACKER ||
-                    availableSpawns.length > 1 ||
-                    assignments.filter(
-                        (otherAssignment) => otherAssignment.spawnOpts?.memory?.combat?.squadId === otherAssignment.spawnOpts?.memory?.combat?.squadId
-                    ).length === 1)
-            ) {
+            const spawnCost = assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
+            const canSpawnAssignment = room.energyAvailable >= spawnCost;
+            // If its a squad and there are still 2 or more creeps left to spawn then wait until it can spawn both at the same time (only for room 8 where there is plenty of energy and spawns)
+            const canSquadSpawn =
+                room.controller.level < 8 ||
+                assignment?.spawnOpts?.memory?.role !== Role.SQUAD_ATTACKER ||
+                (availableSpawns.length > 1 && room.energyAvailable >= 2 * spawnCost) ||
+                assignments.filter(
+                    (otherAssignment) => otherAssignment.spawnOpts?.memory?.combat?.squadId === otherAssignment.spawnOpts?.memory?.combat?.squadId
+                ).length === 1;
+            if (canSpawnAssignment && canSquadSpawn) {
                 let spawn = availableSpawns.pop();
                 spawn?.spawnAssignedCreep(assignment);
             }

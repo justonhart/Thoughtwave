@@ -73,7 +73,7 @@ interface OriginOpts {
     maxThreatLevel?: HomeRoomThreatLevel;
     minEnergyStatus?: EnergyStatus;
     maxLinearDistance?: number;
-    multipleSpawns?: boolean;
+    minSpawnCount?: number;
     needsBoost?: boolean;
     selectionCriteria?: OriginCriteria;
     operationCriteria?: OperationCriteria;

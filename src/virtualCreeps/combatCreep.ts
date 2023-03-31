@@ -8,7 +8,14 @@ export class CombatCreep extends WaveCreep {
             // Can't use nearTo as we want to use MassAttack even if it is not the targetHostileCreep that is near us
             if (
                 this.room
-                    .lookForAtArea(LOOK_CREEPS, this.pos.y - 1, this.pos.x - 1, this.pos.y + 1, this.pos.x + 1, true)
+                    .lookForAtArea(
+                        LOOK_CREEPS,
+                        Math.min(this.pos.y - 1, 0),
+                        Math.min(this.pos.x - 1),
+                        Math.max(this.pos.y + 1, 49),
+                        Math.max(this.pos.x + 1, 49),
+                        true
+                    )
                     .filter((lookObject) => lookObject.creep.owner?.username !== this.owner.username && !lookObject.creep?.spawning).length
             ) {
                 return this.rangedMassAttack();
@@ -113,5 +120,32 @@ export class CombatCreep extends WaveCreep {
             }
         });
         return squads.map((squad) => squad.map((squadCreep) => squadCreep.id));
+    }
+
+    protected healSelf(hasMeleeAttacked: boolean) {
+        if (!hasMeleeAttacked && (this.hits < this.hitsMax || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
+            this.heal(this);
+        }
+    }
+
+    protected recycleCreep() {
+        super.recycleCreep();
+        let hasMeleeAttacked = false;
+        if (
+            this.pos.roomName !== this.homeroom.name &&
+            this.hits < this.hitsMax &&
+            (this.getActiveBodyparts(ATTACK) || this.getActiveBodyparts(RANGED_ATTACK))
+        ) {
+            // getting hit on the way => enable defense mode
+            const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
+            const enemy = this.pos
+                .findInRange(FIND_HOSTILE_CREEPS, range)
+                .find((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK));
+            if (enemy) {
+                hasMeleeAttacked = !!this.getActiveBodyparts(ATTACK);
+                this.attackCreep(enemy);
+            }
+        }
+        this.healSelf(hasMeleeAttacked);
     }
 }
