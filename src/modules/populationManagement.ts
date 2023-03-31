@@ -980,6 +980,7 @@ export class PopulationManagement {
     }
 
     static findRemoteMineralMinerNeed(room: Room) {
+        return false;
         if (room.storage?.store.getFreeCapacity() < 100000 || room.storage?.store[room.mineral.mineralType] > 100000) {
             return false;
         }
@@ -1095,9 +1096,9 @@ export class PopulationManagement {
     }
 
     static calculateRemoteMinerWorkNeeded(miningPos: string) {
-        let energyPotential = isKeeperRoom(miningPos.toRoomPos().roomName) || isCenterRoom(miningPos.toRoomPos().roomName) ? 4000 * 3 : 3000;
+        let energyPotential = isKeeperRoom(miningPos.toRoomPos().roomName) || isCenterRoom(miningPos.toRoomPos().roomName) ? 4000 : 3000;
         let workNeeded = energyPotential / (HARVEST_POWER * 300);
 
-        return 1 + workNeeded > 5 ? 7 : 5;
+        return 1 + (workNeeded > 5 ? 7 : 5);
     }
 }

@@ -899,7 +899,7 @@ function initMissingMemoryValues(room: Room) {
 }
 
 export function addRemoteSourceClaim(room: Room) {
-    let sourceToClaim = findSuitableRemoteSource(room.name, true);
+    let sourceToClaim = findSuitableRemoteSource(room.name);
 
     //if a room to claim is found, claim it if available and no closer claimant
     if (sourceToClaim) {

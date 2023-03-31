@@ -134,10 +134,10 @@ function createKeeperLairData(remoteRoomName: string): { [id: Id<Source> | Id<Mi
         .forEach((lair) => {
             const source = lair.pos.findClosestByRange(FIND_SOURCES);
             if (lair.pos.getRangeTo(source) < 6) {
-                lairs[source.id] = lair.id;
+                lairs[source.pos.toMemSafe()] = lair.id;
             } else {
                 const mineral = lair.pos.findClosestByRange(FIND_MINERALS);
-                lairs[mineral.id] = lair.id;
+                lairs[mineral.pos.toMemSafe()] = lair.id;
             }
         });
     return lairs;

@@ -14,9 +14,11 @@ export class RemoteMiner extends WaveCreep {
         if (Game.rooms[this.getMiningPosition().roomName]) {
             const isAKeeperRoom = isKeeperRoom(this.memory.assignment.toRoomPos().roomName);
             if (isAKeeperRoom && this.keeperSpawning()) {
-                const lairPositions = Object.values(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).map((lairId) => {
-                    return { pos: Game.getObjectById(lairId).pos, range: 0 };
-                });
+                const lairPositions = Object.values(Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs).map(
+                    (lairId) => {
+                        return { pos: Game.getObjectById(lairId).pos, range: 0 };
+                    }
+                );
                 if (this.onEdge()) {
                     this.travelToRoom(this.memory.assignment.toRoomPos().roomName); // Prevent going in and out of the room
                 } else {
@@ -63,7 +65,7 @@ export class RemoteMiner extends WaveCreep {
     }
 
     private keeperSpawning(): boolean {
-        const lairId = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[this.getSourceId()];
+        const lairId = Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs[this.getSourceId()];
         const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
         return lairInRange?.ticksToSpawn < 20;
     }

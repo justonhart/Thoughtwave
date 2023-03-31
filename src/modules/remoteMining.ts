@@ -235,7 +235,7 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
     }
 
     let safeRoomsDepthTwo: string[] = [];
-    for (let depthOneRoomName of safeRoomsDepthOne) {
+    for (let depthOneRoomName of safeRoomsDepthOne.filter((room) => !isKeeperRoom(room) || Memory.remoteData[room])) {
         let depthOneExits = getExitDirections(depthOneRoomName);
         for (let exit of depthOneExits) {
             let nextRoomName =
@@ -255,7 +255,7 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
     }
 
     let safeRoomsDepthThree: string[] = [];
-    for (let depthTwoRoomName of safeRoomsDepthTwo) {
+    for (let depthTwoRoomName of safeRoomsDepthTwo.filter((room) => !isKeeperRoom(room) || Memory.remoteData[room])) {
         let depthTwoExits = getExitDirections(depthTwoRoomName);
         for (let exit of depthTwoExits) {
             let nextRoomName =
@@ -268,9 +268,8 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
                 ) &&
                 !safeRoomsDepthOne.includes(nextRoomName) &&
                 !safeRoomsDepthTwo.includes(nextRoomName) &&
-                noKeeperRooms
-                    ? !isKeeperRoom(nextRoomName) && !isCenterRoom(nextRoomName)
-                    : true
+                !isKeeperRoom(nextRoomName) &&
+                !isCenterRoom(nextRoomName)
             ) {
                 safeRoomsDepthThree.push(nextRoomName);
             }
