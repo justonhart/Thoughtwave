@@ -309,7 +309,7 @@ export function findSuitableRemoteSource(roomName: string, noKeeperRooms: boolea
     options = options.filter((option) => option.stats.estimatedIncome / option.stats.gathererCount >= 750);
 
     //prefer central rooms over other rooms and prefer closer to farther
-    options.reduce((highest, next) => next.stats.estimatedIncome > highest.stats.estimatedIncome ? next : highest);
+    options.sort((a,b) => b.stats.estimatedIncome - a.stats.estimatedIncome);
 
     return options.shift();
 }
