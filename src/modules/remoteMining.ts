@@ -284,7 +284,7 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
     ]
         .filter((source) => !Memory.remoteSourceAssignments[source])
         .map((source) => {
-            let stats = calculateRemoteSourceStats(source, roomName, true);
+            let stats = calculateRemoteSourceStats(source, roomName);
             return { source, stats };
         });
 
