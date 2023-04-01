@@ -260,4 +260,19 @@ export class CombatIntel {
         });
         return powerLevel;
     }
+
+    /**
+     * Get max dmg if all creeps attack every tick for the rest of their ttl (in memory not room based)
+     * @param room
+     */
+    public static getMaxDmgOverLifetime(creeps: Creep[], ttl?: number): number {
+        return creeps
+            .filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
+            .reduce(
+                (totalDmg, nextCreep) =>
+                    (totalDmg +=
+                        this.getTotalDamagePerCreepBody(nextCreep.body).attack * (ttl && ttl < nextCreep.ticksToLive ? ttl : nextCreep.ticksToLive)),
+                0
+            );
+    }
 }

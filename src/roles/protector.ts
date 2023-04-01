@@ -13,7 +13,7 @@ export class Protector extends CombatCreep {
         if (this.travelToRoom(this.memory.assignment) === IN_ROOM || this.memory.targetId) {
             this.memory.targetId = this.findTarget();
             if (!this.memory.targetId && this.getActiveBodyparts(HEAL)) {
-                if (this.hits < this.hitsMax) {
+                if (this.damaged()) {
                     this.healSelf(false);
                 } else {
                     // Nothing to do so heal hurt creeps in the room
@@ -33,9 +33,12 @@ export class Protector extends CombatCreep {
             if (target instanceof Creep) {
                 this.combatPathing(target);
                 creepActionReturnCode = this.attackCreep(target);
-            } else if (target instanceof Structure) {
+            } else if (target instanceof Structure && (!(target instanceof StructurePowerBank) || !this.memory.stop)) {
                 creepActionReturnCode = this.attackStructure(target);
-                if (creepActionReturnCode === ERR_NOT_IN_RANGE || !this.pos.isNearTo(target.pos.x, target.pos.y)) {
+                if (
+                    creepActionReturnCode === ERR_NOT_IN_RANGE ||
+                    (target.structureType !== STRUCTURE_POWER_BANK && !this.pos.isNearTo(target.pos.x, target.pos.y))
+                ) {
                     this.travelTo(target, { range: 1 });
                 }
             }
@@ -46,24 +49,8 @@ export class Protector extends CombatCreep {
             } else if (creepActionReturnCode === OK) {
                 this.healSelf(!!this.getActiveBodyparts(ATTACK));
             }
-        } else if (this.hits < this.hitsMax) {
-            // getting hit on the way => enable defense mode
-            const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
-            const enemy = this.pos
-                .findInRange(FIND_HOSTILE_CREEPS, range)
-                .find((creep) => creep.owner.username !== 'Invader' && (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)));
-            let hasMeleeAttacked = false;
-            if (enemy) {
-                hasMeleeAttacked = !!this.getActiveBodyparts(ATTACK);
-                this.attackCreep(enemy);
-            }
-            this.healSelf(hasMeleeAttacked);
-        }
-    }
-
-    private healSelf(hasMeleeAttacked: boolean) {
-        if (!hasMeleeAttacked && (this.hits < this.hitsMax || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
-            this.heal(this);
+        } else if (this.damaged()) {
+            this.healSelf(this.defendSelf());
         }
     }
 

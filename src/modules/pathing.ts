@@ -1,4 +1,4 @@
-import { isKeeperRoom } from '../modules/data';
+import { isKeeperRoom, isHighway } from '../modules/data';
 import { decodeRoad, getRoadPathFromPos } from './roads';
 
 //@ts-ignore
@@ -365,7 +365,7 @@ export class Pathing {
                     if (!options.ignoreCreeps) {
                         Pathing.addCreepsToMatrix(room, matrix);
                     }
-                } else if (options.ignoreCreeps || roomName !== originRoom) {
+                } else if (options.ignoreCreeps) {
                     matrix = Pathing.getStructureMatrix(room, options);
                 } else {
                     matrix = Pathing.getCreepMatrix(room);
@@ -496,9 +496,7 @@ export class Pathing {
                     return 1;
                 }
                 if (options.preferHighway) {
-                    const parsed = /^[WE]([0-9]+)[NS]([0-9]+)$/.exec(roomName) as unknown;
-                    const isHighway = parsed[1] % 10 === 0 || parsed[2] % 10 === 0;
-                    if (isHighway) {
+                    if (isHighway(roomName)) {
                         return 1;
                     }
                 }

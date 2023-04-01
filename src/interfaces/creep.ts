@@ -26,6 +26,7 @@ interface CreepMemory {
     sleepCollectTil?: number;
     stop?: boolean;
     spawnReplacementAt?: number;
+    recycle?: boolean;
 }
 
 interface Creep {
@@ -55,6 +56,14 @@ interface CombatMemory {
     healingTarget?: string;
     squadId?: string;
     squadMemberType?: SquadMemberType;
+    squadTarget?: SquadTarget;
+}
+
+// Set a squad Target to change target prioritization for squadAttackers
+const enum SquadTarget {
+    PLAYER_ROOM,
+    PLAYER_CREEPS,
+    POWER_BANK,
 }
 
 const enum SquadMemberType {

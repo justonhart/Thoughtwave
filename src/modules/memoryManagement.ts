@@ -260,17 +260,17 @@ function initMissingMemoryValues() {
 }
 
 function mangeVisionRequests() {
-    let observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room].observer);
+    const observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room]?.observer);
 
     Object.keys(Memory.visionRequests).forEach((requestId) => {
-        let request = Memory.visionRequests[requestId];
+        const request = Memory.visionRequests[requestId];
         if (request.completed) {
             delete Memory.visionRequests[requestId];
             return;
         }
 
         if (!request.assigned) {
-            let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 5);
+            let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 10);
             if (suitableRoom) {
                 if (!Memory.rooms[suitableRoom].visionRequests) {
                     Memory.rooms[suitableRoom].visionRequests = [requestId];

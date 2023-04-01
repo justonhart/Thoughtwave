@@ -8,7 +8,14 @@ export class CombatCreep extends WaveCreep {
             // Can't use nearTo as we want to use MassAttack even if it is not the targetHostileCreep that is near us
             if (
                 this.room
-                    .lookForAtArea(LOOK_CREEPS, this.pos.y - 1, this.pos.x - 1, this.pos.y + 1, this.pos.x + 1, true)
+                    .lookForAtArea(
+                        LOOK_CREEPS,
+                        this.pos.y - 1 < 0 ? 0 : this.pos.y - 1,
+                        this.pos.x - 1 < 0 ? 0 : this.pos.x - 1,
+                        this.pos.y + 1 > 49 ? 49 : this.pos.y + 1,
+                        this.pos.x + 1 > 49 ? 49 : this.pos.x + 1,
+                        true
+                    )
                     .filter((lookObject) => lookObject.creep.owner?.username !== this.owner.username && !lookObject.creep?.spawning).length
             ) {
                 return this.rangedMassAttack();
@@ -41,11 +48,12 @@ export class CombatCreep extends WaveCreep {
             const exitCost = 10;
             let shouldFlee = true;
 
-            const hostilesInSquadRange = this.pos.findInRange(FIND_HOSTILE_CREEPS, 4); // check around target for proper massAttack pathing
+            const hostilesInSquadRange = target.pos.findInRange(FIND_HOSTILE_CREEPS, 4); // check around target for proper massAttack pathing
             const rangeToTarget = this.pos.getRangeTo(target);
 
             // If not in range or a squad without melee creep, then go closer to enable massAttack
             if (
+                !(target.getActiveBodyparts(ATTACK) || target.getActiveBodyparts(RANGED_ATTACK)) ||
                 rangeToTarget > range ||
                 (hostilesInSquadRange.length > 1 && !hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(ATTACK)))
             ) {
@@ -113,5 +121,37 @@ export class CombatCreep extends WaveCreep {
             }
         });
         return squads.map((squad) => squad.map((squadCreep) => squadCreep.id));
+    }
+
+    protected healSelf(hasMeleeAttacked: boolean) {
+        if (!hasMeleeAttacked && (this.damaged() || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
+            this.heal(this);
+        }
+    }
+
+    /**
+     * Return fire when getting hit
+     * @returns true, if creep has melee attacked
+     */
+    protected defendSelf(): boolean {
+        if (
+            this.pos.roomName !== this.homeroom.name &&
+            this.damaged() &&
+            (this.getActiveBodyparts(ATTACK) || this.getActiveBodyparts(RANGED_ATTACK))
+        ) {
+            const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
+            const enemy = this.pos
+                .findInRange(FIND_HOSTILE_CREEPS, range)
+                .find((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK));
+            if (enemy) {
+                this.attackCreep(enemy);
+                return !!this.getActiveBodyparts(ATTACK);
+            }
+        }
+    }
+
+    protected recycleCreep() {
+        super.recycleCreep();
+        this.healSelf(this.defendSelf());
     }
 }

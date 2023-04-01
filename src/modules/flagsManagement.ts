@@ -13,15 +13,16 @@ export default function manageFlags() {
 
         let opts: OperationOpts = {
             portalLocations: portalLocations,
+            originOpts: {
+                ignoreTerrain: true,
+            },
         };
 
         if (Game.flags.origin) {
             opts.originRoom = Game.flags.origin.pos.roomName;
             Game.flags.origin.remove();
         } else {
-            opts.originOpts = {
-                selectionCriteria: OriginCriteria.CLOSEST,
-            };
+            opts.originOpts.selectionCriteria = OriginCriteria.CLOSEST;
         }
 
         addOperation(OperationType.SECURE, Game.flags.colonize.pos.roomName, {

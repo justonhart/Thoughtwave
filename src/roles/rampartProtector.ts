@@ -4,7 +4,7 @@ import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class RampartProtector extends CombatCreep {
     protected run() {
-        if ((this.hits < this.hitsMax || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
+        if ((this.damaged() || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
             this.heal(this);
         }
 

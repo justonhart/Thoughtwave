@@ -342,11 +342,17 @@ export class SquadManagement {
                 if (target instanceof Creep) {
                     this.squadLeader.travelTo(target, { range: range, maxRooms: 1 });
                 } else if (target) {
+                    const customCostMatrix = this.getDuoMatrix(this.squadLeader);
                     this.squadLeader.travelTo(target, {
                         range: 1,
                         ignoreStructures: true,
                         maxRooms: 1,
-                        customMatrixCosts: this.getDuoMatrix(this.squadLeader),
+                        customMatrixCosts: customCostMatrix.concat(
+                            this.squadLeader.room
+                                .find(FIND_MY_CREEPS)
+                                .filter((myCreep) => myCreep.memory?.combat?.squadId !== this.squadLeader.memory.combat.squadId)
+                                .map((myCreep) => ({ x: myCreep.pos.x, y: myCreep.pos.y, cost: 255 }))
+                        ),
                     });
                 }
             }
@@ -444,7 +450,12 @@ export class SquadManagement {
     }
 
     private findPath(target: any, range: number): PathFinderPath {
-        const matrix = SquadManagement.getQuadMatrix(this.squadLeader, this.assignment, this.orientation, this.anchor);
+        const matrix = SquadManagement.getQuadMatrix(this.squadLeader, this.assignment, this.orientation, this.anchor).concat(
+            this.squadLeader.room
+                .find(FIND_MY_CREEPS)
+                .filter((myCreep) => myCreep.memory?.combat?.squadId !== this.squadLeader.memory.combat.squadId)
+                .map((myCreep) => ({ x: myCreep.pos.x, y: myCreep.pos.y, cost: 255 }))
+        );
 
         if (Game.flags.squadMove?.pos?.roomName === this.assignment) {
             // Manual targeting (costMatrix disabled?)
@@ -569,6 +580,7 @@ export class SquadManagement {
 
         const customCostMatrix: CustomMatrixCost[] = [];
 
+        // Enemy Structures
         Game.rooms[roomName]
             .find(FIND_STRUCTURES)
             .filter((structure) => structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL)
@@ -888,7 +900,9 @@ export class SquadManagement {
         if (this.isInDuoFormation()) {
             return true;
         }
-        this.squadFollower.travelTo(this.squadLeader, { range: 1, reusePath: 0 });
+        if (this.onFirstCreep()) {
+            this.squadFollower.travelTo(this.squadLeader, { range: 1 });
+        }
     }
 
     private isInDuoFormation(): boolean {
@@ -946,6 +960,9 @@ export class SquadManagement {
         });
 
         if (targetCreep.hits === targetCreep.hitsMax) {
+            if (this.squadLeader.memory.combat.squadTarget === SquadTarget.POWER_BANK) {
+                return this.squadLeader;
+            }
             const lastHealingTarget = Game.creeps[this.currentCreep.memory.combat.healingTarget];
             if (lastHealingTarget) {
                 return lastHealingTarget;
@@ -1049,8 +1066,8 @@ export class SquadManagement {
 
     private fleeing(): void {
         if (this.currentCreep.pos.roomName === this.assignment) {
-            // Creep died
-            this.currentCreep.flee();
+            // Other squad Creep died in assignmentRoom
+            this.currentCreep.memory.recycle = true;
         } else if (this.currentCreep.pos.roomName === this.currentCreep.homeroom.name) {
             // Wait close to exit for whole squad
             const { x, y } = this.currentCreep.pos;
