@@ -3,6 +3,7 @@ import { CombatCreep } from '../virtualCreeps/combatCreep';
 export class KeeperExterminator extends CombatCreep {
     private attacked: boolean = false;
     protected run() {
+        this.manageLifecycle();
         let target = Game.getObjectById(this.memory.targetId);
         if (this.room.name === this.memory.assignment || target) {
             if (!target) {
@@ -21,7 +22,7 @@ export class KeeperExterminator extends CombatCreep {
                     if (!this.pos.isNearTo(target)) {
                         this.travelTo(target, { range: 1, avoidSourceKeepers: false });
                     }
-
+                    
                     //scan area for keeper
                     let keeper = target.pos.findInRange(FIND_HOSTILE_CREEPS, 5, { filter: (c) => c.owner.username === 'Source Keeper' }).shift();
                     if (keeper) {
@@ -50,8 +51,7 @@ export class KeeperExterminator extends CombatCreep {
 
         let invaders = Game.rooms[this.memory.assignment]?.find(FIND_HOSTILE_CREEPS, {
             filter: (c) =>
-                c.getActiveBodyparts(ATTACK) > 0 ||
-                ((c.getActiveBodyparts(RANGED_ATTACK) || c.getActiveBodyparts(HEAL) > 0) && c.owner.username !== 'Source Keeper'),
+                (c.body.some(p => p.type === ATTACK) || c.body.some(p => p.type === RANGED_ATTACK) || c.body.some(p => p.type === HEAL) )&& c.owner.username !== 'Source Keeper',
         });
         if (invaders?.length) {
             return this.pos.findClosestByPath(invaders)?.id || this.pos.findClosestByRange(invaders)?.id;
@@ -84,6 +84,15 @@ export class KeeperExterminator extends CombatCreep {
         let nextSpawn = lairs?.reduce((lowestTimer, next) => (lowestTimer?.ticksToSpawn <= next?.ticksToSpawn ? lowestTimer : next));
         if (nextSpawn) {
             return nextSpawn.id;
+        }
+    }
+
+    private manageLifecycle(): void{
+        if(!this.memory.spawnReplacementAt){
+            this.memory.spawnReplacementAt = Game.time + this.ticksToLive - this.body.length * 3 - (Object.entries(Memory.remoteSourceAssignments).find(([key, value]) => key.split('.')[2] === this.memory.assignment)[1].roadLength);
+        }
+        if(Memory.remoteData[this.memory.assignment].keeperExterminator === this.name && Game.time >= this.memory.spawnReplacementAt){
+            Memory.remoteData[this.memory.assignment].keeperExterminator = AssignmentStatus.UNASSIGNED;
         }
     }
 }

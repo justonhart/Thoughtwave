@@ -2,6 +2,9 @@ import { isKeeperRoom } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class RemoteMiner extends WaveCreep {
     protected run() {
+        if(Game.time === this.memory.spawnReplacementAt){
+            this.homeroom.memory.remoteSources[this.memory.assignment].miner = AssignmentStatus.UNASSIGNED;
+        }
         if (
             this.damaged() ||
             Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
@@ -80,6 +83,7 @@ export class RemoteMiner extends WaveCreep {
         }
 
         if (Game.rooms[this.memory.assignment.toRoomPos().roomName]) {
+            this.manageLifecycle(); //this is only reached once and is only called once creep is at miningPos
             let id = this.memory.assignment.toRoomPos().lookFor(LOOK_SOURCES)?.pop().id;
             this.memory.targetId = id;
             return id;
@@ -88,5 +92,9 @@ export class RemoteMiner extends WaveCreep {
 
     private getMiningPosition(): RoomPosition {
         return this.homeroom.memory.remoteSources[this.memory.assignment].miningPos.toRoomPos();
+    }
+
+    private manageLifecycle(): void{
+        this.memory.spawnReplacementAt = Game.time + this.ticksToLive - this.body.length * 3 - Memory.remoteSourceAssignments[this.memory.assignment].roadLength;
     }
 }

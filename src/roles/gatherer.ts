@@ -5,7 +5,7 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
     protected run() {
-        if (this.memory?.spawnReplacementAt === Game.time) {
+        if (this.memory?.spawnReplacementAt >= Game.time && this.homeroom.memory.remoteSources[this.memory.assignment].gatherers.includes(this.name)) {
             this.triggerReplacementSpawn();
         }
 
@@ -114,7 +114,6 @@ export class Gatherer extends TransportCreep {
         const COMPLETION_OF_LAST_TRIP = Game.time + TRIPS_REMAINING * TRIP_LENGTH;
         const START_SPAWNING_REPLACEMENT_AT = COMPLETION_OF_LAST_TRIP - TICKS_TO_SPAWN;
         const SPAWN_CYCLES_REMAINING = Math.floor(TRIPS_REMAINING / TRIPS_PER_SPAWN_CYCLE);
-        this.say(TRIPS_REMAINING.toString());
 
         //determine when to spawn replacement toward end of lifecycle
         if (TRIPS_REMAINING === 0) {

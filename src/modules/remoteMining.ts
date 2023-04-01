@@ -127,9 +127,9 @@ export function calculateRemoteSourceStats(source: string, roomName: string, ign
         road: roadStats.road,
     };
 
-    for (let [key, value] of Object.entries(stats)) {
-        if (key !== 'road') console.log(`${key}: ${value}`);
-    }
+    // for (let [key, value] of Object.entries(stats)) {
+    //     if (key !== 'road') console.log(`${key}: ${value}`);
+    // }
 
     return stats;
 }
