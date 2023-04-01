@@ -1,6 +1,6 @@
 import { computeRoomNameFromDiff, getExitDirections, isCenterRoom, isKeeperRoom } from './data';
 import { removeRemoteRoomMemory } from './remoteRoomManagement';
-import { getRoad, storeRoadInMemory } from './roads';
+import { deleteRoad, getRoad, storeRoadInMemory } from './roads';
 import { getStoragePos } from './roomDesign';
 
 //Calculate maintenance cost of road to source per road decay cycle. Considers pre-existing roads in homeroom and roomData to be .5 cost of plains. Doesn't consider travel wear
@@ -205,6 +205,7 @@ export function assignRemoteSource(source: string, roomName: string) {
 
 export function removeSourceAssignment(source: string) {
     let current = Memory.remoteSourceAssignments[source];
+    deleteRoad(`${getStoragePos(Game.rooms[current.controllingRoom])}:${Memory.rooms[current.controllingRoom].remoteSources[source].miningPos}`);
     Game.creeps[Memory.rooms[current.controllingRoom].remoteSources[source]?.miner]?.suicide();
     Memory.rooms[current.controllingRoom].remoteSources[source]?.gatherers.forEach((g) => Game.creeps[g]?.suicide());
     delete Memory.rooms[current.controllingRoom].remoteSources[source];

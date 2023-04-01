@@ -91,6 +91,7 @@ export class RemoteMiner extends WaveCreep {
     }
 
     private getMiningPosition(): RoomPosition {
+        if(!this.homeroom.memory.remoteSources[this.memory.assignment]) this.suicide();
         return this.homeroom.memory.remoteSources[this.memory.assignment].miningPos.toRoomPos();
     }
 

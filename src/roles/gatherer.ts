@@ -132,6 +132,7 @@ export class Gatherer extends TransportCreep {
     }
 
     private getMiningPosition(): RoomPosition {
-        return this.homeroom.memory.remoteSources[this.memory.assignment].miningPos.toRoomPos();
+        if(!this.homeroom.memory.remoteSources[this.memory.assignment]) this.suicide();
+        return this.homeroom.memory.remoteSources[this.memory.assignment]?.miningPos.toRoomPos();
     }
 }

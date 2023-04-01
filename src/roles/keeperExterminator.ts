@@ -87,7 +87,8 @@ export class KeeperExterminator extends CombatCreep {
         }
     }
 
-    private manageLifecycle(): void{
+    private manageLifecycle(){
+        if(!Memory.remoteData[this.memory.assignment]) return this.suicide();
         if(!this.memory.spawnReplacementAt){
             this.memory.spawnReplacementAt = Game.time + this.ticksToLive - this.body.length * 3 - (Object.entries(Memory.remoteSourceAssignments).find(([key, value]) => key.split('.')[2] === this.memory.assignment)[1].roadLength);
         }
