@@ -223,8 +223,13 @@ export function driveRoom(room: Room) {
             }
         }
 
-        const isHomeUnderAttack = runHomeSecurity(room);
-        runTowers(room, isHomeUnderAttack);
+        let isHomeUnderAttack = false;
+        try {
+            isHomeUnderAttack = runHomeSecurity(room);
+            runTowers(room, isHomeUnderAttack);
+        } catch (e) {
+            console.log(`Error caught running runHomeSecurity/runTowers in ${room.name}: \n${e}`);
+        }
 
         if (room.memory.anchorPoint) {
             let anchorPoint = room.memory.anchorPoint.toRoomPos();
@@ -271,18 +276,26 @@ export function driveRoom(room: Room) {
                 !global.remoteSourcesChecked &&
                 Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000
             ) {
-                let result = addRemoteSourceClaim(room);
-                room.memory.lastRemoteSourceCheck = Game.time;
-                global.remoteSourcesChecked = true;
+                try {
+                    addRemoteSourceClaim(room);
+                    room.memory.lastRemoteSourceCheck = Game.time;
+                    global.remoteSourcesChecked = true;
+                } catch (e) {
+                    console.log(`Error caught running addRemoteSourceClaim in ${room.name}: \n${e}`);
+                }
             }
 
             if (room.memory.outstandingClaim && Game.time % 1000 === 0) {
-                let result = executeRemoteSourceClaim(room);
-                if (result === OK) {
-                    delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
-                    delete room.memory.outstandingClaim;
-                } else {
-                    console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
+                try {
+                    let result = executeRemoteSourceClaim(room);
+                    if (result === OK) {
+                        delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
+                        delete room.memory.outstandingClaim;
+                    } else {
+                        console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
+                    }
+                } catch (e) {
+                    console.log(`Error caught running executeRemoteSourceClaim in ${room.name}: \n${e}`);
                 }
             }
         }
@@ -388,7 +401,7 @@ function runTowers(room: Room, isRoomUnderAttack: boolean) {
 
             if (tower.store.energy > 600) {
                 if (!room.memory.towerRepairMap[tower.id]) {
-                    let roadId = repairQueue.find((id) => Game.getObjectById(id).structureType === STRUCTURE_ROAD) as Id<StructureRoad>;
+                    let roadId = repairQueue.find((id) => Game.getObjectById(id)?.structureType === STRUCTURE_ROAD) as Id<StructureRoad>;
                     room.memory.towerRepairMap[tower.id] = roadId;
                     room.removeFromRepairQueue(roadId);
                 }

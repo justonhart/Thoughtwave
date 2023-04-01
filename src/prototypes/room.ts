@@ -118,7 +118,7 @@ Object.defineProperty(Room.prototype, 'upgraderLink', {
         if (this.memory.layout === RoomLayout.STAMP) {
             posToCheck = this.stamps.link.find((linkDetail) => linkDetail.type === 'controller')?.pos;
         } else {
-            posToCheck = this.memory.upgraderLinkPos.toRoomPos();
+            posToCheck = this.memory.upgraderLinkPos?.toRoomPos();
         }
 
         let link = posToCheck
@@ -191,7 +191,7 @@ Object.defineProperty(Room.prototype, 'remoteSources', {
 
 Object.defineProperty(Room.prototype, 'remoteMiningRooms', {
     get: function (this: Room) {
-        return this.remoteSources.map(s => s.split('.')[2]);
+        return this.remoteSources.map((s) => s.split('.')[2]);
     },
     enumerable: false,
     configurable: true,

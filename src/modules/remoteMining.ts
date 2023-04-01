@@ -277,6 +277,15 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
         }
     }
 
+    console.log(safeRoomsDepthOne);
+    console.log(safeRoomsDepthTwo);
+    console.log(safeRoomsDepthThree);
+    console.log([
+        ..._.flatten(safeRoomsDepthOne.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
+        ..._.flatten(safeRoomsDepthTwo.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
+        ..._.flatten(safeRoomsDepthThree.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
+    ]);
+
     let openSources: { source: string; stats: RemoteStats }[] = [
         ..._.flatten(safeRoomsDepthOne.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
         ..._.flatten(safeRoomsDepthTwo.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
@@ -294,7 +303,7 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
 export function findSuitableRemoteSource(roomName: string, noKeeperRooms: boolean = false): { source: string; stats: RemoteStats } {
     let options = findRemoteMiningOptions(roomName, noKeeperRooms);
 
-    let remoteRooms = new Set(Object.keys(Memory.rooms[roomName].remoteSources).map((pos) => pos.split('.')[2]));
+    let remoteRooms = new Set(Object.keys(Memory.rooms[roomName].remoteSources)?.map((pos) => pos.split('.')[2]));
     let keeperRoomsMined = 0;
     let otherRoomsMined = 0;
 
@@ -310,7 +319,7 @@ export function findSuitableRemoteSource(roomName: string, noKeeperRooms: boolea
     options = options.filter((option) => option.stats.estimatedIncome / option.stats.gathererCount >= 750);
 
     //prefer central rooms over other rooms and prefer closer to farther
-    options.sort((a,b) => b.stats.estimatedIncome - a.stats.estimatedIncome);
+    options.sort((a, b) => b.stats.estimatedIncome - a.stats.estimatedIncome);
 
     return options.shift();
 }

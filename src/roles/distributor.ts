@@ -5,7 +5,7 @@ export class Distributor extends TransportCreep {
         let target: any;
 
         if (!target && this.homeroom.memory.labRequests?.length) {
-            if (this.store.getUsedCapacity()) {
+            if (this.store.getUsedCapacity() && this.homeroom.storage) {
                 target = this.homeroom.storage.id;
             } else {
                 this.claimLabRequests();
@@ -23,7 +23,11 @@ export class Distributor extends TransportCreep {
             if (this.homeroom.storage && this.store.energy < this.store.getUsedCapacity() + this.incomingMineralAmount) {
                 target = this.homeroom.storage.id;
             } else {
-                target = this.findRefillTarget();
+                try {
+                    target = this.findRefillTarget();
+                } catch (e) {
+                    console.log(`Error caught running findRefillTarget in ${this.name}: \n${e}`);
+                }
             }
         }
 
@@ -33,7 +37,11 @@ export class Distributor extends TransportCreep {
             this.store.getFreeCapacity() + this.outgoingResourceAmount - this.incomingEnergyAmount - this.incomingMineralAmount >=
                 this.store.getCapacity() * 0.9
         ) {
-            target = this.findCollectionTarget();
+            try {
+                target = this.findCollectionTarget();
+            } catch (e) {
+                console.log(`Error caught running findCollectionTarget in ${this.name}: \n${e}`);
+            }
         }
 
         // Nothing to do so drop everything off at storage
