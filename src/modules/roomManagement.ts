@@ -271,7 +271,6 @@ export function driveRoom(room: Room) {
                 !global.remoteSourcesChecked &&
                 Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000
             ) {
-                console.log('checking remote sources for ' + room.name);
                 let result = addRemoteSourceClaim(room);
                 room.memory.lastRemoteSourceCheck = Game.time;
                 global.remoteSourcesChecked = true;
