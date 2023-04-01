@@ -853,7 +853,7 @@ function getStructurePriority(structureType: StructureConstant): number {
 }
 
 export function canSupportRemoteRoom(room: Room) {
-    return false; //Object.keys(room.memory.remoteSources).length < room.find(FIND_MY_SPAWNS).length * 3;
+    return Object.keys(room.memory.remoteSources).length < room.find(FIND_MY_SPAWNS).length * 3;
 }
 
 function initMissingMemoryValues(room: Room) {
@@ -905,13 +905,13 @@ export function addRemoteSourceClaim(room: Room) {
     if (sourceToClaim) {
         let existingClaim = Memory.remoteSourceClaims[sourceToClaim.source];
         if (existingClaim) {
-            if (existingClaim.netIncome < sourceToClaim.stats.estimatedIncome) {
-                Memory.remoteSourceClaims[sourceToClaim.source] = { claimant: room.name, netIncome: sourceToClaim.stats.estimatedIncome };
+            if (existingClaim.estimatedIncome < sourceToClaim.stats.estimatedIncome) {
+                Memory.remoteSourceClaims[sourceToClaim.source] = { claimant: room.name, estimatedIncome: sourceToClaim.stats.estimatedIncome };
                 room.memory.outstandingClaim = sourceToClaim.source;
                 delete Memory.rooms[existingClaim.claimant].outstandingClaim;
             }
         } else {
-            Memory.remoteSourceClaims[sourceToClaim.source] = { claimant: room.name, netIncome: sourceToClaim.stats.estimatedIncome };
+            Memory.remoteSourceClaims[sourceToClaim.source] = { claimant: room.name, estimatedIncome: sourceToClaim.stats.estimatedIncome };
             room.memory.outstandingClaim = sourceToClaim.source;
         }
     }
