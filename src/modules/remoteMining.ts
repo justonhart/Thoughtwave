@@ -277,15 +277,6 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
         }
     }
 
-    console.log(safeRoomsDepthOne);
-    console.log(safeRoomsDepthTwo);
-    console.log(safeRoomsDepthThree);
-    console.log([
-        ..._.flatten(safeRoomsDepthOne.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
-        ..._.flatten(safeRoomsDepthTwo.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
-        ..._.flatten(safeRoomsDepthThree.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
-    ]);
-
     let openSources: { source: string; stats: RemoteStats }[] = [
         ..._.flatten(safeRoomsDepthOne.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
         ..._.flatten(safeRoomsDepthTwo.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
