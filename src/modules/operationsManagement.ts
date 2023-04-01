@@ -15,7 +15,6 @@ const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } 
     [OperationType.UPGRADE_BOOST]: OperationStage.ACTIVE,
     [OperationType.REMOTE_BUILD]: OperationStage.ACTIVE,
     [OperationType.CLEAN]: OperationStage.ACTIVE,
-    [OperationType.ADD_REMOTE_MINING]: OperationStage.ACTIVE,
     [OperationType.POWER_BANK]: OperationStage.PREPARE,
 };
 
@@ -58,9 +57,6 @@ export function manageOperations() {
                     break;
                 case OperationType.QUAD_ATTACK:
                     manageQuadAttackRoomOperation(op);
-                    break;
-                case OperationType.ADD_REMOTE_MINING:
-                    manageAddRemoteMiningOperation(op);
                     break;
                 case OperationType.POWER_BANK:
                     manageAddPowerBankOperation(op);
@@ -506,22 +502,6 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
             },
         },
     });
-}
-function manageAddRemoteMiningOperation(op: Operation) {
-    //if target room has vision, perform functions
-    if(Game.rooms[op.targetRoom]){
-        let result = undefined;//addRemoteRoom(op.originRoom, op.targetRoom);
-        if(result != OK){
-            console.log(`Problem assigning remote room ${op.targetRoom} to ${op.originRoom}: ${result}`);
-        }
-        op.stage = OperationStage.COMPLETE;
-    } else if (!op.visionRequests?.some((id) => Memory.visionRequests[id])) {
-        //add vision request
-        let result = addVisionRequest({ targetRoom: op.targetRoom });
-        if (result !== ERR_NOT_FOUND) {
-            op.visionRequests.push(result as string);
-        }
-    } // else wait for rq to resolve
 }
 
 /**
