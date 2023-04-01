@@ -227,9 +227,9 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
         if (
             [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
                 Memory.roomData[nextRoomName]?.roomStatus
-            ) && noKeeperRooms
+            ) && (noKeeperRooms
                 ? !isKeeperRoom(nextRoomName) && !isCenterRoom(nextRoomName)
-                : true
+                : true)
         ) {
             safeRoomsDepthOne.push(nextRoomName);
         }
