@@ -48,7 +48,7 @@ interface RemoteData {
     mineralAvailableAt?: number;
     threatLevel: RemoteRoomThreatLevel;
     keeperExterminator?: string;
-    sourceKeeperLairs?: { [id: Id<Source>]: Id<Structure<StructureConstant>> }; // keeperId: closestSourceId
+    sourceKeeperLairs?: { [sourcePos: string]: Id<Structure<StructureConstant>> }; // keeperId: closestSourceId
 }
 
 interface RoomData {

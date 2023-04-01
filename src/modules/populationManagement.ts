@@ -67,14 +67,14 @@ export class PopulationManagement {
             canSupportAnotherWorker &&
             !INCOMING_NUKE &&
             !hasUpgrader &&
-            (!roomNeedsConstruction || workers.length > 0) &&
+            !roomNeedsConstruction &&
             !roomNeedsCoreStructures(spawn.room);
 
         const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
         let creepLevelCap = 16;
         if (spawnUpgrader) {
             options.memory.role = Role.UPGRADER;
-            options.boosts = [BoostType.UPGRADE];
+            options.boosts = spawn.room.controller.level < 8 ? [BoostType.UPGRADE] : [];
             let result: ScreepsReturnCode;
 
             if (spawn.room.upgraderLink) {
