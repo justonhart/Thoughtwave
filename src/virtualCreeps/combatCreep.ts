@@ -124,29 +124,34 @@ export class CombatCreep extends WaveCreep {
     }
 
     protected healSelf(hasMeleeAttacked: boolean) {
-        if (!hasMeleeAttacked && (this.hits < this.hitsMax || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
+        if (!hasMeleeAttacked && (this.damaged() || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
             this.heal(this);
         }
     }
 
-    protected recycleCreep() {
-        super.recycleCreep();
-        let hasMeleeAttacked = false;
+    /**
+     * Return fire when getting hit
+     * @returns true, if creep has melee attacked
+     */
+    protected defendSelf(): boolean {
         if (
             this.pos.roomName !== this.homeroom.name &&
-            this.hits < this.hitsMax &&
+            this.damaged() &&
             (this.getActiveBodyparts(ATTACK) || this.getActiveBodyparts(RANGED_ATTACK))
         ) {
-            // getting hit on the way => enable defense mode
             const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
             const enemy = this.pos
                 .findInRange(FIND_HOSTILE_CREEPS, range)
                 .find((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK));
             if (enemy) {
-                hasMeleeAttacked = !!this.getActiveBodyparts(ATTACK);
                 this.attackCreep(enemy);
+                return !!this.getActiveBodyparts(ATTACK);
             }
         }
-        this.healSelf(hasMeleeAttacked);
+    }
+
+    protected recycleCreep() {
+        super.recycleCreep();
+        this.healSelf(this.defendSelf());
     }
 }

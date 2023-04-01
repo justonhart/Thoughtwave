@@ -85,9 +85,17 @@ module.exports.loop = function () {
     cpuUsed = Game.cpu.getUsed();
 
     // Start PowerBank operations (no need to check every tick since powerspawns decay every 5000 ticks)
-    if (Game.time % 99 === 0) {
+    // Limited to only 3 powerbank operations at the same time initially (can be removed later)
+    if (Game.time % 99 === 0 && Object.values(Memory.operations).filter((operation) => operation.type === OperationType.POWER_BANK).length <= 3) {
         Object.entries(Memory.roomData)
-            .filter(([roomName, roomData]) => roomData.powerBank === true && Math.abs(Game.time - roomData.asOf) < 500)
+            .filter(
+                ([roomName, roomData]) =>
+                    roomData.powerBank === true &&
+                    Math.abs(Game.time - roomData.asOf) < 500 &&
+                    !Object.values(Memory.operations).some(
+                        (operation) => operation.type === OperationType.POWER_BANK && operation.targetRoom === roomName
+                    )
+            )
             .forEach(([roomName, roomData]) => {
                 addOperation(OperationType.POWER_BANK, roomName, {
                     disableLogging: true,

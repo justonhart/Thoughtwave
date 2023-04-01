@@ -1417,10 +1417,7 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
     const storagePos = stamps.storage[0].pos;
     // Sort roads ==> roads without type first as these are around stamps which the distributor has to go to anyway. Then sort the rest of the roads by range to storage so it will put stuff close to it
     const roads = stamps.road
-        .filter(
-            (roadDetail) =>
-                roadDetail.type !== 'notBuildable' && roadDetail.pos.x > 2 && roadDetail.pos.x < 47 && roadDetail.pos.y > 2 && roadDetail.pos.y < 47
-        )
+        .filter((roadDetail) => roadDetail.type !== 'notBuildable' && positionsInStampBoundary([roadDetail.pos]))
         .sort((a, b) => {
             if (a.type && !b.type) {
                 return 1;
@@ -1442,14 +1439,16 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
         })
         .map((roadDetail) => roadDetail.pos);
 
-    Object.entries(stamps).map(([key, stampsDetails]: [string, StampDetail[]]) =>
-        stampsDetails.filter((s) => s.pos?.x === undefined).forEach((s) => console.log(key + ' ' + s.type))
-    );
     while (roads.length > 0 && (stamps.extension.length < 60 || stamps.tower.length < 6 || !stamps.powerSpawn.length || !stamps.observer.length)) {
         let neighbors = roads
             .shift()
             .neighbors(true, false)
-            .filter((neighbor) => !containsStamp(stamps, [neighbor]) && terrain.get(neighbor.x, neighbor.y) !== TERRAIN_MASK_WALL);
+            .filter(
+                (neighbor) =>
+                    !containsStamp(stamps, [neighbor]) &&
+                    positionsInStampBoundary([neighbor]) &&
+                    terrain.get(neighbor.x, neighbor.y) !== TERRAIN_MASK_WALL
+            );
         while (
             neighbors.length &&
             (stamps.extension.length < 60 || stamps.tower.length < 6 || !stamps.powerSpawn.length || !stamps.observer.length)
@@ -1518,14 +1517,18 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
             }
             road.pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName);
         }
-    } else if (type === STRUCTURE_CONTROLLER && path.length > 0) {
+    } else if (type === STRUCTURE_CONTROLLER && path.length > 1) {
         const lastStep = path[path.length - 1];
+        const avoidStep = path[path.length - 2];
         const pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.roomName);
         const freePos = pos
             .neighbors(false, true)
             .find(
                 (neighborPos) =>
-                    (pos.x !== neighborPos.x || pos.y !== neighborPos.y) && !hasWalls(terrain, [neighborPos]) && !containsStamp(stamps, [neighborPos])
+                    (pos.x !== neighborPos.x || pos.y !== neighborPos.y) &&
+                    (avoidStep.x !== neighborPos.x || avoidStep.y !== neighborPos.y) &&
+                    !hasWalls(terrain, [neighborPos]) &&
+                    !containsStamp(stamps, [neighborPos])
             );
         if (freePos) {
             stamps.link.push({ type: 'controller', rcl: 8, pos: freePos });

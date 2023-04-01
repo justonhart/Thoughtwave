@@ -165,7 +165,7 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
                     (operation) =>
                         operation.originRoom === room.name &&
                         opts.operationCriteria.type === operation.type &&
-                        (!opts.operationCriteria.stage || opts.operationCriteria.stage === operation.stage)
+                        (!opts.operationCriteria.stage || opts.operationCriteria.stage >= operation.stage)
                 ).length < opts.operationCriteria.maxCount) &&
             Game.map.getRoomLinearDistance(room.name, targetRoom) <= (opts?.maxLinearDistance ?? 10) &&
             (opts?.minSpawnCount
@@ -539,6 +539,10 @@ function manageAddPowerBankOperation(op: Operation) {
     const originRoom = Game.rooms[op.originRoom];
     switch (op.stage) {
         case OperationStage.PREPARE:
+            if (op.pathCost > 500) {
+                Memory.roomData[op.targetRoom].powerBank = false;
+                op.stage = OperationStage.COMPLETE;
+            }
             if (targetRoom) {
                 op.visionRequests = [];
                 const powerBank = targetRoom
@@ -583,6 +587,13 @@ function manageAddPowerBankOperation(op: Operation) {
             const squadLeaders = squads.filter((squad) => squad.members).map((squad) => Game.creeps[squad.members[SquadMemberType.SQUAD_LEADER]]);
             squadLeaders.forEach((squadLeader) => {
                 if (squadLeader.hits < squadLeader.hitsMax / 2) {
+                    // Recycle Creeps after destroying powerbank
+                    Object.values(Memory.creeps)
+                        .filter((creep) => creep.assignment === targetRoom.name)
+                        .forEach((creep) => (creep.recycle = true));
+                    Object.values(Memory.squads)
+                        .filter((squad) => squad.assignment === targetRoom.name)
+                        .forEach((squad) => Object.values(squad.members).forEach((creepName) => (Memory.creeps[creepName].recycle = true)));
                     op.stage = OperationStage.COMPLETE;
                     return;
                 }
@@ -672,11 +683,10 @@ function manageAddPowerBankOperation(op: Operation) {
                 if (
                     powerBank &&
                     powerBank.hits < 10000 &&
-                    Math.ceil(powerBank.power / 1250) !==
-                        Object.values(Memory.creeps).filter(
-                            (creep) =>
-                                creep.destination === op.targetRoom && creep.role === Role.OPERATIVE && creep._m?.lastCoord?.includes(op.targetRoom)
-                        ).length
+                    Object.values(Memory.creeps).some(
+                        (creep) =>
+                            creep.destination === op.targetRoom && creep.role === Role.OPERATIVE && !creep._m?.lastCoord?.includes(op.targetRoom)
+                    )
                 ) {
                     squadLeaders.forEach((squadLeader) => (squadLeader.memory.stop = true));
                     Object.values(Memory.creeps)
