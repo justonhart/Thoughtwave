@@ -568,7 +568,7 @@ function manageAddPowerBankOperation(op: Operation) {
                 if (squadLeader.hits < squadLeader.hitsMax / 2) {
                     // Recycle Creeps after destroying powerbank
                     Object.values(Memory.creeps)
-                        .filter((creep) => creep.assignment === targetRoom.name)
+                        .filter((creep) => creep.assignment === targetRoom.name || creep.destination === targetRoom.name)
                         .forEach((creep) => (creep.recycle = true));
                     Object.values(Memory.squads)
                         .filter((squad) => squad.assignment === targetRoom.name)
