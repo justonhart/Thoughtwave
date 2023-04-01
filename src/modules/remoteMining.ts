@@ -206,7 +206,7 @@ export function assignRemoteSource(source: string, roomName: string) {
 export function removeSourceAssignment(source: string) {
     let current = Memory.remoteSourceAssignments[source];
     Game.creeps[Memory.rooms[current.controllingRoom].remoteSources[source]?.miner]?.suicide();
-    Memory.rooms[current.controllingRoom].remoteSources[source]?.gatherers.forEach((g) => Game.creeps[g].suicide());
+    Memory.rooms[current.controllingRoom].remoteSources[source]?.gatherers.forEach((g) => Game.creeps[g]?.suicide());
     delete Memory.rooms[current.controllingRoom].remoteSources[source];
     delete Memory.remoteSourceAssignments[source];
     let roomName = source.split('.')[2];

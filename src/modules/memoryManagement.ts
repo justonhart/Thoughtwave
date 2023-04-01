@@ -95,7 +95,7 @@ function handleDeadCreep(deadCreepName: string) {
         if (deadCreepMemory.role === Role.MINER && !deadCreepMemory.hasTTLReplacement) {
             Memory.rooms[deadCreepMemory.room].miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
         }
-        if (deadCreepMemory.role === Role.REMOTE_MINER && Memory.rooms[deadCreepMemory.room].remoteSources[deadCreepMemory.assignment].miner === deadCreepName) {
+        if (deadCreepMemory.role === Role.REMOTE_MINER && Memory.rooms[deadCreepMemory.room].remoteSources[deadCreepMemory.assignment]?.miner === deadCreepName) {
             Memory.rooms[deadCreepMemory.room].remoteSources[deadCreepMemory.assignment].miner = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.role === Role.GATHERER) {
