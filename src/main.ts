@@ -2,6 +2,7 @@ import driveCreep from './modules/creepDriver';
 import { addRoomData, updateRoomData } from './modules/data';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
+import { addOperation } from './modules/operationsManagement';
 import { manageEmpireResources } from './modules/resourceManagement';
 import { driveRoom } from './modules/roomManagement';
 import { WaveCreep } from './virtualCreeps/waveCreep';
@@ -39,6 +40,8 @@ module.exports.loop = function () {
     Object.values(Game.rooms).forEach((room) => {
         if (!Memory.roomData[room.name]) {
             try {
+                // TODO: store powerBank: boolean in roomData
+                // Check every "n" ticks for powerBank: true and not already running Operation. Then find closest room to send DUO squads out. Amount of squads should equal to open spaces around power bank. Make quadManagement not ignore allied creeps. Suitable rooms should only be lvl 8 in a 9 range distance. Get closest also store distance. Send collectors when powerbank is about to die. Amount of collectors depends on amount in bank
                 addRoomData(room);
             } catch (e) {
                 console.log(`Error caught adding data for ${room.name}: \n${e}`);
@@ -80,6 +83,34 @@ module.exports.loop = function () {
 
     cpuUsageString += `resource cpu: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
     cpuUsed = Game.cpu.getUsed();
+
+    // Start PowerBank operations (no need to check every tick since powerspawns decay every 5000 ticks)
+    // Limited to only 3 powerbank operations at the same time initially (can be removed later)
+    if (Game.time % 99 === 0 && Object.values(Memory.operations).filter((operation) => operation.type === OperationType.POWER_BANK).length <= 3) {
+        Object.entries(Memory.roomData)
+            .filter(
+                ([roomName, roomData]) =>
+                    roomData.powerBank === true &&
+                    Math.abs(Game.time - roomData.asOf) < 500 &&
+                    !Object.values(Memory.operations).some(
+                        (operation) => operation.type === OperationType.POWER_BANK && operation.targetRoom === roomName
+                    )
+            )
+            .forEach(([roomName, roomData]) => {
+                addOperation(OperationType.POWER_BANK, roomName, {
+                    disableLogging: true,
+                    resource: RESOURCE_POWER,
+                    originOpts: {
+                        minEnergyStatus: EnergyStatus.STABLE,
+                        minSpawnCount: 3,
+                        selectionCriteria: OriginCriteria.CLOSEST,
+                        maxThreatLevel: HomeRoomThreatLevel.ENEMY_INVADERS,
+                        maxLinearDistance: 5,
+                        operationCriteria: { type: OperationType.POWER_BANK, maxCount: 1, stage: OperationStage.PREPARE },
+                    },
+                });
+            });
+    }
 
     // Run PriorityQueue
     WaveCreep.getCreepsWithPriorityTask().forEach((creepName) => {

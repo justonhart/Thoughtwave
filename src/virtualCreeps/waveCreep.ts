@@ -6,6 +6,12 @@ export class WaveCreep extends Creep {
         //disable notifications for all creeps
         this.notifyWhenAttacked(false);
 
+        // recycle creep
+        if (this.memory.recycle) {
+            this.recycleCreep();
+            return;
+        }
+
         if (this.memory.needsBoosted) {
             this.getNextBoost();
         } else if (this.memory.portalLocations?.[0]) {
@@ -117,6 +123,30 @@ export class WaveCreep extends Creep {
         } else {
             delete this.memory.needsBoosted;
             delete this.memory.currentTaskPriority;
+        }
+    }
+
+    protected recycleCreep() {
+        if (this.travelToRoom(this.homeroom.name) === IN_ROOM) {
+            this.memory.targetId = this.homeroom
+                .find(FIND_MY_SPAWNS)
+                .filter((spawn) => !spawn.spawning)
+                ?.shift()?.id;
+        }
+
+        const target = Game.getObjectById(this.memory.targetId) as StructureSpawn;
+        if (target instanceof StructureSpawn) {
+            if (this.pos.isNearTo(target)) {
+                target.recycleCreep(this);
+            } else if (this.homeroom.memory.layout === RoomLayout.STAMP) {
+                this.travelTo(
+                    this.homeroom.stamps.container.find(
+                        (containerStamp) => containerStamp.type === 'center' && target.pos.isNearTo(containerStamp.pos)
+                    ).pos
+                );
+            } else {
+                this.travelTo(target, { range: 1 });
+            }
         }
     }
 

@@ -66,14 +66,25 @@ interface OperationOpts {
     portalLocations?: string[];
     forcedDestinations?: string[];
     pathCost?: number;
+    disableLogging?: boolean;
 }
 
 interface OriginOpts {
+    maxThreatLevel?: HomeRoomThreatLevel;
     minEnergyStatus?: EnergyStatus;
     maxLinearDistance?: number;
-    multipleSpawns?: boolean;
+    minSpawnCount?: number;
     needsBoost?: boolean;
     selectionCriteria?: OriginCriteria;
+    operationCriteria?: OperationCriteria;
+    ignoreTerrain?: boolean;
+    ignoreRoomData?: boolean; // TODO: implement this to set highways to 1?
+}
+
+interface OperationCriteria {
+    type: OperationType;
+    maxCount: number;
+    stage?: OperationStage;
 }
 
 interface OriginResult {
@@ -136,6 +147,7 @@ const enum OperationType {
     REMOTE_BUILD,
     CLEAN,
     ADD_REMOTE_MINING,
+    POWER_BANK,
 }
 
 const enum OperationStage {

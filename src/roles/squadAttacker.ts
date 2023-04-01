@@ -24,7 +24,7 @@ export class SquadAttacker extends CombatCreep {
         }
 
         // Attacking (WORK/ATTACK/RANGED_ATTACK)
-        if (!healingTarget) {
+        if (!healingTarget && !this.memory.stop) {
             if (this.getActiveBodyparts(WORK)) {
                 this.dismantleTarget(sq);
             } else if (this.getActiveBodyparts(ATTACK)) {
@@ -88,6 +88,12 @@ export class SquadAttacker extends CombatCreep {
             const obstacleStructure = sq.getObstacleStructure();
             if (obstacleStructure && (!target || this.pos.getRangeTo(target) > range)) {
                 return obstacleStructure;
+            }
+
+            if (this.memory.combat.squadTarget === SquadTarget.POWER_BANK) {
+                target = this.pos.findClosestByRange(FIND_STRUCTURES, {
+                    filter: (struct) => struct.structureType === STRUCTURE_POWER_BANK,
+                });
             }
 
             if (!target) {

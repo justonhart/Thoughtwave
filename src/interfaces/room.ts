@@ -26,6 +26,7 @@ interface RoomMemory {
     stampLayout?: Stamps;
     visionRequests?: string[]; //vision request Ids
     outstandingClaim?: string; //roomName to be claimed
+    threatLevel: HomeRoomThreatLevel;
 }
 
 interface RemoteData {
@@ -50,6 +51,8 @@ interface RoomData {
     owner?: string;
     hostile?: boolean;
     roomLevel?: number;
+    powerBank?: boolean;
+    deposits?: DepositConstant[];
     roads?: { [id: Id<Structure>]: string }; // RoomPosition: coordinates separated by delimiter
 }
 
@@ -137,6 +140,29 @@ const enum RemoteRoomThreatLevel {
     ENEMY_NON_COMBAT_CREEPS,
     /**
      * Enemy Creeps with attack body parts.
+     */
+    ENEMY_ATTTACK_CREEPS,
+}
+
+/**
+ * The enums on the top overwrite the lower ones (for example if an attack unit is in the room and a structure it will set ENEMY_ATTACK_CREEPS)
+ */
+const enum HomeRoomThreatLevel {
+    SAFE = 0,
+    /**
+     * Enemy Creeps with no threat (scouts, collectors)
+     */
+    ENEMY_NON_COMBAT_CREEPS,
+    /**
+     * Invaders (npcs)
+     */
+    ENEMY_INVADERS,
+    /**
+     * Enemy Creeps with no attack but work parts
+     */
+    ENEMY_DISMANTLERS,
+    /**
+     * Enemy Creeps with attack body parts
      */
     ENEMY_ATTTACK_CREEPS,
 }
