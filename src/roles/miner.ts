@@ -1,10 +1,9 @@
-import { posFromMem } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Miner extends WaveCreep {
     protected run() {
         this.memory.currentTaskPriority = Priority.HIGH;
-        let assignedPos = posFromMem(this.memory.assignment);
+        let assignedPos = this.memory.assignment.toRoomPos();
         if (this.pos.isEqualTo(assignedPos)) {
             // Prioritize filling extensions and repairing container
             if (this.homeroom.memory.layout === RoomLayout.STAMP && this.getActiveBodyparts(CARRY)) {

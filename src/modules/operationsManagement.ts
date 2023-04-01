@@ -1,8 +1,7 @@
 import { CombatIntel } from './combatIntel';
-import { addVisionRequest, posFromMem } from './data';
+import { addVisionRequest } from './data';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
-import { addRemoteRoom } from './remoteRoomManagement';
 import { getSpawnPos, placeBunkerConstructionSites, roomNeedsCoreStructures } from './roomDesign';
 
 const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } = {
@@ -259,7 +258,7 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
     delete opts?.originRoom;
 
     if (!originRoom) {
-        const originResult = findOperationOrigin(posFromMem(opts?.portalLocations?.[0])?.roomName ?? targetRoom, opts?.originOpts);
+        const originResult = findOperationOrigin(opts?.portalLocations?.[0]?.toRoomPos()?.roomName ?? targetRoom, opts?.originOpts);
         originRoom = originResult?.roomName;
         if (!opts?.pathCost) {
             if (!opts) {
@@ -440,7 +439,7 @@ function sortByBodyPart(prioritizedBodyPart: BodyPartConstant, bodyA: BodyPartCo
 }
 
 export function launchIntershardParty(portalLocations: string[], destinationRoom: string) {
-    let origin = findOperationOrigin(posFromMem(portalLocations[0]).roomName)?.roomName;
+    let origin = findOperationOrigin(portalLocations[0].toRoomPos().roomName)?.roomName;
 
     console.log(`launching intershard from ${origin}`);
 
@@ -510,9 +509,9 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
 }
 function manageAddRemoteMiningOperation(op: Operation) {
     //if target room has vision, perform functions
-    if (Game.rooms[op.targetRoom]) {
-        let result = addRemoteRoom(op.originRoom, op.targetRoom);
-        if (result != OK) {
+    if(Game.rooms[op.targetRoom]){
+        let result = undefined;//addRemoteRoom(op.originRoom, op.targetRoom);
+        if(result != OK){
             console.log(`Problem assigning remote room ${op.targetRoom} to ${op.originRoom}: ${result}`);
         }
         op.stage = OperationStage.COMPLETE;

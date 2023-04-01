@@ -91,7 +91,7 @@ export function manageEmpireResources() {
                 }
 
                 let extraResources = getExtraResources(room);
-                if (extraResources.length) {
+                if (extraResources.length && room.energyStatus >= EnergyStatus.STABLE) {
                     let sent = false;
                     extraResources.forEach((resource) => {
                         let roomsInNeed = global.resourceNeeds[resource];

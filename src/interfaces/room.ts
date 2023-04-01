@@ -14,7 +14,6 @@ interface RoomMemory {
     repairQueue: Id<Structure<StructureConstant>>[];
     miningAssignments: { [posString: string]: string };
     mineralMiningAssignments: { [posString: string]: string };
-    remoteMiningRooms?: string[];
     reservedEnergy?: number;
     layout?: RoomLayout;
     labTasks?: LabTask[];
@@ -25,27 +24,37 @@ interface RoomMemory {
     towerRepairMap?: { [towerId: string]: Id<StructureRoad> }; //maps towerId to roadId
     stampLayout?: Stamps;
     visionRequests?: string[]; //vision request Ids
-    outstandingClaim?: string; //roomName to be claimed
+    outstandingClaim?: string; //source to be claimed
+    remoteSources?: { [sourcePos: string]: RemoteSourceData };
+    lastRemoteSourceCheck?: number;
     threatLevel: HomeRoomThreatLevel;
+}
+
+interface RemoteSourceData {
+    miner: string;
+    gatherers: string[];
+    miningPos: string;
+    setupStatus?: RemoteSourceSetupStatus; //delete when done to save memory
+}
+
+const enum RemoteSourceSetupStatus {
+    BUILDING_CONTAINER = 1,
+    BUILDING_ROAD,
 }
 
 interface RemoteData {
     reservationState?: RemoteRoomReservationStatus;
-    miningPositions: { [id: Id<Source>]: string }; // sourceId: miningPos
-    miner: string;
-    gatherer: string;
-    gathererSK?: string;
     reserver?: string;
     mineralMiner?: string;
     mineralAvailableAt?: number;
     threatLevel: RemoteRoomThreatLevel;
     keeperExterminator?: string;
-    sourceKeeperLairs?: { [id: Id<Source>]: Id<Structure<StructureConstant>> }; // keeperId: closestSourceId
+    sourceKeeperLairs?: { [sourcePos: string]: Id<Structure<StructureConstant>> }; // keeperId: closestSourceId
 }
 
 interface RoomData {
     asOf: number;
-    sourceCount?: number;
+    sources?: string[];
     mineralType?: MineralConstant;
     roomStatus?: RoomMemoryStatus;
     owner?: string;
@@ -53,7 +62,7 @@ interface RoomData {
     roomLevel?: number;
     powerBank?: boolean;
     deposits?: DepositConstant[];
-    roads?: { [id: Id<Structure>]: string }; // RoomPosition: coordinates separated by delimiter
+    roads?: { [roadKey: string]: string }; // [startPos:endPos]: roadCode[]
 }
 
 const enum RoomMemoryStatus {
@@ -87,6 +96,8 @@ interface Room {
     observer: StructureObserver;
     powerSpawn: StructurePowerSpawn;
     stamps: Stamps;
+    remoteMiningRooms: string[];
+    remoteSources: string[];
 }
 
 interface RoomPosition {
@@ -198,4 +209,19 @@ interface Gate {
 const enum RoomLayout {
     BUNKER,
     STAMP,
+}
+
+interface RemoteStats {
+    estimatedIncome: number;
+    sourceSize: number;
+    road: RoomPosition[];
+    roadLength: number;
+    roadMaintenance: number;
+    containerMaintenance: number;
+    minerUpkeep: number;
+    gathererCount: number;
+    gathererUpkeep: number;
+    reserverUpkeep: number;
+    exterminatorUpkeep: number;
+    miningPos: RoomPosition;
 }

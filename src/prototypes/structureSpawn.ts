@@ -8,12 +8,12 @@ StructureSpawn.prototype.spawnDistributor = function () {
     return PopulationManagement.spawnDistributor(this);
 };
 
-StructureSpawn.prototype.spawnRemoteMiner = function (remoteRoomName: string) {
-    return PopulationManagement.spawnRemoteMiner(this, remoteRoomName);
+StructureSpawn.prototype.spawnRemoteMiner = function (source: string) {
+    return PopulationManagement.spawnRemoteMiner(this, source);
 };
 
-StructureSpawn.prototype.spawnGatherer = function (remoteRoomName: string) {
-    return PopulationManagement.spawnGatherer(this, remoteRoomName);
+StructureSpawn.prototype.spawnGatherer = function (source: string) {
+    return PopulationManagement.spawnGatherer(this, source);
 };
 
 StructureSpawn.prototype.spawnReserver = function (remoteRoomName: string) {

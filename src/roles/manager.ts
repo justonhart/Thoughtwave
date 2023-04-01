@@ -1,4 +1,3 @@
-import { posFromMem } from '../modules/data';
 import { getFactoryResourcesNeeded, shipmentReady } from '../modules/resourceManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
@@ -9,7 +8,7 @@ export class Manager extends WaveCreep {
 
     protected run() {
         const managerPos =
-            this.room.memory.layout === RoomLayout.STAMP ? posFromMem(this.memory.destination) : posFromMem(this.room.memory?.managerPos);
+            this.room.memory.layout === RoomLayout.STAMP ? this.memory.destination?.toRoomPos() : this.room.memory?.managerPos?.toRoomPos();
         const isCenterStampManager =
             this.room.memory.layout === RoomLayout.STAMP &&
             this.room.stamps.managers.some(
@@ -153,17 +152,17 @@ export class Manager extends WaveCreep {
         }
 
         let res = this.getResourceToTransferToTerminal();
-        if (res) {
-            this.withdraw(storage, res, Math.min(storage.store[res], 5000 - terminal.store[res], this.store.getFreeCapacity()));
+        if (terminal && res) {
+            this.withdraw(storage, res, Math.min(storage.store[res], 5000 - terminal?.store[res], this.store.getFreeCapacity()));
             this.memory.targetId = terminal.id;
             return;
         }
 
         let remRes = this.getResourceToRemoveFromTerminal();
-        if (remRes) {
+        if (terminal && remRes) {
             let amount = MINERAL_COMPOUNDS.includes(remRes)
                 ? Math.min(terminal.store[remRes] - 5000, this.store.getFreeCapacity())
-                : Math.min(this.store.getFreeCapacity(), terminal.store[remRes]);
+                : Math.min(this.store.getFreeCapacity(), terminal?.store[remRes]);
             this.withdraw(terminal, remRes, amount);
             this.memory.targetId = storage.id;
             return;

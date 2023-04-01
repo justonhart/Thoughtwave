@@ -91,6 +91,10 @@ interface TravelToOpts extends PathFinderOpts {
      * Avoid edges (first two tiles from exits). Useful for stamp layouts as these use ramparts at exits
      */
     avoidEdges?: boolean;
+    /**
+     * Use roads from roomdata.roads
+     */
+    useMemoryRoads?: boolean;
 }
 
 interface CustomMatrixCost {

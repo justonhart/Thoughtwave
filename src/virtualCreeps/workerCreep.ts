@@ -114,7 +114,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected runBuildJob(target: ConstructionSite) {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
+        this.memory.currentTaskPriority = Priority.LOW;
         let jobCost = BUILD_POWER * this.getActiveBodyparts(WORK);
         let buildSuccess = this.build(target);
         switch (buildSuccess) {
@@ -139,7 +139,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected runUpgradeJob() {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
+        this.memory.currentTaskPriority = Priority.LOW;
         let jobCost = UPGRADE_CONTROLLER_POWER * this.getActiveBodyparts(WORK);
         switch (this.upgradeController(this.homeroom.controller)) {
             case ERR_NOT_IN_RANGE:
@@ -165,7 +165,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected runRepairJob(target: Structure) {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
+        this.memory.currentTaskPriority = Priority.LOW;
         if (target.hits < target.hitsMax) {
             let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);
             let repairSuccess = this.repair(target);

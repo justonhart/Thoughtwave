@@ -2,8 +2,8 @@ interface StructureSpawn {
     spawnMineralMiner(): ScreepsReturnCode;
     spawnMiner(): ScreepsReturnCode;
     spawnDistributor(): ScreepsReturnCode;
-    spawnRemoteMiner: (remoteRoomName: string) => ScreepsReturnCode;
-    spawnGatherer(remoteRoomName: string): ScreepsReturnCode;
+    spawnRemoteMiner: (source: string) => ScreepsReturnCode;
+    spawnGatherer(source: string): ScreepsReturnCode;
     spawnReserver(remoteRoomName: string): ScreepsReturnCode;
     spawnManager(): ScreepsReturnCode;
     spawnWorker(roomContainsViolentHostiles?: boolean): ScreepsReturnCode;

@@ -1,5 +1,3 @@
-import { posFromMem } from '../modules/data';
-
 export class WaveCreep extends Creep {
     private static priorityQueue: Map<string, (creep: Creep) => void> = new Map();
     public drive() {
@@ -15,7 +13,7 @@ export class WaveCreep extends Creep {
         if (this.memory.needsBoosted) {
             this.getNextBoost();
         } else if (this.memory.portalLocations?.[0]) {
-            let portalPos = posFromMem(this.memory.portalLocations[0]);
+            let portalPos = this.memory.portalLocations[0].toRoomPos();
 
             if (!this.pos.isNearTo(portalPos)) {
                 this.travelTo(portalPos);

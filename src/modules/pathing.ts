@@ -1,4 +1,5 @@
-import { isHighway, isKeeperRoom, posFromMem } from '../modules/data';
+import { isKeeperRoom, isHighway } from '../modules/data';
+import { decodeRoad, getRoadPathFromPos } from './roads';
 
 //@ts-ignore
 global.IN_ROOM = -20;
@@ -96,7 +97,7 @@ export class Pathing {
         }
 
         // Stuck Logic
-        if (!Pathing.isStuck(creep, posFromMem(creep.memory._m.lastCoord))) {
+        if (!Pathing.isStuck(creep, creep.memory._m.lastCoord?.toRoomPos())) {
             creep.memory._m.stuckCount = 0;
             if (creep.memory._m.path) {
                 creep.memory._m.path = creep.memory._m.path.slice(1);
@@ -133,33 +134,60 @@ export class Pathing {
             } else if (!opts.efficiency) {
                 opts.efficiency = Pathing.getCreepMoveEfficiency(creep, opts.currentTickEnergy);
             }
-            let pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, opts);
-            if (pathFinder.incomplete) {
-                // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
-                new RoomVisual(creep.pos.roomName).circle(creep.pos, {
-                    radius: 0.45,
-                    fill: 'transparent',
-                    stroke: 'orange',
-                    strokeWidth: 0.15,
-                    opacity: 0.3,
-                });
-                if (!pathFinder.path) {
-                    // Not even a partial path was found (for example close to the target but blocked by creeps)
-                    pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, {
-                        ...Pathing.defaultOpts,
-                        range: opts.range,
-                        efficiency: opts.efficiency,
-                    }); // Try to find path with default options (for example creeps could be blocking the target so this should at least find a path closer to the target)
-                    if (!pathFinder.path) {
-                        // Error (hopefully shouldn't happen)
-                        new RoomVisual(creep.pos.roomName).circle(creep.pos, {
-                            radius: 0.45,
-                            fill: 'transparent',
-                            stroke: 'red',
-                            strokeWidth: 0.15,
-                            opacity: 0.3,
+
+            let pathFinder: any;
+
+            if (opts.useMemoryRoads && Memory.roomData[creep.room.name].roads && creep.memory._m.stuckCount < 3) {
+                const roadsToDestination = Object.entries(Memory.roomData[creep.room.name].roads).filter(([key, value]) =>
+                    key.includes(destination.toMemSafe())
+                );
+                if (roadsToDestination.length) {
+                    let roadThruCurrentPos = roadsToDestination.find(([key, value]) =>
+                        decodeRoad(value, creep.room.name).some((pos) => pos.isEqualTo(creep.pos))
+                    );
+                    //if pos on road to destination, store directions from current pos in mem
+                    if (roadThruCurrentPos) {
+                        pathFinder = { path: getRoadPathFromPos(roadThruCurrentPos[0], creep.pos, destination.toMemSafe()) };
+                    } else {
+                        let roadPositions = _.flatten(roadsToDestination.map(([key, value]) => decodeRoad(value, creep.room.name)));
+                        //else find path to nearest pos on road
+                        pathFinder = PathFinder.search(creep.pos, roadPositions, {
+                            roomCallback: Pathing.getRoomCallback(creep.room.name, roadPositions.shift(), {}, creep.name),
                         });
-                        console.log(`Could not find a path for ${creep.name}`);
+                    }
+                }
+            }
+
+            //path could be empty if the creep is at the end of the road
+            if (!pathFinder?.path?.length) {
+                pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, opts);
+                if (pathFinder.incomplete) {
+                    // This can happen often ==> for example when "ignoreCreeps: false" was given and creeps are around the destination. Path close to target will still get serialized so not an issue.
+                    new RoomVisual(creep.pos.roomName).circle(creep.pos, {
+                        radius: 0.45,
+                        fill: 'transparent',
+                        stroke: 'orange',
+                        strokeWidth: 0.15,
+                        opacity: 0.3,
+                    });
+                    if (!pathFinder.path) {
+                        // Not even a partial path was found (for example close to the target but blocked by creeps)
+                        pathFinder = Pathing.findTravelPath(creep, creep.pos, destination, {
+                            ...Pathing.defaultOpts,
+                            range: opts.range,
+                            efficiency: opts.efficiency,
+                        }); // Try to find path with default options (for example creeps could be blocking the target so this should at least find a path closer to the target)
+                        if (!pathFinder.path) {
+                            // Error (hopefully shouldn't happen)
+                            new RoomVisual(creep.pos.roomName).circle(creep.pos, {
+                                radius: 0.45,
+                                fill: 'transparent',
+                                stroke: 'red',
+                                strokeWidth: 0.15,
+                                opacity: 0.3,
+                            });
+                            console.log(`Could not find a path for ${creep.name}`);
+                        }
                     }
                 }
             }
@@ -169,14 +197,14 @@ export class Pathing {
             if (opts.pathsRoomPositions?.length === 0 && creep.memory._m.path?.length && !opts.avoidedTemporaryHostileRooms) {
                 Array.prototype.push.apply(opts.pathsRoomPositions, pathFinder.path);
             }
-            creep.memory._m.stuckCount = 0;
+            //creep.memory._m.stuckCount = 0;
 
             // Do not remove next path if instantly going back to old room
             if (
                 !creep.memory._m.keepPath &&
                 creep.memory._m.lastCoord &&
                 creep.memory._m.path?.length &&
-                Pathing.isExit(posFromMem(creep.memory._m.lastCoord)) &&
+                Pathing.isExit(creep.memory._m.lastCoord?.toRoomPos()) &&
                 (!Pathing.positionAtDirection(creep.pos, parseInt(creep.memory._m.path[0], 10) as DirectionConstant) ||
                     Pathing.isExit(Pathing.positionAtDirection(creep.pos, parseInt(creep.memory._m.path[0], 10) as DirectionConstant)))
             ) {
@@ -200,18 +228,18 @@ export class Pathing {
             !creep.memory._m.keepPath &&
             opts.avoidSourceKeepers &&
             creep.memory._m.lastCoord &&
-            posFromMem(creep.memory._m.lastCoord).roomName !== creep.pos.roomName &&
+            creep.memory._m.lastCoord?.toRoomPos().roomName !== creep.pos.roomName &&
             !creep.memory._m.visibleRooms.includes(creep.pos.roomName)
         ) {
             delete creep.memory._m.path; // Recalculate path in each new room as well if the creep should avoid hostiles in each room
-        } else if (creep.memory._m.lastCoord && posFromMem(creep.memory._m.lastCoord).roomName !== creep.pos.roomName && creep.memory._m.keepPath) {
+        } else if (creep.memory._m.lastCoord && creep.memory._m.lastCoord?.toRoomPos().roomName !== creep.pos.roomName && creep.memory._m.keepPath) {
             creep.memory._m.keepPath = false;
         }
         return creep.move(nextDirection);
     }
 
     static isSameDest(creep: Creep, destination: RoomPosition) {
-        return JSON.stringify(posFromMem(creep.memory._m.destination)) === JSON.stringify(destination);
+        return JSON.stringify(creep.memory._m.destination?.toRoomPos()) === JSON.stringify(destination);
     }
 
     /**
@@ -261,7 +289,7 @@ export class Pathing {
     }
     //check two coordinates match
     static sameCoord(pos1: RoomPosition, pos2: RoomPosition): boolean {
-        return pos1.x === pos2.x && pos1.y === pos2.y;
+        return pos1.isEqualTo(pos2);
     }
 
     /**
@@ -388,7 +416,7 @@ export class Pathing {
                 }
 
                 if (Memory.rooms[room.name]?.anchorPoint || Memory.rooms[room.name]?.managerPos) {
-                    let managerPos = posFromMem(room.memory.anchorPoint || room.memory.managerPos);
+                    let managerPos = room.memory.anchorPoint?.toRoomPos() || room.memory.managerPos?.toRoomPos();
                     if (!Pathing.sameCoord(managerPos, destination)) {
                         matrix.set(managerPos.x, managerPos.y, 50);
                     }
@@ -404,7 +432,7 @@ export class Pathing {
 
                 if (Memory.rooms[room.name]?.miningAssignments) {
                     Object.keys(room.memory.miningAssignments)
-                        .map((pos) => posFromMem(pos))
+                        .map((pos) => pos?.toRoomPos())
                         .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);
@@ -413,16 +441,7 @@ export class Pathing {
 
                 if (Memory.rooms[room.name]?.mineralMiningAssignments) {
                     Object.keys(room.memory.mineralMiningAssignments)
-                        .map((pos) => posFromMem(pos))
-                        .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
-                        .forEach((pos) => {
-                            matrix.set(pos.x, pos.y, 50);
-                        });
-                }
-
-                if (Memory.remoteData[room.name]?.miningPositions) {
-                    Object.values(Memory.remoteData[room.name].miningPositions)
-                        .map((pos) => posFromMem(pos))
+                        .map((pos) => pos?.toRoomPos())
                         .filter((pos) => pos.x !== destination.x || pos.y !== destination.y)
                         .forEach((pos) => {
                             matrix.set(pos.x, pos.y, 50);
@@ -594,8 +613,10 @@ export class Pathing {
     static serializePath(startPos: RoomPosition, path: RoomPosition[], lineStyle?: LineStyle): string {
         let serializedPath = '';
         let lastPosition = startPos;
+
         for (let position of path) {
-            if (position.roomName === lastPosition.roomName) {
+            if (lastPosition.getDirectionTo(position) === undefined) console.log(lastPosition + ' -> ' + position);
+            if (position.roomName === lastPosition.roomName && !position.isEqualTo(lastPosition)) {
                 if (lineStyle) {
                     new RoomVisual(position.roomName).line(position, lastPosition, lineStyle);
                 }
@@ -657,7 +678,7 @@ export class Pathing {
                     return true;
                 }
 
-                const obstacleCreepDestination = posFromMem(obstacleCreep.memory._m.destination);
+                const obstacleCreepDestination = obstacleCreep.memory._m.destination?.toRoomPos();
                 // Swap places if creep is closer to the destination than the obstacleCreep
                 if (obstacleCreep.pos.getRangeTo(obstacleCreepDestination) >= creep.pos.getRangeTo(obstacleCreepDestination)) {
                     return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));

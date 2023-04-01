@@ -10,7 +10,9 @@ interface Memory {
     marketBlacklist?: string[]; //player names we don't want to sell to
     blacklistedRooms?: string[]; //room names we don't sell to
     visionRequests?: { [id: string]: VisionRequest };
-    remoteRoomClaims?: { [targetRoom: string]: { claimant: string; depth: number } }; //map of potential remote rooms to rooms intending to claim them and their 'room distance' from - closer claimants get priority
+    remoteSourceClaims?: { [sourcePos: string]: { claimant: string; estimatedIncome: number } }; //map of potential remote rooms to rooms intending to claim them and their anticipated net income - higher income gets priority
+    remoteSourceAssignments?: { [sourcePos: string]: RemoteAssignmentData }; //maps sources in other rooms to owned rooms mining them
+    debug?: DebugSettings;
 }
 
 interface EmpireIntershard {
@@ -163,4 +165,18 @@ interface VisionRequest {
     assigned?: boolean;
     onTick?: number; //what tick is the vision required? undefined = immediately
     completed?: boolean; //once need is done, mark completed to remove
+}
+
+interface DebugSettings {
+    drawStamps?: boolean;
+    logCpu?: boolean;
+    drawRoads?: boolean;
+    drawRemoteConnections?: boolean;
+    logRoomPlacementCpu?: boolean;
+}
+
+interface RemoteAssignmentData {
+    controllingRoom: string;
+    estimatedIncome: number;
+    roadLength: number;
 }

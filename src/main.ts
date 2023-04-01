@@ -5,6 +5,7 @@ import { manageMemory } from './modules/memoryManagement';
 import { addOperation } from './modules/operationsManagement';
 import { manageEmpireResources } from './modules/resourceManagement';
 import { driveRoom } from './modules/roomManagement';
+import { runVisuals } from './modules/visuals';
 import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
@@ -117,7 +118,16 @@ module.exports.loop = function () {
         Game.creeps[creepName].runPriorityQueueTask();
     });
 
-    if (Memory.logCPU) {
+    try {
+        runVisuals();
+    } catch (e) {
+        console.log(`Error caught running visuals: \n${e}`);
+    }
+
+    cpuUsageString += `visuals cpu: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
+    cpuUsed = Game.cpu.getUsed();
+
+    if (Memory.debug?.logCpu) {
         console.log(cpuUsageString + `total: ${Game.cpu.getUsed().toFixed(2)}`);
     }
 

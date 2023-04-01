@@ -1,4 +1,3 @@
-import { posFromMem } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Reserver extends WaveCreep {
@@ -14,7 +13,7 @@ export class Reserver extends WaveCreep {
                 this.memory.destination = targetRoom.controller.pos.toMemSafe();
             }
         } else {
-            let targetPos = posFromMem(this.memory.destination);
+            let targetPos = this.memory.destination.toRoomPos();
             if (!this.pos.isNearTo(targetPos)) {
                 this.travelTo(targetPos, { range: 1 });
                 return;
