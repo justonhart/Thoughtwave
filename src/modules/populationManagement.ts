@@ -810,6 +810,42 @@ export class PopulationManagement {
             body = body.sort((a, b) => getSortValue(b) - getSortValue(a));
         }
 
+        // Prioritize center and miner sources (all others are randomly selected)
+        if (spawn.room.stamps) {
+            const prioritizedExtensions = spawn.room.stamps.extension.filter(
+                (extensionDetail) => extensionDetail.type?.includes('source') || extensionDetail.type === 'center'
+            );
+            opts.energyStructures = spawn.room
+                .find(FIND_MY_STRUCTURES)
+                .filter((structure) => structure.structureType === STRUCTURE_SPAWN || structure.structureType === STRUCTURE_EXTENSION)
+                .sort((structA, structB) => {
+                    if (structA.structureType === STRUCTURE_SPAWN) {
+                        return -1;
+                    }
+
+                    if (structB.structureType === STRUCTURE_SPAWN) {
+                        return 1;
+                    }
+
+                    if (
+                        prioritizedExtensions.some(
+                            (extensionDetail) => extensionDetail.pos.x === structA.pos.x && extensionDetail.pos.y === structA.pos.y
+                        )
+                    ) {
+                        return -1;
+                    }
+                    if (
+                        prioritizedExtensions.some(
+                            (extensionDetail) => extensionDetail.pos.x === structB.pos.x && extensionDetail.pos.y === structB.pos.y
+                        )
+                    ) {
+                        return 1;
+                    }
+
+                    return 0;
+                }) as Array<StructureSpawn | StructureExtension>;
+        }
+
         let result = spawn.spawnCreep(body, name, opts);
 
         if (result !== OK) {
