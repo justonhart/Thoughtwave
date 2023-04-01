@@ -288,7 +288,7 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
             return { source, stats };
         });
 
-    return openSources;
+    return openSources.filter(option => option.stats);
 }
 
 export function findSuitableRemoteSource(roomName: string, noKeeperRooms: boolean = false): { source: string; stats: RemoteStats } {
