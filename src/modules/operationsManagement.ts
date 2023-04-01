@@ -160,7 +160,7 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
                     (operation) =>
                         operation.originRoom === room.name &&
                         opts.operationCriteria.type === operation.type &&
-                        (!opts.operationCriteria.stage || opts.operationCriteria.stage >= operation.stage)
+                        (!opts.operationCriteria.stage || operation.stage <= opts.operationCriteria.stage)
                 ).length < opts.operationCriteria.maxCount) &&
             Game.map.getRoomLinearDistance(room.name, targetRoom) <= (opts?.maxLinearDistance ?? 10) &&
             (opts?.minSpawnCount
