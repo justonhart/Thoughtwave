@@ -1,3 +1,4 @@
+import { isKeeperRoom } from '../modules/data';
 import { posExistsOnRoad } from '../modules/roads';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
@@ -47,10 +48,30 @@ export class Gatherer extends TransportCreep {
                     this.repairRoad(road);
                     this.storeCargo();
                 }
+            } else if (
+                isKeeperRoom(this.room.name) &&
+                this.keeperPresentOrSpawning() &&
+                this.pos.getRangeTo(this.memory.assignment.toRoomPos()) <= 7
+            ) {
+                // Always travel away from the same source otherwise it can cause creep to not move at all
+                const lairPositions = Object.values(Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs).map(
+                    (lairId) => ({ pos: Game.getObjectById(lairId).pos, range: 0 })
+                );
+                if (this.onEdge()) {
+                    this.travelToRoom(this.memory.assignment.toRoomPos().roomName); // Prevent going in and out of the room
+                } else {
+                    this.travelTo(this.memory.assignment.toRoomPos(), { range: 7, flee: true, goals: lairPositions, maxRooms: 1 }); // Travel out of harms way
+                }
             } else {
                 this.travelTo(this.getMiningPosition(), { range: 1, useMemoryRoads: true, reusePath: 10000 });
             }
         }
+    }
+
+    private keeperPresentOrSpawning(): boolean {
+        const lairId = Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs[this.memory.assignment];
+        const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
+        return lairInRange?.ticksToSpawn < 10 || lairInRange?.ticksToSpawn > 295 || (lairInRange && lairInRange.ticksToSpawn === undefined);
     }
 
     protected storeCargo() {
@@ -77,20 +98,6 @@ export class Gatherer extends TransportCreep {
 
     protected damaged(): boolean {
         return this.hits < this.hitsMax * 0.85;
-    }
-
-    private destinationSpawningKeeper(): boolean {
-        const lairId = Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs[this.getSourceId()];
-        const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
-        return lairInRange?.ticksToSpawn < 20;
-    }
-
-    private getSourceId(): Id<Source> {
-        if (Game.rooms[this.memory.assignment.toRoomPos().roomName]) {
-            let id = this.memory.assignment.toRoomPos().lookFor(LOOK_SOURCES)?.pop().id;
-            this.memory.targetId = id;
-            return id;
-        }
     }
 
     private getContainerId(): Id<Structure> {
