@@ -292,7 +292,7 @@ export class PopulationManagement {
                 [RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT].includes(Memory.roomData[s.toRoomPos().roomName].roomStatus) &&
                 Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY &&
-                roadIsSafe(`${getStoragePos(room)}.${s}`)
+                roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`)
         );
     }
 
@@ -341,7 +341,7 @@ export class PopulationManagement {
                 Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY &&
                 room.memory.remoteSources[s].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER &&
                 room.memory.remoteSources[s].gatherers.some((g) => g === AssignmentStatus.UNASSIGNED) &&
-                roadIsSafe(`${getStoragePos(room)}.${s}`)
+                roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`)
         );
     }
 
@@ -397,13 +397,13 @@ export class PopulationManagement {
     }
 
     static findReserverNeed(room: Room): string {
-        return room.remoteMiningRooms.find(
-            (remoteRoom) =>
-                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[remoteRoom].reserver === AssignmentStatus.UNASSIGNED &&
-                roadIsSafe(`${getStoragePos(room)}.${room.remoteSources.find(s => s.split('.')[2] === remoteRoom)}`)
-        );
+        return room.remoteSources.find(
+            (remoteSource) =>
+                Memory.roomData[remoteSource.split('.')[2]].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                Memory.remoteData[remoteSource.split('.')[2]].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[remoteSource.split('.')[2]].reserver === AssignmentStatus.UNASSIGNED &&
+                roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[remoteSource].miningPos}`)
+        )?.split('.')[2];
     }
 
     static spawnReserver(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
@@ -1059,13 +1059,13 @@ export class PopulationManagement {
     }
 
     static findExterminatorNeed(room: Room): string {
-        return room.remoteMiningRooms.find(
-            (remoteRoom) =>
-                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[remoteRoom].keeperExterminator === AssignmentStatus.UNASSIGNED &&
-                roadIsSafe(`${getStoragePos(room)}.${room.remoteSources.find(s => s.split('.')[2] === remoteRoom)}`)
-        );
+        return room.remoteSources.find(
+            (source) =>
+                Memory.roomData[source.split('.')[2]].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                Memory.remoteData[source.split('.')[2]].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                Memory.remoteData[source.split('.')[2]].keeperExterminator === AssignmentStatus.UNASSIGNED &&
+                roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[source].miningPos}`)
+        )?.split('.')[2];
     }
 
     static spawnKeeperExterminator(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
