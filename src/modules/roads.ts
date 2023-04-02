@@ -244,7 +244,7 @@ export function roadIsSafe(roadKey: string) {
     return getAllRoadRooms(roadKey).every(
         (room) =>
             (Memory.roomData[room]?.hostile !== true && !Memory.remoteData[room]) ||
-            Memory.remoteData[room].threatLevel < RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
+            Memory.remoteData[room]?.threatLevel < RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
     );
 }
 
