@@ -1,6 +1,6 @@
 import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { getResourceBoostsAvailable } from './labManagement';
-import { roadIsPaved } from './roads';
+import { roadIsPaved, roadIsSafe } from './roads';
 import { getStoragePos, roomNeedsCoreStructures } from './roomDesign';
 
 const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
@@ -291,7 +291,8 @@ export class PopulationManagement {
                 room.memory.remoteSources[s].miner === AssignmentStatus.UNASSIGNED &&
                 [RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT].includes(Memory.roomData[s.toRoomPos().roomName].roomStatus) &&
                 Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY
+                Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY &&
+                roadIsSafe(`${getStoragePos(room)}.${s}`)
         );
     }
 
@@ -339,7 +340,8 @@ export class PopulationManagement {
                 Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY &&
                 room.memory.remoteSources[s].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER &&
-                room.memory.remoteSources[s].gatherers.some((g) => g === AssignmentStatus.UNASSIGNED)
+                room.memory.remoteSources[s].gatherers.some((g) => g === AssignmentStatus.UNASSIGNED) &&
+                roadIsSafe(`${getStoragePos(room)}.${s}`)
         );
     }
 
@@ -399,7 +401,8 @@ export class PopulationManagement {
             (remoteRoom) =>
                 Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[remoteRoom].reserver === AssignmentStatus.UNASSIGNED
+                Memory.remoteData[remoteRoom].reserver === AssignmentStatus.UNASSIGNED &&
+                roadIsSafe(`${getStoragePos(room)}.${room.remoteSources.find(s => s.split('.')[2] === remoteRoom)}`)
         );
     }
 
@@ -1060,7 +1063,8 @@ export class PopulationManagement {
             (remoteRoom) =>
                 Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[remoteRoom].keeperExterminator === AssignmentStatus.UNASSIGNED
+                Memory.remoteData[remoteRoom].keeperExterminator === AssignmentStatus.UNASSIGNED &&
+                roadIsSafe(`${getStoragePos(room)}.${room.remoteSources.find(s => s.split('.')[2] === remoteRoom)}`)
         );
     }
 
