@@ -2,7 +2,7 @@ import { CombatIntel } from './combatIntel';
 import { computeRoomNameFromDiff, isCenterRoom, isKeeperRoom } from './data';
 import { runLabs } from './labManagement';
 import { PopulationManagement } from './populationManagement';
-import { assignRemoteSource, findSuitableRemoteSource } from './remoteMining';
+import { assignRemoteSource, findSuitableRemoteSource, removeSourceAssignment } from './remoteMining';
 import { manageRemoteRoom } from './remoteRoomManagement';
 import { deleteRoad } from './roads';
 import {
@@ -975,7 +975,7 @@ export function destructiveReset(roomName: string) {
         const room = Game.rooms[roomName];
         //unassign remote sources
         Object.keys(room.memory.remoteSources).forEach((source) => {
-            delete Memory.remoteSourceAssignments[source];
+            removeSourceAssignment(source);
         });
 
         if (room.memory.outstandingClaim) {
@@ -989,8 +989,7 @@ export function destructiveReset(roomName: string) {
                 s.structureType !== STRUCTURE_SPAWN &&
                 s.structureType !== STRUCTURE_STORAGE &&
                 s.structureType !== STRUCTURE_TERMINAL &&
-                s.structureType !== STRUCTURE_EXTRACTOR &&
-                s.structureType !== STRUCTURE_NUKER,
+                s.structureType !== STRUCTURE_EXTRACTOR
         });
 
         let spawns = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN });
