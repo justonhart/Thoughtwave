@@ -22,7 +22,7 @@ export class KeeperExterminator extends CombatCreep {
                     if (!this.pos.isNearTo(target)) {
                         this.travelTo(target, { range: 1, avoidSourceKeepers: false });
                     }
-                    
+
                     //scan area for keeper
                     let keeper = target.pos.findInRange(FIND_HOSTILE_CREEPS, 5, { filter: (c) => c.owner.username === 'Source Keeper' }).shift();
                     if (keeper) {
@@ -51,7 +51,8 @@ export class KeeperExterminator extends CombatCreep {
 
         let invaders = Game.rooms[this.memory.assignment]?.find(FIND_HOSTILE_CREEPS, {
             filter: (c) =>
-                (c.body.some(p => p.type === ATTACK) || c.body.some(p => p.type === RANGED_ATTACK) || c.body.some(p => p.type === HEAL) )&& c.owner.username !== 'Source Keeper',
+                (c.body.some((p) => p.type === ATTACK) || c.body.some((p) => p.type === RANGED_ATTACK) || c.body.some((p) => p.type === HEAL)) &&
+                c.owner.username !== 'Source Keeper',
         });
         if (invaders?.length) {
             return this.pos.findClosestByPath(invaders)?.id || this.pos.findClosestByRange(invaders)?.id;
@@ -62,7 +63,7 @@ export class KeeperExterminator extends CombatCreep {
             let sourceMemory = Memory.rooms[Memory.remoteSourceAssignments[source].controllingRoom].remoteSources[source];
             if (
                 (sourceMemory.setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER && sourceMemory.miner === AssignmentStatus.UNASSIGNED) ||
-                Game.creeps[sourceMemory.miner].pos.inRangeTo(sourceMemory.miningPos.toRoomPos(), 1)
+                Game.creeps[sourceMemory.miner]?.pos.inRangeTo(sourceMemory.miningPos.toRoomPos(), 1)
             ) {
                 this.memory.destination = sourceMemory.miningPos;
                 return;
@@ -87,12 +88,16 @@ export class KeeperExterminator extends CombatCreep {
         }
     }
 
-    private manageLifecycle(){
-        if(!Memory.remoteData[this.memory.assignment]) return this.suicide();
-        if(!this.memory.spawnReplacementAt){
-            this.memory.spawnReplacementAt = Game.time + this.ticksToLive - this.body.length * 3 - (Object.entries(Memory.remoteSourceAssignments).find(([key, value]) => key.split('.')[2] === this.memory.assignment)[1].roadLength);
+    private manageLifecycle() {
+        if (!Memory.remoteData[this.memory.assignment]) return (this.memory.recycle = true);
+        if (!this.memory.spawnReplacementAt) {
+            this.memory.spawnReplacementAt =
+                Game.time +
+                this.ticksToLive -
+                this.body.length * 3 -
+                Object.entries(Memory.remoteSourceAssignments).find(([key, value]) => key.split('.')[2] === this.memory.assignment)[1].roadLength;
         }
-        if(Memory.remoteData[this.memory.assignment].keeperExterminator === this.name && Game.time >= this.memory.spawnReplacementAt){
+        if (Memory.remoteData[this.memory.assignment].keeperExterminator === this.name && Game.time >= this.memory.spawnReplacementAt) {
             Memory.remoteData[this.memory.assignment].keeperExterminator = AssignmentStatus.UNASSIGNED;
         }
     }

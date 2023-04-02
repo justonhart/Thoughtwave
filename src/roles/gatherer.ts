@@ -1,11 +1,12 @@
-import { isKeeperRoom } from '../modules/data';
-import { Pathing } from '../modules/pathing';
 import { posExistsOnRoad } from '../modules/roads';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
     protected run() {
-        if (this.memory?.spawnReplacementAt >= Game.time && this.homeroom.memory.remoteSources[this.memory.assignment].gatherers.includes(this.name)) {
+        if (
+            this.memory?.spawnReplacementAt >= Game.time &&
+            this.homeroom.memory.remoteSources[this.memory.assignment].gatherers.includes(this.name)
+        ) {
             this.triggerReplacementSpawn();
         }
 
@@ -117,7 +118,7 @@ export class Gatherer extends TransportCreep {
 
         //determine when to spawn replacement toward end of lifecycle
         if (TRIPS_REMAINING === 0) {
-            this.suicide();
+            this.memory.recycle = true;
         } else if (SPAWN_CYCLES_REMAINING <= 1 || TRIPS_REMAINING === 1) {
             this.memory.spawnReplacementAt = START_SPAWNING_REPLACEMENT_AT > Game.time ? START_SPAWNING_REPLACEMENT_AT : Game.time;
         }
@@ -132,7 +133,7 @@ export class Gatherer extends TransportCreep {
     }
 
     private getMiningPosition(): RoomPosition {
-        if(!this.homeroom.memory.remoteSources[this.memory.assignment]) this.suicide();
+        if (!this.homeroom.memory.remoteSources[this.memory.assignment]) this.memory.recycle = true;
         return this.homeroom.memory.remoteSources[this.memory.assignment]?.miningPos.toRoomPos();
     }
 }
