@@ -95,7 +95,10 @@ function handleDeadCreep(deadCreepName: string) {
         if (deadCreepMemory.role === Role.MINER && !deadCreepMemory.hasTTLReplacement) {
             Memory.rooms[deadCreepMemory.room].miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
         }
-        if (deadCreepMemory.role === Role.REMOTE_MINER && Memory.rooms[deadCreepMemory.room].remoteSources[deadCreepMemory.assignment]?.miner === deadCreepName) {
+        if (
+            deadCreepMemory.role === Role.REMOTE_MINER &&
+            Memory.rooms[deadCreepMemory.room].remoteSources[deadCreepMemory.assignment]?.miner === deadCreepName
+        ) {
             Memory.rooms[deadCreepMemory.room].remoteSources[deadCreepMemory.assignment].miner = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.role === Role.GATHERER) {
@@ -115,7 +118,10 @@ function handleDeadCreep(deadCreepName: string) {
         if (deadCreepMemory.role === Role.MINERAL_MINER) {
             Memory.rooms[deadCreepMemory.room].mineralMiningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
         }
-        if (deadCreepMemory.role === Role.KEEPER_EXTERMINATOR && Memory.remoteData[deadCreepMemory.assignment]?.keeperExterminator === deadCreepName) {
+        if (
+            deadCreepMemory.role === Role.KEEPER_EXTERMINATOR &&
+            Memory.remoteData[deadCreepMemory.assignment]?.keeperExterminator === deadCreepName
+        ) {
             Memory.remoteData[deadCreepMemory.assignment].keeperExterminator = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.role === Role.REMOTE_MINERAL_MINER && Memory.remoteData[deadCreepMemory.assignment]) {
@@ -256,6 +262,12 @@ function initMissingMemoryValues() {
 
     if (!Memory.debug) {
         Memory.debug = {};
+    }
+
+    if (!Memory.cpuUsage) {
+        Memory.cpuUsage = {
+            average: 0,
+        };
     }
 }
 

@@ -38,6 +38,8 @@ module.exports.loop = function () {
         console.log(`Error caught in flag management: \n${e}`);
     }
 
+    let roomCpuUsed = cpuUsed;
+    let cpuRoomUsageString = '';
     Object.values(Game.rooms).forEach((room) => {
         if (!Memory.roomData[room.name]) {
             try {
@@ -54,6 +56,8 @@ module.exports.loop = function () {
         if (room.controller?.my) {
             try {
                 driveRoom(room);
+                cpuRoomUsageString += `${room.name}: ${(Game.cpu.getUsed() - roomCpuUsed).toFixed(2)}  `;
+                roomCpuUsed = Game.cpu.getUsed();
             } catch (e) {
                 console.log(`Error caught in ${room.name}: \n${e}`);
             }
@@ -63,10 +67,14 @@ module.exports.loop = function () {
     cpuUsageString += `rooms CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
     cpuUsed = Game.cpu.getUsed();
 
+    let creepCpuUsed = cpuUsed;
+    let creepCpuUsage = {};
     Object.values(Game.creeps).forEach((creep) => {
         if (!creep.spawning) {
             try {
                 driveCreep(creep);
+                creepCpuUsage[creep.memory.role] = (creepCpuUsage[creep.memory.role] ?? 0) + (Game.cpu.getUsed() - creepCpuUsed);
+                creepCpuUsed = Game.cpu.getUsed();
             } catch (e) {
                 console.log(`Error caught in creep: ${creep.name}, room: ${creep.pos.roomName}: \n${e}`);
             }
@@ -102,7 +110,7 @@ module.exports.loop = function () {
                     disableLogging: true,
                     resource: RESOURCE_POWER,
                     originOpts: {
-                        minEnergyStatus: EnergyStatus.STABLE,
+                        minEnergyStatus: EnergyStatus.SURPLUS,
                         minSpawnCount: 3,
                         selectionCriteria: OriginCriteria.CLOSEST,
                         maxThreatLevel: HomeRoomThreatLevel.ENEMY_INVADERS,
@@ -130,6 +138,21 @@ module.exports.loop = function () {
     if (Memory.debug?.logCpu) {
         console.log(cpuUsageString + `total: ${Game.cpu.getUsed().toFixed(2)}`);
     }
+
+    if (Memory.debug?.logRoomCpu) {
+        console.log(cpuRoomUsageString);
+    }
+
+    if (Memory.debug?.logCreepCpu) {
+        console.log(
+            Object.entries(creepCpuUsage).reduce(
+                (creepUsageString, [role, cpuUsage]: [Role, number]) => (creepUsageString += `${role}: ${cpuUsage.toFixed(2)}  `),
+                ''
+            )
+        );
+    }
+
+    Memory.cpuUsage.average = (Memory.cpuUsage.average * 1000 + Game.cpu.getUsed()) / 1001;
 
     if (Game.cpu.bucket === 10000) {
         Game.cpu.generatePixel();
