@@ -152,7 +152,11 @@ module.exports.loop = function () {
         );
     }
 
-    Memory.cpuUsage.average = (Memory.cpuUsage.average * 1000 + Game.cpu.getUsed()) / 1001;
+    Memory.cpuUsage.totalOverTime += parseInt(cpuUsed.toFixed(2));
+    if (Game.time % 100 === 0) {
+        Memory.cpuUsage.average = parseInt((Memory.cpuUsage.totalOverTime / 100).toFixed(2));
+        Memory.cpuUsage.totalOverTime = 0;
+    }
 
     if (Game.cpu.bucket === 10000) {
         Game.cpu.generatePixel();

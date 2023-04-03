@@ -18,6 +18,7 @@ interface Memory {
 
 interface CpuUsage {
     average: number;
+    totalOverTime: number;
 }
 
 interface EmpireIntershard {
