@@ -152,7 +152,7 @@ module.exports.loop = function () {
         );
     }
 
-    Memory.cpuUsage.average = (Memory.cpuUsage.average * 1000 + Game.cpu.getUsed()) / 1001;
+    Memory.cpuUsage.average = Math.ceil((Memory.cpuUsage.average * 1000 + Game.cpu.getUsed()) / 1001);
 
     if (Game.cpu.bucket === 10000) {
         Game.cpu.generatePixel();
