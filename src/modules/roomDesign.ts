@@ -505,7 +505,7 @@ export function cleanRoom(room: Room) {
 }
 
 //-----------------STAMP DESIGN----------------------------------------------------
-const debug = true; // debug cpu usage
+const debug = false; // debug cpu usage
 export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     logCpu('Start');
     if (Game.cpu.bucket < 200) {
