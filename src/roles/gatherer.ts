@@ -49,7 +49,7 @@ export class Gatherer extends TransportCreep {
                     this.storeCargo();
                 }
             } else if (
-                isKeeperRoom(this.room.name) &&
+                isKeeperRoom(this.memory.assignment.split('.')[2]) &&
                 this.keeperPresentOrSpawning() &&
                 this.pos.getRangeTo(this.memory.assignment.toRoomPos()) <= 7
             ) {
