@@ -307,7 +307,7 @@ export function findSuitableRemoteSource(roomName: string, noKeeperRooms: boolea
     }
 
     const cpuUsagePercentage = Memory.cpuUsage.average / Game.cpu.limit;
-    const minIncome = cpuUsagePercentage < 0.7 ? 500 : cpuUsagePercentage < 0.75 ? 600 : cpuUsagePercentage < 0.8 ? 700 : 1000;
+    const minIncome = cpuUsagePercentage < 0.75 ? 500 : cpuUsagePercentage < 0.8 ? 600 : cpuUsagePercentage < 0.85 ? 700 : 1000;
     options = options.filter((option) => option.stats.estimatedIncome / option.stats.gathererCount >= minIncome);
 
     //prefer central rooms over other rooms and prefer closer to farther
