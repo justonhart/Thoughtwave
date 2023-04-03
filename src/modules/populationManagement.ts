@@ -397,13 +397,15 @@ export class PopulationManagement {
     }
 
     static findReserverNeed(room: Room): string {
-        return room.remoteSources.find(
-            (remoteSource) =>
-                Memory.roomData[remoteSource.split('.')[2]].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-                Memory.remoteData[remoteSource.split('.')[2]].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[remoteSource.split('.')[2]].reserver === AssignmentStatus.UNASSIGNED &&
-                roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[remoteSource].miningPos}`)
-        )?.split('.')[2];
+        return room.remoteSources
+            .find(
+                (remoteSource) =>
+                    Memory.roomData[remoteSource.split('.')[2]].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                    Memory.remoteData[remoteSource.split('.')[2]].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                    Memory.remoteData[remoteSource.split('.')[2]].reserver === AssignmentStatus.UNASSIGNED &&
+                    roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[remoteSource].miningPos}`)
+            )
+            ?.split('.')[2];
     }
 
     static spawnReserver(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {
@@ -841,8 +843,8 @@ export class PopulationManagement {
         }
 
         // Prioritize center and miner sources (all others are randomly selected)
-        if (spawn.room.stamps) {
-            const prioritizedExtensions = spawn.room.stamps.extension.filter(
+        if (spawn.room.memory.stampLayout) {
+            const prioritizedExtensions = spawn.room.memory.stampLayout.extension.filter(
                 (extensionDetail) => extensionDetail.type?.includes('source') || extensionDetail.type === 'center'
             );
             opts.energyStructures = spawn.room
@@ -859,14 +861,16 @@ export class PopulationManagement {
 
                     if (
                         prioritizedExtensions.some(
-                            (extensionDetail) => extensionDetail.pos.x === structA.pos.x && extensionDetail.pos.y === structA.pos.y
+                            (extensionDetail) =>
+                                extensionDetail.pos.toRoomPos().x === structA.pos.x && extensionDetail.pos.toRoomPos().y === structA.pos.y
                         )
                     ) {
                         return -1;
                     }
                     if (
                         prioritizedExtensions.some(
-                            (extensionDetail) => extensionDetail.pos.x === structB.pos.x && extensionDetail.pos.y === structB.pos.y
+                            (extensionDetail) =>
+                                extensionDetail.pos.toRoomPos().x === structB.pos.x && extensionDetail.pos.toRoomPos().y === structB.pos.y
                         )
                     ) {
                         return 1;
@@ -917,14 +921,14 @@ export class PopulationManagement {
         } else if (spawn.room.memory?.layout === RoomLayout.STAMP) {
             const newManager = this.getNewStampManager(spawn.room);
             if (newManager) {
-                options.memory.destination = newManager.pos.toMemSafe();
+                options.memory.destination = newManager.pos;
                 // Center Managers (and before terminal stage) don't need as many carry parts
                 if (newManager.type !== 'rm' || spawn.room.controller.level < 6) {
                     levelCap = 2;
                 }
                 // Use immobile only after center finished building to avoid spot being taken
-                if (newManager.type !== 'rm' && spawn.room.controller.level > 4 && spawn.pos.isNearTo(newManager.pos)) {
-                    options.directions = [spawn.pos.getDirectionTo(newManager.pos)];
+                if (newManager.type !== 'rm' && spawn.room.controller.level > 4 && spawn.pos.isNearTo(newManager.pos.toRoomPos())) {
+                    options.directions = [spawn.pos.getDirectionTo(newManager.pos.toRoomPos())];
                     immobile = true;
                 }
             }
@@ -940,9 +944,8 @@ export class PopulationManagement {
 
     static getNewStampManager(room: Room) {
         const currentManagers = room.creeps.filter((creep) => creep.memory.role === Role.MANAGER).map((manager) => manager.memory.destination);
-        return room.stamps.managers.find(
-            (managerDetail) =>
-                managerDetail.rcl <= room.controller.level && !currentManagers.some((positions) => managerDetail.pos.toMemSafe() === positions)
+        return room.memory.stampLayout.managers.find(
+            (managerDetail) => managerDetail.rcl <= room.controller.level && !currentManagers.some((positions) => managerDetail.pos === positions)
         );
     }
 
@@ -950,7 +953,7 @@ export class PopulationManagement {
         let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
         let manager = roomCreeps.filter((creep) => creep.memory.role === Role.MANAGER);
         if (room.memory.layout === RoomLayout.STAMP) {
-            return room.stamps.managers.filter((managerDetail) => managerDetail.rcl <= room.controller.level)?.length > manager?.length;
+            return room.memory.stampLayout.managers.filter((managerDetail) => managerDetail.rcl <= room.controller.level)?.length > manager?.length;
         }
         return room.controller?.level >= 5 && (room.memory.layout !== undefined || !!room.memory.managerPos) && !manager?.length;
     }
@@ -1059,13 +1062,15 @@ export class PopulationManagement {
     }
 
     static findExterminatorNeed(room: Room): string {
-        return room.remoteSources.find(
-            (source) =>
-                Memory.roomData[source.split('.')[2]].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-                Memory.remoteData[source.split('.')[2]].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[source.split('.')[2]].keeperExterminator === AssignmentStatus.UNASSIGNED &&
-                roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[source].miningPos}`)
-        )?.split('.')[2];
+        return room.remoteSources
+            .find(
+                (source) =>
+                    Memory.roomData[source.split('.')[2]].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                    Memory.remoteData[source.split('.')[2]].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                    Memory.remoteData[source.split('.')[2]].keeperExterminator === AssignmentStatus.UNASSIGNED &&
+                    roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[source].miningPos}`)
+            )
+            ?.split('.')[2];
     }
 
     static spawnKeeperExterminator(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {

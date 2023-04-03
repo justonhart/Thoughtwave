@@ -425,9 +425,9 @@ export class Pathing {
                 }
 
                 if (Memory.rooms[room.name]?.layout === RoomLayout.STAMP) {
-                    room.stamps.managers.forEach((managerStamp) => {
-                        if (!Pathing.sameCoord(managerStamp.pos, destination)) {
-                            matrix.set(managerStamp.pos.x, managerStamp.pos.y, 50);
+                    room.memory.stampLayout.managers.forEach((managerStamp) => {
+                        if (!Pathing.sameCoord(managerStamp.pos.toRoomPos(), destination)) {
+                            matrix.set(managerStamp.pos.toRoomPos().x, managerStamp.pos.toRoomPos().y, 50);
                         }
                     });
                 }

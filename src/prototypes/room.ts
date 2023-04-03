@@ -2,7 +2,6 @@ import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement
 import { PopulationManagement } from '../modules/populationManagement';
 import { getFactoryResourcesNeeded } from '../modules/resourceManagement';
 import { findRepairTargets, getStructuresToProtect } from '../modules/roomManagement';
-import { readStampLayoutFromMemory } from '../modules/roomDesign';
 
 RoomPosition.prototype.toMemSafe = function (this: RoomPosition): string {
     return `${this.x}.${this.y}.${this.roomName}`;
@@ -96,7 +95,7 @@ Object.defineProperty(Room.prototype, 'managerLink', {
     get: function (this: Room) {
         let posToCheck = this.memory.anchorPoint?.toRoomPos() || this.memory.managerPos?.toRoomPos();
         if (this.memory.layout === RoomLayout.STAMP) {
-            posToCheck = this.stamps.link.find((linkDetail) => linkDetail.type === 'rm')?.pos;
+            posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'rm')?.pos?.toRoomPos();
         } else if (this.memory.managerLink) {
             return Game.getObjectById(this.memory.managerLink);
         }
@@ -116,7 +115,7 @@ Object.defineProperty(Room.prototype, 'upgraderLink', {
     get: function (this: Room) {
         let posToCheck: RoomPosition;
         if (this.memory.layout === RoomLayout.STAMP) {
-            posToCheck = this.stamps.link.find((linkDetail) => linkDetail.type === 'controller')?.pos;
+            posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'controller')?.pos?.toRoomPos();
         } else {
             posToCheck = this.memory.upgraderLinkPos?.toRoomPos();
         }
@@ -166,16 +165,6 @@ Object.defineProperty(Room.prototype, 'observer', {
 Object.defineProperty(Room.prototype, 'powerSpawn', {
     get: function (this: Room) {
         return this.find(FIND_MY_STRUCTURES).find((s) => s.structureType === STRUCTURE_POWER_SPAWN && s.isActive());
-    },
-    enumerable: false,
-    configurable: true,
-});
-
-Object.defineProperty(Room.prototype, 'stamps', {
-    get: function (this: Room) {
-        if (this.memory.layout === RoomLayout.STAMP) {
-            return readStampLayoutFromMemory(this);
-        }
     },
     enumerable: false,
     configurable: true,

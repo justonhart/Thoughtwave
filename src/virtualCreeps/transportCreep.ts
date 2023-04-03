@@ -57,8 +57,8 @@ export class TransportCreep extends WaveCreep {
         } else if (
             target instanceof StructureContainer &&
             this.homeroom.memory.layout === RoomLayout.STAMP &&
-            this.homeroom.stamps.container.some(
-                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.x === target.pos.x && containerStamp.pos.y === target.pos.y
+            this.homeroom.memory.stampLayout.container.some(
+                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos === target.pos.toMemSafe()
             )
         ) {
             this.runRefillJob(target);
@@ -155,14 +155,15 @@ export class TransportCreep extends WaveCreep {
             let isAllowedStampContainer = true;
             // In Stamps do not allow retrieving energy from center/rm containers or miner containers with links
             if (this.room.memory.layout === RoomLayout.STAMP) {
-                const container = this.room.stamps.container.find(
-                    (containerStamp) => str.pos.x === containerStamp.pos.x && str.pos.y === containerStamp.pos.y
-                );
+                const container = this.room.memory.stampLayout.container.find((containerStamp) => str.pos.toMemSafe() === containerStamp.pos);
                 if (container && container.type?.includes('source')) {
-                    isAllowedStampContainer = !this.room.stamps.link.some(
+                    isAllowedStampContainer = !this.room.memory.stampLayout.link.some(
                         (linkStamp) =>
                             linkStamp.type === container.type &&
-                            linkStamp.pos.lookFor(LOOK_STRUCTURES).some((lookStr) => lookStr.structureType === STRUCTURE_LINK)
+                            linkStamp.pos
+                                .toRoomPos()
+                                .lookFor(LOOK_STRUCTURES)
+                                .some((lookStr) => lookStr.structureType === STRUCTURE_LINK)
                     );
                 } else {
                     isAllowedStampContainer = false;
@@ -253,8 +254,8 @@ export class TransportCreep extends WaveCreep {
                 (this.homeroom.creeps.reduce(
                     (sum: number, nextCreep: Creep) =>
                         nextCreep.memory.role === Role.MANAGER &&
-                        this.homeroom.stamps.managers.some(
-                            (managerStamp) => managerStamp.type === 'center' && managerStamp.pos.toMemSafe() === nextCreep.memory.destination
+                        this.homeroom.memory.stampLayout.managers.some(
+                            (managerStamp) => managerStamp.type === 'center' && managerStamp.pos === nextCreep.memory.destination
                         )
                             ? sum + 1
                             : sum,
@@ -269,15 +270,15 @@ export class TransportCreep extends WaveCreep {
                     ROOM_STRUCTURES.reduce(
                         (sum, structure) =>
                             structure.structureType === (STRUCTURE_CONTAINER as StructureConstant) &&
-                            this.homeroom.stamps.container.some(
-                                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos.toMemSafe() === structure.pos.toMemSafe()
+                            this.homeroom.memory.stampLayout.container.some(
+                                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos === structure.pos.toMemSafe()
                             )
                                 ? sum + 1
                                 : sum,
                         0
                     )) <
                     // Number of containers the room should have
-                    this.homeroom.stamps.container.reduce(
+                    this.homeroom.memory.stampLayout.container.reduce(
                         (sum, containerStamp) =>
                             containerStamp.type === 'center' && containerStamp.rcl <= this.homeroom.controller.level ? sum + 1 : sum,
                         0
@@ -293,8 +294,8 @@ export class TransportCreep extends WaveCreep {
                     !ROOM_STRUCTURES.some(
                         (structure) =>
                             structure.structureType === STRUCTURE_LINK &&
-                            this.homeroom.stamps.link.some(
-                                (linkStamp) => linkStamp.type === 'center' && linkStamp.pos.toMemSafe() === structure.pos.toMemSafe()
+                            this.homeroom.memory.stampLayout.link.some(
+                                (linkStamp) => linkStamp.type === 'center' && linkStamp.pos === structure.pos.toMemSafe()
                             )
                     ))
             ) {
@@ -312,20 +313,16 @@ export class TransportCreep extends WaveCreep {
                     (!isStampRoom ||
                         structure.structureType !== STRUCTURE_EXTENSION ||
                         hasMissingManagersOrContainers ||
-                        !this.homeroom.stamps.extension.some(
+                        !this.homeroom.memory.stampLayout.extension.some(
                             (extensionStamp) =>
-                                extensionStamp.pos.x === structure.pos.x &&
-                                extensionStamp.pos.y === structure.pos.y &&
+                                extensionStamp.pos === structure.pos.toMemSafe() &&
                                 (extensionStamp.type === 'center' || extensionStamp.type?.includes('source'))
                         )) &&
                     // Fill up center containers
                     (!isStampRoom ||
                         structure.structureType !== (STRUCTURE_CONTAINER as StructureConstant) ||
-                        this.homeroom.stamps.container.some(
-                            (containerStamp) =>
-                                containerStamp.pos.x === structure.pos.x &&
-                                containerStamp.pos.y === structure.pos.y &&
-                                containerStamp.type === 'center'
+                        this.homeroom.memory.stampLayout.container.some(
+                            (containerStamp) => containerStamp.pos === structure.pos.toMemSafe() && containerStamp.type === 'center'
                         ))
             ) as AnyStructure[];
 
@@ -395,10 +392,9 @@ export class TransportCreep extends WaveCreep {
                 structure.store.getUsedCapacity() &&
                 // Get mineral containers and miner containers that not yet have a link (only checks for rcl but it will still gather energy from container until link is build if it is too full)
                 (room.memory.layout !== RoomLayout.STAMP ||
-                    room.stamps.container.some(
+                    room.memory.stampLayout.container.some(
                         (containerStamp) =>
-                            containerStamp.pos.x === structure.pos.x &&
-                            containerStamp.pos.y === structure.pos.y &&
+                            containerStamp.pos === structure.pos.toMemSafe() &&
                             (containerStamp.type === 'mineral' ||
                                 (containerStamp.type?.includes('source') &&
                                     (structure.store.getFreeCapacity() < 300 ||

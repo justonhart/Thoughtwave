@@ -58,7 +58,7 @@ function drawRoomVisuals() {
         .forEach((stampRoom) => {
             let rv = Game.rooms[stampRoom]?.visual;
             if (rv) {
-                drawLayout(rv, Game.rooms[stampRoom].stamps);
+                drawLayout(rv, Game.rooms[stampRoom].memory.stampLayout);
             }
         });
 }

@@ -99,11 +99,9 @@ export class WorkerCreep extends WaveCreep {
                     str.structureType === STRUCTURE_CONTAINER &&
                     str.store.energy >= this.store.getCapacity() &&
                     (this.room.memory.layout !== RoomLayout.STAMP ||
-                        !this.room.stamps.container.some(
+                        !this.room.memory.stampLayout.container.some(
                             (containerStamp) =>
-                                str.pos.x === containerStamp.pos.x &&
-                                str.pos.y === containerStamp.pos.y &&
-                                (containerStamp.type === 'center' || containerStamp.type === 'rm')
+                                str.pos.toMemSafe() === containerStamp.pos && (containerStamp.type === 'center' || containerStamp.type === 'rm')
                         ))
             );
 

@@ -138,9 +138,9 @@ export class WaveCreep extends Creep {
                 target.recycleCreep(this);
             } else if (this.homeroom.memory.layout === RoomLayout.STAMP) {
                 this.travelTo(
-                    this.homeroom.stamps.container.find(
-                        (containerStamp) => containerStamp.type === 'center' && target.pos.isNearTo(containerStamp.pos)
-                    ).pos
+                    this.homeroom.memory.stampLayout.container
+                        .find((containerStamp) => containerStamp.type === 'center' && target.pos.isNearTo(containerStamp.pos.toRoomPos()))
+                        .pos.toRoomPos()
                 );
             } else {
                 this.travelTo(target, { range: 1 });
