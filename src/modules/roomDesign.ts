@@ -505,7 +505,7 @@ export function cleanRoom(room: Room) {
 }
 
 //-----------------STAMP DESIGN----------------------------------------------------
-const debug = false; // debug cpu usage
+const debug = true; // debug cpu usage
 export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     logCpu('Start');
     if (Game.cpu.bucket < 200) {
@@ -588,14 +588,14 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
                     if (valid) {
                         starCenter = lookPos;
                         setCenterExtensions(stamps, starCenter);
-                        roadPositions.forEach((pos) => addUniqueRoad(stamps, { rcl: 3, pos }));
+                        roadPositions.forEach((pos: RoomPosition) => addUniqueRoad(stamps, { rcl: 3, pos: pos.toMemSafe() }));
                     }
                 }
             }
         }
     } else {
         setCenterExtensions(stamps, starCenter);
-        roadPositions.forEach((pos) => addUniqueRoad(stamps, { rcl: 3, pos }));
+        roadPositions.forEach((pos: RoomPosition) => addUniqueRoad(stamps, { rcl: 3, pos: pos.toMemSafe() }));
     }
 
     if (valid) {
@@ -892,27 +892,6 @@ function pairwise(arr: any, func: any) {
 }
 
 /**
- * Ensure ramparts are 3 tiles away from structures unless it is on the edge. In that case we need to put ramparts on the structures that are in range
- * @param currentStamps
- * @param pos
- * @param minerExtensions
- * @returns
- */
-function isInRange(stamps: Stamps, pos: RoomPosition): boolean {
-    return []
-        .concat(
-            ...Object.entries(stamps)
-                .filter(([key, currentStamps]: [string, StampDetail[]]) => key !== STRUCTURE_ROAD) // Filter out roads
-                .map(([key, currentStamps]: [string, StampDetail[]]) =>
-                    currentStamps
-                        .filter((stampDetail) => !stampDetail.type?.includes('source') && stampDetail.type !== 'controller')
-                        .map((nonMinerStamps) => nonMinerStamps.pos)
-                ) // filter out miner extensions and return all other stamps
-        )
-        .some((stampPos) => stampPos.getRangeTo(pos) < 3);
-}
-
-/**
  * Fill the targetPositions and roadPositions for the center stamp
  * @param starCenter
  * @param targetPositions
@@ -952,16 +931,14 @@ function containsStamp(stamps: Stamps, targetPositions: RoomPosition[]): boolean
 
 function containsNonRoadStamp(stamps: Stamps, targetPositions: RoomPosition[]): boolean {
     return (
-        []
-            .concat(
-                ...Object.entries(stamps)
-                    .filter(([key, currentStamps]) => key !== STRUCTURE_ROAD)
-                    .map(([key, currentStamps]) => currentStamps)
-            )
-            .some((stampDetail: StampDetail) => targetPositions.some((targetPos) => stampDetail.pos === targetPos.toMemSafe())) ||
         stamps.road.some(
             (roadDetail) => roadDetail.type?.includes('source') && targetPositions.some((targetPos) => roadDetail.pos === targetPos.toMemSafe())
-        )
+        ) ||
+        Object.entries(stamps)
+            .filter(([key, currentStamps]) => key !== STRUCTURE_ROAD)
+            .some(([key, currentStamps]: [string, StampDetail[]]) =>
+                currentStamps.some((stampDetail: StampDetail) => targetPositions.some((targetPos) => stampDetail.pos === targetPos.toMemSafe()))
+            )
     );
 }
 
@@ -1022,14 +999,15 @@ export function drawLayout(roomVisual: RoomVisual, stamps: Stamps) {
         });
 
     // Roads
-    const roadPositions = stamps.road.map((roadDetail) => roadDetail.pos.toRoomPos());
-    for (let i = 0; i < roadPositions.length; i++) {
-        for (let j = i + 1; j < roadPositions.length; j++) {
-            if (roadPositions[i].isNearTo(roadPositions[j])) {
-                roomVisual.line(roadPositions[i], roadPositions[j], { width: 0.3, opacity: 0.1, lineStyle: 'solid' });
-            }
+    stamps.road.forEach((roadDetail, i) => {
+        if (i < stamps.road.length) {
+            stamps.road.slice(i + 1).forEach((nextRoadDetail) => {
+                if (roadDetail.pos.toRoomPos().isNearTo(nextRoadDetail.pos.toRoomPos())) {
+                    roomVisual.line(roadDetail.pos.toRoomPos(), nextRoadDetail.pos.toRoomPos(), { width: 0.3, opacity: 0.1, lineStyle: 'solid' });
+                }
+            });
         }
-    }
+    });
 }
 
 // ensures all positions are inside the room with 6 tiles away from the exit. This still allows for roads + ramparts in front of the exit and a buffer zone between structures so they cannot get hit
@@ -1154,7 +1132,7 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
                 stamps.managers.push({ type: rm, rcl: 5, pos: new RoomPosition(pos.x + 1, pos.y + 1, pos.roomName).toMemSafe() });
                 stamps.link.push({ type: rm, rcl: 5, pos: new RoomPosition(pos.x, pos.y + 2, pos.roomName).toMemSafe() });
                 stamps.factory.push({ type: rm, rcl: 7, pos: new RoomPosition(pos.x + 1, pos.y + 2, pos.roomName).toMemSafe() });
-                roadPositions.forEach((roadPos) => addUniqueRoad(stamps, { rcl: 4, pos: roadPos }));
+                roadPositions.forEach((roadPos: RoomPosition) => addUniqueRoad(stamps, { rcl: 4, pos: roadPos.toMemSafe() }));
                 addMissingRoads(startPos, roadPositions[0], stamps, 4);
                 continue;
             }
@@ -1203,9 +1181,9 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
                     } else if (stamps.lab.length >= 3) {
                         rcl = 7;
                     }
-                    stamps.lab.push({ rcl, pos: labPos });
+                    stamps.lab.push({ rcl, pos: labPos.toMemSafe() });
                 });
-                roadPositions.forEach((roadPos) => addUniqueRoad(stamps, { type: STRUCTURE_LAB, rcl: 6, pos: roadPos }));
+                roadPositions.forEach((roadPos: RoomPosition) => addUniqueRoad(stamps, { type: STRUCTURE_LAB, rcl: 6, pos: roadPos.toMemSafe() }));
                 addMissingRoads(startPos, roadPositions[0], stamps, 6);
                 continue;
             }
@@ -1386,6 +1364,7 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
             }
         }
     }
+
     logCpu('End addSingleStructures');
 }
 
@@ -1520,7 +1499,7 @@ function addMissingRoads(starCenter: RoomPosition, sourcePos: RoomPosition, stam
             Object.entries(stamps)
                 .filter(([key, currentStamps]) => key !== STRUCTURE_ROAD && key !== STRUCTURE_RAMPART)
                 .forEach(([key, currentStamps]: [string, StampDetail[]]) =>
-                    currentStamps.forEach((roadDetail) => matrix.set(roadDetail.pos.toRoomPos().x, roadDetail.pos.toRoomPos().y, 50))
+                    currentStamps.forEach((stampDetail) => matrix.set(stampDetail.pos.toRoomPos().x, stampDetail.pos.toRoomPos().y, 50))
                 );
             return matrix;
         },
