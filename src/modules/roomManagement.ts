@@ -319,7 +319,7 @@ export function driveRoom(room: Room) {
             }
         }
 
-        if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50 && room.energyStatus >= EnergyStatus.STABLE) {
+        if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50 && room.energyStatus >= EnergyStatus.SURPLUS) {
             try {
                 room.powerSpawn.processPower();
             } catch (e) {
@@ -989,7 +989,7 @@ export function destructiveReset(roomName: string) {
                 s.structureType !== STRUCTURE_SPAWN &&
                 s.structureType !== STRUCTURE_STORAGE &&
                 s.structureType !== STRUCTURE_TERMINAL &&
-                s.structureType !== STRUCTURE_EXTRACTOR
+                s.structureType !== STRUCTURE_EXTRACTOR,
         });
 
         let spawns = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN });
