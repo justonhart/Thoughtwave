@@ -13,6 +13,11 @@ interface Memory {
     remoteSourceClaims?: { [sourcePos: string]: { claimant: string; estimatedIncome: number } }; //map of potential remote rooms to rooms intending to claim them and their anticipated net income - higher income gets priority
     remoteSourceAssignments?: { [sourcePos: string]: RemoteAssignmentData }; //maps sources in other rooms to owned rooms mining them
     debug?: DebugSettings;
+    cpuUsage: CpuUsage;
+}
+
+interface CpuUsage {
+    average: number;
 }
 
 interface EmpireIntershard {
@@ -173,6 +178,8 @@ interface DebugSettings {
     drawRoads?: boolean;
     drawRemoteConnections?: boolean;
     logRoomPlacementCpu?: boolean;
+    logRoomCpu?: boolean;
+    logCreepCpu?: boolean;
 }
 
 interface RemoteAssignmentData {

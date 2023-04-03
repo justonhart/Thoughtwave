@@ -95,7 +95,6 @@ interface Room {
     factory: StructureFactory;
     observer: StructureObserver;
     powerSpawn: StructurePowerSpawn;
-    stamps: Stamps;
     remoteMiningRooms: string[];
     remoteSources: string[];
 }
@@ -127,7 +126,7 @@ interface Stamps {
 interface StampDetail {
     type?: string; // Can differentiate if needed (center vs miner extensions)
     rcl: number; // Indicator at what rcl structure should be build
-    pos: RoomPosition;
+    pos: string;
 }
 
 const enum PhaseShiftStatus {

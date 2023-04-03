@@ -50,8 +50,10 @@ export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: Roa
                         )
                     );
                 } else if (Memory.rooms[roomName].layout === RoomLayout.STAMP) {
-                    Object.entries(Game.rooms[roomName].stamps).forEach(([key, stampsDetails]: [string, StampDetail[]]) =>
-                        stampsDetails.forEach((detail) => matrix.set(detail.pos.x, detail.pos.y, key === 'road' || key === 'rampart' ? 1 : 255))
+                    Object.entries(Game.rooms[roomName].memory.stampLayout).forEach(([key, stampsDetails]: [string, StampDetail[]]) =>
+                        stampsDetails.forEach((detail) =>
+                            matrix.set(detail.pos.toRoomPos().x, detail.pos.toRoomPos().y, key === 'road' || key === 'rampart' ? 1 : 255)
+                        )
                     );
                 }
             }

@@ -11,8 +11,8 @@ export class Manager extends WaveCreep {
             this.room.memory.layout === RoomLayout.STAMP ? this.memory.destination?.toRoomPos() : this.room.memory?.managerPos?.toRoomPos();
         const isCenterStampManager =
             this.room.memory.layout === RoomLayout.STAMP &&
-            this.room.stamps.managers.some(
-                (managerDetail) => managerDetail.type === 'center' && managerDetail.pos.x === managerPos.x && managerDetail.pos.y === managerPos.y
+            this.room.memory.stampLayout.managers.some(
+                (managerDetail) => managerDetail.type === 'center' && (managerDetail.pos as unknown as string) === managerPos.toMemSafe()
             );
 
         if (managerPos?.isEqualTo(this.pos) === false) {
@@ -30,7 +30,7 @@ export class Manager extends WaveCreep {
             } else if (!isCenterStampManager && this.ticksToLive > 1) {
                 this.actionTaken = true;
                 this.startNewTask();
-            } else if (isCenterStampManager && this.ticksToLive > 1) {
+            } else if (isCenterStampManager && this.ticksToLive > 1 && this.room.energyAvailable < this.room.energyCapacityAvailable) {
                 this.startCenterTask();
             }
 
@@ -63,7 +63,7 @@ export class Manager extends WaveCreep {
 
         // Send energy to the center if the center link has no energy in it
         if (!managerLink?.cooldown && storage.store.energy && this.room.memory.layout === RoomLayout.STAMP) {
-            const posToCheck = this.room.stamps.link.find((linkDetail) => linkDetail.type === 'center').pos;
+            const posToCheck = this.room.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'center').pos?.toRoomPos();
             let centerLink = posToCheck?.lookFor(LOOK_STRUCTURES).find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
             if (centerLink) {
                 if (!centerLink?.store.energy) {

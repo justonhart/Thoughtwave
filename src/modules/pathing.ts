@@ -148,12 +148,14 @@ export class Pathing {
                     //if pos on road to destination, store directions from current pos in mem
                     if (roadThruCurrentPos) {
                         pathFinder = { path: getRoadPathFromPos(roadThruCurrentPos[0], creep.pos, destination.toMemSafe()) };
+                        opts.pathColor = 'green';
                     } else {
                         let roadPositions = _.flatten(roadsToDestination.map(([key, value]) => decodeRoad(value, creep.room.name)));
                         //else find path to nearest pos on road
                         pathFinder = PathFinder.search(creep.pos, roadPositions, {
                             roomCallback: Pathing.getRoomCallback(creep.room.name, roadPositions.shift(), {}, creep.name),
                         });
+                        opts.pathColor = 'red';
                     }
                 }
             }
@@ -423,9 +425,9 @@ export class Pathing {
                 }
 
                 if (Memory.rooms[room.name]?.layout === RoomLayout.STAMP) {
-                    room.stamps.managers.forEach((managerStamp) => {
-                        if (!Pathing.sameCoord(managerStamp.pos, destination)) {
-                            matrix.set(managerStamp.pos.x, managerStamp.pos.y, 50);
+                    room.memory.stampLayout.managers.forEach((managerStamp) => {
+                        if (!Pathing.sameCoord(managerStamp.pos.toRoomPos(), destination)) {
+                            matrix.set(managerStamp.pos.toRoomPos().x, managerStamp.pos.toRoomPos().y, 50);
                         }
                     });
                 }
