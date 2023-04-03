@@ -267,6 +267,7 @@ function initMissingMemoryValues() {
     if (!Memory.cpuUsage) {
         Memory.cpuUsage = {
             average: 0,
+            totalOverTime: 0,
         };
     }
 }
