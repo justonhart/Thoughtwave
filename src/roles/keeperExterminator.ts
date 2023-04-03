@@ -20,7 +20,7 @@ export class KeeperExterminator extends CombatCreep {
             } else {
                 if (target instanceof Structure) {
                     if (!this.pos.isNearTo(target)) {
-                        this.travelTo(target, { range: 1, avoidSourceKeepers: false });
+                        this.travelTo(target, { range: 1, avoidSourceKeepers: false, efficiency: 1 });
                     }
 
                     //scan area for keeper
@@ -34,7 +34,7 @@ export class KeeperExterminator extends CombatCreep {
                         this.attacked = true;
                         this.move(this.pos.getDirectionTo(target)); // Stay in range if the enemy creep moves
                     } else {
-                        this.travelTo(target, { range: 1, avoidSourceKeepers: false });
+                        this.travelTo(target, { range: 1, avoidSourceKeepers: false, efficiency: 1 });
                     }
                 }
                 if (!this.attacked) {
