@@ -391,6 +391,11 @@ export class TransportCreep extends WaveCreep {
             return this.pos.findClosestByRange(labsNeedingEmptied).id;
         }
 
+        const ruinsWithResources = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 1000 });
+        if (ruinsWithResources.length) {
+            return this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 })?.id;
+        }
+
         // For Stamps it only allows containers at miners when they are too full (should be emptied through link) or there isnt a link yet
         const containers: StructureContainer[] = room.find(FIND_STRUCTURES).filter(
             (structure) =>
@@ -422,11 +427,6 @@ export class TransportCreep extends WaveCreep {
                 .reduce((biggestResource, resourceToCompare) =>
                     biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
                 ).id;
-        }
-
-        const ruinsWithResources = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 1000 });
-        if (ruinsWithResources.length) {
-            return this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 })?.id;
         }
 
         const tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
