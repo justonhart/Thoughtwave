@@ -62,7 +62,12 @@ export class TransportCreep extends WaveCreep {
             )
         ) {
             this.runRefillJob(target);
-        } else if (target instanceof Tombstone || target instanceof StructureContainer || target?.status === LabStatus.NEEDS_EMPTYING) {
+        } else if (
+            target instanceof Tombstone ||
+            target instanceof Ruin ||
+            target instanceof StructureContainer ||
+            target?.status === LabStatus.NEEDS_EMPTYING
+        ) {
             this.runCollectionJob(target);
         } else if (
             target instanceof StructureSpawn ||
@@ -540,7 +545,7 @@ export class TransportCreep extends WaveCreep {
     }
 
     //gather resources for the purpose of storing
-    protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone | StructureLab): void {
+    protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone | StructureLab | Ruin): void {
         this.memory.currentTaskPriority = Priority.HIGH;
 
         let resourcesToWithdraw = target instanceof StructureLab ? [target.mineralType] : (Object.keys(target.store) as ResourceConstant[]);

@@ -991,8 +991,15 @@ export function destructiveReset(roomName: string) {
 
         const creeps = Object.keys(Memory.creeps).filter((c) => Memory.creeps[c].room === room.name);
         creeps.forEach((c) => {
-            Memory.creeps[c] = {};
-            Game.creeps[c].suicide();
+            if (Memory.creeps[c].role === Role.DISTRIBUTOR || Memory.creeps[c].role === Role.WORKER) {
+                delete Memory.creeps[c].targetId;
+                delete Memory.creeps[c].labRequests;
+                delete Memory.creeps[c].destination;
+                delete Memory.creeps[c].energySource;
+            } else {
+                Memory.creeps[c] = {};
+                Game.creeps[c].suicide();
+            }
         });
 
         let roadsStartingHere = Object.keys(Memory.roomData[roomName].roads).filter(
