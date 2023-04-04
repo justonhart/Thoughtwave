@@ -877,9 +877,9 @@ function runVisionRequest(room: Room, requestId: string) {
 }
 
 function getStructurePriority(structureType: StructureConstant): number {
-    if (structureType === STRUCTURE_STORAGE || structureType === STRUCTURE_CONTAINER) {
+    if (structureType === STRUCTURE_STORAGE || structureType === STRUCTURE_CONTAINER || STRUCTURE_TERMINAL) {
         return 2;
-    } else if (structureType === STRUCTURE_SPAWN || structureType === STRUCTURE_EXTENSION || structureType === STRUCTURE_TOWER) {
+    } else if (structureType === STRUCTURE_SPAWN || structureType === STRUCTURE_EXTENSION || structureType === STRUCTURE_TOWER || STRUCTURE_LINK) {
         return 1;
     } else if (structureType === STRUCTURE_RAMPART) {
         return -1;
@@ -981,11 +981,7 @@ export function destructiveReset(roomName: string) {
         delete Memory.rooms[room.name];
 
         const structuresToDestroy = room.find(FIND_STRUCTURES, {
-            filter: (s) =>
-                s.structureType !== STRUCTURE_SPAWN &&
-                s.structureType !== STRUCTURE_STORAGE &&
-                s.structureType !== STRUCTURE_TERMINAL &&
-                s.structureType !== STRUCTURE_EXTRACTOR,
+            filter: (s) => s.structureType !== STRUCTURE_SPAWN && s.structureType !== STRUCTURE_STORAGE && s.structureType !== STRUCTURE_EXTRACTOR,
         });
 
         let spawns = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN });
