@@ -979,7 +979,8 @@ export class PopulationManagement {
     static needsTransporter(room: Room) {
         let transporter = Object.values(Game.creeps).find((c) => c.memory.role === Role.TRANSPORTER && c.memory.room === room.name);
         let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 1000);
-        return !transporter && !!room.storage && bigDroppedResources.length > 1;
+        let bigRuins = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 10000 });
+        return !transporter && !!room.storage && bigDroppedResources.length + bigRuins.length > 1;
     }
 
     static needsMineralMiner(room: Room) {

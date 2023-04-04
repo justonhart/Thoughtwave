@@ -877,7 +877,7 @@ function runVisionRequest(room: Room, requestId: string) {
 }
 
 function getStructurePriority(structureType: StructureConstant): number {
-    if (structureType === STRUCTURE_STORAGE) {
+    if (structureType === STRUCTURE_STORAGE || structureType === STRUCTURE_CONTAINER) {
         return 2;
     } else if (structureType === STRUCTURE_SPAWN || structureType === STRUCTURE_EXTENSION || structureType === STRUCTURE_TOWER) {
         return 1;

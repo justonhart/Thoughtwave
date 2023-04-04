@@ -251,6 +251,7 @@ export class TransportCreep extends WaveCreep {
                 isStampRoom &&
                 this.homeroom.controller.level > 1 &&
                 // Number of center managers
+                //@ts-ignore
                 (this.homeroom.creeps.reduce(
                     (sum: number, nextCreep: Creep) =>
                         nextCreep.memory.role === Role.MANAGER &&
@@ -367,7 +368,7 @@ export class TransportCreep extends WaveCreep {
         }
     }
 
-    protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> | Id<Tombstone> {
+    protected findCollectionTarget(roomName?: string): Id<Resource> | Id<Structure> | Id<Tombstone> | Id<Ruin> {
         if (Game.time < this.memory.sleepCollectTil) {
             return;
         }
@@ -418,6 +419,11 @@ export class TransportCreep extends WaveCreep {
                 ).id;
         }
 
+        const ruinsWithResources = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 1000 });
+        if (ruinsWithResources.length) {
+            return this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 })?.id;
+        }
+
         const tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
         if (tombstonesWithResources.length) {
             return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
@@ -445,7 +451,13 @@ export class TransportCreep extends WaveCreep {
                 this.memory.gathering = this.store.getUsedCapacity() === 0; // Gather energy or drop off minerals
                 delete this.memory.targetId;
             } else if (!this.pos.isNearTo(target)) {
-                this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
+                let result = this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
+                if (this.memory._m.stuckCount && this.memory._m.path.length === 1) {
+                    let adjacentManagerAdjacentToTarget = this.pos
+                        .findInRange(FIND_MY_CREEPS, 1, { filter: (c) => c.memory.role === Role.MANAGER && c.pos.isNearTo(target) })
+                        ?.pop();
+                    this.transfer(adjacentManagerAdjacentToTarget, RESOURCE_ENERGY);
+                }
             } else if (!this.actionTaken) {
                 let result = this.transfer(target, RESOURCE_ENERGY);
                 switch (result) {
