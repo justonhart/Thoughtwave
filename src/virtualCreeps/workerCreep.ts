@@ -22,7 +22,7 @@ export class WorkerCreep extends WaveCreep {
             target = Game.getObjectById(this.memory.energySource);
         }
 
-        if (target instanceof StructureStorage) {
+        if (target instanceof StructureStorage || target instanceof StructureTerminal) {
             switch (this.withdraw(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1, maxRooms: 1 });
@@ -78,6 +78,8 @@ export class WorkerCreep extends WaveCreep {
     protected findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
         if (this.room.storage?.store[RESOURCE_ENERGY]) {
             return this.room.storage.id;
+        } else if (!this.room.storage && this.room.terminal?.store.energy) {
+            return this.room.terminal.id;
         }
 
         let nonStorageSources: (Ruin | Resource | Structure)[];
