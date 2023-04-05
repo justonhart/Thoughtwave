@@ -1,4 +1,5 @@
 import { isKeeperRoom, isHighway } from '../modules/data';
+import { getArea } from './misc';
 import { decodeRoad, getRoadPathFromPos } from './roads';
 
 //@ts-ignore
@@ -375,15 +376,16 @@ export class Pathing {
 
                 matrix = matrix.clone();
                 if (options.avoidSourceKeepers && isKeeperRoom(room.name)) {
+                    const terrain = Game.map.getRoomTerrain(roomName);
                     room.find(FIND_HOSTILE_CREEPS, {
                         filter: (creep) =>
                             creep.owner.username === 'Source Keeper' &&
                             (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0),
                     }).forEach((creep) => {
-                        const avoidArea = Pathing.getArea(creep.pos, 3);
+                        const avoidArea = getArea(creep.pos, 3);
                         for (let x = avoidArea.left; x <= avoidArea.right; x++) {
                             for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
-                                if (x !== destination.x || y !== destination.y) {
+                                if ((x !== destination.x || y !== destination.y) && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
                                     matrix.set(x, y, 50);
                                 }
                             }
@@ -627,14 +629,6 @@ export class Pathing {
             lastPosition = position;
         }
         return serializedPath;
-    }
-
-    static getArea(pos: RoomPosition, range: number) {
-        const top = pos.y - range < 0 ? 0 : pos.y - range;
-        const bottom = pos.y + range > 49 ? 49 : pos.y + range;
-        const left = pos.x - range < 0 ? 0 : pos.x - range;
-        const right = pos.x + range > 49 ? 49 : pos.x + range;
-        return { top, left, bottom, right };
     }
 
     static normalizeDestination(destination: Destination): RoomPosition {

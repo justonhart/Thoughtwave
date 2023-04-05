@@ -1,4 +1,5 @@
 import { getBunkerPositions, getStructureForPos } from './data';
+import { getArea } from './misc';
 
 const MAPPING = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -29,17 +30,6 @@ export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: Roa
 
             let matrix = new PathFinder.CostMatrix();
 
-            if (Memory.remoteData[roomName]) {
-                let miningRoomsWithPos = Object.entries(Memory.remoteSourceAssignments).filter(
-                    ([source, miningData]) => source.split('.')[2] === roomName
-                );
-                let miningPositions = miningRoomsWithPos.map(([source, miningData]) => {
-                    let miningPos = Memory.rooms[miningData.controllingRoom].remoteSources[source].miningPos;
-                    return miningPos;
-                });
-                miningPositions.forEach((pos) => matrix.set(pos.toRoomPos().x, pos.toRoomPos().y, 255));
-            }
-
             if (Memory.roomData[roomName]?.roomStatus === RoomMemoryStatus.OWNED_ME) {
                 if (Memory.rooms[roomName].layout === RoomLayout.BUNKER) {
                     getBunkerPositions(Game.rooms[roomName]).forEach((pos) =>
@@ -69,6 +59,47 @@ export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: Roa
                             console.log('error decoding road: ' + roadCode + ' : ' + roomName);
                         }
                     });
+                }
+            }
+
+            if (Memory.remoteData[roomName]) {
+                let miningRoomsWithPos = Object.entries(Memory.remoteSourceAssignments).filter(
+                    ([source, miningData]) => source.split('.')[2] === roomName
+                );
+                let miningPositions = miningRoomsWithPos.map(([source, miningData]) => {
+                    let miningPos = Memory.rooms[miningData.controllingRoom].remoteSources[source].miningPos;
+                    return miningPos;
+                });
+
+                miningPositions.forEach((pos) => matrix.set(pos.toRoomPos().x, pos.toRoomPos().y, 255));
+
+                // Avoid Lairs if their position is in memory
+                if (Memory.remoteData[roomName]?.sourceKeeperLairs) {
+                    const terrain = Game.map.getRoomTerrain(roomName);
+                    Object.entries(Memory.remoteData[roomName].sourceKeeperLairs)
+                        .filter(([sourcePos, lair]) => lair.pos && !sourcePos.toRoomPos().isNearTo(endPos))
+                        .forEach(([sourcePos, lair]) => {
+                            const avoidArea = getArea(lair.pos.toRoomPos(), 3);
+                            for (let x = avoidArea.left; x <= avoidArea.right; x++) {
+                                for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
+                                    const tileTerrain = terrain.get(x, y);
+                                    if (tileTerrain !== TERRAIN_MASK_WALL || matrix.get(x, y) !== 255) {
+                                        // Mined so should be relatively safer
+                                        if (Memory.remoteSourceAssignments[sourcePos]) {
+                                            matrix.set(
+                                                x,
+                                                y,
+                                                tileTerrain === TERRAIN_MASK_SWAMP
+                                                    ? (20 * ROAD_DECAY_AMOUNT) / REPAIR_POWER
+                                                    : (4 * ROAD_DECAY_AMOUNT) / REPAIR_POWER
+                                            );
+                                        } else {
+                                            matrix.set(x, y, 100);
+                                        }
+                                    }
+                                }
+                            }
+                        });
                 }
             }
 
@@ -179,7 +210,11 @@ export function posExistsOnRoad(pos: RoomPosition, roadKey?: string): boolean {
 //trace a road through all rooms from starting point to return RoomPosition array
 export function getFullRoad(roadKey: string): RoomPosition[] {
     const startingRoomName = roadKey.split(':')[0].toRoomPos().roomName;
-    const roadCode = Memory.roomData[startingRoomName].roads[roadKey];
+    const roadCode = Memory.roomData[startingRoomName].roads?.[roadKey];
+
+    if (!roadCode?.length) {
+        return [];
+    }
 
     let road = decodeRoad(roadCode, startingRoomName);
     const segments = getRoadSegments(road);

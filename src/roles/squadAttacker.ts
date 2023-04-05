@@ -1,4 +1,4 @@
-import { Pathing } from '../modules/pathing';
+import { getArea } from '../modules/misc';
 import { SquadManagement } from '../modules/squadManagement';
 import { CombatCreep } from '../virtualCreeps/combatCreep';
 
@@ -48,7 +48,7 @@ export class SquadAttacker extends CombatCreep {
     }
 
     private findPriorityAttackTarget(range: number, sq: SquadManagement) {
-        const areaInRange = Pathing.getArea(this.pos, range);
+        const areaInRange = getArea(this.pos, range);
         const lookAtArea = this.room.lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);
         const hostileCreep = lookAtArea.filter(
             (lookObject) =>

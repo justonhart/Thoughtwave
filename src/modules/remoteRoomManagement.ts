@@ -1,15 +1,46 @@
 import { CombatIntel } from './combatIntel';
 import { isKeeperRoom as isKeeperRoom } from './data';
 import { PopulationManagement } from './populationManagement';
+import { deleteRoad, getRoad, storeRoadInMemory } from './roads';
+import { getStoragePos } from './roomDesign';
 
 export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: string) {
     let remoteRoom = Game.rooms[remoteRoomName];
     if (remoteRoom) {
-        if (isKeeperRoom(remoteRoomName) && !Memory.remoteData[remoteRoomName].sourceKeeperLairs) {
-            Memory.remoteData[remoteRoomName].sourceKeeperLairs = createKeeperLairData(remoteRoomName);
+        // Store Lairs and avoid them if possible
+        if (
+            isKeeperRoom(remoteRoomName) &&
+            (!Memory.remoteData[remoteRoomName].sourceKeeperLairs ||
+                Object.values(Memory.remoteData[remoteRoomName].sourceKeeperLairs).some((lair) => !lair.pos))
+        ) {
+            const lairData = createKeeperLairData(remoteRoomName);
+            Memory.remoteData[remoteRoomName].sourceKeeperLairs = lairData;
+            overridePreviousRoad(controllingRoomName, remoteRoomName);
         }
         Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
     }
+
+    // Repopulate road data if necessary
+    Object.entries(Memory.rooms[controllingRoomName].remoteSources)
+        .filter(([remoteSourcePos, remoteSource]) => !Memory.roomData[remoteRoomName].roads)
+        .forEach(([remoteSourcePos, remoteSource]) => {
+            const storagePos = getStoragePos(Game.rooms[controllingRoomName]);
+            const road = getRoad(storagePos, remoteSource.miningPos.toRoomPos(), {
+                allowedStatuses: [RoomMemoryStatus.RESERVED_INVADER, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT],
+                ignoreOtherRoads: false,
+                destRange: 1,
+            });
+
+            if (road.incomplete) {
+                return;
+            }
+
+            const result = storeRoadInMemory(storagePos, remoteSource.miningPos.toRoomPos(), road.path);
+            if (result !== OK) {
+                console.log('problem recreating road to source in memory');
+                return ERR_INVALID_ARGS;
+            }
+        });
 
     const threatLevel = Memory.remoteData[remoteRoomName].threatLevel;
     if (
@@ -125,7 +156,7 @@ function monitorThreatLevel(room: Room) {
         : RemoteRoomThreatLevel.SAFE;
 }
 
-function createKeeperLairData(remoteRoomName: string): { [id: Id<Source> | Id<Mineral>]: Id<StructureKeeperLair> } {
+function createKeeperLairData(remoteRoomName: string): { [id: Id<Source> | Id<Mineral>]: { id: Id<StructureKeeperLair>; pos: string } } {
     const lairs = {};
     Game.rooms[remoteRoomName]
         .find(FIND_HOSTILE_STRUCTURES, {
@@ -134,10 +165,10 @@ function createKeeperLairData(remoteRoomName: string): { [id: Id<Source> | Id<Mi
         .forEach((lair) => {
             const source = lair.pos.findClosestByRange(FIND_SOURCES);
             if (lair.pos.getRangeTo(source) < 6) {
-                lairs[source.pos.toMemSafe()] = lair.id;
+                lairs[source.pos.toMemSafe()] = { id: lair.id, pos: lair.pos.toMemSafe() };
             } else {
                 const mineral = lair.pos.findClosestByRange(FIND_MINERALS);
-                lairs[mineral.pos.toMemSafe()] = lair.id;
+                lairs[mineral.pos.toMemSafe()] = { id: lair.id, pos: lair.pos.toMemSafe() };
             }
         });
     return lairs;
@@ -180,4 +211,37 @@ export function removeRemoteRoomMemory(remoteRoomName: string) {
     Memory.roomData[remoteRoomName].asOf = Game.time;
     Memory.roomData[remoteRoomName].roomStatus = RoomMemoryStatus.VACANT;
     delete Memory.roomData[remoteRoomName].owner;
+}
+
+function overridePreviousRoad(controllingRoomName: string, remoteRoomName: string) {
+    const sourceKeeperLairs = Memory.remoteData[remoteRoomName].sourceKeeperLairs;
+    if (!sourceKeeperLairs || Object.keys(sourceKeeperLairs).length === 0) {
+        return;
+    }
+    const storagePos = getStoragePos(Game.rooms[controllingRoomName]);
+    Object.keys(sourceKeeperLairs)
+        .filter((sourcePos) => Memory.remoteSourceAssignments[sourcePos])
+        .forEach((sourcePos) => {
+            try {
+                const miningPos = Memory.rooms[controllingRoomName].remoteSources[sourcePos].miningPos;
+                const road = getRoad(storagePos, miningPos.toRoomPos(), {
+                    allowedStatuses: [RoomMemoryStatus.RESERVED_INVADER, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT],
+                    ignoreOtherRoads: false,
+                    destRange: 1,
+                });
+
+                if (road.incomplete) {
+                    return;
+                }
+                deleteRoad(`${storagePos.toMemSafe()}:${miningPos}`);
+                const result = storeRoadInMemory(storagePos, miningPos.toRoomPos(), road.path);
+                if (result !== OK) {
+                    console.log('problem overriding road to source in memory');
+                    return ERR_INVALID_ARGS;
+                }
+            } catch (e) {
+                console.log(`Caught error calculating road around Lairs: ${e}`);
+                return;
+            }
+        });
 }

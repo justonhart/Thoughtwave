@@ -18,16 +18,16 @@ export class RemoteMiner extends WaveCreep {
             const isAKeeperRoom = isKeeperRoom(this.memory.assignment.toRoomPos().roomName);
             if (isAKeeperRoom && this.keeperPresentOrSpawning()) {
                 // Always travel away from the same source otherwise it can cause creep to not move at all
-                let closestLair: StructureKeeperLair;
+                let closestLair: RoomPosition;
                 const lairPositions = Object.entries(Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs)
-                    .filter(([sourcePos, lairId]) => {
+                    .filter(([sourcePos, lair]) => {
                         if (sourcePos === this.memory.assignment) {
-                            closestLair = Game.getObjectById(lairId) as StructureKeeperLair;
+                            closestLair = lair.pos.toRoomPos();
                             return false;
                         }
                         return true;
                     })
-                    .map(([sourcePos, lairId]) => ({ pos: Game.getObjectById(lairId).pos, range: 0 }));
+                    .map(([sourcePos, lair]) => ({ pos: lair.pos.toRoomPos(), range: 0 }));
                 if (this.onEdge()) {
                     this.travelToRoom(this.memory.assignment.toRoomPos().roomName); // Prevent going in and out of the room
                 } else {
@@ -80,9 +80,9 @@ export class RemoteMiner extends WaveCreep {
     }
 
     private keeperPresentOrSpawning(): boolean {
-        const lairId =
+        const lair =
             Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs[Game.getObjectById(this.getSourceId()).pos.toMemSafe()];
-        const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
+        const lairInRange = Game.getObjectById(lair.id) as StructureKeeperLair;
         return lairInRange?.ticksToSpawn < 10 || lairInRange?.ticksToSpawn > 295 || (lairInRange && lairInRange.ticksToSpawn === undefined);
     }
 

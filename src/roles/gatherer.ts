@@ -22,7 +22,7 @@ export class Gatherer extends TransportCreep {
         }
 
         if (this.store.getUsedCapacity()) {
-            if (!this.onEdge() && posExistsOnRoad(this.pos)) {
+            if (!this.onEdge() && posExistsOnRoad(this.pos) && this.getActiveBodyparts(WORK)) {
                 let road = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_ROAD) as StructureRoad;
                 if (road) {
                     this.repairRoad(road);
@@ -54,9 +54,10 @@ export class Gatherer extends TransportCreep {
                 this.pos.getRangeTo(this.memory.assignment.toRoomPos()) <= 7
             ) {
                 // Always travel away from the same source otherwise it can cause creep to not move at all
-                const lairPositions = Object.values(Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs).map(
-                    (lairId) => ({ pos: Game.getObjectById(lairId).pos, range: 0 })
-                );
+                const lairPositions = Object.values(Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs).map((lair) => ({
+                    pos: lair.pos.toRoomPos(),
+                    range: 0,
+                }));
                 if (this.onEdge()) {
                     this.travelToRoom(this.memory.assignment.toRoomPos().roomName); // Prevent going in and out of the room
                 } else {
@@ -69,8 +70,8 @@ export class Gatherer extends TransportCreep {
     }
 
     private keeperPresentOrSpawning(): boolean {
-        const lairId = Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs[this.memory.assignment];
-        const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
+        const lair = Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs[this.memory.assignment];
+        const lairInRange = Game.getObjectById(lair.id) as StructureKeeperLair;
         return lairInRange?.ticksToSpawn < 10 || lairInRange?.ticksToSpawn > 295 || (lairInRange && lairInRange.ticksToSpawn === undefined);
     }
 
