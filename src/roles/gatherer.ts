@@ -47,11 +47,7 @@ export class Gatherer extends TransportCreep {
                     let road = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_ROAD) as StructureRoad;
                     this.repairRoad(road);
                     this.storeCargo();
-                } else if (
-                    isKeeperRoom(this.memory.assignment.split('.')[2]) &&
-                    this.keeperPresentOrSpawning() &&
-                    this.pos.getRangeTo(this.memory.assignment.toRoomPos()) <= 7
-                ) {
+                } else if (isKeeperRoom(this.memory.assignment.split('.')[2]) && this.keeperPresentOrSpawning()) {
                     this.avoidLairs();
                 }
             } else if (
