@@ -521,6 +521,14 @@ function manageAddPowerBankOperation(op: Operation) {
             if (op.pathCost > 500) {
                 Memory.roomData[op.targetRoom].powerBank = false;
                 op.stage = OperationStage.COMPLETE;
+                return;
+            } else if (
+                Object.values(Memory.operations).some(
+                    (operation) => operation.type === OperationType.POWER_BANK && operation.originRoom === op.originRoom && operation.stage > 1
+                )
+            ) {
+                op.stage = OperationStage.COMPLETE; // Do not set powerBank to false since other originRooms might be in range
+                return;
             }
             if (targetRoom) {
                 op.visionRequests = [];
