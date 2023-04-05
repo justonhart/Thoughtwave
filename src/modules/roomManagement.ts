@@ -877,9 +877,14 @@ function runVisionRequest(room: Room, requestId: string) {
 }
 
 function getStructurePriority(structureType: StructureConstant): number {
-    if (structureType === STRUCTURE_STORAGE || structureType === STRUCTURE_CONTAINER || STRUCTURE_TERMINAL) {
+    if (structureType === STRUCTURE_STORAGE || structureType === STRUCTURE_CONTAINER || structureType === STRUCTURE_TERMINAL) {
         return 2;
-    } else if (structureType === STRUCTURE_SPAWN || structureType === STRUCTURE_EXTENSION || structureType === STRUCTURE_TOWER || STRUCTURE_LINK) {
+    } else if (
+        structureType === STRUCTURE_SPAWN ||
+        structureType === STRUCTURE_EXTENSION ||
+        structureType === STRUCTURE_TOWER ||
+        structureType === STRUCTURE_LINK
+    ) {
         return 1;
     } else if (structureType === STRUCTURE_RAMPART) {
         return -1;
