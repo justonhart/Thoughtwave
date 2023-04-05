@@ -62,7 +62,7 @@ export class Manager extends WaveCreep {
         }
 
         // Send energy to the center if the center link has no energy in it
-        if (managerLink?.cooldown === 0 && storage.store.energy && this.room.memory.layout === RoomLayout.STAMP) {
+        if (managerLink?.cooldown === 0 && (storage.store.energy || managerLink.store.energy > 0) && this.room.memory.layout === RoomLayout.STAMP) {
             const posToCheck = this.room.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'center').pos?.toRoomPos();
             let centerLink = posToCheck?.lookFor(LOOK_STRUCTURES).find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
             if (centerLink) {

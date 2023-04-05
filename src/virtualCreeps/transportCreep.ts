@@ -386,14 +386,16 @@ export class TransportCreep extends WaveCreep {
             return undefined;
         }
 
-        const labsNeedingEmptied = this.room.labs?.filter((lab) => lab.status === LabStatus.NEEDS_EMPTYING);
-        if (labsNeedingEmptied.length) {
-            return this.pos.findClosestByRange(labsNeedingEmptied).id;
-        }
+        if (this.room.storage) {
+            const labsNeedingEmptied = this.room.labs?.filter((lab) => lab.status === LabStatus.NEEDS_EMPTYING);
+            if (labsNeedingEmptied.length) {
+                return this.pos.findClosestByRange(labsNeedingEmptied).id;
+            }
 
-        const ruinsWithResources = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 1000 });
-        if (ruinsWithResources.length) {
-            return this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 })?.id;
+            const ruinsWithResources = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 1000 });
+            if (ruinsWithResources.length) {
+                return this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 })?.id;
+            }
         }
 
         // For Stamps it only allows containers at miners when they are too full (should be emptied through link) or there isnt a link yet
@@ -406,7 +408,7 @@ export class TransportCreep extends WaveCreep {
                     room.memory.stampLayout.container.some(
                         (containerStamp) =>
                             containerStamp.pos === structure.pos.toMemSafe() &&
-                            (containerStamp.type === 'mineral' ||
+                            ((containerStamp.type === 'mineral' && this.room.storage) ||
                                 (containerStamp.type?.includes('source') &&
                                     (structure.store.getFreeCapacity() < 300 ||
                                         room.memory.stampLayout.link.find((linkDetail) => containerStamp.type === linkDetail.type)?.rcl >
