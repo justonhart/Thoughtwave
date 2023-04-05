@@ -47,25 +47,35 @@ export class Gatherer extends TransportCreep {
                     let road = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_ROAD) as StructureRoad;
                     this.repairRoad(road);
                     this.storeCargo();
+                } else if (
+                    isKeeperRoom(this.memory.assignment.split('.')[2]) &&
+                    this.keeperPresentOrSpawning() &&
+                    this.pos.getRangeTo(this.memory.assignment.toRoomPos()) <= 7
+                ) {
+                    this.avoidLairs();
                 }
             } else if (
                 isKeeperRoom(this.memory.assignment.split('.')[2]) &&
                 this.keeperPresentOrSpawning() &&
                 this.pos.getRangeTo(this.memory.assignment.toRoomPos()) <= 7
             ) {
-                // Always travel away from the same source otherwise it can cause creep to not move at all
-                const lairPositions = Object.values(Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs).map((lair) => ({
-                    pos: lair.pos.toRoomPos(),
-                    range: 0,
-                }));
-                if (this.onEdge()) {
-                    this.travelToRoom(this.memory.assignment.toRoomPos().roomName); // Prevent going in and out of the room
-                } else {
-                    this.travelTo(this.memory.assignment.toRoomPos(), { range: 7, flee: true, goals: lairPositions, maxRooms: 1 }); // Travel out of harms way
-                }
+                this.avoidLairs();
             } else {
                 this.travelTo(this.getMiningPosition(), { range: 1, useMemoryRoads: true, reusePath: 10000 });
             }
+        }
+    }
+
+    private avoidLairs() {
+        // Always travel away from the same source otherwise it can cause creep to not move at all
+        const lairPositions = Object.values(Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs).map((lair) => ({
+            pos: lair.pos.toRoomPos(),
+            range: 0,
+        }));
+        if (this.onEdge()) {
+            this.travelToRoom(this.memory.assignment.toRoomPos().roomName); // Prevent going in and out of the room
+        } else {
+            this.travelTo(this.memory.assignment.toRoomPos(), { range: 7, flee: true, goals: lairPositions, maxRooms: 1 }); // Travel out of harms way
         }
     }
 
