@@ -21,26 +21,28 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
     }
 
     // Repopulate road data if necessary
-    Object.entries(Memory.rooms[controllingRoomName].remoteSources)
-        .filter(([remoteSourcePos, remoteSource]) => !Memory.roomData[remoteRoomName].roads)
-        .forEach(([remoteSourcePos, remoteSource]) => {
-            const storagePos = getStoragePos(Game.rooms[controllingRoomName]);
-            const road = getRoad(storagePos, remoteSource.miningPos.toRoomPos(), {
-                allowedStatuses: [RoomMemoryStatus.RESERVED_INVADER, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT],
-                ignoreOtherRoads: false,
-                destRange: 1,
+    if (Game.time % 250 === 0) {
+        Object.entries(Memory.rooms[controllingRoomName].remoteSources)
+            .filter(([remoteSourcePos, remoteSource]) => !Memory.roomData[remoteRoomName].roads)
+            .forEach(([remoteSourcePos, remoteSource]) => {
+                const storagePos = getStoragePos(Game.rooms[controllingRoomName]);
+                const road = getRoad(storagePos, remoteSource.miningPos.toRoomPos(), {
+                    allowedStatuses: [RoomMemoryStatus.RESERVED_INVADER, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT],
+                    ignoreOtherRoads: false,
+                    destRange: 1,
+                });
+
+                if (road.incomplete) {
+                    return;
+                }
+
+                const result = storeRoadInMemory(storagePos, remoteSource.miningPos.toRoomPos(), road.path);
+                if (result !== OK) {
+                    console.log('problem recreating road to source in memory');
+                    return ERR_INVALID_ARGS;
+                }
             });
-
-            if (road.incomplete) {
-                return;
-            }
-
-            const result = storeRoadInMemory(storagePos, remoteSource.miningPos.toRoomPos(), road.path);
-            if (result !== OK) {
-                console.log('problem recreating road to source in memory');
-                return ERR_INVALID_ARGS;
-            }
-        });
+    }
 
     const threatLevel = Memory.remoteData[remoteRoomName].threatLevel;
     if (
