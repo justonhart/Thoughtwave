@@ -119,7 +119,7 @@ export class WorkerCreep extends WaveCreep {
         let buildSuccess = this.build(target);
         switch (buildSuccess) {
             case ERR_NOT_IN_RANGE:
-                this.travelTo(target, { range: 3, maxRooms: 1, exitCost: 10 });
+                this.travelTo(target, { range: 3, maxRooms: 1, exitCost: 10, avoidEdges: true });
                 break;
             case ERR_NOT_ENOUGH_RESOURCES:
                 this.memory.gathering = true;
@@ -127,6 +127,9 @@ export class WorkerCreep extends WaveCreep {
                 this.onTaskFinished();
                 break;
             case OK:
+                if (this.onEdge()) {
+                    this.travelTo(target);
+                }
                 if (this.isBuildFinished(target)) {
                     this.onTaskFinished();
                 }
@@ -171,9 +174,9 @@ export class WorkerCreep extends WaveCreep {
             let repairSuccess = this.repair(target);
             switch (repairSuccess) {
                 case ERR_NOT_IN_RANGE:
-                    const opts: TravelToOpts = { range: 3, maxRooms: 1 };
+                    const opts: TravelToOpts = { range: 3, maxRooms: 1, avoidEdges: true };
                     if (
-                        this.homeroom.memory.layout === RoomLayout.STAMP &&
+                        this.homeroom?.memory.layout === RoomLayout.STAMP &&
                         (this.room.memory.threatLevel === HomeRoomThreatLevel.ENEMY_INVADERS ||
                             this.room.memory.threatLevel >= HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS)
                     ) {
@@ -189,6 +192,9 @@ export class WorkerCreep extends WaveCreep {
                     this.onTaskFinished();
                     break;
                 case OK:
+                    if (this.onEdge()) {
+                        this.travelTo(target);
+                    }
                     if (this.isRepairFinished(target)) {
                         this.onTaskFinished();
                     }
