@@ -455,7 +455,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
         return false;
     }
 
-    if (hostileCreepData.creeps.length >= 2) {
+    if (hostileCreepData.creeps.length >= 1) {
         // Spawn multiple rampartProtectors based on the number of enemy hostiles
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (
