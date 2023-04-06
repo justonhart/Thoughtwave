@@ -518,7 +518,7 @@ export class TransportCreep extends WaveCreep {
                 } else if (!this.pos.isNearTo(target)) {
                     this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
                 } else {
-                    let amountToWithdraw = Math.min(targetFreeCapacity, this.store.getFreeCapacity());
+                    let amountToWithdraw = Math.min(targetFreeCapacity, this.store.getFreeCapacity(), target.store.power);
                     let result = this.withdraw(target, RESOURCE_POWER, amountToWithdraw);
                     if (result === OK) {
                         this.incomingMineralAmount += amountToWithdraw;
