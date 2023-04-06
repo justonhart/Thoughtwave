@@ -301,3 +301,38 @@ function updateBlacklistedRooms() {
     let orders = Game.market.outgoingTransactions.filter((o) => Memory.marketBlacklist.includes(o.recipient?.username));
     orders.forEach((o) => Memory.blacklistedRooms.push(o.to));
 }
+
+export function generateEmpireResourceData(): EmpireResourceData {
+    const roomsToCheck = Object.values(Game.rooms).filter((room) => room.controller?.my);
+    let data: EmpireResourceData = { producers: {}, inventory: {} };
+
+    roomsToCheck.forEach((room) => {
+        if (data.producers[room.mineral.mineralType]) {
+            data.producers[room.mineral.mineralType].push(room.name);
+        } else {
+            data.producers[room.mineral.mineralType] = [room.name];
+        }
+
+        if (room.storage) {
+            Object.keys(room.storage.store).forEach((resource) => {
+                if (data.inventory[resource]) {
+                    data.inventory[resource] += room.storage.store[resource];
+                } else {
+                    data.inventory[resource] = room.storage.store[resource];
+                }
+            });
+        }
+
+        if (room.terminal) {
+            Object.keys(room.terminal.store).forEach((resource) => {
+                if (data.inventory[resource]) {
+                    data.inventory[resource] += room.terminal.store[resource];
+                } else {
+                    data.inventory[resource] = room.terminal.store[resource];
+                }
+            });
+        }
+    });
+
+    return data;
+}

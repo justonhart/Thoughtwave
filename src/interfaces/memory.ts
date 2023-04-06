@@ -188,3 +188,8 @@ interface RemoteAssignmentData {
     estimatedIncome: number;
     roadLength: number;
 }
+
+interface EmpireResourceData {
+    producers: { [mineral: string]: string[] }; //map of minerals to which rooms produce them
+    inventory: { [resource: string]: number }; //total amount of each resource in empire storages and terminals
+}
