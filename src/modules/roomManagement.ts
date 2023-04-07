@@ -1123,7 +1123,7 @@ function runShipments(room: Room) {
                 if (canSupportShipment) {
                     if (Memory.debug.logShipments)
                         console.log(
-                            `Room preparing shipment: ${shipment.sender} => ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
+                            `${Game.time} - Room preparing shipment: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
                         );
                     Memory.shipments[shipmentId].status = ShipmentStatus.PREPARING;
                 } else {
@@ -1132,7 +1132,9 @@ function runShipments(room: Room) {
             case ShipmentStatus.PREPARING:
                 if (shipmentReady(room.terminal, shipmentId)) {
                     if (Memory.debug.logShipments)
-                        console.log(`Shipment ready: ${shipment.sender} => ${shipment.amount} ${shipment.resource} to  ${shipment.recipient}`);
+                        console.log(
+                            `${Game.time} - Shipment ready: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to  ${shipment.recipient}`
+                        );
                     Memory.shipments[shipmentId].status = ShipmentStatus.READY;
                 } else {
                     break;
@@ -1145,7 +1147,9 @@ function runShipments(room: Room) {
                     const result = room.terminal.send(shipment.resource, shipment.amount, shipment.recipient);
                     if (result === OK) {
                         if (Memory.debug.logShipments)
-                            console.log(`Shipment sent: ${shipment.sender} => ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`);
+                            console.log(
+                                `${Game.time} - Shipment sent: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
+                            );
                         Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
                         shipmentSentThisTick = true;
                     }

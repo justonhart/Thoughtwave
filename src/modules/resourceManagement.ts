@@ -1,13 +1,15 @@
 export function manageEmpireResources() {
-    //Manage shipments
-    Object.entries(Memory.shipments).forEach(([shipmentId, shipment]) => {
-        if (shipment.status === ShipmentStatus.SHIPPED) {
-            delete Memory.shipments[shipmentId];
-        } else if (shipment.status === ShipmentStatus.FAILED) {
-            console.log(`Shipment failed unexpectedly: ${shipment.recipient} - ${shipment.resource}`);
-            delete Memory.shipments[shipmentId];
-        }
-    });
+    //Manage shipments not associated to requests - those will be handled with requests
+    Object.entries(Memory.shipments)
+        .filter(([shipmentId, shipment]) => !shipment.requestId)
+        .forEach(([shipmentId, shipment]) => {
+            if (shipment.status === ShipmentStatus.SHIPPED && !shipment.requestId) {
+                delete Memory.shipments[shipmentId];
+            } else if (shipment.status === ShipmentStatus.FAILED) {
+                console.log(`Shipment failed unexpectedly: ${shipment.recipient} - ${shipment.resource}`);
+                delete Memory.shipments[shipmentId];
+            }
+        });
 
     let terminalRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.terminal?.isActive());
 
@@ -44,25 +46,54 @@ export function manageEmpireResources() {
 
     //manage resource requests - if rooms have this resource, they should send it regardless of how much they have
     Object.entries(Memory.resourceRequests).forEach(([requestId, request]) => {
-        if (request.status === ResourceRequestStatus.FULFULLED) {
-            delete Memory.resourceRequests[requestId];
-        } else if (request.status === ResourceRequestStatus.FAILED) {
-            console.log(`Resource request failed unexpectedly: ${request.room} - ${request.resource}`);
-            delete Memory.resourceRequests[requestId];
-        } else {
-            const supplier = terminalRooms.find((room) => room.getResourceAmount(request.resource) >= request.amountNeeded);
-            if (supplier) {
-                const shipment: Shipment = {
-                    sender: supplier.name,
-                    recipient: request.room,
-                    amount: request.amountNeeded,
-                    resource: request.resource,
-                    requestId: requestId,
-                };
+        switch (request.status) {
+            case ResourceRequestStatus.SUBMITTED:
+                const suppliers = terminalRooms
+                    .map((room) => ({ roomName: room.name, amount: room.getResourceAmount(request.resource) }))
+                    .filter((supplier) => supplier.roomName !== request.room && supplier.amount);
+                const enoughSupply = suppliers.reduce((sum, nextSupplier) => sum + nextSupplier.amount, 0) >= request.amount;
+                if (suppliers.length && enoughSupply) {
+                    let amountCommitted = 0;
+                    for (let i = 0; i < suppliers.length && amountCommitted < request.amount; i++) {
+                        const shipment: Shipment = {
+                            sender: suppliers[i].roomName,
+                            recipient: request.room,
+                            amount: Math.min(suppliers[i].amount, request.amount - amountCommitted),
+                            resource: request.resource,
+                            requestId: requestId,
+                        };
+                        addShipment(shipment);
+                        amountCommitted += suppliers[i].amount;
+                    }
 
-                addShipment(shipment);
-                Memory.resourceRequests[requestId].status = ResourceRequestStatus.ASSIGNED;
-            }
+                    if (amountCommitted >= request.amount) {
+                        Memory.resourceRequests[requestId].status = ResourceRequestStatus.ASSIGNED;
+                    }
+                } else {
+                    Memory.resourceRequests[requestId].status = ResourceRequestStatus.FAILED;
+                }
+                break;
+            case ResourceRequestStatus.ASSIGNED:
+                const allShipmentsCompleted = request.shipments.every((id) => Memory.shipments[id]?.status === ShipmentStatus.SHIPPED);
+                if (allShipmentsCompleted) {
+                    Memory.resourceRequests[requestId].status = ResourceRequestStatus.FULFULLED;
+                } else if (request.shipments.some((id) => Memory.shipments[id].status === ShipmentStatus.FAILED)) {
+                    Memory.resourceRequests[requestId].shipments = request.shipments.filter(
+                        (id) => Memory.shipments[id].status !== ShipmentStatus.FAILED
+                    );
+                    Memory.resourceRequests[requestId].status = ResourceRequestStatus.SUBMITTED;
+                }
+                break;
+            case ResourceRequestStatus.FAILED:
+                console.log(`Resource request failed unexpectedly: ${request.room} - ${request.resource}`);
+                delete Memory.resourceRequests[requestId];
+                break;
+            case ResourceRequestStatus.FULFULLED:
+                if (Memory.debug.logShipments)
+                    console.log(`${Game.time} - Request fulfilled: ${request.amount} ${request.resource} for ${request.room}`);
+                request.shipments.forEach((id) => delete Memory.shipments[id]);
+                delete Memory.resourceRequests[requestId];
+                break;
         }
     });
 
@@ -230,10 +261,44 @@ export function addShipment(shipment: Shipment): ScreepsReturnCode {
     }
 
     shipment.status = ShipmentStatus.QUEUED;
-
     Memory.shipments[nextId] = shipment;
     Memory.rooms[shipment.sender].shipments.push(nextId);
+
+    if (shipment.requestId) {
+        Memory.resourceRequests[shipment.requestId]?.shipments.push(nextId);
+    }
+
     if (Memory.debug.logShipments)
-        console.log(`${Game.time} - Shipment added to ${shipment.sender} -> ${shipment.amount} energy to ${shipment.recipient}`);
+        console.log(`${Game.time} - Shipment added to ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`);
     return OK;
+}
+
+export function getResourceAvailability(resource: ResourceConstant, roomToExclude?: string): number {
+    const amount = Object.values(Game.rooms)
+        .filter((room) => room.controller?.my && room.terminal?.isActive() && room.name !== roomToExclude)
+        .reduce((sum, nextRoom) => sum + nextRoom.getResourceAmount(resource), 0);
+    return amount;
+}
+
+export function addResourceRequest(roomName: string, resource: ResourceConstant, amount: number): number {
+    if (getResourceAvailability(resource, roomName) < amount) {
+        return -1;
+    }
+
+    let nextId = 1;
+    while (Memory.resourceRequests[nextId]) {
+        nextId++;
+    }
+
+    const request: ResourceRequest = {
+        room: roomName,
+        resource: resource,
+        amount: amount,
+        status: ResourceRequestStatus.SUBMITTED,
+        shipments: [],
+    };
+
+    Memory.resourceRequests[nextId] = request;
+    if (Memory.debug.logShipments) console.log(`${Game.time} - Request added for ${request.room} <- ${request.amount} ${request.resource}`);
+    return nextId;
 }

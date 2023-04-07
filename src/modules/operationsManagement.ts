@@ -661,7 +661,7 @@ function manageAddPowerBankOperation(op: Operation) {
                         .filter((creep) => creep.assignment === targetRoom.name && creep.role !== Role.OPERATIVE)
                         .forEach((creep) => (creep.recycle = true));
                     Object.values(Memory.squads)
-                        .filter((squad) => squad.assignment === targetRoom.name)
+                        .filter((squad) => squad.assignment === targetRoom.name && squad.members)
                         .forEach((squad) => Object.values(squad.members).forEach((creepName) => (Memory.creeps[creepName].recycle = true)));
                     op.stage = OperationStage.CLAIM;
                 }

@@ -212,7 +212,8 @@ interface ResourceRequest {
     room: string;
     resource: ResourceConstant;
     status: ResourceRequestStatus;
-    amountNeeded: number;
+    amount: number;
+    shipments: number[];
 }
 
 const enum ResourceRequestStatus {
