@@ -466,20 +466,22 @@ function runHomeSecurity(homeRoom: Room): boolean {
             console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
             const attackerBody = PopulationManagement.createPartsArray([ATTACK, ATTACK, ATTACK, ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10);
-            Memory.spawnAssignments.push({
-                designee: homeRoom.name,
-                body: attackerBody,
-                spawnOpts: {
-                    boosts: [BoostType.ATTACK],
-                    memory: {
-                        role: Role.RAMPART_PROTECTOR,
-                        room: homeRoom.name,
-                        assignment: homeRoom.name,
-                        currentTaskPriority: Priority.HIGH,
-                        combat: { flee: false },
+            if (attackerBody.length) {
+                Memory.spawnAssignments.push({
+                    designee: homeRoom.name,
+                    body: attackerBody,
+                    spawnOpts: {
+                        boosts: [BoostType.ATTACK],
+                        memory: {
+                            role: Role.RAMPART_PROTECTOR,
+                            room: homeRoom.name,
+                            assignment: homeRoom.name,
+                            currentTaskPriority: Priority.HIGH,
+                            combat: { flee: false },
+                        },
                     },
-                },
-            });
+                });
+            }
         }
         return true;
     }
