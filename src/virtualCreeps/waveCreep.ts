@@ -125,26 +125,42 @@ export class WaveCreep extends Creep {
     }
 
     protected recycleCreep() {
-        if (this.travelToRoom(this.homeroom.name) === IN_ROOM) {
-            this.memory.targetId = this.homeroom
-                .find(FIND_MY_SPAWNS)
-                .filter((spawn) => !spawn.spawning)
-                ?.shift()?.id;
+        if (this.travelToRoom(this.homeroom.name) === IN_ROOM && !this.memory.targetId) {
+            if (this.homeroom.memory.layout === RoomLayout.STAMP) {
+                this.memory.targetId = this.homeroom
+                    .find(FIND_MY_SPAWNS)
+                    .filter((spawn) =>
+                        this.homeroom.memory.stampLayout.container.some(
+                            (stamp) => stamp.type === 'center' && spawn.pos.isNearTo(stamp.pos.toRoomPos())
+                        )
+                    )
+                    ?.shift()?.id;
+            } else {
+                this.memory.targetId = this.homeroom
+                    .find(FIND_MY_SPAWNS)
+                    .filter((spawn) => !spawn.spawning)
+                    ?.shift()?.id;
+            }
         }
 
         const target = Game.getObjectById(this.memory.targetId) as StructureSpawn;
         if (target instanceof StructureSpawn) {
-            if (this.pos.isNearTo(target)) {
-                target.recycleCreep(this);
-            } else if (this.homeroom.memory.layout === RoomLayout.STAMP) {
-                this.travelTo(
-                    this.homeroom.memory.stampLayout.container
-                        .find((containerStamp) => containerStamp.type === 'center' && target.pos.isNearTo(containerStamp.pos.toRoomPos()))
-                        .pos.toRoomPos()
-                );
+            if (this.homeroom.memory.layout === RoomLayout.STAMP) {
+                let containerPos = target.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_CONTAINER })?.pop().pos;
+                if (this.pos.isEqualTo(containerPos)) {
+                    target.recycleCreep(this);
+                } else {
+                    this.travelTo(containerPos);
+                }
             } else {
-                this.travelTo(target, { range: 1 });
+                if (this.pos.isNearTo(target)) {
+                    target.recycleCreep(this);
+                } else {
+                    this.travelTo(target, { range: 1 });
+                }
             }
+        } else {
+            delete this.memory.targetId;
         }
     }
 
