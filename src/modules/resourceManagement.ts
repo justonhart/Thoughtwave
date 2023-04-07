@@ -6,7 +6,7 @@ export function manageEmpireResources() {
             if (shipment.status === ShipmentStatus.SHIPPED && !shipment.requestId) {
                 delete Memory.shipments[shipmentId];
             } else if (shipment.status === ShipmentStatus.FAILED) {
-                console.log(`Shipment failed unexpectedly: ${shipment.recipient} - ${shipment.resource}`);
+                console.log(`${Game.time} - Shipment failed unexpectedly: ${shipment.recipient} - ${shipment.resource}`);
                 delete Memory.shipments[shipmentId];
             }
         });
@@ -40,7 +40,12 @@ export function manageEmpireResources() {
                 recipient: shipmentToCreate.recipient,
                 amount: shipmentToCreate.amount,
             };
-            addShipment(shipment);
+            let result = addShipment(shipment);
+            if (result !== OK) {
+                console.log(
+                    `${Game.time} - Error adding shipment: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
+                );
+            }
         });
     }
 
@@ -62,8 +67,14 @@ export function manageEmpireResources() {
                             resource: request.resource,
                             requestId: requestId,
                         };
-                        addShipment(shipment);
-                        amountCommitted += suppliers[i].amount;
+                        let result = addShipment(shipment);
+                        if (result !== OK) {
+                            console.log(
+                                `${Game.time} - Error adding shipment: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
+                            );
+                        } else {
+                            amountCommitted += suppliers[i].amount;
+                        }
                     }
 
                     if (amountCommitted >= request.amount) {
@@ -85,7 +96,7 @@ export function manageEmpireResources() {
                 }
                 break;
             case ResourceRequestStatus.FAILED:
-                console.log(`Resource request failed unexpectedly: ${request.room} - ${request.resource}`);
+                console.log(`${Game.time} - Resource request failed unexpectedly: ${request.room} - ${request.resource}`);
                 delete Memory.resourceRequests[requestId];
                 break;
             case ResourceRequestStatus.FULFULLED:
@@ -97,44 +108,49 @@ export function manageEmpireResources() {
         }
     });
 
-    // //identify resource needs and distribute extra
-    // terminalRooms
-    //     .filter((room) => room.energyStatus >= EnergyStatus.STABLE && room.memory.shipments.length < 3)
-    //     .forEach((room) => {
-    //         const extraResources = getExtraResources(room);
-    //         extraResources.forEach((extraResource) => {
-    //             const roomsNeedingResource = global.resourceNeeds[extraResource.resource]?.filter(
-    //                 (need) =>
-    //                     !Object.values(Memory.shipments).some(
-    //                         (shipment) => shipment.resource === extraResource.resource && shipment.recipient === need.roomName
-    //                     )
-    //             );
-    //             const excessAmount = extraResource.amountExtra;
+    //identify resource needs and distribute extra
+    terminalRooms
+        .filter((room) => room.energyStatus >= EnergyStatus.STABLE && room.memory.shipments.length < 3)
+        .forEach((room) => {
+            const extraResources = getExtraResources(room);
+            extraResources.forEach((extraResource) => {
+                const roomsNeedingResource = global.resourceNeeds[extraResource.resource]?.filter(
+                    (need) =>
+                        !Object.values(Memory.shipments).some(
+                            (shipment) => shipment.resource === extraResource.resource && shipment.recipient === need.roomName
+                        )
+                );
+                const excessAmount = extraResource.amount;
 
-    //             if (roomsNeedingResource?.length) {
-    //                 const roomToSupply = findClosestRecipient(room, roomsNeedingResource);
-    //                 if (roomToSupply) {
-    //                     const amountToSend = Math.min(excessAmount, roomToSupply.amountNeeded);
-    //                     const shipment: Shipment = {
-    //                         sender: room.name,
-    //                         resource: extraResource.resource,
-    //                         amount: amountToSend,
-    //                         recipient: roomToSupply.roomName,
-    //                     };
+                if (roomsNeedingResource?.length) {
+                    const roomToSupply = findClosestRecipient(room, roomsNeedingResource);
+                    if (roomToSupply) {
+                        const amountToSend = Math.min(excessAmount, roomToSupply.amount);
+                        const shipment: Shipment = {
+                            sender: room.name,
+                            resource: extraResource.resource,
+                            amount: amountToSend,
+                            recipient: roomToSupply.roomName,
+                        };
 
-    //                     addShipment(shipment);
-    //                 }
-    //             }
-    //         });
-    //     });
+                        let result = addShipment(shipment);
+                        if (result !== OK) {
+                            console.log(
+                                `${Game.time} - Error adding shipment: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
+                            );
+                        }
+                    }
+                }
+            });
+        });
 }
 
-function findClosestRecipient(sender: Room, recipients: any[]): { roomName: string; amountNeeded: number } {
+function findClosestRecipient(sender: Room, recipients: any[]): { roomName: string; amount: number } {
     let distanceMap = recipients.map((need) => {
-        return { name: need.roomName, amount: need.amountNeeded, distance: Game.map.getRoomLinearDistance(sender.name, need.roomName) };
+        return { name: need.roomName, amount: need.amount, distance: Game.map.getRoomLinearDistance(sender.name, need.roomName) };
     });
     let closest = distanceMap.reduce((closestSoFar, next) => (closestSoFar.distance < next.distance ? closestSoFar : next));
-    return { roomName: closest.name, amountNeeded: closest.amount };
+    return { roomName: closest.name, amount: closest.amount };
 }
 
 function calculateEnergyToSend(senderName: string, recipientName: string) {
@@ -152,7 +168,11 @@ export function getRoomResourceNeeds(room: Room): { resource: ResourceConstant; 
     let needs = [];
     const ALL_MINERALS_AND_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)] as ResourceConstant[];
     ALL_MINERALS_AND_COMPOUNDS.forEach((resource) => {
-        let need = (resource.charAt(0) === 'X' && resource.length > 1 ? 20000 : 5000) - room.getResourceAmount(resource);
+        const inboundResources = Object.values(Memory.shipments).reduce(
+            (sum, nextShipment) => (nextShipment.recipient === room.name && nextShipment.resource === resource ? sum + nextShipment.amount : sum),
+            0
+        );
+        let need = (resource.charAt(0) === 'X' && resource.length > 1 ? 20000 : 5000) + inboundResources - room.getResourceAmount(resource);
         if (need > 0) {
             needs.push({ resource: resource, amount: need });
         }
@@ -255,6 +275,10 @@ export function generateEmpireResourceData(): EmpireResourceData {
 
 // adds shipment to Memory.shipments & returns reference id
 export function addShipment(shipment: Shipment): ScreepsReturnCode {
+    if (!(shipment.amount > 0)) {
+        return ERR_INVALID_ARGS;
+    }
+
     let nextId = 1;
     while (Memory.shipments[nextId]) {
         nextId++;
