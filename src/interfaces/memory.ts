@@ -14,6 +14,8 @@ interface Memory {
     remoteSourceAssignments?: { [sourcePos: string]: RemoteAssignmentData }; //maps sources in other rooms to owned rooms mining them
     debug?: DebugSettings;
     cpuUsage: CpuUsage;
+    shipments: { [id: string]: Shipment };
+    resourceRequests: { [id: string]: ResourceRequest };
 }
 
 interface CpuUsage {
@@ -126,10 +128,21 @@ interface SquadMembers {
 }
 
 interface Shipment {
-    destinationRoom: string;
+    sender: string;
+    recipient: string;
     resource: ResourceConstant;
     amount: number;
+    status?: ShipmentStatus;
     marketOrderId?: string;
+    requestId?: string;
+}
+
+const enum ShipmentStatus {
+    FAILED = -1,
+    QUEUED,
+    PREPARING,
+    READY,
+    SHIPPED,
 }
 
 interface FactoryTask {
@@ -181,6 +194,7 @@ interface DebugSettings {
     logRoomPlacementCpu?: boolean;
     logRoomCpu?: boolean;
     logCreepCpu?: boolean;
+    logShipments?: boolean;
 }
 
 interface RemoteAssignmentData {
@@ -192,4 +206,18 @@ interface RemoteAssignmentData {
 interface EmpireResourceData {
     producers: { [mineral: string]: string[] }; //map of minerals to which rooms produce them
     inventory: { [resource: string]: number }; //total amount of each resource in empire storages and terminals
+}
+
+interface ResourceRequest {
+    room: string;
+    resource: ResourceConstant;
+    status: ResourceRequestStatus;
+    amountNeeded: number;
+}
+
+const enum ResourceRequestStatus {
+    FAILED = -1,
+    SUBMITTED,
+    ASSIGNED,
+    FULFULLED,
 }

@@ -1,6 +1,6 @@
 import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
 import { PopulationManagement } from '../modules/populationManagement';
-import { getFactoryResourcesNeeded } from '../modules/resourceManagement';
+import { getFactoryResourcesNeeded } from '../modules/roomManagement';
 import { findRepairTargets, getStructuresToProtect } from '../modules/roomManagement';
 
 RoomPosition.prototype.toMemSafe = function (this: RoomPosition): string {
@@ -222,35 +222,16 @@ Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> 
     return structuresToProtect.map((structure) => structure.getRampart() ?? structure.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0])?.[0]?.id;
 };
 
-Room.prototype.addShipment = function (
-    this: Room,
-    destination: string,
-    resource: ResourceConstant,
-    amount: number,
-    marketOrderId?: string
-): ScreepsReturnCode {
-    let storageAmount = this.storage?.store[resource] ?? 0;
-    let terminalAmount = this.terminal?.store[resource] ?? 0;
-
-    if (amount <= 0) {
-        return ERR_INVALID_ARGS;
-    }
-    if (storageAmount + terminalAmount < amount) {
-        return ERR_NOT_ENOUGH_RESOURCES;
-    }
-
-    let shipment: Shipment = {
-        destinationRoom: destination,
-        resource: resource,
-        amount: amount,
-    };
-
-    if (marketOrderId) {
-        shipment.marketOrderId = marketOrderId;
-    }
-
-    this.memory.shipments ? this.memory.shipments.push(shipment) : (this.memory.shipments = [shipment]);
-    return OK;
+//add up total amount of resource in terminal and storage MINUS the amount of resource obligated to outbound shipments and boosts
+Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConstant) {
+    return (
+        (this.storage?.store[resource] ?? 0) +
+        (this.terminal?.store[resource] ?? 0) -
+        this.memory.shipments.reduce(
+            (sum: number, next: number) => (Memory.shipments[next]?.resource === resource ? sum + Memory.shipments[next]?.amount : sum),
+            0
+        )
+    );
 };
 
 Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant, amount: number): ScreepsReturnCode {

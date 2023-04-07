@@ -1,5 +1,3 @@
-import { getResourceAmount } from './resourceManagement';
-
 export function runLabs(room: Room) {
     //manage queue
     room.memory.labTasks = room.memory.labTasks.filter((task) => task.status !== TaskStatus.COMPLETE);
@@ -25,7 +23,7 @@ export function runLabs(room: Room) {
         let resourceToMake = getNextResourceToCreate(room);
         if (resourceToMake) {
             let reagents = getReagents(resourceToMake);
-            let amountToCreate = Math.min(...reagents.map((resource) => getResourceAmount(room, resource)), 3000);
+            let amountToCreate = Math.min(...reagents.map((resource) => room.getResourceAmount(resource)), 3000);
             while (amountToCreate % 5) {
                 amountToCreate--;
             }
@@ -449,7 +447,7 @@ export function getNextResourceToCreate(room: Room): MineralCompoundConstant {
 
 export function hasNecessaryReagentsForReaction(room: Room, compound: MineralCompoundConstant): boolean {
     return getReagents(compound)
-        .map((resource) => getResourceAmount(room, resource) > 450)
+        .map((resource) => room.getResourceAmount(resource) > 450)
         .reduce((hasAll, next) => hasAll && next);
 }
 

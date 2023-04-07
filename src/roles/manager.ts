@@ -1,4 +1,5 @@
-import { getFactoryResourcesNeeded, shipmentReady } from '../modules/resourceManagement';
+import { shipmentReady } from '../modules/resourceManagement';
+import { getFactoryResourcesNeeded } from '../modules/roomManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 const MINERAL_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)];
@@ -12,7 +13,7 @@ export class Manager extends WaveCreep {
         const isCenterStampManager =
             this.room.memory.layout === RoomLayout.STAMP &&
             this.room.memory.stampLayout.managers.some(
-                (managerDetail) => managerDetail.type === 'center' && (managerDetail.pos as unknown as string) === managerPos.toMemSafe()
+                (managerDetail) => managerDetail.type === 'center' && managerDetail.pos === managerPos.toMemSafe()
             );
 
         if (managerPos?.isEqualTo(this.pos) === false) {
@@ -113,14 +114,8 @@ export class Manager extends WaveCreep {
             return;
         }
 
-        if (this.room.energyStatus >= EnergyStatus.STABLE && terminal?.store[RESOURCE_ENERGY] < 50000) {
-            this.withdraw(storage, RESOURCE_ENERGY, Math.min(50000 - terminal?.store[RESOURCE_ENERGY], this.store.getFreeCapacity()));
-            this.memory.targetId = terminal.id;
-            return;
-        }
-
-        if (terminal?.store[RESOURCE_ENERGY] > 50000) {
-            this.withdraw(terminal, RESOURCE_ENERGY, Math.min(terminal?.store[RESOURCE_ENERGY] - 50000, this.store.getFreeCapacity()));
+        if (terminal?.store[RESOURCE_ENERGY] && this.room.memory.shipments.length === 0) {
+            this.withdraw(terminal, RESOURCE_ENERGY, Math.min(terminal?.store[RESOURCE_ENERGY], this.store.getFreeCapacity()));
             this.memory.targetId = storage.id;
             return;
         }
@@ -248,12 +243,13 @@ export class Manager extends WaveCreep {
             return resources.find(
                 (res) =>
                     (MINERAL_COMPOUNDS.includes(res) ? this.room.terminal.store[res] > 5000 : true) &&
-                    !this.room.memory.shipments?.some((shipment) => shipment.resource === res)
+                    !this.room.memory.shipments?.some((shipmentId) => Memory.shipments[shipmentId].resource === res)
             ) as ResourceConstant;
         }
     }
 
-    private workShipment(shipment: Shipment) {
+    private workShipment(shipmentId: number) {
+        const shipment = Memory.shipments[shipmentId];
         if (this.room.terminal.store[shipment.resource] < shipment.amount) {
             this.withdraw(
                 this.room.storage,
@@ -263,7 +259,7 @@ export class Manager extends WaveCreep {
             this.memory.targetId = this.room.terminal.id;
         } else {
             let energyNeeded =
-                Game.market.calcTransactionCost(shipment.amount, this.room.name, shipment.destinationRoom) +
+                Game.market.calcTransactionCost(shipment.amount, this.room.name, shipment.recipient) +
                 (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
             this.withdraw(this.room.storage, RESOURCE_ENERGY, Math.min(this.store.getFreeCapacity(), energyNeeded - this.room.terminal.store.energy));
             this.memory.targetId = this.room.terminal.id;

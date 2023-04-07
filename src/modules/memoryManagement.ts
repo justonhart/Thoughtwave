@@ -270,6 +270,14 @@ function initMissingMemoryValues() {
             totalOverTime: 0,
         };
     }
+
+    if (!Memory.resourceRequests) {
+        Memory.resourceRequests = {};
+    }
+
+    if (!Memory.shipments) {
+        Memory.shipments = {};
+    }
 }
 
 function mangeVisionRequests() {

@@ -18,7 +18,7 @@ interface RoomMemory {
     layout?: RoomLayout;
     labTasks?: LabTask[];
     dontCheckConstructionsBefore?: number;
-    shipments?: Shipment[];
+    shipments?: number[]; //stores IDs for shipments to be referenced from Memory.shipments
     factoryTask?: FactoryTask;
     scanProgress?: string;
     towerRepairMap?: { [towerId: string]: Id<StructureRoad> }; //maps towerId to roadId
@@ -28,6 +28,7 @@ interface RoomMemory {
     remoteSources?: { [sourcePos: string]: RemoteSourceData };
     lastRemoteSourceCheck?: number;
     threatLevel: HomeRoomThreatLevel;
+    resourceRequests?: string[];
 }
 
 interface RemoteSourceData {
@@ -90,13 +91,13 @@ interface Room {
     addLabTask(opts: LabTaskOpts): ScreepsReturnCode;
     getBoostResourcesAvailable(boostTypes: BoostType[]): { [type: number]: { resource: string; amount: number }[] };
     getNextNukeProtectionTask(): Id<Structure> | Id<ConstructionSite>;
-    addShipment(destination: string, resource: ResourceConstant, amount: number, marketOrderId?: string): ScreepsReturnCode;
     addFactoryTask(product: ResourceConstant, amount: number): ScreepsReturnCode;
     factory: StructureFactory;
     observer: StructureObserver;
     powerSpawn: StructurePowerSpawn;
     remoteMiningRooms: string[];
     remoteSources: string[];
+    getResourceAmount(resource: ResourceConstant): number;
 }
 
 interface RoomPosition {
