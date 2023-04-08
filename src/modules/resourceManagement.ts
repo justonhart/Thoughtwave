@@ -1,16 +1,4 @@
 export function manageEmpireResources() {
-    //Manage shipments not associated to requests - those will be handled with requests
-    Object.entries(Memory.shipments)
-        .filter(([shipmentId, shipment]) => !shipment.requestId)
-        .forEach(([shipmentId, shipment]) => {
-            if (shipment.status === ShipmentStatus.SHIPPED && !shipment.requestId) {
-                delete Memory.shipments[shipmentId];
-            } else if (shipment.status === ShipmentStatus.FAILED) {
-                console.log(`${Game.time} - Shipment failed unexpectedly: ${shipment.recipient} - ${shipment.resource}`);
-                delete Memory.shipments[shipmentId];
-            }
-        });
-
     let terminalRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.terminal?.isActive() && !room.memory.abandon);
 
     //distribute energy throughout empire
@@ -160,6 +148,18 @@ export function manageEmpireResources() {
                     }
                 }
             });
+        });
+
+    //Manage shipments not associated to requests - those are handled with requests
+    Object.entries(Memory.shipments)
+        .filter(([shipmentId, shipment]) => !shipment.requestId)
+        .forEach(([shipmentId, shipment]) => {
+            if (shipment.status === ShipmentStatus.SHIPPED && !shipment.requestId) {
+                delete Memory.shipments[shipmentId];
+            } else if (shipment.status === ShipmentStatus.FAILED) {
+                console.log(`${Game.time} - Shipment failed unexpectedly: ${shipment.recipient} - ${shipment.resource}`);
+                delete Memory.shipments[shipmentId];
+            }
         });
 }
 
