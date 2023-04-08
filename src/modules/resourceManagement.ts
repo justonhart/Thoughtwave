@@ -126,7 +126,7 @@ export function manageEmpireResources() {
         }
     });
 
-    //identify resource needs and distribute extra
+    //identify resource needs and distribute extra - 20k of each tier 3 boost per room, 5k of every other mineral + compound
     terminalRooms
         .filter((room) => room.energyStatus >= EnergyStatus.STABLE && room.memory.shipments.length < 3)
         .forEach((room) => {
@@ -206,7 +206,7 @@ export function getAllRoomNeeds(): { [resource: string]: { roomName: string; amo
     let needs = {};
 
     Object.values(Game.rooms)
-        .filter((room) => room.controller?.my && room.controller.level >= 6 && room.terminal)
+        .filter((room) => room.controller?.my && room.terminal?.isActive())
         .forEach((room) => {
             let roomNeeds = getRoomResourceNeeds(room);
             roomNeeds.forEach((need) => {

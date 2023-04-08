@@ -11,7 +11,11 @@ export class WaveCreep extends Creep {
         }
 
         if (this.memory.needsBoosted) {
-            this.getNextBoost();
+            if (!this.room.labs.length) {
+                delete this.memory.needsBoosted;
+            } else {
+                this.getNextBoost();
+            }
         } else if (this.memory.portalLocations?.[0]) {
             let portalPos = this.memory.portalLocations[0].toRoomPos();
 
