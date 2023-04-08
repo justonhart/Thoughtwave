@@ -224,7 +224,9 @@ export function getExtraResources(room: Room): { resource: ResourceConstant; amo
     ALL_MINERALS_AND_COMPOUNDS.forEach((resource) => {
         const maxResourceAmount = resource.charAt(0) === 'X' && resource.length > 1 ? 20000 : 5000;
         const amountExtra = room.getResourceAmount(resource) + room.getCompressedResourceAmount(resource) - maxResourceAmount;
-        if (amountExtra > 0) {
+
+        //don't return very small amounts - wait for reasonable amounts to ship
+        if (amountExtra > 1000) {
             extraResources.push({ resource: resource, amount: amountExtra });
         }
     });
