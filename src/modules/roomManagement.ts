@@ -1167,7 +1167,7 @@ function runShipments(room: Room) {
                 }
             case ShipmentStatus.READY:
                 const destinationReady = Game.rooms[shipment.recipient]?.controller.my
-                    ? Game.rooms[shipment.recipient].terminal.store.getFreeCapacity() >= shipment.amount
+                    ? Game.rooms[shipment.recipient].terminal?.store.getFreeCapacity() >= shipment.amount
                     : true;
                 if (!shipmentSentThisTick && room.terminal.cooldown === 0 && destinationReady) {
                     const result = room.terminal.send(shipment.resource, shipment.amount, shipment.recipient);
@@ -1179,6 +1179,11 @@ function runShipments(room: Room) {
                         Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
                         shipmentSentThisTick = true;
                     }
+                } else if (!Game.rooms[shipment.recipient]?.terminal) {
+                    console.log(
+                        `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - no recipient terminal`
+                    );
+                    Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
                 }
                 break;
         }
