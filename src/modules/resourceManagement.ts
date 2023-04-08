@@ -11,35 +11,53 @@ export function manageEmpireResources() {
             }
         });
 
-    let terminalRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.terminal?.isActive());
+    let terminalRooms = Object.values(Game.rooms).filter((room) => room.controller?.my && room.terminal?.isActive() && !room.memory.abandon);
 
     //distribute energy throughout empire
     if (Game.time % 25 === 0) {
         const roomEnergyMap = terminalRooms.map((room) => ({
-            energyTier: Math.floor(room.getResourceAmount(RESOURCE_ENERGY) / 100000),
             roomName: room.name,
+            energy: room.getResourceAmount(RESOURCE_ENERGY),
+            batteries: room.getResourceAmount(RESOURCE_BATTERY),
+            hasFactory: room.factory?.isActive(),
         }));
-        let energyShipments: { sender: string; recipient: string; amount: number }[] = [];
+        let shipments: Shipment[] = [];
 
-        roomEnergyMap
-            .filter((e) => e.energyTier > 2 && !Memory.rooms[e.roomName].shipments.some((id) => Memory.shipments[id]?.resource === RESOURCE_ENERGY))
-            .forEach((sender) => {
-                let recipient = roomEnergyMap.find(
-                    (otherEntry) => sender.energyTier > 1 + otherEntry.energyTier && !energyShipments.some((s) => s.recipient === otherEntry.roomName)
-                )?.roomName;
-                if (recipient) {
-                    let amountToSend = calculateEnergyToSend(sender.roomName, recipient);
-                    energyShipments.push({ sender: sender.roomName, recipient: recipient, amount: amountToSend });
-                }
-            });
+        const roomsWithExtraEnergy = roomEnergyMap.filter(
+            (room) =>
+                room.energy >= 300000 &&
+                !Memory.rooms[room.roomName].shipments.some(
+                    (id) => Memory.shipments[id]?.resource === RESOURCE_ENERGY || Memory.shipments[id]?.resource === RESOURCE_BATTERY
+                )
+        );
 
-        energyShipments.forEach((shipmentToCreate) => {
-            const shipment: Shipment = {
-                sender: shipmentToCreate.sender,
-                resource: RESOURCE_ENERGY,
-                recipient: shipmentToCreate.recipient,
-                amount: shipmentToCreate.amount,
-            };
+        roomsWithExtraEnergy.forEach((sender) => {
+            let recipient = roomEnergyMap.find(
+                (otherRoom) => sender.energy > 150000 + otherRoom.energy && !shipments.some((s) => s.recipient === otherRoom.roomName)
+            );
+            if (recipient) {
+                // //if there are batteries to send, use those instead
+                // if(sender.batteries && recipient.hasFactory){
+                //     const shipment: Shipment = {
+                //         sender: sender.roomName,
+                //         recipient: recipient.roomName,
+                //         resource: RESOURCE_BATTERY,
+                //         amount: Math.min(sender.batteries, 5000)
+                //     };
+                //     shipments.push(shipment);
+                // } else {
+                const shipment: Shipment = {
+                    sender: sender.roomName,
+                    recipient: recipient.roomName,
+                    resource: RESOURCE_ENERGY,
+                    amount: calculateEnergyToSend(sender.roomName, recipient.roomName),
+                };
+                shipments.push(shipment);
+                // }
+            }
+        });
+
+        shipments.forEach((shipment) => {
             let result = addShipment(shipment);
             if (result !== OK) {
                 console.log(
@@ -172,7 +190,10 @@ export function getRoomResourceNeeds(room: Room): { resource: ResourceConstant; 
             (sum, nextShipment) => (nextShipment.recipient === room.name && nextShipment.resource === resource ? sum + nextShipment.amount : sum),
             0
         );
-        let need = (resource.charAt(0) === 'X' && resource.length > 1 ? 20000 : 5000) + inboundResources - room.getResourceAmount(resource);
+        let need =
+            (resource.charAt(0) === 'X' && resource.length > 1 ? 20000 : 5000) +
+            inboundResources -
+            (room.getResourceAmount(resource) + room.getCompressedResourceAmount(resource));
         if (need > 0) {
             needs.push({ resource: resource, amount: need });
         }
@@ -202,7 +223,7 @@ export function getExtraResources(room: Room): { resource: ResourceConstant; amo
     const ALL_MINERALS_AND_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)] as ResourceConstant[];
     ALL_MINERALS_AND_COMPOUNDS.forEach((resource) => {
         const maxResourceAmount = resource.charAt(0) === 'X' && resource.length > 1 ? 20000 : 5000;
-        const amountExtra = room.getResourceAmount(resource) - maxResourceAmount;
+        const amountExtra = room.getResourceAmount(resource) + room.getCompressedResourceAmount(resource) - maxResourceAmount;
         if (amountExtra > 0) {
             extraResources.push({ resource: resource, amount: amountExtra });
         }
@@ -300,7 +321,7 @@ export function addShipment(shipment: Shipment): ScreepsReturnCode {
 export function getResourceAvailability(resource: ResourceConstant, roomToExclude?: string): number {
     const amount = Object.values(Game.rooms)
         .filter((room) => room.controller?.my && room.terminal?.isActive() && room.name !== roomToExclude)
-        .reduce((sum, nextRoom) => sum + nextRoom.getResourceAmount(resource), 0);
+        .reduce((sum, nextRoom) => sum + nextRoom.getResourceAmount(resource) + nextRoom.getCompressedResourceAmount(resource), 0);
     return amount;
 }
 

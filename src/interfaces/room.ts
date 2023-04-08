@@ -29,6 +29,7 @@ interface RoomMemory {
     lastRemoteSourceCheck?: number;
     threatLevel: HomeRoomThreatLevel;
     resourceRequests?: string[];
+    abandon?: boolean;
 }
 
 interface RemoteSourceData {
@@ -98,6 +99,7 @@ interface Room {
     remoteMiningRooms: string[];
     remoteSources: string[];
     getResourceAmount(resource: ResourceConstant): number;
+    getCompressedResourceAmount(resource: ResourceConstant): number;
 }
 
 interface RoomPosition {

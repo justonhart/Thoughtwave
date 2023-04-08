@@ -669,7 +669,7 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (PopulationManagement.needsMineralMiner(room)) {
+    if (PopulationManagement.needsMineralMiner(room) && !roomUnderAttack) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMineralMiner();
     }
@@ -1076,6 +1076,32 @@ function runFactory(room: Room) {
                         delete room.memory.factoryTask;
                     }
                 }
+            }
+        }
+    } else {
+        const energyStatus = room.energyStatus;
+        const batteryCount = room.getResourceAmount(RESOURCE_BATTERY);
+        if (room.getResourceAmount(RESOURCE_ENERGY) > 375000 && batteryCount < 100000) {
+            let newTask: FactoryTask = {
+                product: RESOURCE_BATTERY,
+                amount: 1500,
+            };
+
+            room.memory.factoryTask = newTask;
+            if (Memory.debug.logFactoryTasks) {
+                console.log(`${room.name} added task -> ${newTask.amount} ${newTask.product}`);
+            }
+        } else if ((energyStatus <= EnergyStatus.SURPLUS && batteryCount > 100000) || (energyStatus <= EnergyStatus.STABLE && batteryCount >= 50)) {
+            let setsOfFifty = Math.floor(batteryCount / 50);
+            let energyToCreate = 10 * 50 * Math.min(40, setsOfFifty);
+            let newTask: FactoryTask = {
+                product: RESOURCE_ENERGY,
+                amount: energyToCreate,
+            };
+
+            room.memory.factoryTask = newTask;
+            if (Memory.debug.logFactoryTasks) {
+                console.log(`${room.name} added task -> ${newTask.amount} ${newTask.product}`);
             }
         }
     }

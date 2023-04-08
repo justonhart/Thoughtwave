@@ -3,6 +3,18 @@ import { PopulationManagement } from '../modules/populationManagement';
 import { getFactoryResourcesNeeded } from '../modules/roomManagement';
 import { findRepairTargets, getStructuresToProtect } from '../modules/roomManagement';
 
+const RESOURCE_COMPRESSION_MAP = {
+    [RESOURCE_UTRIUM]: RESOURCE_UTRIUM_BAR,
+    [RESOURCE_LEMERGIUM]: RESOURCE_LEMERGIUM_BAR,
+    [RESOURCE_ZYNTHIUM]: RESOURCE_ZYNTHIUM_BAR,
+    [RESOURCE_KEANIUM]: RESOURCE_KEANIUM_BAR,
+    [RESOURCE_GHODIUM]: RESOURCE_GHODIUM_MELT,
+    [RESOURCE_OXYGEN]: RESOURCE_OXIDANT,
+    [RESOURCE_HYDROGEN]: RESOURCE_REDUCTANT,
+    [RESOURCE_CATALYST]: RESOURCE_PURIFIER,
+    [RESOURCE_ENERGY]: RESOURCE_BATTERY,
+};
+
 RoomPosition.prototype.toMemSafe = function (this: RoomPosition): string {
     return `${this.x}.${this.y}.${this.roomName}`;
 };
@@ -55,13 +67,13 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
     get: function (this: Room) {
         if (!this.storage?.my || !this.storage.isActive()) {
             return undefined;
-        } else if (this.storage.store[RESOURCE_ENERGY] >= 500000) {
+        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 350000 && this.getResourceAmount(RESOURCE_BATTERY) >= 100000) {
             return EnergyStatus.OVERFLOW;
-        } else if (this.storage.store[RESOURCE_ENERGY] >= 350000) {
+        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 350000) {
             return EnergyStatus.SURPLUS;
-        } else if (this.storage.store[RESOURCE_ENERGY] >= 200000) {
+        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 200000) {
             return EnergyStatus.STABLE;
-        } else if (this.storage.store[RESOURCE_ENERGY] >= Math.min(this.energyCapacityAvailable * 10, 25000)) {
+        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= Math.min(this.energyCapacityAvailable * 10, 25000)) {
             return EnergyStatus.RECOVERING;
         } else {
             return EnergyStatus.CRITICAL;
@@ -222,8 +234,8 @@ Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> 
     return structuresToProtect.map((structure) => structure.getRampart() ?? structure.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0])?.[0]?.id;
 };
 
-//add up total amount of resource in terminal and storage MINUS the amount of resource obligated to outbound shipments and boosts
-Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConstant) {
+//add up total amount of resource in terminal, manager store and storage MINUS the amount of resource obligated to outbound shipments and boosts
+Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConstant): number {
     return (
         (this.storage?.store[resource] ?? 0) +
         (this.terminal?.store[resource] ?? 0) -
@@ -232,6 +244,12 @@ Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConst
             0
         )
     );
+};
+
+Room.prototype.getCompressedResourceAmount = function (this: Room, resource: ResourceConstant): number {
+    return Object.keys(RESOURCE_COMPRESSION_MAP).includes(resource)
+        ? (resource === RESOURCE_ENERGY ? 10 : 5) * this.getResourceAmount(RESOURCE_COMPRESSION_MAP[resource])
+        : 0;
 };
 
 Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant, amount: number): ScreepsReturnCode {

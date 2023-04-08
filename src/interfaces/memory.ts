@@ -195,6 +195,7 @@ interface DebugSettings {
     logRoomCpu?: boolean;
     logCreepCpu?: boolean;
     logShipments?: boolean;
+    logFactoryTasks?: boolean;
 }
 
 interface RemoteAssignmentData {
