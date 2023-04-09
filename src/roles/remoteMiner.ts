@@ -6,7 +6,10 @@ export class RemoteMiner extends WaveCreep {
             this.homeroom.memory.remoteSources[this.memory.assignment].miner = AssignmentStatus.UNASSIGNED;
         }
         if (
-            this.damaged() ||
+            (this.damaged() &&
+                (!isKeeperRoom(this.memory.assignment.toRoomPos().roomName) ||
+                    this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER ||
+                    !this.keeperPresentOrSpawning())) ||
             Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
         ) {
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
@@ -16,7 +19,16 @@ export class RemoteMiner extends WaveCreep {
         //if we have visibility in assigned room
         if (Game.rooms[this.getMiningPosition().roomName]) {
             const isAKeeperRoom = isKeeperRoom(this.memory.assignment.toRoomPos().roomName);
-            if (isAKeeperRoom && this.keeperPresentOrSpawning()) {
+            if (
+                isAKeeperRoom &&
+                this.keeperPresentOrSpawning() &&
+                (this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER ||
+                    this.pos.getRangeTo(
+                        Object.values(Game.creeps).find(
+                            (creep) => creep.memory.role === Role.KEEPER_EXTERMINATOR && creep.memory.assignment === this.memory.assignment
+                        )
+                    ) > 10)
+            ) {
                 // Always travel away from the same source otherwise it can cause creep to not move at all
                 let closestLair: RoomPosition;
                 const lairPositions = Object.entries(Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs)
