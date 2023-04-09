@@ -1374,11 +1374,20 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
     if (type === 'mineral') {
         const lastStep = path.pop();
         const pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.toRoomPos().roomName);
-        if (!isCloseToEdge(pos)) {
+        if (!isCloseToEdge(pos) && !containsStamp(stamps, [pos])) {
             stamps.container.push({
                 type,
                 rcl: 6,
                 pos: new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.toRoomPos().roomName).toMemSafe(),
+            });
+        } else {
+            const freePos = pos
+                .neighbors(true, false)
+                .find((neighborPos) => !hasWalls(terrain, [neighborPos]) && !containsStamp(stamps, [neighborPos]) && neighborPos.isNearTo(poi));
+            stamps.container.push({
+                type,
+                rcl: 6,
+                pos: freePos.toMemSafe(),
             });
         }
     } else if (type?.includes('source') && path.length > 0) {
