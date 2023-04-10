@@ -16,6 +16,20 @@ export class RemoteMiner extends WaveCreep {
             return;
         }
 
+        // Clear out left over containers
+        if (this.memory.targetId2) {
+            const structure = Game.getObjectById(this.memory.targetId2) as StructureContainer;
+            if (!structure) {
+                delete this.memory.targetId2;
+            } else {
+                const dismantleStatus = this.dismantle(structure);
+                if (dismantleStatus === ERR_NOT_IN_RANGE) {
+                    this.travelTo(structure);
+                }
+                return;
+            }
+        }
+
         //if we have visibility in assigned room
         if (Game.rooms[this.getMiningPosition().roomName]) {
             const isAKeeperRoom = isKeeperRoom(this.memory.assignment.toRoomPos().roomName);
@@ -67,8 +81,23 @@ export class RemoteMiner extends WaveCreep {
                                 }
                             }
                         } else {
-                            this.pos.createConstructionSite(STRUCTURE_CONTAINER);
-                            this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus = RemoteSourceSetupStatus.BUILDING_CONTAINER;
+                            const result = this.pos.createConstructionSite(STRUCTURE_CONTAINER);
+                            if (result === ERR_RCL_NOT_ENOUGH) {
+                                // left over extensions from a stronghold
+                                const structure = this.room
+                                    .find(FIND_STRUCTURES, {
+                                        filter: (s) =>
+                                            s.structureType === STRUCTURE_CONTAINER &&
+                                            !Object.keys(this.homeroom.memory.remoteSources)?.some((sourcePos) => s.pos.toMemSafe() === sourcePos),
+                                    })
+                                    .shift();
+
+                                if (structure) {
+                                    this.memory.targetId2 = structure.id;
+                                }
+                            } else {
+                                this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus = RemoteSourceSetupStatus.BUILDING_CONTAINER;
+                            }
                         }
                     } else {
                         if (this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) {

@@ -1,6 +1,6 @@
 interface CreepMemory {
     ready?: number;
-    targetId2?: Id<Creep>;
+    targetId2?: Id<Creep> | Id<Structure>; // In case creeps have a secondary target (rampart protectors or miners who need to clear out container before being able to go to their main target)
     gatheringLabResources?: boolean;
     needsBoosted?: boolean;
     labRequests?: LabNeed[];
