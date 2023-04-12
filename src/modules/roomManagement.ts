@@ -1065,7 +1065,7 @@ function runFactory(room: Room) {
                 task.started = true;
             }
         } else {
-            let materialsUsedUp: boolean = getFactoryResourcesNeeded(task).some((need) => !factory.store[need.res]);
+            let materialsUsedUp: boolean = task.needs.some((need) => !factory.store[need.resource]);
             if (materialsUsedUp || factory.store[task.product] >= task.amount) {
                 delete room.memory.factoryTask;
             } else {
@@ -1082,47 +1082,32 @@ function runFactory(room: Room) {
         const energyStatus = room.energyStatus;
         const batteryCount = room.getResourceAmount(RESOURCE_BATTERY);
         if (room.getResourceAmount(RESOURCE_ENERGY) > 375000 && batteryCount < 100000) {
-            let newTask: FactoryTask = {
-                product: RESOURCE_BATTERY,
-                amount: 1500,
-            };
-
-            room.memory.factoryTask = newTask;
-            if (Memory.debug.logFactoryTasks) {
-                console.log(`${room.name} added task -> ${newTask.amount} ${newTask.product}`);
-            }
+            room.addFactoryTask(RESOURCE_BATTERY, 1500);
         } else if ((energyStatus <= EnergyStatus.SURPLUS && batteryCount > 100000) || (energyStatus <= EnergyStatus.STABLE && batteryCount >= 50)) {
             let setsOfFifty = Math.floor(batteryCount / 50);
             let energyToCreate = 10 * 50 * Math.min(40, setsOfFifty);
-            let newTask: FactoryTask = {
-                product: RESOURCE_ENERGY,
-                amount: energyToCreate,
-            };
-
-            room.memory.factoryTask = newTask;
-            if (Memory.debug.logFactoryTasks) {
-                console.log(`${room.name} added task -> ${newTask.amount} ${newTask.product}`);
-            }
+            room.addFactoryTask(RESOURCE_ENERGY, energyToCreate);
         }
     }
 }
 
 function factoryTaskReady(room: Room): boolean {
-    if (room.memory.factoryTask) {
-        let neededResources = getFactoryResourcesNeeded(room.memory.factoryTask);
-        return neededResources.every((need) => room.factory.store[need.res] >= need.amount);
-    }
+    return room.memory.factoryTask.needs.every((need) => need.amount <= 0);
 }
 
-export function getFactoryResourcesNeeded(task: FactoryTask): { res: ResourceConstant; amount: number }[] {
-    let needs: { res: ResourceConstant; amount: number }[] = [];
+export function getFactoryTaskReservedResourceAmount(room: Room, resource: ResourceConstant): number {
+    return room.memory.factoryTask?.needs.find((need) => need.resource === resource)?.amount ?? 0;
+}
+
+export function getFactoryResourcesNeeded(task: FactoryTask): FactoryNeed[] {
+    let needs: FactoryNeed[] = [];
     let commodityEntry: { amount: number; cooldown: number; components: { [resource: string]: number } } = COMMODITIES[task.product];
     let amountProduced = commodityEntry.amount;
     let componentResources = Object.keys(commodityEntry.components);
     let componentsAmounts = commodityEntry.components;
 
     needs = componentResources.map((resource) => {
-        return { res: resource as ResourceConstant, amount: componentsAmounts[resource] * Math.floor(task.amount / amountProduced) };
+        return { resource: resource as ResourceConstant, amount: componentsAmounts[resource] * Math.floor(task.amount / amountProduced) };
     });
 
     return needs;

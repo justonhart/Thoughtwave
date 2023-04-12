@@ -148,7 +148,13 @@ const enum ShipmentStatus {
 interface FactoryTask {
     product: ResourceConstant;
     amount: number;
+    needs?: FactoryNeed[];
     started?: boolean;
+}
+
+interface FactoryNeed {
+    resource: ResourceConstant;
+    amount: number;
 }
 
 const enum SquadType {

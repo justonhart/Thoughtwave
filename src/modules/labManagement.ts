@@ -34,7 +34,7 @@ export function runLabs(room: Room) {
                 }),
             });
             if (result === OK) {
-                console.log(`${room.name} added task to create ${amountToCreate} ${resourceToMake}`);
+                console.log(`${Game.time} - ${room.name} added task to create ${amountToCreate} ${resourceToMake}`);
             }
         }
     }

@@ -21,27 +21,28 @@ export function manageEmpireResources() {
 
         roomsWithExtraEnergy.forEach((sender) => {
             let recipient = roomEnergyMap.find(
-                (otherRoom) => sender.energy > 150000 + otherRoom.energy && !shipments.some((s) => s.recipient === otherRoom.roomName)
+                (otherRoom) =>
+                    sender.energy > 150000 + otherRoom.energy + 10 * otherRoom.batteries && !shipments.some((s) => s.recipient === otherRoom.roomName)
             );
             if (recipient) {
-                // //if there are batteries to send, use those instead
-                // if(sender.batteries && recipient.hasFactory){
-                //     const shipment: Shipment = {
-                //         sender: sender.roomName,
-                //         recipient: recipient.roomName,
-                //         resource: RESOURCE_BATTERY,
-                //         amount: Math.min(sender.batteries, 5000)
-                //     };
-                //     shipments.push(shipment);
-                // } else {
-                const shipment: Shipment = {
-                    sender: sender.roomName,
-                    recipient: recipient.roomName,
-                    resource: RESOURCE_ENERGY,
-                    amount: calculateEnergyToSend(sender.roomName, recipient.roomName),
-                };
-                shipments.push(shipment);
-                // }
+                //if there are batteries to send, use those instead
+                if (sender.batteries && recipient.hasFactory) {
+                    const shipment: Shipment = {
+                        sender: sender.roomName,
+                        recipient: recipient.roomName,
+                        resource: RESOURCE_BATTERY,
+                        amount: Math.min(sender.batteries, 5000),
+                    };
+                    shipments.push(shipment);
+                } else {
+                    const shipment: Shipment = {
+                        sender: sender.roomName,
+                        recipient: recipient.roomName,
+                        resource: RESOURCE_ENERGY,
+                        amount: calculateEnergyToSend(sender.roomName, recipient.roomName),
+                    };
+                    shipments.push(shipment);
+                }
             }
         });
 

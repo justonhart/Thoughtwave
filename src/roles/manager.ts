@@ -1,5 +1,4 @@
 import { shipmentReady } from '../modules/resourceManagement';
-import { getFactoryResourcesNeeded } from '../modules/roomManagement';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 const MINERAL_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)];
@@ -20,11 +19,7 @@ export class Manager extends WaveCreep {
             this.travelTo(managerPos);
         } else {
             if (this.memory.targetId) {
-                let target = Game.getObjectById(this.memory.targetId);
-
-                this.transfer(target as Structure, Object.keys(this.store).pop() as ResourceConstant);
-                this.actionTaken = true;
-                delete this.memory.targetId;
+                this.transferToTarget();
             } else if (!isCenterStampManager && this.store.getUsedCapacity() > 0 && this.room.storage?.store.getFreeCapacity()) {
                 this.transfer(this.room.storage, Object.keys(this.store).pop() as ResourceConstant);
                 this.actionTaken = true;
@@ -36,11 +31,25 @@ export class Manager extends WaveCreep {
             }
 
             if (!this.actionTaken && this.memory.targetId) {
-                let target = Game.getObjectById(this.memory.targetId);
-                this.transfer(target as Structure, Object.keys(this.store).pop() as ResourceConstant);
-                delete this.memory.targetId;
+                this.transferToTarget();
             }
         }
+    }
+
+    private transferToTarget() {
+        let target = Game.getObjectById(this.memory.targetId) as StructureContainer;
+        let resourceToTransfer = Object.keys(this.store).pop() as ResourceConstant;
+        let amountTransferred = Math.min(this.store[resourceToTransfer], target.store.getFreeCapacity(resourceToTransfer));
+        let result = this.transfer(target as Structure, resourceToTransfer, amountTransferred);
+        if (result === OK && target instanceof StructureFactory) {
+            //remove amount deposited from factoryTask need
+            let needIndex = this.room.memory.factoryTask.needs?.findIndex((need) => need.resource === resourceToTransfer);
+            if (needIndex !== undefined && needIndex > -1) {
+                this.room.memory.factoryTask.needs[needIndex].amount -= amountTransferred;
+            }
+        }
+        this.actionTaken = true;
+        delete this.memory.targetId;
     }
 
     private startNewTask() {
@@ -198,13 +207,6 @@ export class Manager extends WaveCreep {
         const container = structuresToManage.find((structure) => structure.structureType === STRUCTURE_CONTAINER) as StructureContainer;
         const spawn = structuresToManage.find((structure) => structure.structureType === STRUCTURE_SPAWN) as StructureSpawn;
 
-        // Pull energy from link into container
-        if (container?.store.energy < 1600 && managerLink?.store.energy) {
-            this.withdraw(managerLink, RESOURCE_ENERGY);
-            this.memory.targetId = container.id;
-            return;
-        }
-
         // Pull energy from container into spawn
         if (spawn?.store.getFreeCapacity(RESOURCE_ENERGY) && (container?.store.energy || this.store.energy)) {
             if (!this.store.energy) {
@@ -227,6 +229,13 @@ export class Manager extends WaveCreep {
                 this.actionTaken = true;
             }
             this.memory.targetId = extensionInNeed.id;
+            return;
+        }
+
+        // Pull energy from link into container
+        if (container?.store.energy < 1600 && managerLink?.store.energy) {
+            this.withdraw(managerLink, RESOURCE_ENERGY);
+            this.memory.targetId = container.id;
             return;
         }
     }
@@ -267,15 +276,16 @@ export class Manager extends WaveCreep {
     }
 
     private workFactoryTask(task: FactoryTask) {
-        let needs = getFactoryResourcesNeeded(task);
-        let nextNeed = needs.find((need) => this.room.factory.store[need.res] < need.amount);
+        const needs = task.needs;
+        const nextNeed = needs.find((need) => need.amount > 0);
         if (nextNeed) {
-            this.withdraw(
-                this.room.storage,
-                nextNeed.res,
-                Math.min(this.store.getFreeCapacity(), nextNeed.amount - this.room.factory.store[nextNeed.res])
-            );
-            this.memory.targetId = this.room.factory.id;
+            const source = this.room.storage?.store[nextNeed.resource] ? this.room.storage : this.room.terminal;
+            if (source) {
+                this.withdraw(source, nextNeed.resource, Math.min(this.store.getFreeCapacity(), nextNeed.amount, source.store[nextNeed.resource]));
+                this.memory.targetId = this.room.factory.id;
+            } else {
+                console.log(`${Game.time} - error finding resource for FactoryTask in ${this.room}`);
+            }
         }
     }
 }

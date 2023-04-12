@@ -234,7 +234,7 @@ Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> 
     return structuresToProtect.map((structure) => structure.getRampart() ?? structure.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0])?.[0]?.id;
 };
 
-//add up total amount of resource in terminal, manager store and storage MINUS the amount of resource obligated to outbound shipments and boosts
+//add up total amount of resource in terminal, manager store and storage MINUS the amount of resource obligated to outbound shipments, factory tasks, and lab tasks
 Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConstant): number {
     return (
         (this.storage?.store[resource] ?? 0) +
@@ -242,7 +242,8 @@ Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConst
         this.memory.shipments.reduce(
             (sum: number, next: number) => (Memory.shipments[next]?.resource === resource ? sum + Memory.shipments[next]?.amount : sum),
             0
-        )
+        ) -
+        (this.memory.factoryTask?.needs?.find((need) => need.resource === resource)?.amount ?? 0)
     );
 };
 
@@ -258,15 +259,24 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
             return ERR_BUSY;
         } else {
             let resourcesNeeded = getFactoryResourcesNeeded({ product: product, amount: amount });
-            let roomHasEnoughMaterials = resourcesNeeded
-                .map((need) => this.storage.store[need.res] >= need.amount)
-                .reduce((needsMet, nextNeedMet) => needsMet && nextNeedMet);
+            let roomHasEnoughMaterials = resourcesNeeded.reduce(
+                (needsMet, nextNeed) => needsMet && nextNeed.amount < this.getResourceAmount(nextNeed.resource),
+                true
+            );
             if (!roomHasEnoughMaterials) {
                 return ERR_NOT_ENOUGH_RESOURCES;
             }
-            let resourceNeedAboveFactoryCapacity = resourcesNeeded.map((need) => need.amount).reduce((total, next) => total + next) > 50000;
+            const resourceNeedAboveFactoryCapacity = resourcesNeeded.reduce((total, nextNeed) => total + nextNeed.amount, 0) > 50000;
             if (amount <= 50000 && !resourceNeedAboveFactoryCapacity && !this.factory.store.getUsedCapacity()) {
-                this.memory.factoryTask = { product: product, amount: amount };
+                const newTask: FactoryTask = {
+                    product: product,
+                    amount: amount,
+                    needs: resourcesNeeded,
+                };
+                this.memory.factoryTask = newTask;
+                if (Memory.debug.logFactoryTasks) {
+                    console.log(`${Game.time} - ${this.name} added task -> ${newTask.amount} ${newTask.product}`);
+                }
                 return OK;
             }
             return ERR_FULL;
