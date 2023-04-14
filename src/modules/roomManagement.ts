@@ -917,10 +917,6 @@ export function canSupportRemoteRoom(room: Room) {
 }
 
 function initMissingMemoryValues(room: Room) {
-    if (!room.memory.labRequests) {
-        room.memory.labRequests = [];
-    }
-
     if (!room.memory.gates) {
         room.memory.gates = [];
     }
@@ -1021,7 +1017,6 @@ export function destructiveReset(roomName: string) {
         creeps.forEach((c) => {
             if (Memory.creeps[c].role === Role.DISTRIBUTOR || Memory.creeps[c].role === Role.WORKER) {
                 delete Memory.creeps[c].targetId;
-                delete Memory.creeps[c].labRequests;
                 delete Memory.creeps[c].destination;
                 delete Memory.creeps[c].energySource;
             } else {

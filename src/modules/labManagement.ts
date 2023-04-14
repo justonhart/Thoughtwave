@@ -1,47 +1,48 @@
 export function runLabs(room: Room) {
     //manage queue
-    room.memory.labTasks = room.memory.labTasks.filter((task) => task.status !== TaskStatus.COMPLETE);
-
-    let nextQueuedTaskIndex = room.memory.labTasks.findIndex((task) => task.status === TaskStatus.QUEUED);
-    if (nextQueuedTaskIndex > -1) {
-        let updatedTask = attemptToStartTask(room, room.memory.labTasks[nextQueuedTaskIndex]);
-
-        if (updatedTask) {
-            room.memory.labTasks[nextQueuedTaskIndex] = updatedTask;
+    Object.entries(room.memory.labTasks).forEach(([taskId, task]) => {
+        switch (task.status) {
+            case TaskStatus.QUEUED:
+                attemptToStartTask(room, taskId);
+                break;
+            case TaskStatus.COMPLETE:
+                delete room.memory.labTasks[taskId];
+                break;
         }
-    }
+    });
 
     let labs = room.labs;
     let labsInUse = labs.filter((lab) => lab.status !== LabStatus.AVAILABLE);
     let primaryLabsInUse = labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY);
 
-    //if there are 4 or more available labs, try to add react task
-    if (
-        labs.length - labsInUse.length > 3 &&
-        !room.memory.labTasks.some((task) => task.type === LabTaskType.REACT && task.status !== TaskStatus.ACTIVE)
-    ) {
-        let resourceToMake = getNextResourceToCreate(room);
-        if (resourceToMake) {
-            let reagents = getReagents(resourceToMake);
-            let amountToCreate = Math.min(...reagents.map((resource) => room.getResourceAmount(resource)), 3000);
-            while (amountToCreate % 5) {
-                amountToCreate--;
-            }
-            let result = room.addLabTask({
-                type: LabTaskType.REACT,
-                reagentsNeeded: reagents.map((r) => {
-                    return { resource: r, amount: amountToCreate };
-                }),
-            });
-            if (result === OK) {
-                console.log(`${Game.time} - ${room.name} added task to create ${amountToCreate} ${resourceToMake}`);
-            }
-        }
-    }
+    // //if there are 4 or more available labs, try to add react task
+    // if (
+    //     labs.length - labsInUse.length > 3 &&
+    //     !Object.values(room.memory.labTasks).some((task) => task.type === LabTaskType.REACT && task.status !== TaskStatus.ACTIVE)
+    // ) {
+    //     let resourceToMake = getNextResourceToCreate(room);
+    //     if (resourceToMake) {
+    //         let reagents = getReagents(resourceToMake);
+    //         let amountToCreate = Math.min(...reagents.map((resource) => room.getResourceAmount(resource)), 3000);
+    //         while (amountToCreate % 5) {
+    //             amountToCreate--;
+    //         }
+
+    //         let result = room.addLabTask({
+    //             type: LabTaskType.REACT,
+    //             needs: reagents.map((r) => {
+    //                 return { resource: r, amount: amountToCreate };
+    //             }),
+    //         });
+    //         if (result === OK) {
+    //             console.log(`${Game.time} - ${room.name} added task to create ${amountToCreate} ${resourceToMake}`);
+    //         }
+    //     }
+    // }
 
     //run tasks
     primaryLabsInUse.forEach((lab) => {
-        let task = lab.room.memory.labTasks[lab.taskIndex];
+        let task = lab.room.memory.labTasks[lab.taskId];
         if (task?.status === TaskStatus.ACTIVE) {
             switch (task.type) {
                 case LabTaskType.REACT:
@@ -64,14 +65,14 @@ export function runLabs(room: Room) {
             } else {
                 canStartTask =
                     task?.type === LabTaskType.BOOST
-                        ? task.reagentsNeeded
+                        ? task.needs
                               .map(
                                   (need) =>
                                       Game.getObjectById(need.lab).store[need.resource] === need.amount &&
                                       Game.getObjectById(need.lab).store[RESOURCE_ENERGY] >= 1000
                               )
                               .reduce((readyState, next) => readyState && next)
-                        : task.reagentsNeeded
+                        : task.needs
                               .map((need) => Game.getObjectById(need.lab).store[need.resource] > 0)
                               .reduce((readyState, next) => readyState && next);
             }
@@ -81,7 +82,7 @@ export function runLabs(room: Room) {
             }
         }
 
-        room.memory.labTasks[lab.taskIndex] = task;
+        room.memory.labTasks[lab.taskId] = task;
     });
 }
 
@@ -216,11 +217,9 @@ export function findLabs(room: Room, type: LabTaskType): Id<StructureLab>[][] {
     return [primaryLabs.map((lab) => lab?.id), auxLabs.map((lab) => lab?.id)];
 }
 
-export function addLabTask(room: Room, opts: LabTaskOpts): ScreepsReturnCode {
+export function addLabTask(room: Room, opts: LabTaskOpts): OK | ERR_NOT_ENOUGH_RESOURCES {
     //check room for necessary resources
-    let roomHasAllResources = opts.reagentsNeeded
-        .map((need) => roomHasNeededResource(room, need))
-        .reduce((hasNeeded, nextNeed) => hasNeeded && nextNeed);
+    let roomHasAllResources = opts.needs.map((need) => roomHasNeededResource(room, need)).reduce((hasNeeded, nextNeed) => hasNeeded && nextNeed);
 
     if (roomHasAllResources) {
         let task: LabTask = {
@@ -228,46 +227,45 @@ export function addLabTask(room: Room, opts: LabTaskOpts): ScreepsReturnCode {
             ...opts,
         };
 
-        room.memory.labTasks.push(task);
+        let nextId = 1;
+        while (room.memory.labTasks[nextId] !== undefined) {
+            nextId++;
+        }
+
+        room.memory.labTasks[nextId] = task;
         return OK;
     }
 
     return ERR_NOT_ENOUGH_RESOURCES;
 }
 
-function attemptToStartTask(room: Room, task: LabTask): LabTask {
+function attemptToStartTask(room: Room, taskId: string): void {
+    let task: LabTask = room.memory.labTasks[taskId];
     let labsFound: Id<StructureLab>[][] = findLabs(room, task.type);
     if (labsFound) {
         task.reactionLabs = labsFound[0];
         if (task.type === LabTaskType.REACT || task.type === LabTaskType.REVERSE) {
             task.auxillaryLabs = labsFound[1];
             if (task.type === LabTaskType.REACT) {
-                task.reagentsNeeded.forEach((need, index) => {
+                task.needs.forEach((need, index) => {
                     need.lab = task.auxillaryLabs[index];
                 });
             } else {
-                task.reagentsNeeded[0].lab = task.reactionLabs[0];
+                task.needs[0].lab = task.reactionLabs[0];
             }
-        } else {
-            if (task.type === LabTaskType.BOOST) {
-                task.reagentsNeeded[0].lab = task.reactionLabs[0];
+        } else if (task.type === LabTaskType.BOOST) {
+            task.needs[0].lab = task.reactionLabs[0];
 
-                if (!Game.creeps[task.targetCreepName]) {
-                    task.status = TaskStatus.COMPLETE;
-                    return task;
-                }
+            if (!Game.creeps[task.targetCreepName]) {
+                task.status = TaskStatus.COMPLETE;
+                room.memory.labTasks[taskId] = task;
+                return;
             }
         }
 
-        task.reagentsNeeded.forEach((need) => {
-            room.memory.labRequests.push(need);
-        });
-
         task.status = TaskStatus.PREPARING;
-        return task;
+        room.memory.labTasks[taskId] = task;
     }
-
-    return undefined;
 }
 
 function roomHasNeededResource(room: Room, need: LabNeed) {

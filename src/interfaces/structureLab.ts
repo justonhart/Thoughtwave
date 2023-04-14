@@ -1,5 +1,5 @@
 interface StructureLab {
-    taskIndex: number;
+    taskId: number;
     status: LabStatus;
 }
 
@@ -8,13 +8,13 @@ interface LabTask {
     auxillaryLabs?: Id<StructureLab>[];
     type: LabTaskType;
     status: TaskStatus;
-    reagentsNeeded?: LabNeed[];
+    needs?: LabNeed[];
     targetCreepName?: string;
 }
 
 interface LabTaskOpts {
     type: LabTaskType;
-    reagentsNeeded: LabNeed[];
+    needs: LabNeed[];
     targetCreepName?: string;
 }
 

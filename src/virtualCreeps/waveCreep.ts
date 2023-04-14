@@ -113,7 +113,7 @@ export class WaveCreep extends Creep {
     }
 
     private getNextBoost() {
-        let nextBoostTask = this.room.memory.labTasks.find((task) => task.targetCreepName === this.name);
+        let nextBoostTask = Object.values(this.room.memory.labTasks).find((task) => task.targetCreepName === this.name);
         if (nextBoostTask) {
             let boostLab = Game.getObjectById(nextBoostTask.reactionLabs?.[0]);
             if (boostLab && nextBoostTask.status === TaskStatus.ACTIVE) {

@@ -127,9 +127,6 @@ function handleDeadCreep(deadCreepName: string) {
         if (deadCreepMemory.role === Role.REMOTE_MINERAL_MINER && Memory.remoteData[deadCreepMemory.assignment]) {
             Memory.remoteData[deadCreepMemory.assignment].mineralMiner = AssignmentStatus.UNASSIGNED;
         }
-        if (deadCreepMemory.labRequests) {
-            Memory.rooms[deadCreepMemory.room].labRequests.unshift(...deadCreepMemory.labRequests);
-        }
     }
 
     if (deadCreepMemory.combat?.squadId) {

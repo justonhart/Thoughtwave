@@ -3,7 +3,6 @@ interface RoomMemory {
     needsWallRepair?: boolean;
     upgraderLinkPos?: string;
     managerLink?: Id<Structure>;
-    labRequests?: LabNeed[];
     energyDistance?: number;
     controllerDistance?: number;
     unclaim?: boolean;
@@ -16,7 +15,7 @@ interface RoomMemory {
     mineralMiningAssignments: { [posString: string]: string };
     reservedEnergy?: number;
     layout?: RoomLayout;
-    labTasks?: LabTask[];
+    labTasks?: { [id: number]: LabTask };
     dontCheckConstructionsBefore?: number;
     shipments?: number[]; //stores IDs for shipments to be referenced from Memory.shipments
     factoryTask?: FactoryTask;
