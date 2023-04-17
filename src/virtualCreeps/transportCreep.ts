@@ -138,6 +138,9 @@ export class TransportCreep extends WaveCreep {
 
             return;
         }
+
+        //if no source is found, use held resources
+        this.stopGathering();
     }
 
     protected findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
@@ -153,9 +156,7 @@ export class TransportCreep extends WaveCreep {
             },
         });
 
-        const looseEnergyStacks = this.room
-            .find(FIND_DROPPED_RESOURCES)
-            .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
+        const looseEnergyStacks = this.room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount);
         let containers = this.room.find(FIND_STRUCTURES).filter((str) => {
             let isAllowedStampContainer = true;
             // In Stamps do not allow retrieving energy from center/rm containers or miner containers with links
