@@ -237,11 +237,15 @@ export function getExtraResources(room: Room): { resource: ResourceConstant; amo
 
 export function shipmentReady(terminal: StructureTerminal, shipmentId: number): boolean {
     const shipment = Memory.shipments[shipmentId];
-    let energyNeeded =
-        Game.market.calcTransactionCost(shipment.amount, terminal.room.name, shipment.recipient) +
-        (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
+    const isIncomingMarketOrder = shipment.recipient === shipment.sender && shipment.marketOrderId;
+    let energyNeeded = isIncomingMarketOrder
+        ? Game.market.calcTransactionCost(shipment.amount, terminal.room.name, Game.market.getOrderById(shipment.marketOrderId).roomName)
+        : Game.market.calcTransactionCost(shipment.amount, terminal.room.name, shipment.recipient) +
+          (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
 
-    return terminal.store[shipment.resource] >= shipment.amount && terminal.store.energy >= energyNeeded;
+    return isIncomingMarketOrder
+        ? terminal.store.energy >= energyNeeded
+        : terminal.store[shipment.resource] >= shipment.amount && terminal.store.energy >= energyNeeded;
 }
 
 function getQualifyingMarketOrders() {
@@ -317,7 +321,13 @@ export function addShipment(shipment: Shipment): ScreepsReturnCode {
     }
 
     if (Memory.debug.logShipments)
-        console.log(`${Game.time} - Shipment added to ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`);
+        if (shipment.recipient === shipment.sender && shipment.marketOrderId) {
+            console.log(
+                `${Game.time} - Market order ${shipment.marketOrderId} added: ${shipment.amount} ${shipment.resource} -> ${shipment.recipient}`
+            );
+        } else {
+            console.log(`${Game.time} - Shipment added to ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`);
+        }
     return OK;
 }
 
@@ -349,4 +359,18 @@ export function addResourceRequest(roomName: string, resource: ResourceConstant,
     Memory.resourceRequests[nextId] = request;
     if (Memory.debug.logShipments) console.log(`${Game.time} - Request added for ${request.room} <- ${request.amount} ${request.resource}`);
     return nextId;
+}
+
+//special shipment case - add enough energy to purchase resource from market, but don't send.
+export function addMarketOrder(roomName: string, marketId: string, amount: number): ScreepsReturnCode {
+    const order = Game.market.getOrderById(marketId);
+    const shipmentToAdd: Shipment = {
+        sender: roomName,
+        recipient: roomName,
+        resource: order.resourceType as ResourceConstant,
+        marketOrderId: marketId,
+        amount: amount,
+    };
+
+    return addShipment(shipmentToAdd);
 }

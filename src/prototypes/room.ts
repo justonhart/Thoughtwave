@@ -1,5 +1,6 @@
 import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
 import { PopulationManagement } from '../modules/populationManagement';
+import { addMarketOrder, addResourceRequest, addShipment } from '../modules/resourceManagement';
 import { getFactoryResourcesNeeded } from '../modules/roomManagement';
 import { findRepairTargets, getStructuresToProtect } from '../modules/roomManagement';
 
@@ -282,4 +283,22 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
             return ERR_FULL;
         }
     }
+};
+
+Room.prototype.addRequest = function (this: Room, resource: ResourceConstant, amount: number): number {
+    return addResourceRequest(this.name, resource, amount);
+};
+
+Room.prototype.addShipment = function (this: Room, destination: string, resource: ResourceConstant, amount: number): ScreepsReturnCode {
+    const shipment: Shipment = {
+        sender: this.name,
+        recipient: destination,
+        resource: resource,
+        amount: amount,
+    };
+    return addShipment(shipment);
+};
+
+Room.prototype.addMarketOrder = function (this: Room, marketId: string, amount: number) {
+    return addMarketOrder(this.name, marketId, amount);
 };

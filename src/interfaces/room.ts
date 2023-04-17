@@ -99,6 +99,9 @@ interface Room {
     remoteSources: string[];
     getResourceAmount(resource: ResourceConstant): number;
     getCompressedResourceAmount(resource: ResourceConstant): number;
+    addShipment(destination: string, resource: ResourceConstant, amount: number): ScreepsReturnCode;
+    addRequest(resource: ResourceConstant, amount: number): number; //returns id
+    addMarketOrder(marketId: string, amount: number);
 }
 
 interface RoomPosition {

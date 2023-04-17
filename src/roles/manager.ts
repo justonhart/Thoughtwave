@@ -118,7 +118,7 @@ export class Manager extends WaveCreep {
 
         let spawnInNeed = spawns.find((spawn) => spawn.store[RESOURCE_ENERGY] < 300);
         if (spawnInNeed && storage.store.energy) {
-            this.withdraw(storage, RESOURCE_ENERGY, 300 - spawnInNeed.store[RESOURCE_ENERGY]);
+            this.withdraw(storage, RESOURCE_ENERGY, Math.min(300 - spawnInNeed.store[RESOURCE_ENERGY], storage.store[RESOURCE_ENERGY]));
             this.memory.targetId = spawnInNeed.id;
             return;
         }
@@ -259,7 +259,8 @@ export class Manager extends WaveCreep {
 
     private workShipment(shipmentId: number) {
         const shipment = Memory.shipments[shipmentId];
-        if (this.room.terminal.store[shipment.resource] < shipment.amount) {
+        const shipmentIsMarketOrder = shipment.recipient === shipment.sender && shipment.marketOrderId;
+        if (this.room.terminal.store[shipment.resource] < shipment.amount && !shipmentIsMarketOrder) {
             this.withdraw(
                 this.room.storage,
                 shipment.resource,
@@ -267,9 +268,10 @@ export class Manager extends WaveCreep {
             );
             this.memory.targetId = this.room.terminal.id;
         } else {
-            let energyNeeded =
-                Game.market.calcTransactionCost(shipment.amount, this.room.name, shipment.recipient) +
-                (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
+            let energyNeeded = shipmentIsMarketOrder
+                ? Game.market.calcTransactionCost(shipment.amount, shipment.recipient, Game.market.getOrderById(shipment.marketOrderId).roomName)
+                : Game.market.calcTransactionCost(shipment.amount, this.room.name, shipment.recipient) +
+                  (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
             this.withdraw(this.room.storage, RESOURCE_ENERGY, Math.min(this.store.getFreeCapacity(), energyNeeded - this.room.terminal.store.energy));
             this.memory.targetId = this.room.terminal.id;
         }

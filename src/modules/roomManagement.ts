@@ -1116,56 +1116,104 @@ function runShipments(room: Room) {
     let shipmentSentThisTick = false;
     room.memory.shipments.forEach((shipmentId) => {
         const shipment = Memory.shipments[shipmentId];
-        switch (shipment.status) {
-            case ShipmentStatus.QUEUED:
-                const canSupportShipment =
-                    room.terminal.store.getCapacity() >
-                    shipment.amount +
-                        room.memory.shipments.reduce((resourcesSum, nextShipmentId) =>
-                            [ShipmentStatus.PREPARING, ShipmentStatus.READY].includes(Memory.shipments[nextShipmentId].status)
-                                ? (resourcesSum += Memory.shipments[nextShipmentId].amount)
-                                : resourcesSum
-                        );
-                if (canSupportShipment) {
-                    if (Memory.debug.logShipments)
-                        console.log(
-                            `${Game.time} - Room preparing shipment: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
-                        );
-                    Memory.shipments[shipmentId].status = ShipmentStatus.PREPARING;
-                } else {
-                    break;
-                }
-            case ShipmentStatus.PREPARING:
-                if (shipmentReady(room.terminal, shipmentId)) {
-                    if (Memory.debug.logShipments)
-                        console.log(
-                            `${Game.time} - Shipment ready: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to  ${shipment.recipient}`
-                        );
-                    Memory.shipments[shipmentId].status = ShipmentStatus.READY;
-                } else {
-                    break;
-                }
-            case ShipmentStatus.READY:
-                const destinationReady = Game.rooms[shipment.recipient]?.controller.my
-                    ? Game.rooms[shipment.recipient].terminal?.store.getFreeCapacity() >= shipment.amount
-                    : true;
-                if (!shipmentSentThisTick && room.terminal.cooldown === 0 && destinationReady) {
-                    const result = room.terminal.send(shipment.resource, shipment.amount, shipment.recipient);
-                    if (result === OK) {
+
+        //handle market order special case
+        if (shipment.sender === shipment.recipient && shipment.marketOrderId) {
+            switch (shipment.status) {
+                case ShipmentStatus.QUEUED:
+                    const canSupportShipment =
+                        room.terminal.store.getCapacity() >
+                        shipment.amount +
+                            room.memory.shipments.reduce((resourcesSum, nextShipmentId) =>
+                                [ShipmentStatus.PREPARING, ShipmentStatus.READY].includes(Memory.shipments[nextShipmentId].status)
+                                    ? (resourcesSum += Memory.shipments[nextShipmentId].amount)
+                                    : resourcesSum
+                            );
+                    if (canSupportShipment) {
                         if (Memory.debug.logShipments)
                             console.log(
-                                `${Game.time} - Shipment sent: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
+                                `${Game.time} - ${shipment.sender} preparing for market order ${shipment.marketOrderId}: ${shipment.amount} ${shipment.resource}`
                             );
-                        Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
-                        shipmentSentThisTick = true;
+                        Memory.shipments[shipmentId].status = ShipmentStatus.PREPARING;
+                    } else {
+                        break;
                     }
-                } else if (!Game.rooms[shipment.recipient]?.terminal) {
-                    console.log(
-                        `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - no recipient terminal`
-                    );
-                    Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
-                }
-                break;
+                case ShipmentStatus.PREPARING:
+                    if (shipmentReady(room.terminal, shipmentId)) {
+                        if (Memory.debug.logShipments)
+                            console.log(
+                                `${Game.time} - ${shipment.sender} ready for market order ${shipment.marketOrderId}: ${shipment.amount} ${shipment.resource}`
+                            );
+                        Memory.shipments[shipmentId].status = ShipmentStatus.READY;
+                    } else {
+                        break;
+                    }
+                case ShipmentStatus.READY:
+                    if (!shipmentSentThisTick && room.terminal.cooldown === 0) {
+                        const result = Game.market.deal(shipment.marketOrderId, shipment.amount, shipment.recipient);
+                        if (result === OK) {
+                            if (Memory.debug.logShipments)
+                                console.log(
+                                    `${Game.time} - market order ${shipment.marketOrderId} executed: ${shipment.amount} ${shipment.resource} -> ${shipment.recipient}`
+                                );
+                            Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
+                            shipmentSentThisTick = true;
+                        }
+                    }
+                    break;
+            }
+        } else {
+            switch (shipment.status) {
+                case ShipmentStatus.QUEUED:
+                    const canSupportShipment =
+                        room.terminal.store.getCapacity() >
+                        shipment.amount +
+                            room.memory.shipments.reduce((resourcesSum, nextShipmentId) =>
+                                [ShipmentStatus.PREPARING, ShipmentStatus.READY].includes(Memory.shipments[nextShipmentId].status)
+                                    ? (resourcesSum += Memory.shipments[nextShipmentId].amount)
+                                    : resourcesSum
+                            );
+                    if (canSupportShipment) {
+                        if (Memory.debug.logShipments)
+                            console.log(
+                                `${Game.time} - Room preparing shipment: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
+                            );
+                        Memory.shipments[shipmentId].status = ShipmentStatus.PREPARING;
+                    } else {
+                        break;
+                    }
+                case ShipmentStatus.PREPARING:
+                    if (shipmentReady(room.terminal, shipmentId)) {
+                        if (Memory.debug.logShipments)
+                            console.log(
+                                `${Game.time} - Shipment ready: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to  ${shipment.recipient}`
+                            );
+                        Memory.shipments[shipmentId].status = ShipmentStatus.READY;
+                    } else {
+                        break;
+                    }
+                case ShipmentStatus.READY:
+                    const destinationReady = Game.rooms[shipment.recipient]?.controller.my
+                        ? Game.rooms[shipment.recipient].terminal?.store.getFreeCapacity() >= shipment.amount
+                        : true;
+                    if (!shipmentSentThisTick && room.terminal.cooldown === 0 && destinationReady) {
+                        const result = room.terminal.send(shipment.resource, shipment.amount, shipment.recipient);
+                        if (result === OK) {
+                            if (Memory.debug.logShipments)
+                                console.log(
+                                    `${Game.time} - Shipment sent: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
+                                );
+                            Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
+                            shipmentSentThisTick = true;
+                        }
+                    } else if (!Game.rooms[shipment.recipient]?.terminal) {
+                        console.log(
+                            `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - no recipient terminal`
+                        );
+                        Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
+                    }
+                    break;
+            }
         }
     });
 }
