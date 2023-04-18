@@ -3,16 +3,13 @@ interface StructureLab {
     status: LabStatus;
 }
 
-interface LabTask {
+interface LabTask extends LabTaskPartial {
     reactionLabs?: Id<StructureLab>[];
     auxillaryLabs?: Id<StructureLab>[];
-    type: LabTaskType;
     status: TaskStatus;
-    needs?: LabNeed[];
-    targetCreepName?: string;
 }
 
-interface LabTaskOpts {
+interface LabTaskPartial {
     type: LabTaskType;
     needs: LabNeed[];
     targetCreepName?: string;

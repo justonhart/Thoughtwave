@@ -1,19 +1,33 @@
 import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
-import { getResourceBoostsAvailable } from './labManagement';
+import { getBoostsAvailable } from './labManagement';
+import { getResourceAvailability } from './resourceManagement';
 import { roadIsPaved, roadIsSafe } from './roads';
 import { getStoragePos, roomNeedsCoreStructures } from './roomDesign';
 
-const BODY_TO_BOOST_MAP: Record<BoostType, BodyPartConstant> = {
-    1: ATTACK,
-    2: RANGED_ATTACK,
-    3: HEAL,
-    4: WORK,
-    5: WORK,
-    6: WORK,
-    7: WORK,
-    8: MOVE,
-    9: CARRY,
-    10: TOUGH,
+const BODY_TO_BOOST_MAP: {[key in BoostType]: BodyPartConstant} = {
+    [BoostType.ATTACK]: ATTACK,
+    [BoostType.RANGED_ATTACK]: RANGED_ATTACK,
+    [BoostType.HEAL]: HEAL,
+    [BoostType.HARVEST]: WORK,
+    [BoostType.BUILD]: WORK,
+    [BoostType.UPGRADE]: WORK,
+    [BoostType.DISMANTLE]: WORK,
+    [BoostType.MOVE]: MOVE,
+    [BoostType.CARRY]: CARRY,
+    [BoostType.TOUGH]: TOUGH,
+};
+
+const BOOST_RESOURCE_MAP: { [key in BoostType]: ResourceConstant } = {
+    [BoostType.ATTACK]: RESOURCE_CATALYZED_UTRIUM_ACID,
+    [BoostType.HARVEST]: RESOURCE_CATALYZED_UTRIUM_ALKALIDE,
+    [BoostType.CARRY]: RESOURCE_CATALYZED_KEANIUM_ACID,
+    [BoostType.RANGED_ATTACK]: RESOURCE_CATALYZED_KEANIUM_ALKALIDE,
+    [BoostType.BUILD]: RESOURCE_CATALYZED_LEMERGIUM_ACID,
+    [BoostType.HEAL]: RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE,
+    [BoostType.DISMANTLE]: RESOURCE_CATALYZED_ZYNTHIUM_ACID,
+    [BoostType.MOVE]: RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE,
+    [BoostType.UPGRADE]: RESOURCE_CATALYZED_GHODIUM_ACID,
+    [BoostType.TOUGH]: RESOURCE_CATALYZED_GHODIUM_ALKALIDE,
 };
 
 const ROLE_TAG_MAP: { [key in Role]: string } = {
@@ -477,10 +491,6 @@ export class PopulationManagement {
             needed.tough = 1;
         }
 
-        if (opts?.boosts) {
-            var boostMap = getResourceBoostsAvailable(room, Array.from(opts.boosts));
-        }
-
         while (hasEnergyLeft && partsArray.length < 50 && (needed.damage > 0 || needed.heal > 0 || needed.tough > 0 || needed.move > 0)) {
             parts = parts.filter(
                 (part) =>
@@ -489,6 +499,8 @@ export class PopulationManagement {
                     (part === TOUGH && needed.tough > 0) ||
                     part === MOVE
             );
+
+            let boostTracker = room.getBoostsAvailable(opts?.boosts ?? []);
             parts.forEach((part) => {
                 if (partsArray.length === 50) {
                     return;
@@ -514,12 +526,10 @@ export class PopulationManagement {
                     opts.boosts
                         .filter((boostType) => part === BODY_TO_BOOST_MAP[boostType])
                         .forEach((boostType) => {
-                            let boostsAvailableCount = boostMap[boostType]?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
+                            let boostsAvailableCount = boostTracker[boostType];
                             if (boostsAvailableCount) {
-                                const nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
-                                boostMap[boostType].filter((boost) => boost.amount > 0)[0].amount -= 1;
-                                const tierBoost =
-                                    nextAvailableBoostResource.length > 2 ? nextAvailableBoostResource.length - 1 : nextAvailableBoostResource.length;
+                                boostTracker[boostType] -= 1;
+                                const tierBoost = 3;
                                 this.updateNeededValues(part, needed, tierBoost);
                                 boostFound = true;
                             }
@@ -532,84 +542,6 @@ export class PopulationManagement {
                     // Do not allow nonBoosted TOUGH parts
                     needed.tough = 0;
                     return;
-                }
-                energyAvailable -= BODYPART_COST[part];
-                partsArray.push(part);
-            });
-        }
-
-        return partsArray;
-    }
-
-    /**
-     * Create a creep body with parts in the same ratio as provided in the parts Array except that it will only
-     */
-    public static createCreepBodyWithDynamicMove(room: Room, parts: BodyPartConstant[], partsCap: number = 50, opts?: SpawnOptions) {
-        const getSortValue = (part: BodyPartConstant): number => (part === MOVE ? 2 : part === CARRY ? 1 : 0);
-        parts = parts.sort((a, b) => getSortValue(b) - getSortValue(a));
-        let energyAvailable = room.energyCapacityAvailable;
-        let hasEnergyLeft = true;
-        let partsArray = [];
-        if (partsCap > 50) {
-            partsCap = 50;
-        }
-        const partRatio = {};
-        for (const part of parts) {
-            if (partRatio[part]) {
-                partRatio[part] += 1;
-            } else {
-                partRatio[part] = 1;
-            }
-        }
-
-        if (opts?.boosts) {
-            var boostMap = getResourceBoostsAvailable(room, Array.from(opts.boosts));
-        }
-
-        let move = 0;
-
-        while (hasEnergyLeft && partsArray.length < partsCap) {
-            if (partsCap - partsArray.length === 1 && move === 0) {
-                break;
-            }
-            parts.forEach((part) => {
-                if (partsArray.length === 50) {
-                    return;
-                }
-                if (energyAvailable < BODYPART_COST[part]) {
-                    hasEnergyLeft = false;
-                    return; // no more energy
-                }
-
-                if (part !== MOVE && move > -1) {
-                    return; // First add a MOVE part
-                }
-                if (part === MOVE && move < 0) {
-                    return; // Move not currently needed
-                }
-
-                if (part !== MOVE) {
-                    move++;
-                }
-
-                let boostFound = false;
-                if (opts?.boosts?.length) {
-                    opts.boosts
-                        .filter((boostType) => part === BODY_TO_BOOST_MAP[boostType])
-                        .forEach((boostType) => {
-                            const boostsAvailableCount = boostMap[boostType]?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
-                            if (boostsAvailableCount) {
-                                const nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
-                                boostMap[boostType].filter((boost) => boost.amount > 0)[0].amount -= 1;
-                                const tierBoost =
-                                    nextAvailableBoostResource.length > 2 ? nextAvailableBoostResource.length - 1 : nextAvailableBoostResource.length;
-                                move -= this.getMove(part, tierBoost) * Math.ceil((parts.length - partRatio[MOVE]) / partRatio[MOVE]);
-                                boostFound = true;
-                            }
-                        });
-                }
-                if (!boostFound) {
-                    move -= this.getMove(part, 1) * Math.ceil((parts.length - partRatio[MOVE]) / partRatio[MOVE]);
                 }
                 energyAvailable -= BODYPART_COST[part];
                 partsArray.push(part);
@@ -765,37 +697,37 @@ export class PopulationManagement {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
-        let labTasksToAdd: LabTaskOpts[] = [];
+        let labTasksToAdd: LabTaskPartial[] = [];
+        let requestsToAdd: ResourceRequestPartial[] = [];
         if (spawn.room.labs.length) {
-            if (opts.boosts?.length) {
+            if (opts?.boosts?.length) {
                 //get total requested boosts available by type
-                let boostMap = getResourceBoostsAvailable(spawn.room, Array.from(opts.boosts));
+                let boostMap = spawn.room.getBoostsAvailable(opts.boosts);
 
                 //calculate number of boosts needed
                 opts.boosts.forEach((boostType) => {
                     let boostsAvailable = boostMap[boostType];
-                    let boostsAvailableCount = boostsAvailable?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
                     let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
 
-                    let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
-
-                    let resourcesNeeded: { [resource: string]: number } = {};
-
-                    for (let i = 0; i < numberOfBoosts; i++) {
-                        let nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
-                        boostMap[nextAvailableBoostResource] -= 1;
-                        !resourcesNeeded[nextAvailableBoostResource]
-                            ? (resourcesNeeded[nextAvailableBoostResource] = 30)
-                            : (resourcesNeeded[nextAvailableBoostResource] += 30);
+                    if(boostsAvailable < boostsRequested && spawn.room.terminal){
+                        //check other terminal rooms for available boost
+                        const boostsAvailableToImport = Math.floor(getResourceAvailability(BOOST_RESOURCE_MAP[boostType], spawn.room.name) / 30);
+                        if(boostsAvailableToImport > boostsRequested - boostsAvailable){
+                            const requestMetadata: ResourceRequestPartial = {
+                                resource: BOOST_RESOURCE_MAP[boostType],
+                                amount: boostsAvailableToImport * 30,
+                                room: spawn.room.name
+                            }
+                            requestsToAdd.push(requestMetadata);
+                        }
+                        boostsAvailable += boostsAvailableToImport;
                     }
 
-                    Object.keys(resourcesNeeded).forEach((resource) => {
-                        labTasksToAdd.push({
-                            type: LabTaskType.BOOST,
-                            needs: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
+                    labTasksToAdd.push({
+                        type: LabTaskType.BOOST,
+                            needs: [{ resource: BOOST_RESOURCE_MAP[boostType] as ResourceConstant, amount: boostsAvailable * 30 }],
                             targetCreepName: name,
-                        });
-                    });
+                    })
                 });
 
                 if (labTasksToAdd.length) {
@@ -891,6 +823,9 @@ export class PopulationManagement {
             labTasksToAdd.forEach((task) => {
                 spawn.room.addLabTask(task);
             });
+            requestsToAdd.forEach(request => {
+                spawn.room.addRequest(request.resource, request.amount);
+            })
         }
 
         return result;
