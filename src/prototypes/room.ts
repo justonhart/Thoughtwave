@@ -1,4 +1,4 @@
-import { addLabTask, getResourceBoostsAvailable } from '../modules/labManagement';
+import { addLabTask, getBoostsAvailable } from '../modules/labManagement';
 import { PopulationManagement } from '../modules/populationManagement';
 import { addMarketOrder, addResourceRequest, addShipment } from '../modules/resourceManagement';
 import { getFactoryResourcesNeeded } from '../modules/roomManagement';
@@ -203,8 +203,8 @@ Room.prototype.addLabTask = function (this: Room, opts: LabTaskOpts): ScreepsRet
     return addLabTask(this, opts);
 };
 
-Room.prototype.getBoostResourcesAvailable = function (this: Room, boostTypes: BoostType[]) {
-    return getResourceBoostsAvailable(this, boostTypes);
+Room.prototype.getBoostsAvailable = function (this: Room, boostTypes: BoostType[]) {
+    return getBoostsAvailable(this, boostTypes);
 };
 
 Room.prototype.getDefenseHitpointTarget = function (this: Room): number {
@@ -235,7 +235,6 @@ Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> 
     return structuresToProtect.map((structure) => structure.getRampart() ?? structure.pos.lookFor(LOOK_CONSTRUCTION_SITES)[0])?.[0]?.id;
 };
 
-//add up total amount of resource in terminal, manager store and storage MINUS the amount of resource obligated to outbound shipments, factory tasks, and lab tasks
 Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConstant): number {
     return (
         (this.storage?.store[resource] ?? 0) +
@@ -244,7 +243,11 @@ Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConst
             (sum: number, next: number) => (Memory.shipments[next]?.resource === resource ? sum + Memory.shipments[next]?.amount : sum),
             0
         ) -
-        (this.memory.factoryTask?.needs?.find((need) => need.resource === resource)?.amount ?? 0)
+        (this.memory.factoryTask?.needs?.find((need) => need.resource === resource)?.amount ?? 0) -
+        _.flatten(Object.values(this.memory.labTasks).map((task) => task.needs)).reduce(
+            (totalResourceNeeded, nextNeed) => (nextNeed.resource === resource ? totalResourceNeeded + nextNeed.amount : totalResourceNeeded),
+            0
+        )
     );
 };
 

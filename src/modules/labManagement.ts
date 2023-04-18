@@ -1,3 +1,16 @@
+const BOOST_MAP: { [key in BoostType]: ResourceConstant } = {
+    [BoostType.ATTACK]: RESOURCE_CATALYZED_UTRIUM_ACID,
+    [BoostType.HARVEST]: RESOURCE_CATALYZED_UTRIUM_ALKALIDE,
+    [BoostType.CARRY]: RESOURCE_CATALYZED_KEANIUM_ACID,
+    [BoostType.RANGED_ATTACK]: RESOURCE_CATALYZED_KEANIUM_ALKALIDE,
+    [BoostType.BUILD]: RESOURCE_CATALYZED_LEMERGIUM_ACID,
+    [BoostType.HEAL]: RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE,
+    [BoostType.DISMANTLE]: RESOURCE_CATALYZED_ZYNTHIUM_ACID,
+    [BoostType.MOVE]: RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE,
+    [BoostType.UPGRADE]: RESOURCE_CATALYZED_GHODIUM_ACID,
+    [BoostType.TOUGH]: RESOURCE_CATALYZED_GHODIUM_ALKALIDE,
+};
+
 export function runLabs(room: Room) {
     //manage queue
     Object.entries(room.memory.labTasks).forEach(([taskId, task]) => {
@@ -66,11 +79,7 @@ export function runLabs(room: Room) {
                 canStartTask =
                     task?.type === LabTaskType.BOOST
                         ? task.needs
-                              .map(
-                                  (need) =>
-                                      Game.getObjectById(need.lab).store[need.resource] === need.amount &&
-                                      Game.getObjectById(need.lab).store[RESOURCE_ENERGY] >= 1000
-                              )
+                              .map((need) => need.amount === 0 && Game.getObjectById(need.lab).store[RESOURCE_ENERGY] >= 1000)
                               .reduce((readyState, next) => readyState && next)
                         : task.needs
                               .map((need) => Game.getObjectById(need.lab).store[need.resource] > 0)
@@ -269,169 +278,24 @@ function attemptToStartTask(room: Room, taskId: string): void {
 }
 
 function roomHasNeededResource(room: Room, need: LabNeed) {
-    return room.storage?.store[need.resource] >= need.amount ? true : room.terminal?.store[need.resource] >= need.amount ? true : false;
+    return room.getResourceAmount(need.resource) >= need.amount;
 }
 
-export function getResourceBoostsAvailable(
-    room: Room,
-    boostNeeds: BoostType[]
-): { [type: number]: { resource: ResourceConstant; amount: number }[] } {
-    let availableResources: { [type: number]: { resource: ResourceConstant; amount: number }[] } = {};
+/**
+ * Takes in a room and array, and returns the number of boosts per type the room currently has available and unallocated.
+ * @param room
+ * @param boostNeeds
+ * @returns map of boost types to number of boosts available
+ */
+export function getBoostsAvailable(room: Room, boostNeeds: BoostType[]): { [type: number]: number } {
+    const boostCountMap: { [type: number]: number } = {};
+    boostNeeds.forEach((type) => {
+        const resourceNeeded = BOOST_MAP[type];
+        const resourceAmountInRoom = room.getResourceAmount(resourceNeeded);
+        boostCountMap[type] = Math.floor(resourceAmountInRoom / 30);
+    });
 
-    let getBoostAvailabilityForResource = (room: Room, resource: ResourceConstant) => {
-        return Math.floor(((room.storage?.store[resource] ?? 0) + (room.terminal?.store[resource] ?? 0)) / 30);
-    };
-
-    if (boostNeeds.includes(BoostType.ATTACK)) {
-        Object.keys(BOOSTS[ATTACK]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.ATTACK] = [
-                    ...(availableResources[BoostType.ATTACK as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-
-        availableResources[BoostType.ATTACK] = availableResources[BoostType.ATTACK]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.RANGED_ATTACK)) {
-        Object.keys(BOOSTS[RANGED_ATTACK]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.RANGED_ATTACK] = [
-                    ...(availableResources[BoostType.RANGED_ATTACK as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-        availableResources[BoostType.RANGED_ATTACK] = availableResources[BoostType.RANGED_ATTACK]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.HEAL)) {
-        Object.keys(BOOSTS[HEAL]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.HEAL] = [
-                    ...(availableResources[BoostType.HEAL as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-        availableResources[BoostType.HEAL] = availableResources[BoostType.HEAL]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.CARRY)) {
-        Object.keys(BOOSTS[CARRY]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.CARRY] = [
-                    ...(availableResources[BoostType.CARRY as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-        availableResources[BoostType.CARRY] = availableResources[BoostType.CARRY]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.MOVE)) {
-        Object.keys(BOOSTS[MOVE]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.MOVE] = [
-                    ...(availableResources[BoostType.MOVE as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-        availableResources[BoostType.MOVE] = availableResources[BoostType.MOVE]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.TOUGH)) {
-        Object.keys(BOOSTS[TOUGH]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.TOUGH] = [
-                    ...(availableResources[BoostType.TOUGH as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-        availableResources[BoostType.TOUGH] = availableResources[BoostType.TOUGH]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.UPGRADE)) {
-        [RESOURCE_GHODIUM_HYDRIDE, RESOURCE_GHODIUM_ACID, RESOURCE_CATALYZED_GHODIUM_ACID].forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.UPGRADE] = [...(availableResources[BoostType.UPGRADE as number] ?? []), { resource, amount }];
-            }
-        });
-        availableResources[BoostType.UPGRADE] = availableResources[BoostType.UPGRADE]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.BUILD)) {
-        [RESOURCE_LEMERGIUM_HYDRIDE, RESOURCE_LEMERGIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ACID].forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.BUILD] = [...(availableResources[BoostType.BUILD as number] ?? []), { resource, amount }];
-            }
-        });
-        availableResources[BoostType.BUILD] = availableResources[BoostType.BUILD]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.DISMANTLE)) {
-        [RESOURCE_ZYNTHIUM_HYDRIDE, RESOURCE_ZYNTHIUM_ACID, RESOURCE_CATALYZED_ZYNTHIUM_ACID].forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.DISMANTLE] = [...(availableResources[BoostType.DISMANTLE as number] ?? []), { resource, amount }];
-            }
-        });
-        availableResources[BoostType.DISMANTLE] = availableResources[BoostType.DISMANTLE]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.HARVEST)) {
-        [RESOURCE_UTRIUM_OXIDE, RESOURCE_UTRIUM_ALKALIDE, RESOURCE_CATALYZED_UTRIUM_ALKALIDE].forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.HARVEST] = [...(availableResources[BoostType.HARVEST as number] ?? []), { resource, amount }];
-            }
-        });
-        availableResources[BoostType.HARVEST] = availableResources[BoostType.HARVEST]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    return availableResources;
+    return boostCountMap;
 }
 
 //find next needed resource that room can currently create
@@ -465,4 +329,19 @@ export function getReagents(compound: MineralCompoundConstant): ResourceConstant
     }
 
     return reagents;
+}
+
+export function spawnBoostTestCreep(roomName?: string) {
+    const spawnOpts: SpawnOptions = {
+        boosts: [BoostType.MOVE],
+        memory: {
+            role: Role.GO,
+        },
+    };
+    const spawnAssignment: SpawnAssignment = {
+        designee: roomName ?? 'E23S43',
+        spawnOpts: spawnOpts,
+        body: [MOVE],
+    };
+    Memory.spawnAssignments.push(spawnAssignment);
 }

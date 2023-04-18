@@ -1,5 +1,5 @@
 import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
-import { getResourceBoostsAvailable } from './labManagement';
+import { getBoostsAvailable } from './labManagement';
 import { roadIsPaved, roadIsSafe } from './roads';
 import { getStoragePos, roomNeedsCoreStructures } from './roomDesign';
 
@@ -477,9 +477,7 @@ export class PopulationManagement {
             needed.tough = 1;
         }
 
-        if (opts?.boosts) {
-            var boostMap = getResourceBoostsAvailable(room, Array.from(opts.boosts));
-        }
+        const boostMap = room.getBoostsAvailable(opts?.boosts ?? []);
 
         while (hasEnergyLeft && partsArray.length < 50 && (needed.damage > 0 || needed.heal > 0 || needed.tough > 0 || needed.move > 0)) {
             parts = parts.filter(
