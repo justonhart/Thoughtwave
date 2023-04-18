@@ -261,7 +261,7 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
         } else {
             let resourcesNeeded = getFactoryResourcesNeeded({ product: product, amount: amount });
             let roomHasEnoughMaterials = resourcesNeeded.reduce(
-                (needsMet, nextNeed) => needsMet && nextNeed.amount < this.getResourceAmount(nextNeed.resource),
+                (needsMet, nextNeed) => needsMet && nextNeed.amount <= this.getResourceAmount(nextNeed.resource),
                 true
             );
             if (!roomHasEnoughMaterials) {
