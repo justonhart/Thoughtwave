@@ -765,7 +765,7 @@ export class PopulationManagement {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
-        let labTasksToAdd = [];
+        let labTasksToAdd: LabTaskOpts[] = [];
         if (spawn.room.labs.length) {
             if (opts.boosts?.length) {
                 //get total requested boosts available by type
@@ -792,7 +792,7 @@ export class PopulationManagement {
                     Object.keys(resourcesNeeded).forEach((resource) => {
                         labTasksToAdd.push({
                             type: LabTaskType.BOOST,
-                            reagentsNeeded: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
+                            needs: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
                             targetCreepName: name,
                         });
                     });
