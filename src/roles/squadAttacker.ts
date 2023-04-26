@@ -5,6 +5,9 @@ import { CombatCreep } from '../virtualCreeps/combatCreep';
 export class SquadAttacker extends CombatCreep {
     protected run() {
         const sq = new SquadManagement(this);
+        if (this.memory.recycle) {
+            return;
+        }
         sq.pathing();
         // Healing (+ RANGED_ATTACK if possible)
         let healingTarget: Creep;
@@ -50,15 +53,19 @@ export class SquadAttacker extends CombatCreep {
     private findPriorityAttackTarget(range: number, sq: SquadManagement) {
         const areaInRange = getArea(this.pos, range);
         const lookAtArea = this.room.lookAtArea(areaInRange.top, areaInRange.left, areaInRange.bottom, areaInRange.right, true);
-        const hostileCreep = lookAtArea.filter(
+        const hostileCreeps = lookAtArea.filter(
             (lookObject) =>
                 lookObject.type === LOOK_CREEPS && lookObject.creep?.owner?.username !== this.owner.username && !lookObject.creep?.spawning
         );
-        const unprotectedHostileCreep = lookAtArea.filter(
-            (lookObject) =>
-                lookObject.type === LOOK_STRUCTURES &&
-                lookObject.structure.structureType !== STRUCTURE_RAMPART &&
-                hostileCreep.some((look) => look.creep.pos.x === lookObject.structure.pos.x && look.creep.pos.y === lookObject.structure.pos.y)
+        const unprotectedHostileCreep = hostileCreeps.filter(
+            (hostileCreep) =>
+                !lookAtArea.some(
+                    (look) =>
+                        look.type === LOOK_STRUCTURES &&
+                        look.structure.pos.x === hostileCreep.creep.pos.x &&
+                        look.structure.pos.y === hostileCreep.creep.pos.y &&
+                        look.structure.structureType === STRUCTURE_RAMPART
+                )
         );
         if (unprotectedHostileCreep.length) {
             return unprotectedHostileCreep[0].creep;

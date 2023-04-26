@@ -20,6 +20,11 @@ export class SquadManagement {
     public constructor(creep: CombatCreep) {
         this.squadId = creep.memory.combat.squadId;
         this.currentCreep = creep;
+        // Squad memory already removed
+        if (!Memory.squads[this.squadId]) {
+            creep.memory.recycle = true;
+            return undefined;
+        }
         this.forcedDestinations = Memory.squads[this.squadId].forcedDestinations;
         this.assignment = Memory.squads[this.squadId].assignment;
         this.orientation = Memory.squads[this.squadId].orientation;
