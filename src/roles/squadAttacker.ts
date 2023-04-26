@@ -98,6 +98,10 @@ export class SquadAttacker extends CombatCreep {
             }
 
             if (this.memory.combat.squadTarget === SquadTarget.POWER_BANK) {
+                // Wait to be full health
+                if (this.hits < this.hitsMax) {
+                    return;
+                }
                 target = this.pos.findClosestByRange(FIND_STRUCTURES, {
                     filter: (struct) => struct.structureType === STRUCTURE_POWER_BANK,
                 });
