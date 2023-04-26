@@ -42,32 +42,36 @@ export function manageOperations() {
     Memory.operations = Memory.operations.filter((op) => op.stage !== OperationStage.COMPLETE && (op?.expireAt ?? Game.time + 1) >= Game.time);
     if (Memory.operations.length) {
         Memory.operations.forEach((op) => {
-            switch (op.type) {
-                case OperationType.COLONIZE:
-                    manageColonizationOperation(op);
-                    break;
-                case OperationType.SECURE:
-                    manageSecureRoomOperation(op);
-                    break;
-                case OperationType.ROOM_RECOVERY:
-                    manageRoomRecoveryOperation(op);
-                    break;
-                case OperationType.ATTACK:
-                    manageAttackRoomOperation(op);
-                    break;
-                case OperationType.QUAD_ATTACK:
-                    manageQuadAttackRoomOperation(op);
-                    break;
-                case OperationType.POWER_BANK:
-                    manageAddPowerBankOperation(op);
-                    break;
-                case OperationType.COLLECTION:
-                case OperationType.UPGRADE_BOOST:
-                case OperationType.REMOTE_BUILD:
-                case OperationType.STERILIZE:
-                case OperationType.CLEAN:
-                    manageSimpleOperation(op);
-                    break;
+            try {
+                switch (op.type) {
+                    case OperationType.COLONIZE:
+                        manageColonizationOperation(op);
+                        break;
+                    case OperationType.SECURE:
+                        manageSecureRoomOperation(op);
+                        break;
+                    case OperationType.ROOM_RECOVERY:
+                        manageRoomRecoveryOperation(op);
+                        break;
+                    case OperationType.ATTACK:
+                        manageAttackRoomOperation(op);
+                        break;
+                    case OperationType.QUAD_ATTACK:
+                        manageQuadAttackRoomOperation(op);
+                        break;
+                    case OperationType.POWER_BANK:
+                        manageAddPowerBankOperation(op);
+                        break;
+                    case OperationType.COLLECTION:
+                    case OperationType.UPGRADE_BOOST:
+                    case OperationType.REMOTE_BUILD:
+                    case OperationType.STERILIZE:
+                    case OperationType.CLEAN:
+                        manageSimpleOperation(op);
+                        break;
+                }
+            } catch (e) {
+                console.log(`Error caught in operation ${op.type} in ${op.originRoom} for ${op.targetRoom}: \n${e}`);
             }
         });
     }
@@ -654,9 +658,10 @@ function manageAddPowerBankOperation(op: Operation) {
                         .filter((creep) => creep.assignment === targetRoom.name && creep.role !== Role.OPERATIVE)
                         .forEach((creep) => (creep.recycle = true));
                     Object.values(Memory.squads)
-                        .filter((squad) => squad.assignment === targetRoom.name)
+                        .filter((squad) => squad.assignment === targetRoom.name && squad.members)
                         .forEach((squad) => Object.values(squad.members).forEach((creepName) => (Memory.creeps[creepName].recycle = true)));
                     op.stage = OperationStage.CLAIM;
+                    return;
                 }
 
                 // Wait until all operatives are in the room to avoid wasting power (should not happen but sometimes spawning takes too long for collectors)
@@ -713,10 +718,7 @@ function spawnPowerBankProtector(op: Operation, targetRoom: Room, originRoom: Ro
             (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.PROTECTOR
         ).length;
 
-    if (
-        !assignedProtectorCount &&
-        !Object.values(Memory.creeps).some((creep) => creep.destination === op.targetRoom && creep.role === Role.OPERATIVE)
-    ) {
+    if (!assignedProtectorCount) {
         let notSpawned = true;
         if (targetRoom) {
             const combatIntel = CombatIntel.getCreepCombatData(targetRoom, true);
