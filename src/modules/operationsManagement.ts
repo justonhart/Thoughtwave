@@ -631,13 +631,6 @@ function manageAddPowerBankOperation(op: Operation) {
                         powerBank.hits < CombatIntel.getMaxDmgOverLifetime(squadLeaders, timeNeededForCollectors) ||
                         powerBank.ticksToDecay < timeNeededForCollectors
                     ) {
-                        // Calculate how many collectors are needed when powerBank decays before being destroyed
-                        if (powerBank.ticksToDecay < timeNeededForCollectors) {
-                            const dmgDone =
-                                (powerBank.hitsMax - (powerBank.hits - CombatIntel.getMaxDmgOverLifetime(squadLeaders, timeNeededForCollectors))) /
-                                powerBank.hitsMax;
-                            numCollectors = Math.ceil((powerBank.power * dmgDone) / 1250);
-                        }
                         // Spawn in Collectors
                         for (let i = 0; i < numCollectors; i++) {
                             Memory.spawnAssignments.push({
