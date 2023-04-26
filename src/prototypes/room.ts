@@ -199,7 +199,7 @@ Object.defineProperty(Room.prototype, 'remoteMiningRooms', {
     configurable: true,
 });
 
-Room.prototype.addLabTask = function (this: Room, opts: LabTaskOpts): ScreepsReturnCode {
+Room.prototype.addLabTask = function (this: Room, opts: LabTaskPartial): ScreepsReturnCode {
     return addLabTask(this, opts);
 };
 

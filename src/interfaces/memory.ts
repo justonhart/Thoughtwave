@@ -215,12 +215,15 @@ interface EmpireResourceData {
     inventory: { [resource: string]: number }; //total amount of each resource in empire storages and terminals
 }
 
-interface ResourceRequest {
+interface ResourceRequest extends ResourceRequestPartial {
+    shipments: number[];
+    status: ResourceRequestStatus;
+}
+
+interface ResourceRequestPartial {
     room: string;
     resource: ResourceConstant;
-    status: ResourceRequestStatus;
     amount: number;
-    shipments: number[];
 }
 
 const enum ResourceRequestStatus {

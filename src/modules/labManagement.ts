@@ -226,7 +226,7 @@ export function findLabs(room: Room, type: LabTaskType): Id<StructureLab>[][] {
     return [primaryLabs.map((lab) => lab?.id), auxLabs.map((lab) => lab?.id)];
 }
 
-export function addLabTask(room: Room, opts: LabTaskOpts): OK | ERR_NOT_ENOUGH_RESOURCES {
+export function addLabTask(room: Room, opts: LabTaskPartial): OK | ERR_NOT_ENOUGH_RESOURCES {
     //check room for necessary resources
     let roomHasAllResources = opts.needs.map((need) => roomHasNeededResource(room, need)).reduce((hasNeeded, nextNeed) => hasNeeded && nextNeed);
 

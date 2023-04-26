@@ -88,7 +88,7 @@ interface Room {
     workerCapacity: number;
     labs: StructureLab[];
     getDefenseHitpointTarget(): number;
-    addLabTask(opts: LabTaskOpts): ScreepsReturnCode;
+    addLabTask(opts: LabTaskPartial): ScreepsReturnCode;
     getNextNukeProtectionTask(): Id<Structure> | Id<ConstructionSite>;
     addFactoryTask(product: ResourceConstant, amount: number): ScreepsReturnCode;
     factory: StructureFactory;
