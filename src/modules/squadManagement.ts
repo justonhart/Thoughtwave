@@ -345,7 +345,12 @@ export class SquadManagement {
             } else {
                 const target = this.findPathingTarget();
                 if (target instanceof Creep) {
-                    this.squadLeader.travelTo(target, { range: range, maxRooms: 1 });
+                    if (this.squadLeader.pos.isNearTo(target) && !target.onEdge()) {
+                        // Close Range movement to stick to the enemy
+                        return this.squadLeader.move(this.squadLeader.pos.getDirectionTo(target));
+                    } else {
+                        this.squadLeader.travelTo(target, { range: range, maxRooms: 1 });
+                    }
                 } else if (target) {
                     const customCostMatrix = this.getDuoMatrix(this.squadLeader);
                     this.squadLeader.travelTo(target, {
