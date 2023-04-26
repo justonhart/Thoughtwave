@@ -246,8 +246,8 @@ export class TransportCreep extends WaveCreep {
         }
 
         if (
-            this.room.energyAvailable < this.room.energyCapacityAvailable ||
-            (this.room.memory.layout === RoomLayout.STAMP && this.room.controller.level < 5)
+            this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable ||
+            (this.homeroom.memory.layout === RoomLayout.STAMP && this.homeroom.controller.level < 5)
         ) {
             let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
 
