@@ -1,6 +1,7 @@
 interface StructureLab {
     taskId: number;
     status: LabStatus;
+    getFreeCapacity(): number;
 }
 
 interface LabTask extends LabTaskPartial {
@@ -36,7 +37,7 @@ const enum TaskStatus {
 }
 
 const enum LabStatus {
-    AVAILABLE = 0,
+    IDLE = 0,
     IN_USE_PRIMARY,
     IN_USE_AUXILLARY,
     NEEDS_EMPTYING,

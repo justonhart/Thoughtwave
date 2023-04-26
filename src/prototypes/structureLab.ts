@@ -10,14 +10,23 @@ Object.defineProperty(StructureLab.prototype, 'taskId', {
 
 Object.defineProperty(StructureLab.prototype, 'status', {
     get: function (this: StructureLab) {
-        return !this.room.memory.labTasks[this.taskId]
-            ? !this.mineralType
-                ? LabStatus.AVAILABLE
-                : LabStatus.NEEDS_EMPTYING
-            : this.room.memory.labTasks[this.taskId].reactionLabs?.includes(this.id)
-            ? LabStatus.IN_USE_PRIMARY
-            : LabStatus.IN_USE_AUXILLARY;
+        const task = this.room.memory.labTasks[this.taskId];
+        if (this.mineralType && (!task || task.needs.some((need) => need.lab === this.id && need.resource !== this.mineralType))) {
+            return LabStatus.NEEDS_EMPTYING;
+        } else if (task) {
+            return task.reactionLabs.includes(this.id) ? LabStatus.IN_USE_PRIMARY : LabStatus.IN_USE_AUXILLARY;
+        } else {
+            return LabStatus.IDLE;
+        }
     },
     enumerable: false,
     configurable: true,
 });
+
+/**
+ * Returns the amount of space available in store MINUS any oustanding needs. Used for double-assigning boost tasks to labs with extra space
+ */
+StructureLab.prototype.getFreeCapacity = function (this: StructureLab) {
+    const task = this.room.memory.labTasks[this.taskId];
+    return (this.mineralType ? this.store.getFreeCapacity(this.mineralType) : 3000) - (task?.needs.find((need) => need.lab === this.id).amount ?? 0);
+};

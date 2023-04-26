@@ -25,33 +25,33 @@ export function runLabs(room: Room) {
     });
 
     let labs = room.labs;
-    let labsInUse = labs.filter((lab) => lab.status !== LabStatus.AVAILABLE);
+    let labsInUse = labs.filter((lab) => lab.status !== LabStatus.IDLE);
     let primaryLabsInUse = labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY);
 
-    // //if there are 4 or more available labs, try to add react task
-    // if (
-    //     labs.length - labsInUse.length > 3 &&
-    //     !Object.values(room.memory.labTasks).some((task) => task.type === LabTaskType.REACT && task.status !== TaskStatus.ACTIVE)
-    // ) {
-    //     let resourceToMake = getNextResourceToCreate(room);
-    //     if (resourceToMake) {
-    //         let reagents = getReagents(resourceToMake);
-    //         let amountToCreate = Math.min(...reagents.map((resource) => room.getResourceAmount(resource)), 3000);
-    //         while (amountToCreate % 5) {
-    //             amountToCreate--;
-    //         }
+    //if there are 4 or more available labs, try to add react task
+    if (
+        labs.length - labsInUse.length > 3 &&
+        !Object.values(room.memory.labTasks).some((task) => task.type === LabTaskType.REACT && task.status !== TaskStatus.ACTIVE)
+    ) {
+        let resourceToMake = getNextResourceToCreate(room);
+        if (resourceToMake) {
+            let reagents = getReagents(resourceToMake);
+            let amountToCreate = Math.min(...reagents.map((resource) => room.getResourceAmount(resource)), 3000);
+            while (amountToCreate % 5) {
+                amountToCreate--;
+            }
 
-    //         let result = room.addLabTask({
-    //             type: LabTaskType.REACT,
-    //             needs: reagents.map((r) => {
-    //                 return { resource: r, amount: amountToCreate };
-    //             }),
-    //         });
-    //         if (result === OK) {
-    //             console.log(`${Game.time} - ${room.name} added task to create ${amountToCreate} ${resourceToMake}`);
-    //         }
-    //     }
-    // }
+            let result = room.addLabTask({
+                type: LabTaskType.REACT,
+                needs: reagents.map((r) => {
+                    return { resource: r, amount: amountToCreate };
+                }),
+            });
+            if (result === OK) {
+                console.log(`${Game.time} - ${room.name} added task to create ${amountToCreate} ${resourceToMake}`);
+            }
+        }
+    }
 
     //run tasks
     primaryLabsInUse.forEach((lab) => {
@@ -155,8 +155,28 @@ function runUnboostTask(task: LabTask): LabTask {
     return task;
 }
 
-export function findLabs(room: Room, type: LabTaskType): Id<StructureLab>[][] {
-    let availableLabs = room.labs.filter((lab) => lab.status === LabStatus.AVAILABLE);
+export function findLabs(room: Room, type: LabTaskType, boostNeed?: LabNeed): Id<StructureLab>[][] {
+    let availableLabs = room.labs.filter((lab) => lab.status === LabStatus.IDLE);
+
+    if (type === LabTaskType.BOOST) {
+        const labAvailableToDoubleAssign = room.labs.find(
+            (lab) =>
+                (lab.mineralType === boostNeed.resource ||
+                    Object.values(room.memory.labTasks).some((task) =>
+                        task.needs.some((need) => need.lab === lab.id && need.resource === boostNeed.resource)
+                    )) &&
+                lab.getFreeCapacity() >= boostNeed.amount
+        );
+        if (labAvailableToDoubleAssign) {
+            availableLabs.unshift(labAvailableToDoubleAssign);
+        }
+        //if boost task && no idle labs, steal an extra lab from react tasks
+        if (!availableLabs.length) {
+            availableLabs.push(
+                ...room.labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY && lab.room.memory.labTasks[lab.taskId].reactionLabs.length > 1)
+            );
+        }
+    }
 
     if (!availableLabs.length) {
         return undefined;
@@ -250,8 +270,18 @@ export function addLabTask(room: Room, opts: LabTaskPartial): OK | ERR_NOT_ENOUG
 
 function attemptToStartTask(room: Room, taskId: string): void {
     let task: LabTask = room.memory.labTasks[taskId];
-    let labsFound: Id<StructureLab>[][] = findLabs(room, task.type);
+    let labsFound: Id<StructureLab>[][] = findLabs(room, task.type, task.type === LabTaskType.BOOST ? task.needs[0] : undefined);
     if (labsFound) {
+        if (task.type === LabTaskType.BOOST) {
+            let taskLab = Game.getObjectById(labsFound[0][0]);
+            let otherTaskId = taskLab.taskId;
+            if (otherTaskId && room.memory.labTasks[otherTaskId].type !== LabTaskType.BOOST) {
+                taskLab.room.memory.labTasks[otherTaskId].reactionLabs = taskLab.room.memory.labTasks[otherTaskId].reactionLabs.filter(
+                    (id) => id !== taskLab.id
+                );
+            }
+        }
+
         task.reactionLabs = labsFound[0];
         if (task.type === LabTaskType.REACT || task.type === LabTaskType.REVERSE) {
             task.auxillaryLabs = labsFound[1];

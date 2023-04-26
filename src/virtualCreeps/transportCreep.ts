@@ -6,6 +6,7 @@ export class TransportCreep extends WaveCreep {
     protected incomingMineralAmount: number = 0; // Picked up non-energy in same tick to do proper retargeting
     protected outgoingResourceAmount: number = 0; // Dropped off energy in the same tick to do proper retargeting
     protected actionTaken: boolean = false;
+    protected labs: StructureLab[];
     protected run() {
         if (this.memory.gathering === true) {
             this.gatherEnergy();
@@ -32,7 +33,7 @@ export class TransportCreep extends WaveCreep {
         let stop = false;
 
         if (this.memory.labNeeds?.length) {
-            this.prepareLabs();
+            this.manageLabs();
         } else {
             stop = this.runNonLabPrepTasks();
 
@@ -42,7 +43,7 @@ export class TransportCreep extends WaveCreep {
                 target = Game.getObjectById(this.memory.targetId);
 
                 if (this.memory.labNeeds?.length) {
-                    this.prepareLabs();
+                    this.manageLabs();
                 } else {
                     this.runNonLabPrepTasks();
                 }
@@ -596,7 +597,32 @@ export class TransportCreep extends WaveCreep {
         }
     }
 
-    protected prepareLabs() {
+    protected manageLabs() {
+        //check labs in included needs for preparedness
+        this.labs = this.memory.labNeeds.map((need) => Game.getObjectById(need.lab));
+        const labToClean = this.homeroom.labs.find((lab) => lab.status === LabStatus.NEEDS_EMPTYING);
+        const deliveringResources = Object.keys(this.store).some((res) => this.memory.labNeeds.some((need) => need.resource === res));
+        if (labToClean && !deliveringResources) {
+            this.cleanLab(labToClean);
+        } else {
+            this.supplyResourcesToLabs();
+        }
+    }
+
+    protected cleanLab(labToClean: StructureLab) {
+        this.memory.currentTaskPriority = Priority.HIGH;
+        if (this.store.getFreeCapacity() === 0 || (this.store.getUsedCapacity() && this.pos.isNearTo(this.homeroom.storage))) {
+            this.storeCargo();
+        } else {
+            if (this.pos.isNearTo(labToClean)) {
+                this.withdraw(labToClean, labToClean.mineralType);
+            } else {
+                this.travelTo(labToClean, { range: 1 });
+            }
+        }
+    }
+
+    protected supplyResourcesToLabs() {
         this.memory.currentTaskPriority = Priority.HIGH;
 
         if (this.memory.gatheringLabResources) {
@@ -643,11 +669,9 @@ export class TransportCreep extends WaveCreep {
             }
         } else {
             //check in-memory need validity
-            if (this.memory.labNeeds[0]?.lab) {
-                const labToCheck = Game.getObjectById(this.memory.labNeeds[0].lab);
-                if (!labToCheck.taskId || labToCheck.status === LabStatus.NEEDS_EMPTYING) {
-                    this.memory.labNeeds.shift();
-                }
+            const labToCheck = Game.getObjectById(this.memory.labNeeds[0].lab);
+            if (!labToCheck?.taskId || labToCheck.status === LabStatus.NEEDS_EMPTYING) {
+                this.memory.labNeeds.shift();
             }
 
             if (this.store.getUsedCapacity(this.memory.labNeeds[0]?.resource)) {
