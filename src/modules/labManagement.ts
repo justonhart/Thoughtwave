@@ -333,15 +333,15 @@ export function getReagents(compound: MineralCompoundConstant): ResourceConstant
 
 export function spawnBoostTestCreep(roomName?: string) {
     const spawnOpts: SpawnOptions = {
-        boosts: [BoostType.MOVE],
+        boosts: [BoostType.MOVE, BoostType.BUILD],
         memory: {
             role: Role.GO,
         },
     };
     const spawnAssignment: SpawnAssignment = {
-        designee: roomName ?? 'E23S43',
+        designee: roomName ?? 'E28S28',
         spawnOpts: spawnOpts,
-        body: [MOVE],
+        body: [MOVE, WORK],
     };
     Memory.spawnAssignments.push(spawnAssignment);
 }

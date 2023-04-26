@@ -642,6 +642,14 @@ export class TransportCreep extends WaveCreep {
                 }
             }
         } else {
+            //check in-memory need validity
+            if (this.memory.labNeeds[0]?.lab) {
+                const labToCheck = Game.getObjectById(this.memory.labNeeds[0].lab);
+                if (!labToCheck.taskId || labToCheck.status === LabStatus.NEEDS_EMPTYING) {
+                    this.memory.labNeeds.shift();
+                }
+            }
+
             if (this.store.getUsedCapacity(this.memory.labNeeds[0]?.resource)) {
                 const nextNeed = this.memory.labNeeds[0];
                 const targetLab: StructureLab = Game.getObjectById(nextNeed.lab);
@@ -651,11 +659,8 @@ export class TransportCreep extends WaveCreep {
                     const amountToTransfer = Math.min(nextNeed.amount, this.store[nextNeed.resource]);
                     let result = this.transfer(targetLab, nextNeed.resource, Math.min(nextNeed.amount, this.store[nextNeed.resource]));
                     if (result === OK) {
-                        console.log(`${Game.time} - Amount transferred = ${amountToTransfer}`);
                         const labTaskId = targetLab.taskId;
-                        console.log(`labTaskId = ${labTaskId}`);
                         const needIndex = this.homeroom.memory.labTasks[labTaskId].needs.findIndex((need) => need.resource === nextNeed.resource);
-                        console.log(`needIndex = ${needIndex}`);
                         if (needIndex > -1) {
                             this.homeroom.memory.labTasks[labTaskId].needs[needIndex].amount -= amountToTransfer;
                             this.memory.labNeeds[0].amount -= amountToTransfer;

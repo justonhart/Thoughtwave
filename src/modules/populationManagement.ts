@@ -710,26 +710,33 @@ export class PopulationManagement {
 
                 //calculate number of boosts needed
                 opts.boosts.forEach((boostType) => {
-                    let boostsAvailable = boostMap[boostType];
+                    let boostsAvailableInRoom = boostMap[boostType];
                     let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
 
-                    if (boostsAvailable < boostsRequested && spawn.room.terminal) {
+                    if (boostsAvailableInRoom < boostsRequested && spawn.room.terminal) {
                         //check other terminal rooms for available boost
+                        const boostsNeeded = boostsRequested - boostsAvailableInRoom;
                         const boostsAvailableToImport = Math.floor(getResourceAvailability(BOOST_RESOURCE_MAP[boostType], spawn.room.name) / 30);
-                        if (boostsAvailableToImport > boostsRequested - boostsAvailable) {
+                        const boostsToImport = Math.min(boostsNeeded, boostsAvailableToImport);
+                        if (boostsAvailableToImport > boostsRequested - boostsAvailableInRoom) {
                             const requestMetadata: ResourceRequestPartial = {
                                 resource: BOOST_RESOURCE_MAP[boostType],
-                                amount: boostsAvailableToImport * 30,
+                                amount: boostsToImport * 30,
                                 room: spawn.room.name,
                             };
                             requestsToAdd.push(requestMetadata);
                         }
-                        boostsAvailable += boostsAvailableToImport;
+                        boostsAvailableInRoom += boostsToImport;
                     }
 
                     labTasksToAdd.push({
                         type: LabTaskType.BOOST,
-                        needs: [{ resource: BOOST_RESOURCE_MAP[boostType] as ResourceConstant, amount: boostsAvailable * 30 }],
+                        needs: [
+                            {
+                                resource: BOOST_RESOURCE_MAP[boostType] as ResourceConstant,
+                                amount: Math.min(boostsRequested, boostsAvailableInRoom) * 30,
+                            },
+                        ],
                         targetCreepName: name,
                     });
                 });
