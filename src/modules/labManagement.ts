@@ -157,7 +157,6 @@ function runUnboostTask(task: LabTask): LabTask {
 
 export function findLabs(room: Room, type: LabTaskType, boostNeed?: LabNeed): Id<StructureLab>[][] {
     let availableLabs = room.labs.filter((lab) => lab.status === LabStatus.IDLE);
-
     if (type === LabTaskType.BOOST) {
         const labAvailableToDoubleAssign = room.labs.find(
             (lab) =>
@@ -188,57 +187,52 @@ export function findLabs(room: Room, type: LabTaskType, boostNeed?: LabNeed): Id
     if (type === LabTaskType.BOOST || type === LabTaskType.UNBOOST) {
         primaryLabs[0] = availableLabs.pop();
     } else {
-        let labsNeedingEmptied = room.labs.filter((lab) => lab.status === LabStatus.NEEDS_EMPTYING);
-        if (labsNeedingEmptied.length || availableLabs.length < 3) {
-            return undefined;
+        if (type === LabTaskType.REACT) {
+            //can use multiple reaction labs to speed up task - find aux labs first
+            //find available labs w/ most adjacent labs
+            let labsWithAdjacentCount = availableLabs
+                .map((lab) => {
+                    return {
+                        lab: lab,
+                        inRangeCount: lab.pos.findInRange(FIND_MY_STRUCTURES, 2, {
+                            filter: (adjacentLab) => adjacentLab?.id !== lab?.id && availableLabs.includes(adjacentLab as StructureLab),
+                        }).length,
+                    };
+                })
+                .filter((lab) => lab.inRangeCount > 1)
+                .sort((a, b) => b.inRangeCount - a.inRangeCount)
+                .map((labWithCount) => labWithCount.lab);
+
+            if (labsWithAdjacentCount.length < 3) {
+                return undefined;
+            }
+
+            auxLabs = labsWithAdjacentCount.splice(0, 2);
+            for (let i = 0; i < labsWithAdjacentCount.length && auxLabs.length + primaryLabs.length < availableLabs.length - 1; i++) {
+                if (labsWithAdjacentCount[i].pos.inRangeTo(auxLabs[0], 2) && labsWithAdjacentCount[i].pos.inRangeTo(auxLabs[1], 2)) {
+                    primaryLabs.push(labsWithAdjacentCount[i]);
+                }
+            }
+
+            if (!primaryLabs.length) {
+                return undefined;
+            }
         } else {
-            if (type === LabTaskType.REACT) {
-                //can use multiple reaction labs to speed up task - find aux labs first
-                //find available labs w/ most adjacent labs
-                let labsWithAdjacentCount = availableLabs
-                    .map((lab) => {
-                        return {
-                            lab: lab,
-                            inRangeCount: lab.pos.findInRange(FIND_MY_STRUCTURES, 2, {
-                                filter: (adjacentLab) => adjacentLab?.id !== lab?.id && availableLabs.includes(adjacentLab as StructureLab),
-                            }).length,
-                        };
-                    })
-                    .filter((lab) => lab.inRangeCount > 1)
-                    .sort((a, b) => b.inRangeCount - a.inRangeCount)
-                    .map((labWithCount) => labWithCount.lab);
+            let suitablePrimaryLab = availableLabs.find((lab, index) => {
+                let adjacentAvailableLabs = availableLabs.filter((auxLab, auxIndex) => auxIndex !== index && lab.pos.getRangeTo(auxLab) <= 2);
+                return adjacentAvailableLabs.length >= 2;
+            });
 
-                if (labsWithAdjacentCount.length < 3) {
-                    return undefined;
-                }
-
-                auxLabs = labsWithAdjacentCount.splice(0, 2);
-                for (let i = 0; i < labsWithAdjacentCount.length && auxLabs.length + primaryLabs.length < availableLabs.length - 1; i++) {
-                    if (labsWithAdjacentCount[i].pos.inRangeTo(auxLabs[0], 2) && labsWithAdjacentCount[i].pos.inRangeTo(auxLabs[1], 2)) {
-                        primaryLabs.push(labsWithAdjacentCount[i]);
-                    }
-                }
-
-                if (!primaryLabs.length) {
-                    return undefined;
+            if (suitablePrimaryLab) {
+                primaryLabs[0] = suitablePrimaryLab;
+                let availableAuxLabs = availableLabs.filter(
+                    (auxLab) => auxLab.id !== primaryLabs[0].id && primaryLabs[0].pos.getRangeTo(auxLab) <= 2
+                );
+                while (auxLabs.length < 2) {
+                    auxLabs.push(availableAuxLabs.shift());
                 }
             } else {
-                let suitablePrimaryLab = availableLabs.find((lab, index) => {
-                    let adjacentAvailableLabs = availableLabs.filter((auxLab, auxIndex) => auxIndex !== index && lab.pos.getRangeTo(auxLab) <= 2);
-                    return adjacentAvailableLabs.length >= 2;
-                });
-
-                if (suitablePrimaryLab) {
-                    primaryLabs[0] = suitablePrimaryLab;
-                    let availableAuxLabs = availableLabs.filter(
-                        (auxLab) => auxLab.id !== primaryLabs[0].id && primaryLabs[0].pos.getRangeTo(auxLab) <= 2
-                    );
-                    while (auxLabs.length < 2) {
-                        auxLabs.push(availableAuxLabs.shift());
-                    }
-                } else {
-                    return undefined;
-                }
+                return undefined;
             }
         }
     }

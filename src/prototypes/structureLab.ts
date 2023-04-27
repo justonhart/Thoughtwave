@@ -28,5 +28,5 @@ Object.defineProperty(StructureLab.prototype, 'status', {
  */
 StructureLab.prototype.getFreeCapacity = function (this: StructureLab) {
     const task = this.room.memory.labTasks[this.taskId];
-    return (this.mineralType ? this.store.getFreeCapacity(this.mineralType) : 3000) - (task?.needs.find((need) => need.lab === this.id).amount ?? 0);
+    return (this.mineralType ? this.store.getFreeCapacity(this.mineralType) : 3000) - (task?.needs.find((need) => need.lab === this.id)?.amount ?? 0);
 };
