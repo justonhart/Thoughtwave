@@ -192,7 +192,7 @@ export class PopulationManagement {
         return roomNeedsMiner;
     }
 
-    static getMinerBody(miningPos: RoomPosition, energyCapacityAvailable: number): (WORK | MOVE | CARRY)[] {
+    static getMinerBody(miningPos: RoomPosition, energyCapacityAvailable: number, powerLevel: number = 0): (WORK | MOVE | CARRY)[] {
         let minerBody: (WORK | MOVE | CARRY)[] = [];
 
         const minerStructures = miningPos
@@ -210,8 +210,18 @@ export class PopulationManagement {
             minerBody = [CARRY];
         }
         energyCapacityAvailable -= minerBody.length * 50;
-
-        if (energyCapacityAvailable >= 650) {
+        let numAdditionalWork = Math.ceil((powerLevel * 3.33) / 2);
+        if (powerLevel && numAdditionalWork && energyCapacityAvailable >= numAdditionalWork * 100 + Math.floor(numAdditionalWork / 2) * 50 + 650) {
+            let powerCreepBodyParts = [];
+            while (numAdditionalWork > 0) {
+                powerCreepBodyParts.push(WORK);
+                if (powerCreepBodyParts.filter((part) => part === WORK).length % 2 === 0) {
+                    powerCreepBodyParts.push(MOVE);
+                }
+                numAdditionalWork--;
+            }
+            minerBody = minerBody.concat([WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE]).concat(powerCreepBodyParts);
+        } else if (energyCapacityAvailable >= 650) {
             minerBody = minerBody.concat([WORK, WORK, WORK, WORK, WORK, MOVE, MOVE, MOVE]);
         } else if (energyCapacityAvailable >= 550) {
             minerBody = minerBody.concat([WORK, WORK, WORK, WORK, WORK, MOVE]);
@@ -258,7 +268,14 @@ export class PopulationManagement {
 
         let name = this.generateName(options.memory.role, spawn.name);
 
-        let result = spawn.smartSpawn(PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable), name, options);
+        let powerLevel = 0;
+        const sourceWithPower = assigmentPos
+            .findInRange(FIND_SOURCES, 1)
+            .find((source) => source.effects?.some((effect) => effect.effect === PWR_REGEN_SOURCE)) as Source;
+        if (sourceWithPower) {
+            powerLevel = (sourceWithPower.effects.find((effect) => effect.effect === PWR_REGEN_SOURCE) as PowerEffect).level;
+        }
+        let result = spawn.smartSpawn(PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable, powerLevel), name, options);
         if (result === OK) {
             if (currentMiner) {
                 currentMiner.memory.hasTTLReplacement = true;

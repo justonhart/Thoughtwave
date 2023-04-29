@@ -1018,19 +1018,34 @@ export function destructiveReset(roomName: string) {
 
 function setThreatLevel(room: Room) {
     let threatLevel = HomeRoomThreatLevel.SAFE;
-
     const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
     if (hostileCreeps.length) {
-        if (hostileCreeps.some((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))) {
+        if (
+            hostileCreeps.some(
+                (creep) => creep.owner.username !== 'Invader' && (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
+            )
+        ) {
             threatLevel = HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS;
-        } else if (hostileCreeps.some((creep) => creep.getActiveBodyparts(WORK))) {
+            sendEmailOnAttack(room, hostileCreeps[0].owner.username, threatLevel);
+        } else if (hostileCreeps.some((creep) => creep.owner.username !== 'Invader' && creep.getActiveBodyparts(WORK))) {
             threatLevel = HomeRoomThreatLevel.ENEMY_DISMANTLERS;
+            sendEmailOnAttack(room, hostileCreeps[0].owner.username, threatLevel);
         } else if (hostileCreeps.some((creep) => creep.owner.username === 'Invader')) {
             threatLevel = HomeRoomThreatLevel.ENEMY_INVADERS;
         } else {
             threatLevel = HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS;
         }
     }
-
     room.memory.threatLevel = threatLevel;
+}
+
+/**
+ * Create Game notification when attacked by other players
+ * @param room room that is being attacked
+ * @param enemyUsername enemy player
+ */
+function sendEmailOnAttack(room: Room, enemyUsername: string, prev: HomeRoomThreatLevel) {
+    if (room.memory.threatLevel <= HomeRoomThreatLevel.ENEMY_INVADERS) {
+        Game.notify(`Room ${room.name} is under attack by ${enemyUsername} at ${Game.time}!`);
+    }
 }
