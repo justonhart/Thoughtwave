@@ -324,12 +324,6 @@ export class SquadManagement {
                 return;
             }
 
-            const path = this.squadLeader.memory._m?.path;
-            if (path) {
-                // on its last move
-                this.nextDirection = parseInt(path[0], 10) as DirectionConstant;
-            }
-
             if (this.forcedDestinations?.length) {
                 let nextDestination = this.forcedDestinations[0];
                 if (this.squadLeader.pos.toMemSafe() === nextDestination) {
@@ -345,9 +339,11 @@ export class SquadManagement {
             } else {
                 const target = this.findPathingTarget();
                 if (target instanceof Creep) {
-                    if (this.squadLeader.pos.isNearTo(target) && !target.onEdge()) {
+                    if (target.onEdge()) {
+                        return; // Do not move out of the room to chase target
+                    } else if (this.squadLeader.pos.isNearTo(target)) {
                         // Close Range movement to stick to the enemy
-                        return this.squadLeader.move(this.squadLeader.pos.getDirectionTo(target));
+                        this.squadLeader.move(this.squadLeader.pos.getDirectionTo(target));
                     } else {
                         this.squadLeader.travelTo(target, { range: range, maxRooms: 1 });
                     }
