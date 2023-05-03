@@ -1205,12 +1205,12 @@ function runShipments(room: Room) {
                                 );
                             Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
                             shipmentSentThisTick = true;
+                        } else {
+                            console.log(
+                                `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - no recipient terminal`
+                            );
+                            Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
                         }
-                    } else if (!Game.rooms[shipment.recipient]?.terminal) {
-                        console.log(
-                            `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - no recipient terminal`
-                        );
-                        Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
                     }
                     break;
             }

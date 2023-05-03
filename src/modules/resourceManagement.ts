@@ -22,7 +22,9 @@ export function manageEmpireResources() {
         roomsWithExtraEnergy.forEach((sender) => {
             let recipient = roomEnergyMap.find(
                 (otherRoom) =>
-                    sender.energy > 150000 + otherRoom.energy + 10 * otherRoom.batteries && !shipments.some((s) => s.recipient === otherRoom.roomName)
+                    Game.rooms[otherRoom.roomName]?.canSpawn() &&
+                    sender.energy > 150000 + otherRoom.energy + 10 * otherRoom.batteries &&
+                    !shipments.some((s) => s.recipient === otherRoom.roomName)
             );
             if (recipient) {
                 //if there are batteries to send, use those instead
@@ -56,8 +58,21 @@ export function manageEmpireResources() {
         });
     }
 
+    //check shipments for invalids - shipments from/to disabled rooms
+    Object.entries(Memory.shipments).forEach(([shipmentId, shipment]) => {
+        const isInvalid = !Game.rooms[shipment.sender]?.terminal || !Game.rooms[shipment.sender]?.canSpawn();
+        if (isInvalid) {
+            delete Memory.shipments[shipmentId];
+        }
+    });
+
     //manage resource requests - if rooms have this resource, they should send it regardless of how much they have
     Object.entries(Memory.resourceRequests).forEach(([requestId, request]) => {
+        //first check that resource requests can still be completed - failcases = Terminal destroyed, room captured
+        const requestUndeliverable = !Game.rooms[request.room] || !Game.rooms[request.room].canSpawn();
+        if (requestUndeliverable) {
+            request.status = ResourceRequestStatus.FAILED;
+        }
         switch (request.status) {
             case ResourceRequestStatus.SUBMITTED:
                 const suppliers = terminalRooms
@@ -95,9 +110,9 @@ export function manageEmpireResources() {
                 const allShipmentsCompleted = request.shipments.every((id) => Memory.shipments[id]?.status === ShipmentStatus.SHIPPED);
                 if (allShipmentsCompleted) {
                     Memory.resourceRequests[requestId].status = ResourceRequestStatus.FULFULLED;
-                } else if (request.shipments.some((id) => Memory.shipments[id].status === ShipmentStatus.FAILED)) {
+                } else if (request.shipments.some((id) => !Memory.shipments[id] || Memory.shipments[id].status === ShipmentStatus.FAILED)) {
                     Memory.resourceRequests[requestId].shipments = request.shipments.filter(
-                        (id) => Memory.shipments[id].status !== ShipmentStatus.FAILED
+                        (id) => Memory.shipments[id] && Memory.shipments[id].status !== ShipmentStatus.FAILED
                     );
                     Memory.resourceRequests[requestId].status = ResourceRequestStatus.SUBMITTED;
                 }
@@ -207,7 +222,7 @@ export function getAllRoomNeeds(): { [resource: string]: { roomName: string; amo
     let needs = {};
 
     Object.values(Game.rooms)
-        .filter((room) => room.controller?.my && room.terminal?.isActive())
+        .filter((room) => room.controller?.my && room.canSpawn() && room.terminal?.isActive())
         .forEach((room) => {
             let roomNeeds = getRoomResourceNeeds(room);
             roomNeeds.forEach((need) => {
