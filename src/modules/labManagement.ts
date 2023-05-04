@@ -50,9 +50,11 @@ export function runLabs(room: Room) {
         }
     } else {
         const labTaskId: number = Object.entries(room.memory.labTasks).find(
-            ([taskId, task]) => task.type === LabTaskType.REACT
-        )[0] as unknown as number;
-        idleLabs.forEach((lab) => room.memory.labTasks[labTaskId].reactionLabs.push(lab.id));
+            ([taskId, task]) => task.type === LabTaskType.REACT && task.status > TaskStatus.QUEUED
+        )?.[0] as unknown as number;
+        if (labTaskId) {
+            idleLabs.forEach((lab) => room.memory.labTasks[labTaskId]?.reactionLabs?.push(lab.id));
+        }
     }
 
     //run tasks

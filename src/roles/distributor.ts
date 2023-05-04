@@ -4,7 +4,9 @@ export class Distributor extends TransportCreep {
     protected findTarget() {
         let target: any;
 
-        const outstandingLabNeeds: boolean = Object.values(this.homeroom.memory.labTasks).some((task) => task.needs.some((need) => need.amount > 0));
+        const outstandingLabNeeds: boolean = Object.values(this.homeroom.memory.labTasks).some(
+            (task) => [TaskStatus.PREPARING, TaskStatus.ACTIVE].includes(task.status) && task.needs.some((need) => need.amount > 0)
+        );
         if (!target && outstandingLabNeeds) {
             if (this.store.getUsedCapacity() && this.homeroom.storage) {
                 target = this.homeroom.storage.id;

@@ -55,6 +55,7 @@ export class TransportCreep extends WaveCreep {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (target instanceof Resource) {
             this.runPickupJob(target);
+            return false;
         } else if (
             target instanceof StructureContainer &&
             this.homeroom.memory.layout === RoomLayout.STAMP &&
@@ -63,6 +64,7 @@ export class TransportCreep extends WaveCreep {
             )
         ) {
             this.runRefillJob(target);
+            return false;
         } else if (
             target instanceof Tombstone ||
             target instanceof Ruin ||
@@ -70,6 +72,7 @@ export class TransportCreep extends WaveCreep {
             target?.status === LabStatus.NEEDS_EMPTYING
         ) {
             this.runCollectionJob(target);
+            return false;
         } else if (
             target instanceof StructureSpawn ||
             target instanceof StructureExtension ||
@@ -77,10 +80,13 @@ export class TransportCreep extends WaveCreep {
             target instanceof StructureLab
         ) {
             this.runRefillJob(target);
+            return false;
         } else if (target instanceof StructureStorage) {
             this.storeCargo();
+            return false;
         } else if (target instanceof StructurePowerSpawn) {
             this.runRefillPowerSpawnJob(target);
+            return false;
         }
 
         return true;
