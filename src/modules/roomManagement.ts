@@ -21,6 +21,17 @@ import {
 
 const BUILD_CHECK_PERIOD = 100;
 const REPAIR_QUEUE_REFRESH_PERIOD = 500;
+const RESOURCE_COMPRESSION_MAP = {
+    [RESOURCE_UTRIUM]: RESOURCE_UTRIUM_BAR,
+    [RESOURCE_LEMERGIUM]: RESOURCE_LEMERGIUM_BAR,
+    [RESOURCE_ZYNTHIUM]: RESOURCE_ZYNTHIUM_BAR,
+    [RESOURCE_KEANIUM]: RESOURCE_KEANIUM_BAR,
+    [RESOURCE_GHODIUM]: RESOURCE_GHODIUM_MELT,
+    [RESOURCE_OXYGEN]: RESOURCE_OXIDANT,
+    [RESOURCE_HYDROGEN]: RESOURCE_REDUCTANT,
+    [RESOURCE_CATALYST]: RESOURCE_PURIFIER,
+    [RESOURCE_ENERGY]: RESOURCE_BATTERY,
+};
 
 export function driveRoom(room: Room) {
     if (room.memory?.unclaim) {
@@ -1078,10 +1089,34 @@ function runFactory(room: Room) {
         const batteryCount = room.getResourceAmount(RESOURCE_BATTERY);
         if (room.getResourceAmount(RESOURCE_ENERGY) > 375000 && batteryCount < 100000) {
             room.addFactoryTask(RESOURCE_BATTERY, 1500);
+            return;
         } else if ((energyStatus <= EnergyStatus.SURPLUS && batteryCount > 100000) || (energyStatus <= EnergyStatus.STABLE && batteryCount >= 50)) {
             let setsOfFifty = Math.floor(batteryCount / 50);
             let energyToCreate = 10 * 50 * Math.min(40, setsOfFifty);
             room.addFactoryTask(RESOURCE_ENERGY, energyToCreate);
+            return;
+        }
+
+        const resourceToDecompress = Object.values(RESOURCE_COMPRESSION_MAP)
+            .filter((res) => res !== RESOURCE_BATTERY)
+            .find(
+                (resource) =>
+                    room.storage.store[resource] >= 100 &&
+                    room.terminal.store[Object.keys(RESOURCE_COMPRESSION_MAP).find((res) => RESOURCE_COMPRESSION_MAP[res] === resource)] < 5000
+            );
+        if (resourceToDecompress) {
+            const amountOfBarsToDecompress = Math.floor(room.storage.store[RESOURCE_COMPRESSION_MAP[resourceToDecompress]] / 100) * 100;
+            room.addFactoryTask(resourceToDecompress as ResourceConstant, Math.min(amountOfBarsToDecompress * 5, 3000));
+            return;
+        }
+
+        const resourceToCompress = Object.keys(MINERAL_MIN_AMOUNT).find(
+            (resource) => room.storage.store[resource] > 20000 && room.terminal.store[resource] >= 5000
+        );
+        if (resourceToCompress) {
+            const amountOfBarsToCreate = Math.floor(room.storage.store[resourceToCompress] / 500) * 100;
+            room.addFactoryTask(RESOURCE_COMPRESSION_MAP[resourceToCompress], Math.min(amountOfBarsToCreate, 3000));
+            return;
         }
     }
 }
