@@ -26,7 +26,6 @@ export function runLabs(room: Room) {
 
     let labs = room.labs;
     let idleLabs = labs.filter((lab) => lab.status === LabStatus.IDLE);
-    let primaryLabsInUse = labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY);
 
     //If there is no react task, add react task
     if (!Object.values(room.memory.labTasks).some((task) => task.type === LabTaskType.REACT)) {
@@ -37,7 +36,6 @@ export function runLabs(room: Room) {
             while (amountToCreate % 5) {
                 amountToCreate--;
             }
-
             let result = room.addLabTask({
                 type: LabTaskType.REACT,
                 needs: reagents.map((r) => {
@@ -159,7 +157,10 @@ function runUnboostTask(task: LabTask): LabTask {
 }
 
 export function findLabs(room: Room, type: LabTaskType, boostNeed?: LabNeed): Id<StructureLab>[][] {
-    let availableLabs = room.labs.filter((lab) => lab.status === LabStatus.IDLE);
+    let availableLabs = room.labs.filter(
+        (lab) =>
+            lab.status === LabStatus.IDLE && lab.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_LAB }).length < 6
+    );
     if (type === LabTaskType.BOOST) {
         const labAlreadyUsingResource = room.labs.find((lab) => {
             const task = room.memory.labTasks[lab.taskId];
@@ -192,35 +193,10 @@ export function findLabs(room: Room, type: LabTaskType, boostNeed?: LabNeed): Id
         primaryLabs[0] = availableLabs.pop();
     } else {
         if (type === LabTaskType.REACT) {
-            //can use multiple reaction labs to speed up task - find aux labs first
-            //find available labs w/ most adjacent labs
-            let labsWithAdjacentCount = availableLabs
-                .map((lab) => {
-                    return {
-                        lab: lab,
-                        inRangeCount: lab.pos.findInRange(FIND_MY_STRUCTURES, 2, {
-                            filter: (adjacentLab) => adjacentLab?.id !== lab?.id && availableLabs.includes(adjacentLab as StructureLab),
-                        }).length,
-                    };
-                })
-                .filter((lab) => lab.inRangeCount > 1)
-                .sort((a, b) => b.inRangeCount - a.inRangeCount)
-                .map((labWithCount) => labWithCount.lab);
-
-            if (labsWithAdjacentCount.length < 3) {
-                return undefined;
-            }
-
-            auxLabs = labsWithAdjacentCount.splice(0, 2);
-            for (let i = 0; i < labsWithAdjacentCount.length && auxLabs.length + primaryLabs.length < availableLabs.length; i++) {
-                if (labsWithAdjacentCount[i].pos.inRangeTo(auxLabs[0], 2) && labsWithAdjacentCount[i].pos.inRangeTo(auxLabs[1], 2)) {
-                    primaryLabs.push(labsWithAdjacentCount[i]);
-                }
-            }
-
-            if (!primaryLabs.length) {
-                return undefined;
-            }
+            //we want react tasks to be able to use all labs for reactions, so we will only use the two center labs for supplying reactants
+            auxLabs = room.labs.filter(
+                (lab) => lab.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_LAB }).length === 6
+            );
         } else {
             let suitablePrimaryLab = availableLabs.find((lab, index) => {
                 let adjacentAvailableLabs = availableLabs.filter((auxLab, auxIndex) => auxIndex !== index && lab.pos.getRangeTo(auxLab) <= 2);
