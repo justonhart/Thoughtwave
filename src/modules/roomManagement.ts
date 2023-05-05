@@ -311,7 +311,7 @@ export function driveRoom(room: Room) {
             }
         }
 
-        if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50 && room.energyStatus >= EnergyStatus.SURPLUS) {
+        if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50 && room.energyStatus >= EnergyStatus.STABLE) {
             try {
                 room.powerSpawn.processPower();
             } catch (e) {
@@ -491,6 +491,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
                     creep.memory.needsBoosted = true;
                     PopulationManagement.getLabTasks(
                         homeRoom,
+                        creep.name,
                         creep.body.map((part) => part.type),
                         { boosts: [BoostType.ATTACK, BoostType.MOVE] }
                     ).forEach((task) => {

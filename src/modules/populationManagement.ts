@@ -782,7 +782,7 @@ export class PopulationManagement {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
-        let labTasksToAdd = this.getLabTasks(spawn.room, body, opts);
+        let labTasksToAdd = this.getLabTasks(spawn.room, name, body, opts);
 
         // find safe spawn direction in predefined layouts
         if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
@@ -876,7 +876,7 @@ export class PopulationManagement {
         return result;
     }
 
-    static getLabTasks(room: Room, body: BodyPartConstant[], opts?: SpawnOptions): LabTaskOpts[] {
+    static getLabTasks(room: Room, name: string, body: BodyPartConstant[], opts?: SpawnOptions): LabTaskOpts[] {
         let labTasksToAdd = [];
         if (room.labs.length) {
             if (opts.boosts?.length) {
