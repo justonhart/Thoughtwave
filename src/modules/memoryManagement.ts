@@ -14,7 +14,7 @@ export function manageMemory() {
     // Cleanup dead rooms
     if (Game.time % 100 === 0) {
         Object.keys(Memory.rooms)
-            .filter((roomName) => !Object.keys(Memory.rooms[roomName]).length)
+            .filter((roomName) => !Game.rooms[roomName]) // Owned rooms always have vision
             .forEach((roomName) => delete Memory.rooms[roomName]);
     }
 
