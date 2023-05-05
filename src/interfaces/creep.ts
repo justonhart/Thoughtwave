@@ -3,7 +3,7 @@ interface CreepMemory {
     targetId2?: Id<Creep>;
     gatheringLabResources?: boolean;
     needsBoosted?: boolean;
-    labRequests?: LabNeed[];
+    labNeeds?: LabNeed[];
     resourceSource?: Id<Structure>;
     portalLocations?: string[];
     link?: Id<StructureLink>;

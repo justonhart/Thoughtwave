@@ -3,7 +3,6 @@ interface RoomMemory {
     needsWallRepair?: boolean;
     upgraderLinkPos?: string;
     managerLink?: Id<Structure>;
-    labRequests?: LabNeed[];
     energyDistance?: number;
     controllerDistance?: number;
     unclaim?: boolean;
@@ -16,9 +15,9 @@ interface RoomMemory {
     mineralMiningAssignments: { [posString: string]: string };
     reservedEnergy?: number;
     layout?: RoomLayout;
-    labTasks?: LabTask[];
+    labTasks?: { [id: number]: LabTask };
     dontCheckConstructionsBefore?: number;
-    shipments?: Shipment[];
+    shipments?: number[]; //stores IDs for shipments to be referenced from Memory.shipments
     factoryTask?: FactoryTask;
     scanProgress?: string;
     towerRepairMap?: { [towerId: string]: Id<StructureRoad> }; //maps towerId to roadId
@@ -28,6 +27,8 @@ interface RoomMemory {
     remoteSources?: { [sourcePos: string]: RemoteSourceData };
     lastRemoteSourceCheck?: number;
     threatLevel: HomeRoomThreatLevel;
+    resourceRequests?: string[];
+    abandon?: boolean;
 }
 
 interface RemoteSourceData {
@@ -87,16 +88,55 @@ interface Room {
     workerCapacity: number;
     labs: StructureLab[];
     getDefenseHitpointTarget(): number;
-    addLabTask(opts: LabTaskOpts): ScreepsReturnCode;
-    getBoostResourcesAvailable(boostTypes: BoostType[]): { [type: number]: { resource: string; amount: number }[] };
+    addLabTask(opts: LabTaskPartial): ScreepsReturnCode;
     getNextNukeProtectionTask(): Id<Structure> | Id<ConstructionSite>;
-    addShipment(destination: string, resource: ResourceConstant, amount: number, marketOrderId?: string): ScreepsReturnCode;
     addFactoryTask(product: ResourceConstant, amount: number): ScreepsReturnCode;
     factory: StructureFactory;
     observer: StructureObserver;
     powerSpawn: StructurePowerSpawn;
     remoteMiningRooms: string[];
     remoteSources: string[];
+
+    /**
+     * Returns a map of each provided boost type to the number of boosts available
+     * @param boostTypes array of types to calculate
+     */
+    getBoostsAvailable(boostTypes: BoostType[]): { [type: number]: number };
+
+    /**
+     * Returns the amount of supplied resource in rooms storage or terminal not currently allocated to shipments or tasks
+     * NOTE: Don't use this function in creep methods managing factory or lab tasks - they need the actual amount of resources available
+     * @param resource the resource to query
+     */
+    getResourceAmount(resource: ResourceConstant): number;
+
+    /**
+     * returns the amount of resource that exists in its compressed form in a room's storage & terminal
+     * @param resource
+     */
+    getCompressedResourceAmount(resource: ResourceConstant): number;
+
+    /**
+     * Creates a Shipment in Memory.shipments from this room to another target room
+     * @param destination the target room
+     * @param resource the resource to send
+     * @param amount the amount of resource to send
+     */
+    addShipment(destination: string, resource: ResourceConstant, amount: number): ScreepsReturnCode;
+
+    /**
+     * Creates a request in Memory.resourceRequests for this room
+     * @param resource the resource to request
+     * @param amount the amount of resource to request
+     */
+    addRequest(resource: ResourceConstant, amount: number): number; //returns id
+
+    /**
+     * Creates a specialized shipment in Memory.shipments used to complete a market purchase
+     * @param marketId the id of the market listing to purchase
+     * @param amount the amount of resource to purchase
+     */
+    addMarketOrder(marketId: string, amount: number);
 }
 
 interface RoomPosition {

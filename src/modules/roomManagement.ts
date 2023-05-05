@@ -4,6 +4,7 @@ import { runLabs } from './labManagement';
 import { PopulationManagement } from './populationManagement';
 import { assignRemoteSource, findSuitableRemoteSource, removeSourceAssignment } from './remoteMining';
 import { manageRemoteRoom } from './remoteRoomManagement';
+import { shipmentReady } from './resourceManagement';
 import { deleteRoad } from './roads';
 import {
     placeBunkerOuterRamparts,
@@ -20,6 +21,17 @@ import {
 
 const BUILD_CHECK_PERIOD = 100;
 const REPAIR_QUEUE_REFRESH_PERIOD = 500;
+const RESOURCE_COMPRESSION_MAP = {
+    [RESOURCE_UTRIUM]: RESOURCE_UTRIUM_BAR,
+    [RESOURCE_LEMERGIUM]: RESOURCE_LEMERGIUM_BAR,
+    [RESOURCE_ZYNTHIUM]: RESOURCE_ZYNTHIUM_BAR,
+    [RESOURCE_KEANIUM]: RESOURCE_KEANIUM_BAR,
+    [RESOURCE_GHODIUM]: RESOURCE_GHODIUM_MELT,
+    [RESOURCE_OXYGEN]: RESOURCE_OXIDANT,
+    [RESOURCE_HYDROGEN]: RESOURCE_REDUCTANT,
+    [RESOURCE_CATALYST]: RESOURCE_PURIFIER,
+    [RESOURCE_ENERGY]: RESOURCE_BATTERY,
+};
 
 export function driveRoom(room: Room) {
     if (room.memory?.unclaim) {
@@ -333,6 +345,22 @@ export function driveRoom(room: Room) {
             runSpawning(room);
         } catch (e) {
             console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
+        }
+
+        if (room.factory) {
+            try {
+                runFactory(room);
+            } catch (e) {
+                console.log(`Error caught running room ${room.name} for Factory: \n${e}`);
+            }
+        }
+
+        if (room.terminal) {
+            try {
+                runShipments(room);
+            } catch (e) {
+                console.log(`Error caught running room ${room.name} for Shipments: \n${e}`);
+            }
         }
 
         if (!isHomeUnderAttack) {
@@ -652,7 +680,7 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (PopulationManagement.needsMineralMiner(room)) {
+    if (PopulationManagement.needsMineralMiner(room) && !roomUnderAttack) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMineralMiner();
     }
@@ -900,10 +928,6 @@ export function canSupportRemoteRoom(room: Room) {
 }
 
 function initMissingMemoryValues(room: Room) {
-    if (!room.memory.labRequests) {
-        room.memory.labRequests = [];
-    }
-
     if (!room.memory.gates) {
         room.memory.gates = [];
     }
@@ -938,6 +962,10 @@ function initMissingMemoryValues(room: Room) {
 
     if (!room.memory.remoteSources) {
         room.memory.remoteSources = {};
+    }
+
+    if (!room.memory.resourceRequests) {
+        room.memory.resourceRequests = [];
     }
 }
 
@@ -1000,7 +1028,6 @@ export function destructiveReset(roomName: string) {
         creeps.forEach((c) => {
             if (Memory.creeps[c].role === Role.DISTRIBUTOR || Memory.creeps[c].role === Role.WORKER) {
                 delete Memory.creeps[c].targetId;
-                delete Memory.creeps[c].labRequests;
                 delete Memory.creeps[c].destination;
                 delete Memory.creeps[c].energySource;
             } else {
@@ -1033,4 +1060,195 @@ function setThreatLevel(room: Room) {
     }
 
     room.memory.threatLevel = threatLevel;
+}
+
+function runFactory(room: Room) {
+    let task = room.memory.factoryTask;
+    let factory = room.factory;
+    if (task) {
+        if (!task.started) {
+            if (factoryTaskReady(room)) {
+                task.started = true;
+            }
+        } else {
+            let materialsUsedUp: boolean = task.needs.some((need) => !factory.store[need.resource]);
+            if (materialsUsedUp || factory.store[task.product] >= task.amount) {
+                delete room.memory.factoryTask;
+            } else {
+                if (!factory.cooldown) {
+                    let result = factory.produce(task.product as CommodityConstant);
+                    if (result !== OK) {
+                        console.log(`Removing factory task because of err: ${result}`);
+                        delete room.memory.factoryTask;
+                    }
+                }
+            }
+        }
+    } else {
+        const energyStatus = room.energyStatus;
+        const batteryCount = room.getResourceAmount(RESOURCE_BATTERY);
+        if (room.getResourceAmount(RESOURCE_ENERGY) > 375000 && batteryCount < 100000) {
+            room.addFactoryTask(RESOURCE_BATTERY, 1500);
+            return;
+        } else if ((energyStatus <= EnergyStatus.SURPLUS && batteryCount > 100000) || (energyStatus <= EnergyStatus.STABLE && batteryCount >= 50)) {
+            let setsOfFifty = Math.floor(batteryCount / 50);
+            let energyToCreate = 10 * 50 * Math.min(40, setsOfFifty);
+            room.addFactoryTask(RESOURCE_ENERGY, energyToCreate);
+            return;
+        }
+
+        const resourceToDecompress = Object.values(RESOURCE_COMPRESSION_MAP)
+            .filter((res) => res !== RESOURCE_BATTERY)
+            .find(
+                (resource) =>
+                    room.storage.store[resource] >= 100 &&
+                    room.terminal.store[Object.keys(RESOURCE_COMPRESSION_MAP).find((res) => RESOURCE_COMPRESSION_MAP[res] === resource)] < 5000
+            );
+        if (resourceToDecompress) {
+            const amountOfBarsToDecompress = Math.floor(room.storage.store[RESOURCE_COMPRESSION_MAP[resourceToDecompress]] / 100) * 100;
+            room.addFactoryTask(resourceToDecompress as ResourceConstant, Math.min(amountOfBarsToDecompress * 5, 3000));
+            return;
+        }
+
+        const resourceToCompress = Object.keys(MINERAL_MIN_AMOUNT).find(
+            (resource) => room.storage.store[resource] > 20000 && room.terminal.store[resource] >= 5000
+        );
+        if (resourceToCompress) {
+            const amountOfBarsToCreate = Math.floor(room.storage.store[resourceToCompress] / 500) * 100;
+            room.addFactoryTask(RESOURCE_COMPRESSION_MAP[resourceToCompress], Math.min(amountOfBarsToCreate, 3000));
+            return;
+        }
+    }
+}
+
+function factoryTaskReady(room: Room): boolean {
+    return room.memory.factoryTask.needs.every((need) => need.amount <= 0);
+}
+
+export function getFactoryTaskReservedResourceAmount(room: Room, resource: ResourceConstant): number {
+    return room.memory.factoryTask?.needs.find((need) => need.resource === resource)?.amount ?? 0;
+}
+
+export function getFactoryResourcesNeeded(task: FactoryTask): FactoryNeed[] {
+    let needs: FactoryNeed[] = [];
+    let commodityEntry: { amount: number; cooldown: number; components: { [resource: string]: number } } = COMMODITIES[task.product];
+    let amountProduced = commodityEntry.amount;
+    let componentResources = Object.keys(commodityEntry.components);
+    let componentsAmounts = commodityEntry.components;
+
+    needs = componentResources.map((resource) => {
+        return { resource: resource as ResourceConstant, amount: componentsAmounts[resource] * Math.floor(task.amount / amountProduced) };
+    });
+
+    return needs;
+}
+
+function runShipments(room: Room) {
+    room.memory.shipments = room.memory.shipments.filter(
+        (shipmentId) => Memory.shipments[shipmentId] && ![ShipmentStatus.SHIPPED, ShipmentStatus.FAILED].includes(Memory.shipments[shipmentId].status)
+    );
+
+    let shipmentSentThisTick = false;
+    room.memory.shipments.forEach((shipmentId) => {
+        const shipment = Memory.shipments[shipmentId];
+
+        //handle market order special case
+        if (shipment.sender === shipment.recipient && shipment.marketOrderId) {
+            switch (shipment.status) {
+                case ShipmentStatus.QUEUED:
+                    const canSupportShipment =
+                        room.terminal.store.getCapacity() >
+                        shipment.amount +
+                            room.memory.shipments.reduce((resourcesSum, nextShipmentId) =>
+                                [ShipmentStatus.PREPARING, ShipmentStatus.READY].includes(Memory.shipments[nextShipmentId].status)
+                                    ? (resourcesSum += Memory.shipments[nextShipmentId].amount)
+                                    : resourcesSum
+                            );
+                    if (canSupportShipment) {
+                        if (Memory.debug.logShipments)
+                            console.log(
+                                `${Game.time} - ${shipment.sender} preparing for market order ${shipment.marketOrderId}: ${shipment.amount} ${shipment.resource}`
+                            );
+                        Memory.shipments[shipmentId].status = ShipmentStatus.PREPARING;
+                    } else {
+                        break;
+                    }
+                case ShipmentStatus.PREPARING:
+                    if (shipmentReady(room.terminal, shipmentId)) {
+                        if (Memory.debug.logShipments)
+                            console.log(
+                                `${Game.time} - ${shipment.sender} ready for market order ${shipment.marketOrderId}: ${shipment.amount} ${shipment.resource}`
+                            );
+                        Memory.shipments[shipmentId].status = ShipmentStatus.READY;
+                    } else {
+                        break;
+                    }
+                case ShipmentStatus.READY:
+                    if (!shipmentSentThisTick && room.terminal.cooldown === 0) {
+                        const result = Game.market.deal(shipment.marketOrderId, shipment.amount, shipment.recipient);
+                        if (result === OK) {
+                            if (Memory.debug.logShipments)
+                                console.log(
+                                    `${Game.time} - market order ${shipment.marketOrderId} executed: ${shipment.amount} ${shipment.resource} -> ${shipment.recipient}`
+                                );
+                            Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
+                            shipmentSentThisTick = true;
+                        }
+                    }
+                    break;
+            }
+        } else {
+            switch (shipment.status) {
+                case ShipmentStatus.QUEUED:
+                    const canSupportShipment =
+                        room.terminal.store.getCapacity() >
+                        shipment.amount +
+                            room.memory.shipments.reduce((resourcesSum, nextShipmentId) =>
+                                [ShipmentStatus.PREPARING, ShipmentStatus.READY].includes(Memory.shipments[nextShipmentId].status)
+                                    ? (resourcesSum += Memory.shipments[nextShipmentId].amount)
+                                    : resourcesSum
+                            );
+                    if (canSupportShipment) {
+                        if (Memory.debug.logShipments)
+                            console.log(
+                                `${Game.time} - Room preparing shipment: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
+                            );
+                        Memory.shipments[shipmentId].status = ShipmentStatus.PREPARING;
+                    } else {
+                        break;
+                    }
+                case ShipmentStatus.PREPARING:
+                    if (shipmentReady(room.terminal, shipmentId)) {
+                        if (Memory.debug.logShipments)
+                            console.log(
+                                `${Game.time} - Shipment ready: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to  ${shipment.recipient}`
+                            );
+                        Memory.shipments[shipmentId].status = ShipmentStatus.READY;
+                    } else {
+                        break;
+                    }
+                case ShipmentStatus.READY:
+                    const destinationReady = Game.rooms[shipment.recipient]?.controller.my
+                        ? Game.rooms[shipment.recipient].terminal?.store.getFreeCapacity() >= shipment.amount
+                        : true;
+                    if (!shipmentSentThisTick && room.terminal.cooldown === 0 && destinationReady) {
+                        const result = room.terminal.send(shipment.resource, shipment.amount, shipment.recipient);
+                        if (result === OK) {
+                            if (Memory.debug.logShipments)
+                                console.log(
+                                    `${Game.time} - Shipment sent: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`
+                                );
+                            Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
+                            shipmentSentThisTick = true;
+                        } else {
+                            console.log(
+                                `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - no recipient terminal`
+                            );
+                            Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
+                        }
+                    }
+                    break;
+            }
+        }
+    });
 }

@@ -1,49 +1,62 @@
-import { getResourceAmount } from './resourceManagement';
+const BOOST_MAP: { [key in BoostType]: ResourceConstant } = {
+    [BoostType.ATTACK]: RESOURCE_CATALYZED_UTRIUM_ACID,
+    [BoostType.HARVEST]: RESOURCE_CATALYZED_UTRIUM_ALKALIDE,
+    [BoostType.CARRY]: RESOURCE_CATALYZED_KEANIUM_ACID,
+    [BoostType.RANGED_ATTACK]: RESOURCE_CATALYZED_KEANIUM_ALKALIDE,
+    [BoostType.BUILD]: RESOURCE_CATALYZED_LEMERGIUM_ACID,
+    [BoostType.HEAL]: RESOURCE_CATALYZED_LEMERGIUM_ALKALIDE,
+    [BoostType.DISMANTLE]: RESOURCE_CATALYZED_ZYNTHIUM_ACID,
+    [BoostType.MOVE]: RESOURCE_CATALYZED_ZYNTHIUM_ALKALIDE,
+    [BoostType.UPGRADE]: RESOURCE_CATALYZED_GHODIUM_ACID,
+    [BoostType.TOUGH]: RESOURCE_CATALYZED_GHODIUM_ALKALIDE,
+};
 
 export function runLabs(room: Room) {
     //manage queue
-    room.memory.labTasks = room.memory.labTasks.filter((task) => task.status !== TaskStatus.COMPLETE);
-
-    let nextQueuedTaskIndex = room.memory.labTasks.findIndex((task) => task.status === TaskStatus.QUEUED);
-    if (nextQueuedTaskIndex > -1) {
-        let updatedTask = attemptToStartTask(room, room.memory.labTasks[nextQueuedTaskIndex]);
-
-        if (updatedTask) {
-            room.memory.labTasks[nextQueuedTaskIndex] = updatedTask;
+    Object.entries(room.memory.labTasks).forEach(([taskId, task]) => {
+        switch (task.status) {
+            case TaskStatus.QUEUED:
+                attemptToStartTask(room, taskId);
+                break;
+            case TaskStatus.COMPLETE:
+                delete room.memory.labTasks[taskId];
+                break;
         }
-    }
+    });
 
     let labs = room.labs;
-    let labsInUse = labs.filter((lab) => lab.status !== LabStatus.AVAILABLE);
-    let primaryLabsInUse = labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY);
+    let idleLabs = labs.filter((lab) => lab.status === LabStatus.IDLE);
 
-    //if there are 4 or more available labs, try to add react task
-    if (
-        labs.length - labsInUse.length > 3 &&
-        !room.memory.labTasks.some((task) => task.type === LabTaskType.REACT && task.status !== TaskStatus.ACTIVE)
-    ) {
+    //If there is no react task, add react task
+    if (!Object.values(room.memory.labTasks).some((task) => task.type === LabTaskType.REACT)) {
         let resourceToMake = getNextResourceToCreate(room);
         if (resourceToMake) {
             let reagents = getReagents(resourceToMake);
-            let amountToCreate = Math.min(...reagents.map((resource) => getResourceAmount(room, resource)), 3000);
+            let amountToCreate = Math.min(...reagents.map((resource) => room.getResourceAmount(resource)), 3000);
             while (amountToCreate % 5) {
                 amountToCreate--;
             }
             let result = room.addLabTask({
                 type: LabTaskType.REACT,
-                reagentsNeeded: reagents.map((r) => {
+                needs: reagents.map((r) => {
                     return { resource: r, amount: amountToCreate };
                 }),
             });
             if (result === OK) {
-                console.log(`${room.name} added task to create ${amountToCreate} ${resourceToMake}`);
+                console.log(`${Game.time} - ${room.name} added task to create ${amountToCreate} ${resourceToMake}`);
             }
+        }
+    } else {
+        const labTaskId: number = Object.entries(room.memory.labTasks).find(
+            ([taskId, task]) => task.type === LabTaskType.REACT && task.status > TaskStatus.QUEUED
+        )?.[0] as unknown as number;
+        if (labTaskId) {
+            idleLabs.forEach((lab) => room.memory.labTasks[labTaskId]?.reactionLabs?.push(lab.id));
         }
     }
 
     //run tasks
-    primaryLabsInUse.forEach((lab) => {
-        let task = lab.room.memory.labTasks[lab.taskIndex];
+    Object.entries(room.memory.labTasks).forEach(([taskId, task]) => {
         if (task?.status === TaskStatus.ACTIVE) {
             switch (task.type) {
                 case LabTaskType.REACT:
@@ -66,14 +79,10 @@ export function runLabs(room: Room) {
             } else {
                 canStartTask =
                     task?.type === LabTaskType.BOOST
-                        ? task.reagentsNeeded
-                              .map(
-                                  (need) =>
-                                      Game.getObjectById(need.lab).store[need.resource] === need.amount &&
-                                      Game.getObjectById(need.lab).store[RESOURCE_ENERGY] >= 1000
-                              )
+                        ? task.needs
+                              .map((need) => need.amount === 0 && Game.getObjectById(need.lab).store[RESOURCE_ENERGY] >= 1000)
                               .reduce((readyState, next) => readyState && next)
-                        : task.reagentsNeeded
+                        : task.needs
                               .map((need) => Game.getObjectById(need.lab).store[need.resource] > 0)
                               .reduce((readyState, next) => readyState && next);
             }
@@ -83,7 +92,7 @@ export function runLabs(room: Room) {
             }
         }
 
-        room.memory.labTasks[lab.taskIndex] = task;
+        room.memory.labTasks[taskId] = task;
     });
 }
 
@@ -147,8 +156,31 @@ function runUnboostTask(task: LabTask): LabTask {
     return task;
 }
 
-export function findLabs(room: Room, type: LabTaskType): Id<StructureLab>[][] {
-    let availableLabs = room.labs.filter((lab) => lab.status === LabStatus.AVAILABLE);
+export function findLabs(room: Room, type: LabTaskType, boostNeed?: LabNeed): Id<StructureLab>[][] {
+    let availableLabs = room.labs.filter(
+        (lab) =>
+            lab.status === LabStatus.IDLE && lab.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_LAB }).length < 6
+    );
+    if (type === LabTaskType.BOOST) {
+        const labAlreadyUsingResource = room.labs.find((lab) => {
+            const task = room.memory.labTasks[lab.taskId];
+            return (
+                !!task &&
+                task.type === LabTaskType.BOOST &&
+                task.needs[0].resource === boostNeed.resource &&
+                lab.getFreeCapacity() >= boostNeed.amount
+            );
+        });
+        if (labAlreadyUsingResource) {
+            availableLabs.unshift(labAlreadyUsingResource);
+        }
+        //if boost task &no idle labs, steal an extra lab from react tasks
+        if (!availableLabs.length) {
+            availableLabs.push(
+                ...room.labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY && lab.room.memory.labTasks[lab.taskId].reactionLabs.length > 1)
+            );
+        }
+    }
 
     if (!availableLabs.length) {
         return undefined;
@@ -160,57 +192,27 @@ export function findLabs(room: Room, type: LabTaskType): Id<StructureLab>[][] {
     if (type === LabTaskType.BOOST || type === LabTaskType.UNBOOST) {
         primaryLabs[0] = availableLabs.pop();
     } else {
-        let labsNeedingEmptied = room.labs.filter((lab) => lab.status === LabStatus.NEEDS_EMPTYING);
-        if (labsNeedingEmptied.length || availableLabs.length < 3) {
-            return undefined;
+        if (type === LabTaskType.REACT) {
+            //we want react tasks to be able to use all labs for reactions, so we will only use the two center labs for supplying reactants
+            auxLabs = room.labs.filter(
+                (lab) => lab.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_LAB }).length === 6
+            );
         } else {
-            if (type === LabTaskType.REACT) {
-                //can use multiple reaction labs to speed up task - find aux labs first
-                //find available labs w/ most adjacent labs
-                let labsWithAdjacentCount = availableLabs
-                    .map((lab) => {
-                        return {
-                            lab: lab,
-                            inRangeCount: lab.pos.findInRange(FIND_MY_STRUCTURES, 2, {
-                                filter: (adjacentLab) => adjacentLab?.id !== lab?.id && availableLabs.includes(adjacentLab as StructureLab),
-                            }).length,
-                        };
-                    })
-                    .filter((lab) => lab.inRangeCount > 1)
-                    .sort((a, b) => b.inRangeCount - a.inRangeCount)
-                    .map((labWithCount) => labWithCount.lab);
+            let suitablePrimaryLab = availableLabs.find((lab, index) => {
+                let adjacentAvailableLabs = availableLabs.filter((auxLab, auxIndex) => auxIndex !== index && lab.pos.getRangeTo(auxLab) <= 2);
+                return adjacentAvailableLabs.length >= 2;
+            });
 
-                if (labsWithAdjacentCount.length < 3) {
-                    return undefined;
-                }
-
-                auxLabs = labsWithAdjacentCount.splice(0, 2);
-                for (let i = 0; i < labsWithAdjacentCount.length && auxLabs.length + primaryLabs.length < availableLabs.length - 1; i++) {
-                    if (labsWithAdjacentCount[i].pos.inRangeTo(auxLabs[0], 2) && labsWithAdjacentCount[i].pos.inRangeTo(auxLabs[1], 2)) {
-                        primaryLabs.push(labsWithAdjacentCount[i]);
-                    }
-                }
-
-                if (!primaryLabs.length) {
-                    return undefined;
+            if (suitablePrimaryLab) {
+                primaryLabs[0] = suitablePrimaryLab;
+                let availableAuxLabs = availableLabs.filter(
+                    (auxLab) => auxLab.id !== primaryLabs[0].id && primaryLabs[0].pos.getRangeTo(auxLab) <= 2
+                );
+                while (auxLabs.length < 2) {
+                    auxLabs.push(availableAuxLabs.shift());
                 }
             } else {
-                let suitablePrimaryLab = availableLabs.find((lab, index) => {
-                    let adjacentAvailableLabs = availableLabs.filter((auxLab, auxIndex) => auxIndex !== index && lab.pos.getRangeTo(auxLab) <= 2);
-                    return adjacentAvailableLabs.length >= 2;
-                });
-
-                if (suitablePrimaryLab) {
-                    primaryLabs[0] = suitablePrimaryLab;
-                    let availableAuxLabs = availableLabs.filter(
-                        (auxLab) => auxLab.id !== primaryLabs[0].id && primaryLabs[0].pos.getRangeTo(auxLab) <= 2
-                    );
-                    while (auxLabs.length < 2) {
-                        auxLabs.push(availableAuxLabs.shift());
-                    }
-                } else {
-                    return undefined;
-                }
+                return undefined;
             }
         }
     }
@@ -218,11 +220,9 @@ export function findLabs(room: Room, type: LabTaskType): Id<StructureLab>[][] {
     return [primaryLabs.map((lab) => lab?.id), auxLabs.map((lab) => lab?.id)];
 }
 
-export function addLabTask(room: Room, opts: LabTaskOpts): ScreepsReturnCode {
+export function addLabTask(room: Room, opts: LabTaskPartial): OK | ERR_NOT_ENOUGH_RESOURCES {
     //check room for necessary resources
-    let roomHasAllResources = opts.reagentsNeeded
-        .map((need) => roomHasNeededResource(room, need))
-        .reduce((hasNeeded, nextNeed) => hasNeeded && nextNeed);
+    let roomHasAllResources = opts.needs.map((need) => roomHasNeededResource(room, need)).reduce((hasNeeded, nextNeed) => hasNeeded && nextNeed);
 
     if (roomHasAllResources) {
         let task: LabTask = {
@@ -230,212 +230,75 @@ export function addLabTask(room: Room, opts: LabTaskOpts): ScreepsReturnCode {
             ...opts,
         };
 
-        room.memory.labTasks.push(task);
+        let nextId = 1;
+        while (room.memory.labTasks[nextId] !== undefined) {
+            nextId++;
+        }
+
+        room.memory.labTasks[nextId] = task;
         return OK;
     }
 
     return ERR_NOT_ENOUGH_RESOURCES;
 }
 
-function attemptToStartTask(room: Room, task: LabTask): LabTask {
-    let labsFound: Id<StructureLab>[][] = findLabs(room, task.type);
+function attemptToStartTask(room: Room, taskId: string): void {
+    let task: LabTask = room.memory.labTasks[taskId];
+    let labsFound: Id<StructureLab>[][] = findLabs(room, task.type, task.type === LabTaskType.BOOST ? task.needs[0] : undefined);
     if (labsFound) {
+        if (task.type === LabTaskType.BOOST) {
+            let taskLab = Game.getObjectById(labsFound[0][0]);
+            let otherTaskId = taskLab.taskId;
+            if (otherTaskId && room.memory.labTasks[otherTaskId].type !== LabTaskType.BOOST) {
+                taskLab.room.memory.labTasks[otherTaskId].reactionLabs = taskLab.room.memory.labTasks[otherTaskId].reactionLabs.filter(
+                    (id) => id !== taskLab.id
+                );
+            }
+        }
         task.reactionLabs = labsFound[0];
+
         if (task.type === LabTaskType.REACT || task.type === LabTaskType.REVERSE) {
             task.auxillaryLabs = labsFound[1];
             if (task.type === LabTaskType.REACT) {
-                task.reagentsNeeded.forEach((need, index) => {
+                task.needs.forEach((need, index) => {
                     need.lab = task.auxillaryLabs[index];
                 });
             } else {
-                task.reagentsNeeded[0].lab = task.reactionLabs[0];
+                task.needs[0].lab = task.reactionLabs[0];
             }
-        } else {
-            if (task.type === LabTaskType.BOOST) {
-                task.reagentsNeeded[0].lab = task.reactionLabs[0];
-
-                if (!Game.creeps[task.targetCreepName]) {
-                    task.status = TaskStatus.COMPLETE;
-                    return task;
-                }
+        } else if (task.type === LabTaskType.BOOST) {
+            task.needs[0].lab = task.reactionLabs[0];
+            if (!Game.creeps[task.targetCreepName]) {
+                task.status = TaskStatus.COMPLETE;
+                room.memory.labTasks[taskId] = task;
+                return;
             }
         }
 
-        task.reagentsNeeded.forEach((need) => {
-            room.memory.labRequests.push(need);
-        });
-
         task.status = TaskStatus.PREPARING;
-        return task;
+        room.memory.labTasks[taskId] = task;
     }
-
-    return undefined;
 }
 
 function roomHasNeededResource(room: Room, need: LabNeed) {
-    return room.storage?.store[need.resource] >= need.amount ? true : room.terminal?.store[need.resource] >= need.amount ? true : false;
+    return room.getResourceAmount(need.resource) >= need.amount;
 }
 
-export function getResourceBoostsAvailable(
-    room: Room,
-    boostNeeds: BoostType[]
-): { [type: number]: { resource: ResourceConstant; amount: number }[] } {
-    let availableResources: { [type: number]: { resource: ResourceConstant; amount: number }[] } = {};
+/**
+ * Takes in a room and array, and returns the number of boosts per type the room currently has available and unallocated.
+ * @param room
+ * @param boostNeeds
+ * @returns map of boost types to number of boosts available
+ */
+export function getBoostsAvailable(room: Room, boostNeeds: BoostType[]): { [type: number]: number } {
+    const boostCountMap: { [type: number]: number } = {};
+    boostNeeds.forEach((type) => {
+        const resourceNeeded = BOOST_MAP[type];
+        const resourceAmountInRoom = room.getResourceAmount(resourceNeeded);
+        boostCountMap[type] = Math.floor(resourceAmountInRoom / 30);
+    });
 
-    let getBoostAvailabilityForResource = (room: Room, resource: ResourceConstant) => {
-        return Math.floor(((room.storage?.store[resource] ?? 0) + (room.terminal?.store[resource] ?? 0)) / 30);
-    };
-
-    if (boostNeeds.includes(BoostType.ATTACK)) {
-        Object.keys(BOOSTS[ATTACK]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.ATTACK] = [
-                    ...(availableResources[BoostType.ATTACK as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-
-        availableResources[BoostType.ATTACK] = availableResources[BoostType.ATTACK]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.RANGED_ATTACK)) {
-        Object.keys(BOOSTS[RANGED_ATTACK]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.RANGED_ATTACK] = [
-                    ...(availableResources[BoostType.RANGED_ATTACK as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-        availableResources[BoostType.RANGED_ATTACK] = availableResources[BoostType.RANGED_ATTACK]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.HEAL)) {
-        Object.keys(BOOSTS[HEAL]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.HEAL] = [
-                    ...(availableResources[BoostType.HEAL as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-        availableResources[BoostType.HEAL] = availableResources[BoostType.HEAL]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.CARRY)) {
-        Object.keys(BOOSTS[CARRY]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.CARRY] = [
-                    ...(availableResources[BoostType.CARRY as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-        availableResources[BoostType.CARRY] = availableResources[BoostType.CARRY]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.MOVE)) {
-        Object.keys(BOOSTS[MOVE]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.MOVE] = [
-                    ...(availableResources[BoostType.MOVE as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-        availableResources[BoostType.MOVE] = availableResources[BoostType.MOVE]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.TOUGH)) {
-        Object.keys(BOOSTS[TOUGH]).forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.TOUGH] = [
-                    ...(availableResources[BoostType.TOUGH as number] ?? []),
-                    { resource: resource as ResourceConstant, amount },
-                ];
-            }
-        });
-        availableResources[BoostType.TOUGH] = availableResources[BoostType.TOUGH]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.UPGRADE)) {
-        [RESOURCE_GHODIUM_HYDRIDE, RESOURCE_GHODIUM_ACID, RESOURCE_CATALYZED_GHODIUM_ACID].forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.UPGRADE] = [...(availableResources[BoostType.UPGRADE as number] ?? []), { resource, amount }];
-            }
-        });
-        availableResources[BoostType.UPGRADE] = availableResources[BoostType.UPGRADE]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.BUILD)) {
-        [RESOURCE_LEMERGIUM_HYDRIDE, RESOURCE_LEMERGIUM_ACID, RESOURCE_CATALYZED_LEMERGIUM_ACID].forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.BUILD] = [...(availableResources[BoostType.BUILD as number] ?? []), { resource, amount }];
-            }
-        });
-        availableResources[BoostType.BUILD] = availableResources[BoostType.BUILD]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.DISMANTLE)) {
-        [RESOURCE_ZYNTHIUM_HYDRIDE, RESOURCE_ZYNTHIUM_ACID, RESOURCE_CATALYZED_ZYNTHIUM_ACID].forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.DISMANTLE] = [...(availableResources[BoostType.DISMANTLE as number] ?? []), { resource, amount }];
-            }
-        });
-        availableResources[BoostType.DISMANTLE] = availableResources[BoostType.DISMANTLE]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    if (boostNeeds.includes(BoostType.HARVEST)) {
-        [RESOURCE_UTRIUM_OXIDE, RESOURCE_UTRIUM_ALKALIDE, RESOURCE_CATALYZED_UTRIUM_ALKALIDE].forEach((resource) => {
-            let amount = getBoostAvailabilityForResource(room, resource as ResourceConstant);
-            if (amount && resource.length > 2) {
-                availableResources[BoostType.HARVEST] = [...(availableResources[BoostType.HARVEST as number] ?? []), { resource, amount }];
-            }
-        });
-        availableResources[BoostType.HARVEST] = availableResources[BoostType.HARVEST]?.sort(
-            (a, b) =>
-                Object.keys(REACTION_TIME).findIndex((res) => res === b.resource) - Object.keys(REACTION_TIME).findIndex((res) => res === a.resource)
-        );
-    }
-
-    return availableResources;
+    return boostCountMap;
 }
 
 //find next needed resource that room can currently create
@@ -449,7 +312,7 @@ export function getNextResourceToCreate(room: Room): MineralCompoundConstant {
 
 export function hasNecessaryReagentsForReaction(room: Room, compound: MineralCompoundConstant): boolean {
     return getReagents(compound)
-        .map((resource) => getResourceAmount(room, resource) > 450)
+        .map((resource) => room.getResourceAmount(resource) > 450)
         .reduce((hasAll, next) => hasAll && next);
 }
 
@@ -469,4 +332,19 @@ export function getReagents(compound: MineralCompoundConstant): ResourceConstant
     }
 
     return reagents;
+}
+
+export function spawnBoostTestCreep(roomName?: string) {
+    const spawnOpts: SpawnOptions = {
+        boosts: [BoostType.MOVE, BoostType.BUILD],
+        memory: {
+            role: Role.GO,
+        },
+    };
+    const spawnAssignment: SpawnAssignment = {
+        designee: roomName ?? 'E28S28',
+        spawnOpts: spawnOpts,
+        body: [MOVE, WORK],
+    };
+    Memory.spawnAssignments.push(spawnAssignment);
 }
