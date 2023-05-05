@@ -517,13 +517,21 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 )
                 .forEach((creep) => {
                     creep.memory.needsBoosted = true;
-                    PopulationManagement.getLabTasks(
+                    const labTasksToAdd: LabTaskPartial[] = [];
+                    const requestsToAdd: ResourceRequestPartial[] = [];
+                    PopulationManagement.setLabTasksAndRequests(
                         homeRoom,
                         creep.name,
                         creep.body.map((part) => part.type),
+                        labTasksToAdd,
+                        requestsToAdd,
                         { boosts: [BoostType.ATTACK, BoostType.MOVE] }
-                    ).forEach((task) => {
+                    );
+                    labTasksToAdd.forEach((task) => {
                         homeRoom.addLabTask(task);
+                    });
+                    requestsToAdd.forEach((request) => {
+                        homeRoom.addRequest(request.resource, request.amount);
                     });
                 });
             Memory.spawnAssignments

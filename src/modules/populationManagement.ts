@@ -720,49 +720,8 @@ export class PopulationManagement {
 
         let labTasksToAdd: LabTaskPartial[] = [];
         let requestsToAdd: ResourceRequestPartial[] = [];
-        if (spawn.room.labs.length) {
-            if (opts?.boosts?.length) {
-                //get total requested boosts available by type
-                let boostMap = spawn.room.getBoostsAvailable(opts.boosts);
 
-                //calculate number of boosts needed
-                opts.boosts.forEach((boostType) => {
-                    let boostsAvailableInRoom = boostMap[boostType];
-                    let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
-
-                    if (boostsAvailableInRoom < boostsRequested && spawn.room.terminal) {
-                        //check other terminal rooms for available boost
-                        const boostsNeeded = boostsRequested - boostsAvailableInRoom;
-                        const boostsAvailableToImport = Math.floor(getResourceAvailability(BOOST_RESOURCE_MAP[boostType], spawn.room.name) / 30);
-                        const boostsToImport = Math.min(boostsNeeded, boostsAvailableToImport);
-                        if (boostsAvailableToImport > boostsRequested - boostsAvailableInRoom) {
-                            const requestMetadata: ResourceRequestPartial = {
-                                resource: BOOST_RESOURCE_MAP[boostType],
-                                amount: boostsToImport * 30,
-                                room: spawn.room.name,
-                            };
-                            requestsToAdd.push(requestMetadata);
-                        }
-                        boostsAvailableInRoom += boostsToImport;
-                    }
-
-                    labTasksToAdd.push({
-                        type: LabTaskType.BOOST,
-                        needs: [
-                            {
-                                resource: BOOST_RESOURCE_MAP[boostType] as ResourceConstant,
-                                amount: Math.min(boostsRequested, boostsAvailableInRoom) * 30,
-                            },
-                        ],
-                        targetCreepName: name,
-                    });
-                });
-
-                if (labTasksToAdd.length) {
-                    opts.memory.needsBoosted = true;
-                }
-            }
-        }
+        this.setLabTasksAndRequests(spawn.room, name, body, labTasksToAdd, requestsToAdd, opts);
 
         // find safe spawn direction in predefined layouts
         if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
@@ -859,37 +818,49 @@ export class PopulationManagement {
         return result;
     }
 
-    static getLabTasks(room: Room, name: string, body: BodyPartConstant[], opts?: SpawnOptions): LabTaskOpts[] {
-        let labTasksToAdd = [];
+    static setLabTasksAndRequests(
+        room: Room,
+        name: string,
+        body: BodyPartConstant[],
+        labTasksToAdd: LabTaskPartial[],
+        requestsToAdd: ResourceRequestPartial[],
+        opts?: SpawnOptions
+    ) {
         if (room.labs.length) {
-            if (opts.boosts?.length) {
+            if (opts?.boosts?.length) {
                 //get total requested boosts available by type
-                let boostMap = getResourceBoostsAvailable(room, Array.from(opts.boosts));
+                let boostMap = room.getBoostsAvailable(opts.boosts);
 
                 //calculate number of boosts needed
                 opts.boosts.forEach((boostType) => {
-                    let boostsAvailable = boostMap[boostType];
-                    let boostsAvailableCount = boostsAvailable?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
+                    let boostsAvailableInRoom = boostMap[boostType];
                     let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
 
-                    let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
-
-                    let resourcesNeeded: { [resource: string]: number } = {};
-
-                    for (let i = 0; i < numberOfBoosts; i++) {
-                        let nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
-                        boostMap[nextAvailableBoostResource] -= 1;
-                        !resourcesNeeded[nextAvailableBoostResource]
-                            ? (resourcesNeeded[nextAvailableBoostResource] = 30)
-                            : (resourcesNeeded[nextAvailableBoostResource] += 30);
+                    if (boostsAvailableInRoom < boostsRequested && room.terminal) {
+                        //check other terminal rooms for available boost
+                        const boostsNeeded = boostsRequested - boostsAvailableInRoom;
+                        const boostsAvailableToImport = Math.floor(getResourceAvailability(BOOST_RESOURCE_MAP[boostType], room.name) / 30);
+                        const boostsToImport = Math.min(boostsNeeded, boostsAvailableToImport);
+                        if (boostsAvailableToImport > boostsRequested - boostsAvailableInRoom) {
+                            const requestMetadata: ResourceRequestPartial = {
+                                resource: BOOST_RESOURCE_MAP[boostType],
+                                amount: boostsToImport * 30,
+                                room: room.name,
+                            };
+                            requestsToAdd.push(requestMetadata);
+                        }
+                        boostsAvailableInRoom += boostsToImport;
                     }
 
-                    Object.keys(resourcesNeeded).forEach((resource) => {
-                        labTasksToAdd.push({
-                            type: LabTaskType.BOOST,
-                            reagentsNeeded: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
-                            targetCreepName: name,
-                        });
+                    labTasksToAdd.push({
+                        type: LabTaskType.BOOST,
+                        needs: [
+                            {
+                                resource: BOOST_RESOURCE_MAP[boostType] as ResourceConstant,
+                                amount: Math.min(boostsRequested, boostsAvailableInRoom) * 30,
+                            },
+                        ],
+                        targetCreepName: name,
                     });
                 });
 
@@ -898,7 +869,6 @@ export class PopulationManagement {
                 }
             }
         }
-        return labTasksToAdd;
     }
 
     static spawnManager(spawn: StructureSpawn): ScreepsReturnCode {
