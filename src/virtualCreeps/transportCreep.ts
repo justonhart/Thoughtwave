@@ -686,8 +686,12 @@ export class TransportCreep extends WaveCreep {
                 if (!this.pos.isNearTo(targetLab)) {
                     this.travelTo(targetLab, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
                 } else {
-                    const amountToTransfer = Math.min(nextNeed.amount, this.store[nextNeed.resource]);
-                    let result = this.transfer(targetLab, nextNeed.resource, Math.min(nextNeed.amount, this.store[nextNeed.resource]));
+                    const amountToTransfer = Math.min(
+                        nextNeed.amount,
+                        this.store[nextNeed.resource],
+                        targetLab.store.getFreeCapacity(nextNeed.resource)
+                    );
+                    let result = this.transfer(targetLab, nextNeed.resource, amountToTransfer);
                     if (result === OK) {
                         const labTaskId = targetLab.taskId;
                         const needIndex = this.homeroom.memory.labTasks[labTaskId].needs.findIndex((need) => need.resource === nextNeed.resource);
@@ -701,6 +705,8 @@ export class TransportCreep extends WaveCreep {
                                 }
                             }
                         }
+                    } else if (result === ERR_FULL) {
+                        this.memory.labNeeds.shift();
                     }
 
                     if (!this.memory.labNeeds.length) {
