@@ -156,70 +156,6 @@ function runUnboostTask(task: LabTask): LabTask {
     return task;
 }
 
-export function findLabs(room: Room, type: LabTaskType, boostNeed?: LabNeed): Id<StructureLab>[][] {
-    let availableLabs = room.labs.filter(
-        (lab) =>
-            lab.status === LabStatus.IDLE && lab.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_LAB }).length < 6
-    );
-    if (type === LabTaskType.BOOST) {
-        const labAlreadyUsingResource = room.labs.find((lab) => {
-            const task = room.memory.labTasks[lab.taskId];
-            return (
-                !!task &&
-                task.type === LabTaskType.BOOST &&
-                task.needs[0].resource === boostNeed.resource &&
-                lab.getFreeCapacity() >= boostNeed.amount
-            );
-        });
-        if (labAlreadyUsingResource) {
-            availableLabs.unshift(labAlreadyUsingResource);
-        }
-        //if boost task &no idle labs, steal an extra lab from react tasks
-        if (!availableLabs.length) {
-            availableLabs.push(
-                ...room.labs.filter((lab) => lab.status === LabStatus.IN_USE_PRIMARY && lab.room.memory.labTasks[lab.taskId].reactionLabs.length > 1)
-            );
-        }
-    }
-
-    if (!availableLabs.length) {
-        return undefined;
-    }
-
-    let primaryLabs: StructureLab[] = [];
-    let auxLabs: StructureLab[] = [];
-
-    if (type === LabTaskType.BOOST || type === LabTaskType.UNBOOST) {
-        primaryLabs[0] = availableLabs.pop();
-    } else {
-        if (type === LabTaskType.REACT) {
-            //we want react tasks to be able to use all labs for reactions, so we will only use the two center labs for supplying reactants
-            auxLabs = room.labs.filter(
-                (lab) => lab.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_LAB }).length === 6
-            );
-        } else {
-            let suitablePrimaryLab = availableLabs.find((lab, index) => {
-                let adjacentAvailableLabs = availableLabs.filter((auxLab, auxIndex) => auxIndex !== index && lab.pos.getRangeTo(auxLab) <= 2);
-                return adjacentAvailableLabs.length >= 2;
-            });
-
-            if (suitablePrimaryLab) {
-                primaryLabs[0] = suitablePrimaryLab;
-                let availableAuxLabs = availableLabs.filter(
-                    (auxLab) => auxLab.id !== primaryLabs[0].id && primaryLabs[0].pos.getRangeTo(auxLab) <= 2
-                );
-                while (auxLabs.length < 2) {
-                    auxLabs.push(availableAuxLabs.shift());
-                }
-            } else {
-                return undefined;
-            }
-        }
-    }
-
-    return [primaryLabs.map((lab) => lab?.id), auxLabs.map((lab) => lab?.id)];
-}
-
 export function addLabTask(room: Room, opts: LabTaskPartial): OK | ERR_NOT_ENOUGH_RESOURCES {
     //check room for necessary resources
     let roomHasAllResources = opts.needs.map((need) => roomHasNeededResource(room, need)).reduce((hasNeeded, nextNeed) => hasNeeded && nextNeed);
@@ -244,44 +180,43 @@ export function addLabTask(room: Room, opts: LabTaskPartial): OK | ERR_NOT_ENOUG
 
 function attemptToStartTask(room: Room, taskId: string): void {
     let task: LabTask = room.memory.labTasks[taskId];
-    let labsFound: Id<StructureLab>[][] = findLabs(room, task.type, task.type === LabTaskType.BOOST ? task.needs[0] : undefined);
-    if (labsFound) {
-        if (task.type === LabTaskType.BOOST) {
-            let taskLab = Game.getObjectById(labsFound[0][0]);
-            let otherTaskId = taskLab.taskId;
+
+    if(task.type === LabTaskType.BOOST){
+        const lab = findBoostLab(room, taskId);
+        if(lab){
+            let otherTaskId = lab.taskId;
             if (otherTaskId && room.memory.labTasks[otherTaskId].type !== LabTaskType.BOOST) {
-                taskLab.room.memory.labTasks[otherTaskId].reactionLabs = taskLab.room.memory.labTasks[otherTaskId].reactionLabs.filter(
-                    (id) => id !== taskLab.id
+                lab.room.memory.labTasks[otherTaskId].reactionLabs = lab.room.memory.labTasks[otherTaskId].reactionLabs.filter(
+                    (id) => id !== lab.id
                 );
             }
-        }
-        task.reactionLabs = labsFound[0];
 
-        if (task.type === LabTaskType.REACT || task.type === LabTaskType.REVERSE) {
-            task.auxillaryLabs = labsFound[1];
-            if (task.type === LabTaskType.REACT) {
-                task.needs.forEach((need, index) => {
-                    need.lab = task.auxillaryLabs[index];
-                });
-            } else {
-                task.needs[0].lab = task.reactionLabs[0];
-            }
-        } else if (task.type === LabTaskType.BOOST) {
-            task.needs[0].lab = task.reactionLabs[0];
+            task.reactionLabs = [lab.id];
+            task.status = TaskStatus.PREPARING;
+            task.needs[0].lab = lab.id;
+
             if (!Game.creeps[task.targetCreepName]) {
                 task.status = TaskStatus.COMPLETE;
-                room.memory.labTasks[taskId] = task;
-                return;
             }
         }
-
-        task.status = TaskStatus.PREPARING;
-        room.memory.labTasks[taskId] = task;
+    } else if (task.type === LabTaskType.REACT){
+        const labs = findReagentLabs(room);
+        if(labs.every(lab => !lab.taskId)){
+            task.status = TaskStatus.PREPARING;
+            task.auxillaryLabs = labs.map(lab => lab.id);
+            task.reactionLabs = [];
+            task.needs.forEach((need, index) => {
+                need.lab = task.auxillaryLabs[index];
+            });
+        }
     }
+
+    
+    room.memory.labTasks[taskId] = task;
 }
 
 function roomHasNeededResource(room: Room, need: LabNeed) {
-    return room.getResourceAmount(need.resource) >= need.amount;
+    return room.getResourceAmount(need.resource) >= need.amount || Object.entries(Memory.resourceRequests).some(([id, req]) => req.resource === need.resource && req.room === room.name);
 }
 
 /**
@@ -336,7 +271,7 @@ export function getReagents(compound: MineralCompoundConstant): ResourceConstant
 
 export function spawnBoostTestCreep(roomName?: string) {
     const spawnOpts: SpawnOptions = {
-        boosts: [BoostType.MOVE, BoostType.BUILD],
+        boosts: [BoostType.MOVE, BoostType.UPGRADE],
         memory: {
             role: Role.GO,
         },
@@ -344,7 +279,20 @@ export function spawnBoostTestCreep(roomName?: string) {
     const spawnAssignment: SpawnAssignment = {
         designee: roomName ?? 'E28S28',
         spawnOpts: spawnOpts,
-        body: [MOVE, WORK],
+        body: [MOVE, WORK, WORK],
     };
     Memory.spawnAssignments.push(spawnAssignment);
+}
+
+function findBoostLab(room: Room, taskId: string): StructureLab{
+    const reagentLabs = findReagentLabs(room);
+    const labTask = room.memory.labTasks[taskId];
+    const boostLabs = room.labs.filter(lab =>  !reagentLabs.includes(lab));
+    const availableBoostLab = boostLabs.find(lab => (lab.taskId && room.memory.labTasks[lab.taskId].type === LabTaskType.BOOST && room.memory.labTasks[lab.taskId].needs[0].resource === labTask.needs[0].resource && lab.getFreeCapacity() >= labTask.needs[0].amount) ||  lab.taskId && room.memory.labTasks[lab.taskId].type === LabTaskType.REACT || !lab.taskId);
+    return availableBoostLab;
+}
+
+function findReagentLabs(room: Room): StructureLab[]{
+    const labsSortedByAdjacent = room.labs.map(lab => {return {lab: lab, adj: lab.pos.findInRange(FIND_STRUCTURES, 1, {filter: s => s.structureType === STRUCTURE_LAB}).length}}).sort((a,b) => b.adj - a.adj).map(obj => obj.lab);
+    return labsSortedByAdjacent.slice(0,2);
 }

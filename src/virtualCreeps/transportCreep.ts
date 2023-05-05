@@ -654,7 +654,11 @@ export class TransportCreep extends WaveCreep {
 
                 let target = [this.room.storage, this.room.terminal].find((struct) => struct.store[resourceToGather]);
                 if (!target) {
+                    const labIdForNeed = this.memory.labNeeds.find(need => need.resource === resourceToGather)?.lab;
+                    const taskIdToCancel = Game.getObjectById(labIdForNeed)?.taskId;
                     delete this.memory.labNeeds;
+                    delete this.homeroom.memory.labTasks[taskIdToCancel];
+                    console.log(`${Game.time} - LabTask ${taskIdToCancel} in ${this.memory.room} cancelled`);
                 } else if (!this.pos.isNearTo(target)) {
                     this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
                 } else {
