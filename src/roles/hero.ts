@@ -63,6 +63,7 @@ export class Hero extends PowerCreep {
      */
     private shouldRenew(): boolean {
         // TODO: check if creep should die instead because other rooms need energy (should be critical ==> should just be able to check powerCreep Queue in memory)
+        // TODO: moveTo new room instead of suicide?
         return this.ticksToLive < 100;
     }
 
@@ -77,7 +78,7 @@ export class Hero extends PowerCreep {
             this.usePower(PWR_REGEN_SOURCE, target);
             this.memory.cooldown[PWR_REGEN_SOURCE] = Game.time + POWER_INFO[PWR_REGEN_SOURCE].cooldown;
             delete this.memory.targetId;
-        } else if (!this.memory.targetId && this.memory.cooldown[PWR_REGEN_SOURCE] < Game.time) {
+        } else if (!target && this.memory.cooldown[PWR_REGEN_SOURCE] < Game.time) {
             const sources = this.room.find(FIND_SOURCES);
             const targetSource = sources.find(
                 (source: Source) => !source.effects?.some((effect) => effect.effect === PWR_REGEN_SOURCE && effect.ticksRemaining > 40)
@@ -127,6 +128,38 @@ export class Hero extends PowerCreep {
             if (power?.level) {
                 this.memory.cooldown[powerKey] = Game.time + power?.cooldown ?? 0;
             }
+        }
+    }
+
+    /**
+     * Boost spawn timer.
+     */
+    private boostSpawn() {
+        this.initPowerCooldown(PWR_OPERATE_SPAWN);
+        const target = Game.getObjectById(this.memory.targetId);
+        if (!target && this.store.ops < POWER_INFO[PWR_OPERATE_SPAWN].ops) {
+            this.memory.targetId = this.room.storage.id;
+        } else if (target instanceof StructureStorage && this.pos.isNearTo(target)) {
+            this.withdraw(this.room.storage, RESOURCE_OPS, 300);
+            delete this.memory.targetId;
+        } else if (!target && this.memory.cooldown[PWR_OPERATE_SPAWN] < Game.time) {
+            const spawns = this.room.find(FIND_MY_SPAWNS);
+            const targetSpawn = spawns.find(
+                (spawn) => !spawn.effects?.some((effect) => effect.effect === PWR_OPERATE_SPAWN && effect.ticksRemaining > 20)
+            );
+            if (targetSpawn) {
+                this.memory.targetId = targetSpawn.id;
+            } else {
+                const lowestSpawnCooldown = spawns.reduce((lowestCooldown, nextSpawn) => {
+                    const nextSpawnTicks = nextSpawn.effects.find((effect) => effect.effect === PWR_OPERATE_SPAWN)?.ticksRemaining - 19;
+                    return nextSpawnTicks < lowestCooldown ? nextSpawnTicks : lowestCooldown;
+                }, 0);
+                this.memory.cooldown[PWR_OPERATE_SPAWN] = Game.time + lowestSpawnCooldown;
+            }
+        } else if (target instanceof StructureSpawn && this.pos.getRangeTo(target) <= 3) {
+            this.usePower(PWR_OPERATE_SPAWN, target);
+            this.memory.cooldown[PWR_OPERATE_SPAWN] = Game.time + POWER_INFO[PWR_OPERATE_SPAWN].cooldown;
+            delete this.memory.targetId;
         }
     }
 }

@@ -1,6 +1,6 @@
 interface PowerCreepMemory {
     cooldown: { [power: number]: number };
-    targetId: Id<Source> | Id<StructurePowerSpawn> | Id<StructureController> | Id<StructureStorage>;
+    targetId: Id<Source> | Id<StructurePowerSpawn> | Id<StructureController> | Id<StructureStorage> | Id<StructureSpawn>;
 }
 
 interface PowerCreep {

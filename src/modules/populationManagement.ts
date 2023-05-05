@@ -782,44 +782,7 @@ export class PopulationManagement {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
-        let labTasksToAdd = [];
-        if (spawn.room.labs.length) {
-            if (opts.boosts?.length) {
-                //get total requested boosts available by type
-                let boostMap = getResourceBoostsAvailable(spawn.room, Array.from(opts.boosts));
-
-                //calculate number of boosts needed
-                opts.boosts.forEach((boostType) => {
-                    let boostsAvailable = boostMap[boostType];
-                    let boostsAvailableCount = boostsAvailable?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
-                    let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
-
-                    let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
-
-                    let resourcesNeeded: { [resource: string]: number } = {};
-
-                    for (let i = 0; i < numberOfBoosts; i++) {
-                        let nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
-                        boostMap[nextAvailableBoostResource] -= 1;
-                        !resourcesNeeded[nextAvailableBoostResource]
-                            ? (resourcesNeeded[nextAvailableBoostResource] = 30)
-                            : (resourcesNeeded[nextAvailableBoostResource] += 30);
-                    }
-
-                    Object.keys(resourcesNeeded).forEach((resource) => {
-                        labTasksToAdd.push({
-                            type: LabTaskType.BOOST,
-                            reagentsNeeded: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
-                            targetCreepName: name,
-                        });
-                    });
-                });
-
-                if (labTasksToAdd.length) {
-                    opts.memory.needsBoosted = true;
-                }
-            }
-        }
+        let labTasksToAdd = this.getLabTasks(spawn.room, body, opts);
 
         // find safe spawn direction in predefined layouts
         if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
@@ -911,6 +874,48 @@ export class PopulationManagement {
         }
 
         return result;
+    }
+
+    static getLabTasks(room: Room, body: BodyPartConstant[], opts?: SpawnOptions): LabTaskOpts[] {
+        let labTasksToAdd = [];
+        if (room.labs.length) {
+            if (opts.boosts?.length) {
+                //get total requested boosts available by type
+                let boostMap = getResourceBoostsAvailable(room, Array.from(opts.boosts));
+
+                //calculate number of boosts needed
+                opts.boosts.forEach((boostType) => {
+                    let boostsAvailable = boostMap[boostType];
+                    let boostsAvailableCount = boostsAvailable?.map((boost) => boost.amount).reduce((sum, next) => sum + next) ?? 0;
+                    let boostsRequested = body.filter((p) => p === BODY_TO_BOOST_MAP[boostType]).length;
+
+                    let numberOfBoosts = Math.min(boostsRequested, boostsAvailableCount);
+
+                    let resourcesNeeded: { [resource: string]: number } = {};
+
+                    for (let i = 0; i < numberOfBoosts; i++) {
+                        let nextAvailableBoostResource = boostMap[boostType].filter((boost) => boost.amount > 0)[0].resource;
+                        boostMap[nextAvailableBoostResource] -= 1;
+                        !resourcesNeeded[nextAvailableBoostResource]
+                            ? (resourcesNeeded[nextAvailableBoostResource] = 30)
+                            : (resourcesNeeded[nextAvailableBoostResource] += 30);
+                    }
+
+                    Object.keys(resourcesNeeded).forEach((resource) => {
+                        labTasksToAdd.push({
+                            type: LabTaskType.BOOST,
+                            reagentsNeeded: [{ resource: resource as ResourceConstant, amount: resourcesNeeded[resource] }],
+                            targetCreepName: name,
+                        });
+                    });
+                });
+
+                if (labTasksToAdd.length) {
+                    opts.memory.needsBoosted = true;
+                }
+            }
+        }
+        return labTasksToAdd;
     }
 
     static spawnManager(spawn: StructureSpawn): ScreepsReturnCode {
