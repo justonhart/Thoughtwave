@@ -1,49 +1,22 @@
 import { Hero } from '../roles/hero';
 
-const mainPowerOrder = [
+const powerOrder = [
     PWR_GENERATE_OPS,
     PWR_OPERATE_SPAWN,
     PWR_GENERATE_OPS,
     PWR_OPERATE_SPAWN,
     PWR_OPERATE_TOWER,
     PWR_OPERATE_TOWER,
-    PWR_OPERATE_EXTENSION,
+    PWR_OPERATE_LAB, // Interchangeable
     PWR_GENERATE_OPS,
     PWR_OPERATE_SPAWN,
     PWR_OPERATE_TOWER,
     PWR_REGEN_SOURCE,
     PWR_REGEN_SOURCE,
     PWR_REGEN_SOURCE,
-    PWR_OPERATE_EXTENSION,
+    PWR_OPERATE_LAB, // Interchangeable
     PWR_REGEN_SOURCE,
-    PWR_GENERATE_OPS,
-    PWR_OPERATE_SPAWN,
-    PWR_OPERATE_TOWER,
-    PWR_OPERATE_EXTENSION,
-    PWR_OPERATE_EXTENSION,
-    PWR_OPERATE_FACTORY,
-    PWR_OPERATE_OBSERVER,
-    PWR_REGEN_SOURCE,
-    PWR_OPERATE_SPAWN,
-    PWR_OPERATE_TOWER,
-];
-const econPowerOrder = [
-    PWR_GENERATE_OPS,
-    PWR_OPERATE_SPAWN,
-    PWR_GENERATE_OPS,
-    PWR_OPERATE_SPAWN,
-    PWR_OPERATE_TOWER,
-    PWR_OPERATE_TOWER,
-    PWR_OPERATE_LAB,
-    PWR_GENERATE_OPS,
-    PWR_OPERATE_SPAWN,
-    PWR_OPERATE_TOWER,
-    PWR_REGEN_SOURCE,
-    PWR_REGEN_SOURCE,
-    PWR_REGEN_SOURCE,
-    PWR_OPERATE_LAB,
-    PWR_REGEN_SOURCE,
-];
+] as PowerConstant[];
 
 /**
  * Creates PowerCreeps and upgrades them according to the defined PowerOrder.
@@ -54,19 +27,13 @@ export function createAndUpgradePCs(powerCreeps: PowerCreep[]) {
     if (Game.time % 999 === 0 || global.initiatingPowerCreeps) {
         try {
             // Create/Upgrade Powercreeps one tick per upgrade since it caused issues otherwise
-            if (!powerCreeps.length) {
-                PowerCreep.create('PCMain', POWER_CLASS.OPERATOR);
+            if (!powerCreeps.length || powerCreeps.reduce((usedGpl, nextCreep) => (usedGpl += nextCreep.level + 1), 0) < Game.gpl.level) {
                 global.initiatingPowerCreeps = true;
-            } else if (powerCreeps.reduce((usedGpl, nextCreep) => (usedGpl += nextCreep.level + 1), 0) < Game.gpl.level) {
-                global.initiatingPowerCreeps = true;
-                if (powerCreeps.length === 1 && powerCreeps[0].level < 25) {
-                    const mainPC = powerCreeps[0];
-                    mainPC.upgrade(mainPowerOrder[mainPC.level]);
-                } else if (powerCreeps.some((powerCreep) => powerCreep.level < 15)) {
+                if (powerCreeps.some((powerCreep) => powerCreep.level < 15)) {
                     const lowestPC = powerCreeps.reduce((lowestLevelPC, nextPC) => (nextPC.level < lowestLevelPC.level ? nextPC : lowestLevelPC));
-                    lowestPC.upgrade(econPowerOrder[lowestPC.level]);
+                    lowestPC.upgrade(getPowerOrder(powerCreeps.length <= 1)[lowestPC.level]);
                 } else {
-                    PowerCreep.create('PCEcon' + powerCreeps.length, POWER_CLASS.OPERATOR);
+                    PowerCreep.create('pc' + powerCreeps.length, POWER_CLASS.OPERATOR);
                 }
             } else {
                 global.initiatingPowerCreeps = false;
@@ -79,13 +46,36 @@ export function createAndUpgradePCs(powerCreeps: PowerCreep[]) {
 }
 
 /**
+ * Replace the interchangeable power. Here we can also add factory/observer/etc. powers later if needed.
+ * @param isInitialPowerCreep For now it will only spawn one (the first) creep with operateExtension
+ * @returns
+ */
+function getPowerOrder(isInitialPowerCreep: boolean) {
+    if (isInitialPowerCreep) {
+        powerOrder[6] = PWR_OPERATE_EXTENSION;
+        powerOrder[13] = PWR_OPERATE_EXTENSION;
+        return powerOrder;
+    } else {
+        powerOrder[6] = PWR_OPERATE_LAB;
+        powerOrder[13] = PWR_OPERATE_LAB;
+        return powerOrder;
+    }
+}
+
+/**
  * Spawn in all powercreeps to rooms in need or the ones with the lowest energyLevel (limited to rooms with powerSpawn).
  * TODO: Reserve 1 powerCreep (main? for defense) since respawn takes 8 hours
  * @param powerCreeps
  */
 export function spawnPowerCreeps(powerCreeps: PowerCreep[]) {
+    if (global.initiatingPowerCreeps) {
+        return;
+    }
     powerCreeps
-        .filter((powerCreep) => !powerCreep.ticksToLive && (!powerCreep.spawnCooldownTime || powerCreep.spawnCooldownTime <= Date.now()))
+        .filter(
+            (powerCreep) =>
+                !powerCreep.ticksToLive && powerCreep.level && (!powerCreep.spawnCooldownTime || powerCreep.spawnCooldownTime <= Date.now())
+        )
         .forEach((powerCreep) => {
             const lowestEnergyRoom = Object.values(Game.rooms)
                 .filter(
