@@ -1,20 +1,18 @@
 interface StructureLab {
-    taskIndex: number;
+    taskId: number;
     status: LabStatus;
+    getFreeCapacity(): number;
 }
 
-interface LabTask {
+interface LabTask extends LabTaskPartial {
     reactionLabs?: Id<StructureLab>[];
     auxillaryLabs?: Id<StructureLab>[];
-    type: LabTaskType;
     status: TaskStatus;
-    reagentsNeeded?: LabNeed[];
-    targetCreepName?: string;
 }
 
-interface LabTaskOpts {
+interface LabTaskPartial {
     type: LabTaskType;
-    reagentsNeeded: LabNeed[];
+    needs: LabNeed[];
     targetCreepName?: string;
 }
 
@@ -39,7 +37,7 @@ const enum TaskStatus {
 }
 
 const enum LabStatus {
-    AVAILABLE = 0,
+    IDLE = 0,
     IN_USE_PRIMARY,
     IN_USE_AUXILLARY,
     NEEDS_EMPTYING,

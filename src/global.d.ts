@@ -1,6 +1,6 @@
 declare global {
     //map of resources to rooms which need it
-    var resourceNeeds: { [resource: string]: string[] };
+    var resourceNeeds: { [resource: string]: { roomName: string; amount: number }[] };
 
     //global values shared among rooms - only one room should check constructions per tick
     var roomConstructionsChecked: boolean;

@@ -46,21 +46,32 @@ export class Operative extends WorkerCreep {
     }
 
     private runRemoteBuild() {
+        const room = Game.rooms[this.memory.destination];
         if (this.store.energy) {
-            let constructionSite = Game.rooms[this.memory.destination]
-                .find(FIND_MY_CONSTRUCTION_SITES)
-                .reduce((mostProgressed, next) => (mostProgressed.progress > next.progress ? mostProgressed : next));
-            if (constructionSite) {
-                if (this.pos.inRangeTo(constructionSite, 3)) {
-                    this.build(constructionSite);
+            if (room) {
+                let target = Game.getObjectById(this.memory.targetId);
+                if (!target) {
+                    this.memory.targetId = this.findBuildTarget();
+                    target = Game.getObjectById(this.memory.targetId);
+                }
+
+                if (target instanceof ConstructionSite) {
+                    this.runBuildJob(target);
+                } else if (target instanceof Structure) {
+                    this.runRepairJob(target);
                 } else {
-                    this.travelTo(constructionSite, { range: 3 });
+                    this.onTaskFinished();
+                    this.terminateOperation();
                 }
             } else {
-                this.terminateOperation();
+                this.travelToRoom(this.memory.destination);
             }
         } else {
-            this.gatherResourceFromOrigin(RESOURCE_ENERGY);
+            if (room?.energyStatus > EnergyStatus.RECOVERING) {
+                this.gatherEnergy();
+            } else {
+                this.gatherResourceFromOrigin(RESOURCE_ENERGY);
+            }
         }
     }
 
@@ -262,6 +273,29 @@ export class Operative extends WorkerCreep {
             this.travelTo(origin.storage);
         } else {
             this.withdraw(origin.storage, resource);
+        }
+    }
+
+    private findBuildTarget(): Id<Structure> | Id<ConstructionSite> {
+        const room = Game.rooms[this.memory.destination];
+
+        let constructedDefenses = this.pos
+            .findInRange(FIND_STRUCTURES, 3)
+            .filter(
+                (structure) => (structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) && structure.hits === 1
+            );
+        if (constructedDefenses.length) {
+            return constructedDefenses.shift().id;
+        }
+
+        const sites = room?.find(FIND_MY_CONSTRUCTION_SITES);
+        if (sites.length) {
+            return sites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
+        }
+
+        const ramparts = room?.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_RAMPART && s.hits < 250000 });
+        if (ramparts.length) {
+            return this.room.name === room.name ? this.pos.findClosestByRange(ramparts).id : ramparts.pop().id;
         }
     }
 }
