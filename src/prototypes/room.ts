@@ -247,7 +247,8 @@ Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConst
         _.flatten(Object.values(this.memory.labTasks).map((task) => task.needs)).reduce(
             (totalResourceNeeded, nextNeed) => (nextNeed.resource === resource ? totalResourceNeeded + nextNeed.amount : totalResourceNeeded),
             0
-        )
+        ) + 
+        Object.values(Memory.shipments).reduce((sum: number, nextShipment: Shipment) => nextShipment.recipient === this.name && nextShipment.resource === resource ? sum + nextShipment.amount : sum ,0)
     );
 };
 
@@ -258,8 +259,15 @@ Room.prototype.getCompressedResourceAmount = function (this: Room, resource: Res
 };
 
 Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant, amount: number): ScreepsReturnCode {
+
+    if(Memory.debug.logFactoryTasks){
+        console.log(`Attempting to create factory task in ${this.name}: ${amount} ${product}`)
+    }
     if (this.factory) {
         if (this.memory.factoryTask) {
+            if(Memory.debug?.logFactoryTasks){
+                console.log(`Failed to add factory task in ${this.name}: task already running`)
+            }
             return ERR_BUSY;
         } else {
             let resourcesNeeded = getFactoryResourcesNeeded({ product: product, amount: amount });
@@ -268,6 +276,9 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
                 true
             );
             if (!roomHasEnoughMaterials) {
+                if(Memory.debug?.logFactoryTasks){
+                    console.log(`Failed to add factory task in ${this.name}: missing necessary resources`);
+                }
                 return ERR_NOT_ENOUGH_RESOURCES;
             }
             const resourceNeedAboveFactoryCapacity = resourcesNeeded.reduce((total, nextNeed) => total + nextNeed.amount, 0) > 50000;
@@ -282,6 +293,9 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
                     console.log(`${Game.time} - ${this.name} added task -> ${newTask.amount} ${newTask.product}`);
                 }
                 return OK;
+            }
+            if(Memory.debug?.logFactoryTasks){
+                console.log(`Failed to add factory task in ${this.name}: request too large`)
             }
             return ERR_FULL;
         }

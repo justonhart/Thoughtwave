@@ -1074,6 +1074,9 @@ function runFactory(room: Room) {
             let materialsUsedUp: boolean = task.needs.some((need) => !factory.store[need.resource]);
             if (materialsUsedUp || factory.store[task.product] >= task.amount) {
                 delete room.memory.factoryTask;
+                if(Memory.debug?.logFactoryTasks){
+                    console.log(`${Game.time} - Factory task completed in ${room.name}`);
+                }
             } else {
                 if (!factory.cooldown) {
                     let result = factory.produce(task.product as CommodityConstant);
@@ -1105,8 +1108,12 @@ function runFactory(room: Room) {
                     room.terminal.store[Object.keys(RESOURCE_COMPRESSION_MAP).find((res) => RESOURCE_COMPRESSION_MAP[res] === resource)] < 5000
             );
         if (resourceToDecompress) {
-            const amountOfBarsToDecompress = Math.floor(room.storage.store[RESOURCE_COMPRESSION_MAP[resourceToDecompress]] / 100) * 100;
-            room.addFactoryTask(resourceToDecompress as ResourceConstant, Math.min(amountOfBarsToDecompress * 5, 3000));
+            const amountOfBarsToDecompress = Math.min(Math.floor(room.storage.store[resourceToDecompress] / 100) * 100, 3000);
+            const product = Object.keys(RESOURCE_COMPRESSION_MAP).find(res => RESOURCE_COMPRESSION_MAP[res] === resourceToDecompress);
+            if(Memory.debug?.logFactoryTasks){
+                console.log(`${Game.time} - Adding ${product} decompression task (${amountOfBarsToDecompress * 5}) in ${room.name}`);
+            } 
+            room.addFactoryTask(product as ResourceConstant, amountOfBarsToDecompress * 5);
             return;
         }
 
@@ -1137,6 +1144,9 @@ export function getFactoryResourcesNeeded(task: FactoryTask): FactoryNeed[] {
     let componentsAmounts = commodityEntry.components;
 
     needs = componentResources.map((resource) => {
+        if(Memory.debug?.logFactoryTasks){
+            console.log(`Need: ${componentsAmounts[resource] * Math.floor(task.amount / amountProduced)} ${resource}`);
+        }
         return { resource: resource as ResourceConstant, amount: componentsAmounts[resource] * Math.floor(task.amount / amountProduced) };
     });
 

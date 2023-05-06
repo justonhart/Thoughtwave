@@ -621,7 +621,17 @@ export class TransportCreep extends WaveCreep {
             this.storeCargo();
         } else {
             if (this.pos.isNearTo(labToClean)) {
+                const amountInLab = labToClean.store[labToClean.mineralType];
                 this.withdraw(labToClean, labToClean.mineralType);
+                if(this.store.getFreeCapacity() + amountInLab < this.store.getCapacity()){
+                    const nextLabToClean = this.homeroom.labs.find(lab => lab.status === LabStatus.NEEDS_EMPTYING && lab !== labToClean);
+                    if(nextLabToClean){
+                        this.travelTo(nextLabToClean, {range: 1});
+                    } else {
+                        this.travelTo(this.homeroom.storage);
+                    }
+                }
+
             } else {
                 this.travelTo(labToClean, { range: 1 });
             }

@@ -111,8 +111,10 @@ export class Manager extends WaveCreep {
         if (terminal) {
             let shipmentToWork = this.room.memory.shipments?.find((shipment) => !shipmentReady(terminal, shipment));
             if (shipmentToWork) {
-                this.workShipment(shipmentToWork);
-                return;
+                let result = this.workShipment(shipmentToWork);
+                if(result === OK){
+                    return;
+                }
             }
         }
 
@@ -257,24 +259,31 @@ export class Manager extends WaveCreep {
         }
     }
 
-    private workShipment(shipmentId: number) {
+    private workShipment(shipmentId: number): ScreepsReturnCode {
         const shipment = Memory.shipments[shipmentId];
         const shipmentIsMarketOrder = shipment.recipient === shipment.sender && shipment.marketOrderId;
+        let result: ScreepsReturnCode;
         if (this.room.terminal.store[shipment.resource] < shipment.amount && !shipmentIsMarketOrder) {
-            this.withdraw(
+            result = this.withdraw(
                 this.room.storage,
                 shipment.resource,
                 Math.min(this.store.getFreeCapacity(), shipment.amount - this.room.terminal.store[shipment.resource])
             );
-            this.memory.targetId = this.room.terminal.id;
+            if(result===OK){
+                this.memory.targetId = this.room.terminal.id;
+            }
         } else {
             let energyNeeded = shipmentIsMarketOrder
                 ? Game.market.calcTransactionCost(shipment.amount, shipment.recipient, Game.market.getOrderById(shipment.marketOrderId).roomName)
                 : Game.market.calcTransactionCost(shipment.amount, this.room.name, shipment.recipient) +
                   (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
-            this.withdraw(this.room.storage, RESOURCE_ENERGY, Math.min(this.store.getFreeCapacity(), energyNeeded - this.room.terminal.store.energy));
-            this.memory.targetId = this.room.terminal.id;
+            result = this.withdraw(this.room.storage, RESOURCE_ENERGY, Math.min(this.store.getFreeCapacity(), energyNeeded - this.room.terminal.store.energy));
+            if(result===OK){
+                this.memory.targetId = this.room.terminal.id;
+            }
         }
+
+        return result;
     }
 
     private workFactoryTask(task: FactoryTask) {
