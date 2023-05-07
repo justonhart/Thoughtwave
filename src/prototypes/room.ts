@@ -266,6 +266,11 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
     if (Memory.debug.logFactoryTasks) {
         console.log(`Attempting to create factory task in ${this.name}: ${amount} ${product}`);
     }
+
+    if(amount <= 0){
+        return ERR_INVALID_ARGS;
+    }
+
     if (this.factory) {
         if (this.memory.factoryTask) {
             if (Memory.debug?.logFactoryTasks) {
