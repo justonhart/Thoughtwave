@@ -99,6 +99,28 @@ export function updateRoomData(room: Room) {
 
     data.asOf = Game.time;
 
+    // Only check for enemies on non-owned rooms
+    if (data.roomStatus < RoomMemoryStatus.OWNED_OTHER) {
+        // Get all OWNED_ME adjacent rooms
+        const isAdjacentToOwnedRoom = Object.values(Game.map.describeExits(room.name)).some((exitRoomName) => Memory.rooms[exitRoomName]);
+        if (isAdjacentToOwnedRoom) {
+            const boostedAttacker = room
+                .find(FIND_HOSTILE_CREEPS)
+                .find(
+                    (creep) =>
+                        creep.owner.username !== 'Invader' &&
+                        creep.getActiveBodyparts(TOUGH) &&
+                        creep.getActiveBodyparts(ATTACK) + creep.getActiveBodyparts(RANGED_ATTACK) + creep.getActiveBodyparts(WORK) > 0 &&
+                        creep.body.some((part) => part.boost)
+                );
+            if (boostedAttacker) {
+                data.threatDetected = true;
+            } else {
+                data.threatDetected = false;
+            }
+        }
+    }
+
     Memory.roomData[room.name] = data;
 }
 

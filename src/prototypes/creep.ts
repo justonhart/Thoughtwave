@@ -47,3 +47,8 @@ Object.defineProperty(Creep.prototype, 'operation', {
     enumerable: false,
     configurable: true,
 });
+
+// -------------------------------------------- POWER CREEPS -------------------------------------------- //
+PowerCreep.prototype.travelTo = function (destination, opts) {
+    return Pathing.travelTo(this, destination, opts);
+};

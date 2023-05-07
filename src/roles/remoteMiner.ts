@@ -6,17 +6,43 @@ export class RemoteMiner extends WaveCreep {
             this.homeroom.memory.remoteSources[this.memory.assignment].miner = AssignmentStatus.UNASSIGNED;
         }
         if (
-            this.damaged() ||
+            (this.damaged() &&
+                (!isKeeperRoom(this.memory.assignment.toRoomPos().roomName) ||
+                    this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER ||
+                    !this.keeperPresentOrSpawning())) ||
             Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
         ) {
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
         }
 
+        // Clear out left over containers
+        if (this.memory.targetId2) {
+            const structure = Game.getObjectById(this.memory.targetId2) as StructureContainer;
+            if (!structure) {
+                delete this.memory.targetId2;
+            } else {
+                const dismantleStatus = this.dismantle(structure);
+                if (dismantleStatus === ERR_NOT_IN_RANGE) {
+                    this.travelTo(structure);
+                }
+                return;
+            }
+        }
+
         //if we have visibility in assigned room
         if (Game.rooms[this.getMiningPosition().roomName]) {
             const isAKeeperRoom = isKeeperRoom(this.memory.assignment.toRoomPos().roomName);
-            if (isAKeeperRoom && this.keeperPresentOrSpawning()) {
+            if (
+                isAKeeperRoom &&
+                this.keeperPresentOrSpawning() &&
+                (this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER ||
+                    this.pos.getRangeTo(
+                        Object.values(Game.creeps).find(
+                            (creep) => creep.memory.role === Role.KEEPER_EXTERMINATOR && creep.memory.assignment === this.memory.assignment
+                        )
+                    ) > 10)
+            ) {
                 // Always travel away from the same source otherwise it can cause creep to not move at all
                 let closestLair: RoomPosition;
                 const lairPositions = Object.entries(Memory.remoteData[this.memory.assignment.toRoomPos().roomName].sourceKeeperLairs)
@@ -55,8 +81,23 @@ export class RemoteMiner extends WaveCreep {
                                 }
                             }
                         } else {
-                            this.pos.createConstructionSite(STRUCTURE_CONTAINER);
-                            this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus = RemoteSourceSetupStatus.BUILDING_CONTAINER;
+                            const result = this.pos.createConstructionSite(STRUCTURE_CONTAINER);
+                            if (result === ERR_RCL_NOT_ENOUGH) {
+                                // left over extensions from a stronghold
+                                const structure = this.room
+                                    .find(FIND_STRUCTURES, {
+                                        filter: (s) =>
+                                            s.structureType === STRUCTURE_CONTAINER &&
+                                            !Object.keys(this.homeroom.memory.remoteSources)?.some((sourcePos) => s.pos.toMemSafe() === sourcePos),
+                                    })
+                                    .shift();
+
+                                if (structure) {
+                                    this.memory.targetId2 = structure.id;
+                                }
+                            } else {
+                                this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus = RemoteSourceSetupStatus.BUILDING_CONTAINER;
+                            }
                         }
                     } else {
                         if (this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) {

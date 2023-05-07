@@ -60,6 +60,7 @@ interface RoomData {
     roomStatus?: RoomMemoryStatus;
     owner?: string;
     hostile?: boolean;
+    threatDetected?: boolean; // Will only be set for rooms adjacent to owned_me rooms
     roomLevel?: number;
     powerBank?: boolean;
     deposits?: DepositConstant[];

@@ -1,6 +1,6 @@
 import { CombatIntel } from './combatIntel';
 import { computeRoomNameFromDiff, isCenterRoom, isKeeperRoom } from './data';
-import { runLabs } from './labManagement';
+import { addLabTask, runLabs } from './labManagement';
 import { PopulationManagement } from './populationManagement';
 import { assignRemoteSource, findSuitableRemoteSource, removeSourceAssignment } from './remoteMining';
 import { manageRemoteRoom } from './remoteRoomManagement';
@@ -270,10 +270,6 @@ export function driveRoom(room: Room) {
             }
         }
 
-        if (room.memory.gates?.length) {
-            runGates(room);
-        }
-
         if (room.energyStatus >= EnergyStatus.RECOVERING) {
             //if this room doesn't have any outstanding claims
             if (
@@ -327,7 +323,7 @@ export function driveRoom(room: Room) {
             }
         }
 
-        if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50 && room.energyStatus >= EnergyStatus.SURPLUS) {
+        if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50 && room.energyStatus >= EnergyStatus.STABLE) {
             try {
                 room.powerSpawn.processPower();
             } catch (e) {
@@ -483,9 +479,9 @@ function runHomeSecurity(homeRoom: Room): boolean {
         return false;
     }
 
+    const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
     if (hostileCreepData.creeps.length >= 1) {
         // Spawn multiple rampartProtectors based on the number of enemy hostiles
-        const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (
             !currentNumProtectors ||
             (hostileCreepData.creeps.length >= 4 &&
@@ -510,10 +506,79 @@ function runHomeSecurity(homeRoom: Room): boolean {
                     },
                 });
             }
+        } else if (currentNumProtectors) {
+            // Get all unboosted protectors and boost them (needed due to early detection system)
+            Object.values(Game.creeps)
+                .filter(
+                    (creep) =>
+                        creep.memory.role === Role.RAMPART_PROTECTOR &&
+                        creep.pos.roomName === homeRoom.name &&
+                        (!creep.memory.needsBoosted || !creep.body.some((part) => part.boost))
+                )
+                .forEach((creep) => {
+                    creep.memory.needsBoosted = true;
+                    const labTasksToAdd: LabTaskPartial[] = [];
+                    const requestsToAdd: ResourceRequestPartial[] = [];
+                    PopulationManagement.setLabTasksAndRequests(
+                        homeRoom,
+                        creep.name,
+                        creep.body.map((part) => part.type),
+                        labTasksToAdd,
+                        requestsToAdd,
+                        { boosts: [BoostType.ATTACK, BoostType.MOVE] }
+                    );
+                    labTasksToAdd.forEach((task) => {
+                        homeRoom.addLabTask(task);
+                    });
+                    requestsToAdd.forEach((request) => {
+                        homeRoom.addRequest(request.resource, request.amount);
+                    });
+                });
+            Memory.spawnAssignments
+                .filter(
+                    (creep) =>
+                        creep.spawnOpts.memory.role === Role.RAMPART_PROTECTOR &&
+                        creep.spawnOpts.memory.room === homeRoom.name &&
+                        !creep.spawnOpts.memory.needsBoosted
+                )
+                .forEach((spawnAssignment) => {
+                    spawnAssignment.spawnOpts.memory.needsBoosted = true;
+                    spawnAssignment.spawnOpts.boosts = [BoostType.ATTACK, BoostType.MOVE];
+                });
         }
         return true;
+    } else if (!currentNumProtectors && hasEarlyDetectionThreat(homeRoom.name)) {
+        // Spawn in early rampart protectors
+        Game.notify(`Early detection system for Room ${homeRoom.name} detected at ${Game.time}!`);
+        const attackerBody = PopulationManagement.createPartsArray([ATTACK, ATTACK, ATTACK, ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10);
+        Memory.spawnAssignments.push({
+            designee: homeRoom.name,
+            body: attackerBody,
+            spawnOpts: {
+                memory: {
+                    role: Role.RAMPART_PROTECTOR,
+                    room: homeRoom.name,
+                    assignment: homeRoom.name,
+                    currentTaskPriority: Priority.HIGH,
+                    combat: { flee: false },
+                },
+            },
+        });
+    } else if (currentNumProtectors && !hasEarlyDetectionThreat(homeRoom.name)) {
+        // Cleanup
+        // Recycle unneeded creeps spawned in from early detection or any left over spawnAssignments
+        Object.values(Game.creeps)
+            .filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR && creep.pos.roomName === homeRoom.name)
+            .forEach((creep) => (creep.memory.recycle = true));
+        Memory.spawnAssignments = Memory.spawnAssignments.filter(
+            (creep) => creep.spawnOpts.memory.role !== Role.RAMPART_PROTECTOR || creep.spawnOpts.memory.room !== homeRoom.name
+        );
     }
     return false;
+}
+
+function hasEarlyDetectionThreat(roomName: string) {
+    return Object.values(Game.map.describeExits(roomName)).some((exitRoomName) => Memory.roomData[exitRoomName].threatDetected);
 }
 
 export function initRoom(room: Room) {
@@ -604,7 +669,18 @@ function runSpawning(room: Room) {
         }
     });
 
-    let availableSpawns = spawns.filter((spawn) => !spawn.spawning);
+    // Prioritize boosted spawns
+    let availableSpawns = spawns
+        .filter((spawn) => !spawn.spawning)
+        .sort((spawn1, spawn2) => {
+            if (spawn1.effects?.some((effect) => effect.effect === PWR_OPERATE_SPAWN)) {
+                return 1;
+            } else if (spawn2.effects?.some((effect) => effect.effect === PWR_OPERATE_SPAWN)) {
+                return -1;
+            } else {
+                return 0;
+            }
+        });
 
     let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
@@ -778,28 +854,6 @@ export function findRepairTargets(room: Room): Id<Structure>[] {
     return repairTargetQueue;
 }
 
-function runGates(room: Room): void {
-    let gates = room.memory.gates.filter((gate) => Game.getObjectById(gate.id));
-
-    gates.forEach((gateId) => {
-        if (gateId.lastToggled === undefined) {
-            gateId.lastToggled = Game.time - 5;
-        }
-
-        let gate = Game.getObjectById(gateId.id);
-        let creepsInRange = gate.pos.findInRange(FIND_HOSTILE_CREEPS, 1).length > 0;
-
-        if (gate.isPublic && creepsInRange) {
-            gate.setPublic(false);
-            gateId.lastToggled = Game.time;
-        } else if (!gate.isPublic && !creepsInRange && Game.time - gateId.lastToggled > 3) {
-            gate.setPublic(true);
-        }
-    });
-
-    room.memory.gates = gates;
-}
-
 function placeMiningPositionContainers(room: Room) {
     let miningPositions = Object.keys(room.memory.miningAssignments).map((pos) => pos.toRoomPos());
     miningPositions.forEach((pos) => {
@@ -875,8 +929,18 @@ function runRemoteRooms(room: Room) {
 function scanArea(room: Room) {
     let xDiff: number, yDiff: number;
 
-    //increment progress counter
+    // Check all adjacent rooms if there hasnt been vision in 6 ticks to get early enemy detection
+    const exitRoomName = Object.values(Game.map.describeExits(room.name)).find(
+        (exitRoomName) =>
+            Memory.roomData[exitRoomName]?.asOf <= Game.time + 6 &&
+            ![RoomMemoryStatus.OWNED_OTHER, RoomMemoryStatus.OWNED_INVADER].some((status) => status === Memory.roomData[exitRoomName]?.roomStatus)
+    );
+    if (exitRoomName) {
+        room.observer.observeRoom(exitRoomName);
+        return;
+    }
     if (room.memory.scanProgress === undefined || room.memory.scanProgress === '10.10') {
+        //increment progress counter
         xDiff = -10;
         yDiff = -10;
     } else {
@@ -908,13 +972,15 @@ function runVisionRequest(room: Room, requestId: string) {
 
 function getStructurePriority(structureType: StructureConstant): number {
     if (structureType === STRUCTURE_STORAGE || structureType === STRUCTURE_CONTAINER || structureType === STRUCTURE_TERMINAL) {
-        return 2;
+        return 3;
     } else if (
         structureType === STRUCTURE_SPAWN ||
         structureType === STRUCTURE_EXTENSION ||
         structureType === STRUCTURE_TOWER ||
         structureType === STRUCTURE_LINK
     ) {
+        return 2;
+    } else if (structureType === STRUCTURE_ROAD) {
         return 1;
     } else if (structureType === STRUCTURE_RAMPART) {
         return -1;
@@ -1045,21 +1111,36 @@ export function destructiveReset(roomName: string) {
 
 function setThreatLevel(room: Room) {
     let threatLevel = HomeRoomThreatLevel.SAFE;
-
     const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
     if (hostileCreeps.length) {
-        if (hostileCreeps.some((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))) {
+        if (
+            hostileCreeps.some(
+                (creep) => creep.owner.username !== 'Invader' && (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
+            )
+        ) {
             threatLevel = HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS;
-        } else if (hostileCreeps.some((creep) => creep.getActiveBodyparts(WORK))) {
+            sendEmailOnAttack(room, hostileCreeps[0].owner.username);
+        } else if (hostileCreeps.some((creep) => creep.owner.username !== 'Invader' && creep.getActiveBodyparts(WORK))) {
             threatLevel = HomeRoomThreatLevel.ENEMY_DISMANTLERS;
+            sendEmailOnAttack(room, hostileCreeps[0].owner.username);
         } else if (hostileCreeps.some((creep) => creep.owner.username === 'Invader')) {
             threatLevel = HomeRoomThreatLevel.ENEMY_INVADERS;
         } else {
             threatLevel = HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS;
         }
     }
-
     room.memory.threatLevel = threatLevel;
+}
+
+/**
+ * Create Game notification when attacked by other players
+ * @param room room that is being attacked
+ * @param enemyUsername enemy player
+ */
+function sendEmailOnAttack(room: Room, enemyUsername: string) {
+    if (room.memory.threatLevel <= HomeRoomThreatLevel.ENEMY_INVADERS) {
+        Game.notify(`Room ${room.name} is under attack by ${enemyUsername} at ${Game.time}!`);
+    }
 }
 
 function runFactory(room: Room) {

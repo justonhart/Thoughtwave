@@ -18,6 +18,8 @@ declare global {
     var visionRequestIncrement: number;
 
     var remoteSourcesChecked: boolean;
+
+    var initiatingPowerCreeps: boolean;
 }
 
 export {};

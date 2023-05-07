@@ -858,18 +858,19 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
 
     let index = 0;
     return rampartsPerSection.filter((section) => {
-        const pos = JSON.parse(JSON.stringify(section[0]));
-        if (pos.x === 2) {
+        let pos = new RoomPosition(section[0].x, section[0].y, section[0].roomName);
+        if (pos.x === 2 && section[1].x === 2) {
             pos.x = 0;
-        } else if (pos.x === 47) {
+        } else if (pos.x === 47 && section[1].x === 47) {
             pos.x = 49;
-        } else if (pos.y === 2) {
+        } else if (pos.y === 2 && section[1].y === 2) {
             pos.y = 0;
-        } else if (pos.y === 47) {
+        } else if (pos.y === 47 && section[1].y === 47) {
             pos.y = 49;
         }
         const path = PathFinder.search(pos, stamps.storage[0].pos.toRoomPos(), {
             maxRooms: 1,
+
             roomCallback: function (roomName) {
                 const matrix = new PathFinder.CostMatrix();
                 rampartsPerSection.forEach((section, i) => {
@@ -1374,11 +1375,20 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
     if (type === 'mineral') {
         const lastStep = path.pop();
         const pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.toRoomPos().roomName);
-        if (!isCloseToEdge(pos)) {
+        if (!isCloseToEdge(pos) && !containsStamp(stamps, [pos])) {
             stamps.container.push({
                 type,
                 rcl: 6,
                 pos: new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.toRoomPos().roomName).toMemSafe(),
+            });
+        } else {
+            const freePos = pos
+                .neighbors(true, false)
+                .find((neighborPos) => !hasWalls(terrain, [neighborPos]) && !containsStamp(stamps, [neighborPos]) && neighborPos.isNearTo(poi));
+            stamps.container.push({
+                type,
+                rcl: 6,
+                pos: freePos.toMemSafe(),
             });
         }
     } else if (type?.includes('source') && path.length > 0) {

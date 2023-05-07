@@ -57,6 +57,12 @@ export class Pathing {
             delete creep.memory._m.path; // Always recalculate path
         }
 
+        // PowerCreep got moved by another creep
+        if (creep instanceof PowerCreep && creep.memory._m?.repath) {
+            creep.memory._m.repath = 0;
+            return;
+        }
+
         const roomPosition = Pathing.normalizePos(destination);
 
         try {
@@ -91,6 +97,7 @@ export class Pathing {
 
         creep.memory._m.lastMove = Game.time;
 
+        // Destination changed or PowerCreep got moved by another creep
         if (destination.toMemSafe() !== creep.memory._m.destination) {
             delete creep.memory._m.path;
             creep.memory._m.repath = 0;
@@ -251,6 +258,9 @@ export class Pathing {
      * @returns
      */
     static getCreepMoveEfficiency(creep: Creep, currentTickEnergy?: number): number {
+        if (creep instanceof PowerCreep) {
+            return 1;
+        }
         let totalreduction = 0;
         let totalparts = 0;
         let used = creep.store.getUsedCapacity();
@@ -360,7 +370,7 @@ export class Pathing {
 
             let matrix: CostMatrix;
             if (room) {
-                if (!Memory.creeps[creepName]._m.visibleRooms.includes(room.name)) {
+                if (Memory.creeps[creepName] && !Memory.creeps[creepName]._m.visibleRooms.includes(room.name)) {
                     Memory.creeps[creepName]._m.visibleRooms.push(room.name);
                 }
                 if (options.ignoreStructures) {
@@ -707,6 +717,15 @@ export class Pathing {
                 }
                 obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
                 return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
+            } else {
+                const powerCreepObstacle = creep.pos.findInRange(FIND_MY_POWER_CREEPS, 1, {
+                    filter: (c) => creep.pos.getDirectionTo(c) === nextDirection,
+                })[0];
+                if (powerCreepObstacle) {
+                    // @ts-ignore
+                    powerCreepObstacle.memory._m.repath++;
+                    powerCreepObstacle.move(Pathing.inverseDirection(nextDirection));
+                }
             }
         }
         return false;

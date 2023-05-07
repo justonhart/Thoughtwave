@@ -3,6 +3,7 @@ import { addRoomData, updateRoomData } from './modules/data';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
 import { addOperation } from './modules/operationsManagement';
+import { createAndUpgradePCs, runPowerCreeps, spawnPowerCreeps } from './modules/powerCreepManagement';
 import { manageEmpireResources } from './modules/resourceManagement';
 import { driveRoom } from './modules/roomManagement';
 import { runVisuals } from './modules/visuals';
@@ -156,6 +157,20 @@ module.exports.loop = function () {
     if (Game.time % 100 === 0) {
         Memory.cpuUsage.average = parseInt((Memory.cpuUsage.totalOverTime / 100).toFixed(2));
         Memory.cpuUsage.totalOverTime = 0;
+    }
+
+    // Disable all structure notifications (rerun every 1k ticks for whenever new structures are added)
+    if (Game.time % 999 === 0) {
+        Object.values(Game.structures).forEach((struct) => {
+            struct.notifyWhenAttacked(false);
+        });
+    }
+
+    if (Game.gpl.level) {
+        const powerCreeps = Object.values(Game.powerCreeps);
+        createAndUpgradePCs(powerCreeps);
+        spawnPowerCreeps(powerCreeps);
+        runPowerCreeps(powerCreeps);
     }
 
     if (Game.cpu.bucket === 10000) {

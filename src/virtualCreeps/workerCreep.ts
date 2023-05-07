@@ -176,9 +176,9 @@ export class WorkerCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     const opts: TravelToOpts = { range: 3, maxRooms: 1, avoidEdges: true };
                     if (
-                        this.homeroom?.memory.layout === RoomLayout.STAMP &&
-                        (this.room.memory.threatLevel === HomeRoomThreatLevel.ENEMY_INVADERS ||
-                            this.room.memory.threatLevel >= HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS)
+                        this.homeroom.memory.layout === RoomLayout.STAMP &&
+                        (this.homeroom.memory.threatLevel === HomeRoomThreatLevel.ENEMY_INVADERS ||
+                            this.homeroom.memory.threatLevel >= HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS)
                     ) {
                         opts.avoidEdges = true;
                     } else {

@@ -20,6 +20,11 @@ export class SquadManagement {
     public constructor(creep: CombatCreep) {
         this.squadId = creep.memory.combat.squadId;
         this.currentCreep = creep;
+        // Squad memory already removed
+        if (!Memory.squads[this.squadId]) {
+            creep.memory.recycle = true;
+            return undefined;
+        }
         this.forcedDestinations = Memory.squads[this.squadId].forcedDestinations;
         this.assignment = Memory.squads[this.squadId].assignment;
         this.orientation = Memory.squads[this.squadId].orientation;
@@ -319,12 +324,6 @@ export class SquadManagement {
                 return;
             }
 
-            const path = this.squadLeader.memory._m?.path;
-            if (path) {
-                // on its last move
-                this.nextDirection = parseInt(path[0], 10) as DirectionConstant;
-            }
-
             if (this.forcedDestinations?.length) {
                 let nextDestination = this.forcedDestinations[0];
                 if (this.squadLeader.pos.toMemSafe() === nextDestination) {
@@ -340,7 +339,14 @@ export class SquadManagement {
             } else {
                 const target = this.findPathingTarget();
                 if (target instanceof Creep) {
-                    this.squadLeader.travelTo(target, { range: range, maxRooms: 1 });
+                    if (target.onEdge()) {
+                        return; // Do not move out of the room to chase target
+                    } else if (this.squadLeader.pos.isNearTo(target)) {
+                        // Close Range movement to stick to the enemy
+                        this.squadLeader.move(this.squadLeader.pos.getDirectionTo(target));
+                    } else {
+                        this.squadLeader.travelTo(target, { range: range, maxRooms: 1 });
+                    }
                 } else if (target) {
                     const customCostMatrix = this.getDuoMatrix(this.squadLeader);
                     this.squadLeader.travelTo(target, {

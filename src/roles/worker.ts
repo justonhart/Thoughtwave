@@ -54,7 +54,7 @@ export class Worker extends WorkerCreep {
                 //@ts-expect-error
                 structure.ticksToDecay !== undefined &&
                 (structure.structureType === STRUCTURE_RAMPART
-                    ? structure.hits <= Math.min(this.room.getDefenseHitpointTarget() * 0.1, 500000)
+                    ? structure.hits <= Math.min(this.homeroom.getDefenseHitpointTarget() * 0.1, 500000)
                     : structure.hits <= structure.hitsMax * 0.1)
         );
         if (decayingStructuresAtRisk.length) {
@@ -73,7 +73,7 @@ export class Worker extends WorkerCreep {
             return constructionSite;
         }
 
-        if (this.room.memory.needsWallRepair) {
+        if (this.homeroom.memory.needsWallRepair) {
             let defensesToRepair = this.homeroom.find(FIND_STRUCTURES, {
                 filter: (s) => (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) && s.hits < s.hitsMax,
             });

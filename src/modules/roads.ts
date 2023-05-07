@@ -79,22 +79,34 @@ export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: Roa
                     Object.entries(Memory.remoteData[roomName].sourceKeeperLairs)
                         .filter(([sourcePos, lair]) => lair.pos && !sourcePos.toRoomPos().isNearTo(endPos))
                         .forEach(([sourcePos, lair]) => {
-                            const avoidArea = getArea(lair.pos.toRoomPos(), 3);
+                            let avoidArea;
+                            // If it is a mined lair then it is relatively safer so its a smaller area to avoid with a lower cost see below
+                            if (Memory.remoteSourceAssignments[sourcePos]) {
+                                avoidArea = getArea(lair.pos.toRoomPos(), 3);
+                            } else {
+                                avoidArea = getArea(lair.pos.toRoomPos(), 7);
+                            }
                             for (let x = avoidArea.left; x <= avoidArea.right; x++) {
                                 for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
-                                    const tileTerrain = terrain.get(x, y);
-                                    if (tileTerrain !== TERRAIN_MASK_WALL || matrix.get(x, y) !== 255) {
-                                        // Mined so should be relatively safer
-                                        if (Memory.remoteSourceAssignments[sourcePos]) {
-                                            matrix.set(
-                                                x,
-                                                y,
-                                                tileTerrain === TERRAIN_MASK_SWAMP
-                                                    ? (20 * ROAD_DECAY_AMOUNT) / REPAIR_POWER
-                                                    : (4 * ROAD_DECAY_AMOUNT) / REPAIR_POWER
-                                            );
-                                        } else {
-                                            matrix.set(x, y, 100);
+                                    const avoidPos = new RoomPosition(x, y, roomName);
+                                    if (lair.pos.toRoomPos().isEqualTo(avoidPos)) {
+                                        matrix.set(x, y, 255);
+                                    } else {
+                                        const tileTerrain = terrain.get(x, y);
+                                        if (tileTerrain !== TERRAIN_MASK_WALL || matrix.get(x, y) !== 255) {
+                                            // Lower cost due to being a mined at lair
+                                            if (Memory.remoteSourceAssignments[sourcePos]) {
+                                                matrix.set(
+                                                    x,
+                                                    y,
+                                                    tileTerrain === TERRAIN_MASK_SWAMP
+                                                        ? (20 * ROAD_DECAY_AMOUNT) / REPAIR_POWER
+                                                        : (4 * ROAD_DECAY_AMOUNT) / REPAIR_POWER
+                                                );
+                                            } else {
+                                                // Cost gets less the further away from the lair as it is less likely for the keeper to be able to hit the creep
+                                                matrix.set(x, y, 100 - avoidPos.getRangeTo(lair.pos.toRoomPos()) * 10);
+                                            }
                                         }
                                     }
                                 }

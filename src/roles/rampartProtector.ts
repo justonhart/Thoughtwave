@@ -290,7 +290,7 @@ export class RampartProtector extends CombatCreep {
                 }
 
                 // Find an enemy that is only targeted by one protector
-                const enemyTargetIds = otherProtectors.map((protector) => protector.memory.targetId2);
+                const enemyTargetIds = otherProtectors.map((protector) => protector.memory.targetId2 as Id<Creep>);
                 const enemyWithOnlyOneProtector = enemyTargetIds.find(
                     (targetId) => enemyTargetIds.indexOf(targetId) === enemyTargetIds.lastIndexOf(targetId)
                 );

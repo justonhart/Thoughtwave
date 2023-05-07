@@ -254,8 +254,8 @@ export class TransportCreep extends WaveCreep {
         }
 
         if (
-            this.room.energyAvailable < this.room.energyCapacityAvailable ||
-            (this.room.memory.layout === RoomLayout.STAMP && this.room.controller.level < 5)
+            this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable ||
+            (this.homeroom.memory.layout === RoomLayout.STAMP && this.homeroom.controller.level < 5)
         ) {
             let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
 
@@ -699,8 +699,12 @@ export class TransportCreep extends WaveCreep {
                 if (!this.pos.isNearTo(targetLab)) {
                     this.travelTo(targetLab, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
                 } else {
-                    const amountToTransfer = Math.min(nextNeed.amount, this.store[nextNeed.resource]);
-                    let result = this.transfer(targetLab, nextNeed.resource, Math.min(nextNeed.amount, this.store[nextNeed.resource]));
+                    const amountToTransfer = Math.min(
+                        nextNeed.amount,
+                        this.store[nextNeed.resource],
+                        targetLab.store.getFreeCapacity(nextNeed.resource)
+                    );
+                    let result = this.transfer(targetLab, nextNeed.resource, amountToTransfer);
                     if (result === OK) {
                         const labTaskId = targetLab.taskId;
                         const needIndex = this.homeroom.memory.labTasks[labTaskId].needs.findIndex((need) => need.resource === nextNeed.resource);

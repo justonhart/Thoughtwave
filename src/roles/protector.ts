@@ -12,22 +12,24 @@ export class Protector extends CombatCreep {
         }
         if (this.travelToRoom(this.memory.assignment) === IN_ROOM || this.memory.targetId) {
             this.memory.targetId = this.findTarget();
-            if (!this.memory.targetId && this.getActiveBodyparts(HEAL)) {
+            const target = Game.getObjectById(this.memory.targetId);
+
+            // Heal Self and other creeps in room when there is no target or the target is a powerBank
+            if ((!target || target instanceof StructurePowerBank) && this.getActiveBodyparts(HEAL)) {
                 if (this.damaged()) {
                     this.healSelf(false);
+                    return;
                 } else {
-                    // Nothing to do so heal hurt creeps in the room
                     const hurtCreep = this.room.find(FIND_MY_CREEPS).find((creep) => creep.hits < creep.hitsMax);
                     if (hurtCreep) {
                         const healing = this.heal(hurtCreep);
                         if (healing === ERR_NOT_IN_RANGE) {
                             this.travelTo(hurtCreep, { range: 1 });
                         }
+                        return;
                     }
                 }
-                return;
             }
-            const target = Game.getObjectById(this.memory.targetId);
 
             let creepActionReturnCode: CreepActionReturnCode;
             if (target instanceof Creep) {
