@@ -623,15 +623,14 @@ export class TransportCreep extends WaveCreep {
             if (this.pos.isNearTo(labToClean)) {
                 const amountInLab = labToClean.store[labToClean.mineralType];
                 this.withdraw(labToClean, labToClean.mineralType);
-                if(this.store.getFreeCapacity() + amountInLab < this.store.getCapacity()){
-                    const nextLabToClean = this.homeroom.labs.find(lab => lab.status === LabStatus.NEEDS_EMPTYING && lab !== labToClean);
-                    if(nextLabToClean){
-                        this.travelTo(nextLabToClean, {range: 1});
+                if (this.store.getFreeCapacity() + amountInLab < this.store.getCapacity()) {
+                    const nextLabToClean = this.homeroom.labs.find((lab) => lab.status === LabStatus.NEEDS_EMPTYING && lab !== labToClean);
+                    if (nextLabToClean) {
+                        this.travelTo(nextLabToClean, { range: 1 });
                     } else {
                         this.travelTo(this.homeroom.storage);
                     }
                 }
-
             } else {
                 this.travelTo(labToClean, { range: 1 });
             }
@@ -664,7 +663,7 @@ export class TransportCreep extends WaveCreep {
 
                 let target = [this.room.storage, this.room.terminal].find((struct) => struct.store[resourceToGather]);
                 if (!target) {
-                    const labIdForNeed = this.memory.labNeeds.find(need => need.resource === resourceToGather)?.lab;
+                    const labIdForNeed = this.memory.labNeeds.find((need) => need.resource === resourceToGather)?.lab;
                     const taskIdToCancel = Game.getObjectById(labIdForNeed)?.taskId;
                     delete this.memory.labNeeds;
                     delete this.homeroom.memory.labTasks[taskIdToCancel];
@@ -714,6 +713,17 @@ export class TransportCreep extends WaveCreep {
                                     this.memory.gatheringLabResources = true;
                                 }
                             }
+                        }
+                    } else {
+                        console.log(`${Game.time} - ${this.homeroom.name} distributor hit error working lab task: ${result}`);
+                        switch (result) {
+                            default:
+                                const labTaskId = targetLab.taskId;
+                                delete this.homeroom.memory.labTasks[labTaskId];
+                                delete this.memory.labNeeds;
+                                delete this.memory.gatheringLabResources;
+                                console.log(`Clearing lab task ${labTaskId} in ${this.homeroom.name}`);
+                                break;
                         }
                     }
 

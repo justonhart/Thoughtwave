@@ -17,8 +17,8 @@ export function manageEmpireResources() {
     if (Game.time % 25 === 0) {
         const roomEnergyMap = terminalRooms.map((room) => ({
             roomName: room.name,
-            energy: room.getResourceAmount(RESOURCE_ENERGY),
-            batteries: room.getResourceAmount(RESOURCE_BATTERY),
+            energy: room.getResourceAmount(RESOURCE_ENERGY) + room.getIncomingResourceAmount(RESOURCE_ENERGY),
+            batteries: room.getResourceAmount(RESOURCE_BATTERY) + room.getIncomingResourceAmount(RESOURCE_BATTERY),
             hasFactory: room.factory?.isActive(),
         }));
         let shipments: Shipment[] = [];
@@ -88,7 +88,10 @@ export function manageEmpireResources() {
         switch (request.status) {
             case ResourceRequestStatus.SUBMITTED:
                 const suppliers = terminalRooms
-                    .map((room) => ({ roomName: room.name, amount: room.getResourceAmount(request.resource) }))
+                    .map((room) => ({
+                        roomName: room.name,
+                        amount: room.getResourceAmount(request.resource) - room.getOutgoingResourceAmount(request.resource),
+                    }))
                     .filter((supplier) => supplier.roomName !== request.room && supplier.amount);
                 const enoughSupply = suppliers.reduce((sum, nextSupplier) => sum + nextSupplier.amount, 0) >= request.amount;
                 if (suppliers.length && enoughSupply) {
@@ -130,7 +133,7 @@ export function manageEmpireResources() {
                 }
                 break;
             case ResourceRequestStatus.FAILED:
-                console.log(`${Game.time} - Resource request failed unexpectedly: ${request.room} - ${request.resource}`);
+                console.log(`${Game.time} - Resource request failed: ${request.room} - ${request.resource}`);
                 delete Memory.resourceRequests[requestId];
                 break;
             case ResourceRequestStatus.FULFULLED:
@@ -160,14 +163,17 @@ export function manageEmpireResources() {
                     const roomToSupply = findClosestRecipient(room, roomsNeedingResource);
                     if (roomToSupply) {
                         let shipment: Shipment;
-                        if(room.getCompressedResourceAmount(extraResource.resource) && Game.rooms[roomToSupply.roomName].factory){
-                            const amountOfCompressedToSend = Math.min(room.getCompressedResourceAmount(extraResource.resource), Math.floor(Math.ceil(roomToSupply.amount / 500))*100);
+                        if (room.getCompressedResourceAmount(extraResource.resource) && Game.rooms[roomToSupply.roomName].factory) {
+                            const amountOfCompressedToSend = Math.min(
+                                room.getResourceAmount(RESOURCE_COMPRESSION_MAP[extraResource.resource]),
+                                Math.floor(Math.ceil(roomToSupply.amount / 500)) * 100
+                            );
                             shipment = {
                                 sender: room.name,
                                 resource: RESOURCE_COMPRESSION_MAP[extraResource.resource],
                                 amount: amountOfCompressedToSend,
-                                recipient: roomToSupply.roomName
-                            }
+                                recipient: roomToSupply.roomName,
+                            };
                         } else {
                             const amountToSend = Math.min(excessAmount, roomToSupply.amount);
                             shipment = {
@@ -177,7 +183,6 @@ export function manageEmpireResources() {
                                 recipient: roomToSupply.roomName,
                             };
                         }
-                        
 
                         let result = addShipment(shipment);
                         if (result !== OK) {
@@ -197,7 +202,7 @@ export function manageEmpireResources() {
             if (shipment.status === ShipmentStatus.SHIPPED && !shipment.requestId) {
                 delete Memory.shipments[shipmentId];
             } else if (shipment.status === ShipmentStatus.FAILED) {
-                console.log(`${Game.time} - Shipment failed unexpectedly: ${shipment.recipient} - ${shipment.resource}`);
+                console.log(`${Game.time} - Shipment failed: ${shipment.recipient} - ${shipment.resource}`);
                 delete Memory.shipments[shipmentId];
             }
         });
@@ -226,17 +231,13 @@ export function getRoomResourceNeeds(room: Room): { resource: ResourceConstant; 
     let needs = [];
     const ALL_MINERALS_AND_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)] as ResourceConstant[];
     ALL_MINERALS_AND_COMPOUNDS.forEach((resource) => {
-        const inboundResources = Object.values(Memory.shipments).reduce(
-            (sum, nextShipment) => (nextShipment.recipient === room.name && nextShipment.resource === resource ? sum + nextShipment.amount : sum),
-            0
-        );
-        const inboundCompressedResources = Object.values(Memory.shipments).reduce(
-            (sum, nextShipment) => nextShipment.recipient === room.name && nextShipment.resource === RESOURCE_COMPRESSION_MAP[resource] ? sum + nextShipment.amount * 5 : sum, 0
-        );
+        const inboundResources = room.getIncomingResourceAmount(resource);
+        const inboundCompressedResources =
+            (Object.keys(RESOURCE_COMPRESSION_MAP).includes(resource) ? room.getIncomingResourceAmount(RESOURCE_COMPRESSION_MAP[resource]) : 0) * 5;
         let need =
             (resource.charAt(0) === 'X' && resource.length > 1 ? 20000 : 5000) -
             (room.getResourceAmount(resource) + room.getCompressedResourceAmount(resource) + inboundCompressedResources + inboundResources);
-        if (need > 0) {
+        if (need > 0 && room.memory.factoryTask?.product !== resource) {
             needs.push({ resource: resource, amount: need });
         }
     });
@@ -265,7 +266,12 @@ export function getExtraResources(room: Room): { resource: ResourceConstant; amo
     const ALL_MINERALS_AND_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)] as ResourceConstant[];
     ALL_MINERALS_AND_COMPOUNDS.forEach((resource) => {
         const maxResourceAmount = resource.charAt(0) === 'X' && resource.length > 1 ? 20000 : 5000;
-        const amountExtra = room.getResourceAmount(resource) + room.getCompressedResourceAmount(resource) - maxResourceAmount;
+        const amountExtra =
+            room.getResourceAmount(resource) +
+            room.getCompressedResourceAmount(resource) -
+            room.getOutgoingResourceAmount(resource) -
+            (Object.keys(RESOURCE_COMPRESSION_MAP).includes(resource) ? room.getOutgoingResourceAmount(RESOURCE_COMPRESSION_MAP[resource]) : 0) -
+            maxResourceAmount;
 
         //don't return very small amounts - wait for reasonable amounts to ship
         if (amountExtra > 1000) {
@@ -361,21 +367,28 @@ export function addShipment(shipment: Shipment): ScreepsReturnCode {
         Memory.resourceRequests[shipment.requestId]?.shipments.push(nextId);
     }
 
-    if (Memory.debug.logShipments)
-        if (shipment.recipient === shipment.sender && shipment.marketOrderId) {
-            console.log(
-                `${Game.time} - Market order ${shipment.marketOrderId} added: ${shipment.amount} ${shipment.resource} -> ${shipment.recipient}`
-            );
-        } else {
-            console.log(`${Game.time} - Shipment added to ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`);
-        }
+    if (shipment.recipient === shipment.sender && shipment.marketOrderId) {
+        console.log(`${Game.time} - Market order ${shipment.marketOrderId} added: ${shipment.amount} ${shipment.resource} -> ${shipment.recipient}`);
+    } else {
+        console.log(`${Game.time} - Shipment added to ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`);
+    }
     return OK;
 }
 
 export function getResourceAvailability(resource: ResourceConstant, roomToExclude?: string): number {
     const amount = Object.values(Game.rooms)
         .filter((room) => room.controller?.my && room.terminal?.isActive() && room.name !== roomToExclude)
-        .reduce((sum, nextRoom) => sum + nextRoom.getResourceAmount(resource) + nextRoom.getCompressedResourceAmount(resource), 0);
+        .reduce(
+            (sum, nextRoom) =>
+                sum +
+                nextRoom.getResourceAmount(resource) +
+                nextRoom.getCompressedResourceAmount(resource) -
+                nextRoom.getOutgoingResourceAmount(resource) -
+                (Object.keys(RESOURCE_COMPRESSION_MAP).includes(resource)
+                    ? nextRoom.getOutgoingResourceAmount(RESOURCE_COMPRESSION_MAP[resource])
+                    : 0),
+            0
+        );
     return amount;
 }
 

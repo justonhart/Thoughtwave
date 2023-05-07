@@ -112,7 +112,7 @@ export class Manager extends WaveCreep {
             let shipmentToWork = this.room.memory.shipments?.find((shipment) => !shipmentReady(terminal, shipment));
             if (shipmentToWork) {
                 let result = this.workShipment(shipmentToWork);
-                if(result === OK){
+                if (result === OK) {
                     return;
                 }
             }
@@ -269,17 +269,42 @@ export class Manager extends WaveCreep {
                 shipment.resource,
                 Math.min(this.store.getFreeCapacity(), shipment.amount - this.room.terminal.store[shipment.resource])
             );
-            if(result===OK){
+            if (result === OK) {
                 this.memory.targetId = this.room.terminal.id;
+            } else if (result === ERR_NOT_ENOUGH_RESOURCES) {
+                if (Memory.debug.logShipments) {
+                    console.log(
+                        `Resources not found for shipment ${shipmentId} (${shipment.amount} ${shipment.resource} from ${shipment.sender} to ${shipment.recipient}). Cancelling shipment`
+                    );
+                }
+                Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
             }
         } else {
             let energyNeeded = shipmentIsMarketOrder
                 ? Game.market.calcTransactionCost(shipment.amount, shipment.recipient, Game.market.getOrderById(shipment.marketOrderId).roomName)
                 : Game.market.calcTransactionCost(shipment.amount, this.room.name, shipment.recipient) +
                   (shipment.resource === RESOURCE_ENERGY ? shipment.amount : 0);
-            result = this.withdraw(this.room.storage, RESOURCE_ENERGY, Math.min(this.store.getFreeCapacity(), energyNeeded - this.room.terminal.store.energy));
-            if(result===OK){
+            result = this.withdraw(
+                this.room.storage,
+                RESOURCE_ENERGY,
+                Math.min(this.store.getFreeCapacity(), energyNeeded - this.room.terminal.store.energy)
+            );
+            if (result === OK) {
                 this.memory.targetId = this.room.terminal.id;
+            } else {
+                switch (result) {
+                    case ERR_NOT_ENOUGH_RESOURCES:
+                    case ERR_NOT_ENOUGH_ENERGY:
+                        if (Memory.debug.logShipments) {
+                            console.log(
+                                `Resources not found for shipment ${shipmentId} (${shipment.amount} ${shipment.resource} from ${shipment.sender} to ${shipment.recipient}). Cancelling shipment`
+                            );
+                        }
+                        Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
+                        break;
+                    default:
+                        break;
+                }
             }
         }
 

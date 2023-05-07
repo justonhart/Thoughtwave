@@ -181,14 +181,12 @@ export function addLabTask(room: Room, opts: LabTaskPartial): OK | ERR_NOT_ENOUG
 function attemptToStartTask(room: Room, taskId: string): void {
     let task: LabTask = room.memory.labTasks[taskId];
 
-    if(task.type === LabTaskType.BOOST){
+    if (task.type === LabTaskType.BOOST) {
         const lab = findBoostLab(room, taskId);
-        if(lab){
+        if (lab) {
             let otherTaskId = lab.taskId;
             if (otherTaskId && room.memory.labTasks[otherTaskId].type !== LabTaskType.BOOST) {
-                lab.room.memory.labTasks[otherTaskId].reactionLabs = lab.room.memory.labTasks[otherTaskId].reactionLabs.filter(
-                    (id) => id !== lab.id
-                );
+                lab.room.memory.labTasks[otherTaskId].reactionLabs = lab.room.memory.labTasks[otherTaskId].reactionLabs.filter((id) => id !== lab.id);
             }
 
             task.reactionLabs = [lab.id];
@@ -199,11 +197,11 @@ function attemptToStartTask(room: Room, taskId: string): void {
                 task.status = TaskStatus.COMPLETE;
             }
         }
-    } else if (task.type === LabTaskType.REACT){
+    } else if (task.type === LabTaskType.REACT) {
         const labs = findReagentLabs(room);
-        if(labs.every(lab => !lab.taskId)){
+        if (labs.every((lab) => !lab.taskId)) {
             task.status = TaskStatus.PREPARING;
-            task.auxillaryLabs = labs.map(lab => lab.id);
+            task.auxillaryLabs = labs.map((lab) => lab.id);
             task.reactionLabs = [];
             task.needs.forEach((need, index) => {
                 need.lab = task.auxillaryLabs[index];
@@ -211,12 +209,14 @@ function attemptToStartTask(room: Room, taskId: string): void {
         }
     }
 
-    
     room.memory.labTasks[taskId] = task;
 }
 
 function roomHasNeededResource(room: Room, need: LabNeed) {
-    return room.getResourceAmount(need.resource) >= need.amount || Object.entries(Memory.resourceRequests).some(([id, req]) => req.resource === need.resource && req.room === room.name);
+    return (
+        room.getResourceAmount(need.resource) >= need.amount ||
+        Object.entries(Memory.resourceRequests).some(([id, req]) => req.resource === need.resource && req.room === room.name)
+    );
 }
 
 /**
@@ -284,15 +284,28 @@ export function spawnBoostTestCreep(roomName?: string) {
     Memory.spawnAssignments.push(spawnAssignment);
 }
 
-function findBoostLab(room: Room, taskId: string): StructureLab{
+function findBoostLab(room: Room, taskId: string): StructureLab {
     const reagentLabs = findReagentLabs(room);
     const labTask = room.memory.labTasks[taskId];
-    const boostLabs = room.labs.filter(lab =>  !reagentLabs.includes(lab));
-    const availableBoostLab = boostLabs.find(lab => (lab.taskId && room.memory.labTasks[lab.taskId].type === LabTaskType.BOOST && room.memory.labTasks[lab.taskId].needs[0].resource === labTask.needs[0].resource && lab.getFreeCapacity() >= labTask.needs[0].amount) ||  lab.taskId && room.memory.labTasks[lab.taskId].type === LabTaskType.REACT || !lab.taskId);
+    const boostLabs = room.labs.filter((lab) => !reagentLabs.includes(lab));
+    const availableBoostLab = boostLabs.find(
+        (lab) =>
+            (lab.taskId &&
+                room.memory.labTasks[lab.taskId].type === LabTaskType.BOOST &&
+                room.memory.labTasks[lab.taskId].needs[0].resource === labTask.needs[0].resource &&
+                lab.getFreeCapacity() >= labTask.needs[0].amount) ||
+            (lab.taskId && room.memory.labTasks[lab.taskId].type === LabTaskType.REACT) ||
+            !lab.taskId
+    );
     return availableBoostLab;
 }
 
-function findReagentLabs(room: Room): StructureLab[]{
-    const labsSortedByAdjacent = room.labs.map(lab => {return {lab: lab, adj: lab.pos.findInRange(FIND_STRUCTURES, 1, {filter: s => s.structureType === STRUCTURE_LAB}).length}}).sort((a,b) => b.adj - a.adj).map(obj => obj.lab);
-    return labsSortedByAdjacent.slice(0,2);
+function findReagentLabs(room: Room): StructureLab[] {
+    const labsSortedByAdjacent = room.labs
+        .map((lab) => {
+            return { lab: lab, adj: lab.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_LAB }).length };
+        })
+        .sort((a, b) => b.adj - a.adj)
+        .map((obj) => obj.lab);
+    return labsSortedByAdjacent.slice(0, 2);
 }

@@ -104,8 +104,7 @@ interface Room {
     getBoostsAvailable(boostTypes: BoostType[]): { [type: number]: number };
 
     /**
-     * Returns the amount of supplied resource in rooms storage or terminal not currently allocated to shipments or tasks
-     * NOTE: Don't use this function in creep methods managing factory or lab tasks - they need the actual amount of resources available
+     * Returns the amount of supplied resource in rooms storage or terminal
      * @param resource the resource to query
      */
     getResourceAmount(resource: ResourceConstant): number;
@@ -115,6 +114,18 @@ interface Room {
      * @param resource
      */
     getCompressedResourceAmount(resource: ResourceConstant): number;
+
+    /**
+     * Returns the amount of resource that is designated to come in through shipments
+     * @param resource
+     */
+    getIncomingResourceAmount(resource: ResourceConstant): number;
+
+    /**
+     * Returns the amount of resource that is obligated to outbound shipments
+     * @param resource
+     */
+    getOutgoingResourceAmount(resource: ResourceConstant): number;
 
     /**
      * Creates a Shipment in Memory.shipments from this room to another target room

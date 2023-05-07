@@ -1,6 +1,6 @@
 import { addLabTask, getBoostsAvailable } from '../modules/labManagement';
 import { PopulationManagement } from '../modules/populationManagement';
-import { addMarketOrder, addResourceRequest, addShipment } from '../modules/resourceManagement';
+import { addMarketOrder, addResourceRequest, addShipment, shipmentReady } from '../modules/resourceManagement';
 import { getFactoryResourcesNeeded } from '../modules/roomManagement';
 import { findRepairTargets, getStructuresToProtect } from '../modules/roomManagement';
 
@@ -236,20 +236,7 @@ Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> 
 };
 
 Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConstant): number {
-    return (
-        (this.storage?.store[resource] ?? 0) +
-        (this.terminal?.store[resource] ?? 0) -
-        this.memory.shipments.reduce(
-            (sum: number, next: number) => (Memory.shipments[next]?.resource === resource ? sum + Memory.shipments[next]?.amount : sum),
-            0
-        ) -
-        (this.memory.factoryTask?.needs?.find((need) => need.resource === resource)?.amount ?? 0) -
-        _.flatten(Object.values(this.memory.labTasks).map((task) => task.needs)).reduce(
-            (totalResourceNeeded, nextNeed) => (nextNeed.resource === resource ? totalResourceNeeded + nextNeed.amount : totalResourceNeeded),
-            0
-        ) + 
-        Object.values(Memory.shipments).reduce((sum: number, nextShipment: Shipment) => nextShipment.recipient === this.name && nextShipment.resource === resource ? sum + nextShipment.amount : sum ,0)
-    );
+    return (this.storage?.store[resource] ?? 0) + (this.terminal?.store[resource] ?? 0);
 };
 
 Room.prototype.getCompressedResourceAmount = function (this: Room, resource: ResourceConstant): number {
@@ -258,15 +245,31 @@ Room.prototype.getCompressedResourceAmount = function (this: Room, resource: Res
         : 0;
 };
 
-Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant, amount: number): ScreepsReturnCode {
+Room.prototype.getIncomingResourceAmount = function (this: Room, resource: ResourceConstant): number {
+    return Object.values(Memory.shipments).reduce(
+        (sum, nextShipment) => (nextShipment.recipient === this.name && nextShipment.resource === resource ? sum + nextShipment.amount : sum),
+        0
+    );
+};
 
-    if(Memory.debug.logFactoryTasks){
-        console.log(`Attempting to create factory task in ${this.name}: ${amount} ${product}`)
+Room.prototype.getOutgoingResourceAmount = function (this: Room, resource: ResourceConstant): number {
+    return this.memory.shipments.reduce(
+        (sum, nextShipmentId) =>
+            Memory.shipments[nextShipmentId]?.resource === resource && Memory.shipments[nextShipmentId]?.recipient !== this.name
+                ? sum + Memory.shipments[nextShipmentId].amount
+                : sum,
+        0
+    );
+};
+
+Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant, amount: number): ScreepsReturnCode {
+    if (Memory.debug.logFactoryTasks) {
+        console.log(`Attempting to create factory task in ${this.name}: ${amount} ${product}`);
     }
     if (this.factory) {
         if (this.memory.factoryTask) {
-            if(Memory.debug?.logFactoryTasks){
-                console.log(`Failed to add factory task in ${this.name}: task already running`)
+            if (Memory.debug?.logFactoryTasks) {
+                console.log(`Failed to add factory task in ${this.name}: task already running`);
             }
             return ERR_BUSY;
         } else {
@@ -276,7 +279,7 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
                 true
             );
             if (!roomHasEnoughMaterials) {
-                if(Memory.debug?.logFactoryTasks){
+                if (Memory.debug?.logFactoryTasks) {
                     console.log(`Failed to add factory task in ${this.name}: missing necessary resources`);
                 }
                 return ERR_NOT_ENOUGH_RESOURCES;
@@ -294,8 +297,8 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
                 }
                 return OK;
             }
-            if(Memory.debug?.logFactoryTasks){
-                console.log(`Failed to add factory task in ${this.name}: request too large`)
+            if (Memory.debug?.logFactoryTasks) {
+                console.log(`Failed to add factory task in ${this.name}: request too large`);
             }
             return ERR_FULL;
         }

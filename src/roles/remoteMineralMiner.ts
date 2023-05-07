@@ -7,7 +7,6 @@ export class RemoteMineralMiner extends WaveCreep {
     //         this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
     //         return;
     //     }
-
     //     // Store Cargo
     //     if (this.memory.destination && this.memory.destination.toRoomPos().roomName === this.memory.room) {
     //         this.storeCargo();
@@ -25,7 +24,6 @@ export class RemoteMineralMiner extends WaveCreep {
     //         if (!this.memory.destination) {
     //             this.memory.destination = this.findTarget();
     //         }
-
     //         let targetPos = this.memory.destination.toRoomPos();
     //         if (targetPos) {
     //             if (!this.pos.isEqualTo(targetPos)) {
@@ -46,7 +44,6 @@ export class RemoteMineralMiner extends WaveCreep {
     //                 } else {
     //                     const mineral = Game.getObjectById(this.getMineralIdByMiningPos(this.memory.destination)) as Mineral;
     //                     const result = this.harvest(mineral);
-
     //                     // Finished mining mineral
     //                     if (result === ERR_NOT_ENOUGH_RESOURCES) {
     //                         Memory.remoteData[this.memory.assignment].mineralAvailableAt = Game.time + mineral.ticksToRegeneration;
@@ -57,7 +54,6 @@ export class RemoteMineralMiner extends WaveCreep {
     //                 // store cargo
     //                 this.memory.destination = this.homeroom.storage.pos.toMemSafe();
     //             }
-
     //             //travel out of danger-zone
     //             if (!this.memory.destination && isAKeeperRoom) {
     //                 const lairPositions = Object.values(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).map((lairId) => {
@@ -71,7 +67,6 @@ export class RemoteMineralMiner extends WaveCreep {
     //         this.travelToRoom(this.memory.assignment);
     //     }
     // }
-
     // private findTarget(): string {
     //     const nextPos = Object.entries(Memory.remoteData[this.memory.assignment]?.miningPositions)?.find(([sourceId, miningPosString]) => {
     //         // ACTIVE SOURCE
@@ -86,19 +81,16 @@ export class RemoteMineralMiner extends WaveCreep {
     //     }
     //     return nextPos[1];
     // }
-
     // private getMineralIdByMiningPos(pos: string): Id<Mineral> {
     //     return Object.entries(Memory.remoteData[this.memory.assignment].miningPositions).find(
     //         ([sourceId, miningPos]) => pos === miningPos
     //     )?.[0] as Id<Mineral>;
     // }
-
     // private destinationSpawningKeeper(pos: string): boolean {
     //     const lairId = Memory.remoteData[this.memory.assignment].sourceKeeperLairs[this.getMineralIdByMiningPos(pos)];
     //     const lairInRange = Game.getObjectById(lairId) as StructureKeeperLair;
     //     return lairInRange?.ticksToSpawn < 16;
     // }
-
     // private hasKeeper(target: RoomPosition): boolean {
     //     return !!target.findInRange(FIND_HOSTILE_CREEPS, 3, { filter: (c) => c.owner.username === 'Source Keeper' }).length;
     // }
