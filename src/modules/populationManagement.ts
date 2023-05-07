@@ -807,11 +807,11 @@ export class PopulationManagement {
             spawn.room.memory.reservedEnergy != undefined
                 ? (spawn.room.memory.reservedEnergy += partsArrayCost)
                 : (spawn.room.memory.reservedEnergy = partsArrayCost);
-            labTasksToAdd.forEach((task) => {
-                spawn.room.addLabTask(task);
-            });
             requestsToAdd.forEach((request) => {
                 spawn.room.addRequest(request.resource, request.amount);
+            });
+            labTasksToAdd.forEach((task) => {
+                spawn.room.addLabTask(task);
             });
         }
 

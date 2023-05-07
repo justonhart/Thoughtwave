@@ -14,7 +14,7 @@ Object.defineProperty(StructureLab.prototype, 'status', {
         if (this.mineralType && (!task || task.needs.some((need) => need.lab === this.id && need.resource !== this.mineralType))) {
             return LabStatus.NEEDS_EMPTYING;
         } else if (task) {
-            return task.reactionLabs.includes(this.id) ? LabStatus.IN_USE_PRIMARY : LabStatus.IN_USE_AUXILLARY;
+            return task.reactionLabs?.includes(this.id) ? LabStatus.IN_USE_PRIMARY : LabStatus.IN_USE_AUXILLARY;
         } else {
             return LabStatus.IDLE;
         }
