@@ -2,21 +2,22 @@ export class Hero extends PowerCreep {
     public run(): void {
         this.initMemory();
 
+        let target = Game.getObjectById(this.memory.targetId) as Structure;
         if (this.shouldRenew()) {
-            this.renewCreep();
+            this.renewCreep(target);
         } else if (!this.room.controller.isPowerEnabled) {
-            this.enableCurrentRoom();
+            this.enableCurrentRoom(target);
         } else if (this.store.getUsedCapacity() > this.store.getCapacity() / 1.2) {
-            this.storeExtraOps();
+            this.storeExtraOps(target);
         } else {
             // Passive Powers (should always run but with lower priority than active ones)
             this.generateOps();
-            this.boostSource();
+            this.boostSource(target);
         }
 
+        target = Game.getObjectById(this.memory.targetId) as Structure;
         // Travel to target
-        if (this.memory.targetId) {
-            const target = Game.getObjectById(this.memory.targetId);
+        if (target) {
             this.travelTo(target, {
                 range: target instanceof StructurePowerSpawn || target instanceof StructureController || target instanceof StructureStorage ? 1 : 3,
             });
@@ -35,24 +36,30 @@ export class Hero extends PowerCreep {
     /**
      * Enable powerCreep's powers in current room
      */
-    private enableCurrentRoom(): void {
-        if (this.pos.isNearTo(this.room.controller)) {
+    private enableCurrentRoom(target: Structure): void {
+        if (!(target instanceof StructureController)) {
+            this.memory.targetId = this.room.controller.id;
+            return;
+        }
+
+        if (this.pos.isNearTo(target)) {
             this.enableRoom(this.room.controller);
             delete this.memory.targetId;
-        } else if (!this.memory.targetId) {
-            this.memory.targetId = this.room.controller.id;
         }
     }
 
     /**
      * Renew powerCreeps TTL at powerSpawn
      */
-    private renewCreep(): void {
-        if (this.pos.isNearTo(this.room.powerSpawn)) {
-            this.renew(this.room.powerSpawn);
-            delete this.memory.targetId;
-        } else if (!this.memory.targetId) {
+    private renewCreep(target: Structure): void {
+        if (!(target instanceof StructurePowerSpawn)) {
             this.memory.targetId = this.room.powerSpawn.id;
+            return;
+        }
+
+        if (this.pos.isNearTo(target)) {
+            this.renew(target);
+            delete this.memory.targetId;
         }
     }
 
@@ -71,9 +78,8 @@ export class Hero extends PowerCreep {
      * Boost the source. Should start boosting once ticks remaining is below 40 to avoid having the effect fall off.
      * Sets a cooldown to avoid checking every tick.
      */
-    private boostSource() {
+    private boostSource(target: Structure) {
         this.initPowerCooldown(PWR_REGEN_SOURCE);
-        const target = Game.getObjectById(this.memory.targetId);
         if (target instanceof Source && this.pos.getRangeTo(target) <= 3) {
             this.usePower(PWR_REGEN_SOURCE, target);
             this.memory.cooldown[PWR_REGEN_SOURCE] = Game.time + POWER_INFO[PWR_REGEN_SOURCE].cooldown;
@@ -109,12 +115,15 @@ export class Hero extends PowerCreep {
     /**
      * Empty out all ops from powerCreep.
      */
-    private storeExtraOps() {
-        if (this.pos.isNearTo(this.room.storage)) {
-            this.transfer(this.room.storage, RESOURCE_OPS);
-            delete this.memory.targetId;
-        } else if (!this.memory.targetId) {
+    private storeExtraOps(target: Structure) {
+        if (!(target instanceof StructureStorage)) {
             this.memory.targetId = this.room.storage.id;
+            return;
+        }
+
+        if (this.pos.isNearTo(target)) {
+            this.transfer(target, RESOURCE_OPS);
+            delete this.memory.targetId;
         }
     }
 
@@ -134,9 +143,8 @@ export class Hero extends PowerCreep {
     /**
      * Boost spawn timer.
      */
-    private boostSpawn() {
+    private boostSpawn(target: Structure) {
         this.initPowerCooldown(PWR_OPERATE_SPAWN);
-        const target = Game.getObjectById(this.memory.targetId);
         if (!target && this.store.ops < POWER_INFO[PWR_OPERATE_SPAWN].ops) {
             this.memory.targetId = this.room.storage.id;
         } else if (target instanceof StructureStorage && this.pos.isNearTo(target)) {
