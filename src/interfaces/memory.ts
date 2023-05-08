@@ -4,7 +4,7 @@ interface Memory {
     priceMap?: { [resourceType: string]: number };
     logCPU?: boolean;
     spawnAssignments?: SpawnAssignment[];
-    operations?: Operation[];
+    operations?: { [operationId: string]: Operation };
     playersToIgnore?: string[];
     squads?: { [squadId: string]: Squad };
     marketBlacklist?: string[]; //player names we don't want to sell to
@@ -59,8 +59,7 @@ interface Operation {
     targetPos?: string;
     resource?: ResourceConstant;
     expireAt?: number;
-    portalLocations?: string[];
-    forcedDestinations?: string[];
+    waypoints?: string[];
     pathCost?: number;
     toughHitsRequired?: number;
     visionRequests?: string[];
@@ -178,6 +177,7 @@ const enum OperationType {
 }
 
 const enum OperationStage {
+    FAILED = -1,
     PREPARE = 1,
     ACTIVE,
     CLAIM,
@@ -193,6 +193,7 @@ interface VisionRequest {
 }
 
 interface DebugSettings {
+    logOperations?: boolean;
     drawStamps?: boolean;
     logCpu?: boolean;
     drawRoads?: boolean;

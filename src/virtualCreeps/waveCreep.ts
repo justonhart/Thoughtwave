@@ -16,8 +16,8 @@ export class WaveCreep extends Creep {
             } else {
                 this.getNextBoost();
             }
-        } else if (this.memory.portalLocations?.[0]) {
-            let portalPos = this.memory.portalLocations[0].toRoomPos();
+        } else if (this.memory.waypoints?.[0]) {
+            let portalPos = this.memory.waypoints[0].toRoomPos();
 
             if (!this.pos.isNearTo(portalPos)) {
                 this.travelTo(portalPos);
@@ -26,7 +26,7 @@ export class WaveCreep extends Creep {
                     .lookFor(LOOK_STRUCTURES)
                     .find((struct) => struct.structureType === STRUCTURE_PORTAL) as StructurePortal;
 
-                this.memory.portalLocations = this.memory.portalLocations.filter((pos) => pos !== this.memory.portalLocations[0]);
+                this.memory.waypoints = this.memory.waypoints.filter((pos) => pos !== this.memory.waypoints[0]);
 
                 if (portalStructure.destination instanceof RoomPosition) {
                     this.moveTo(portalPos);

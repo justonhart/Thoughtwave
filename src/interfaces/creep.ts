@@ -5,7 +5,7 @@ interface CreepMemory {
     needsBoosted?: boolean;
     labNeeds?: LabNeed[];
     resourceSource?: Id<Structure>;
-    portalLocations?: string[];
+    waypoints?: string[];
     link?: Id<StructureLink>;
     destination?: string;
     assignment?: string;
@@ -16,7 +16,7 @@ interface CreepMemory {
     energySource?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
     room?: string;
     role?: Role;
-    operation?: OperationType;
+    operationId?: string;
     currentTaskPriority?: Priority;
     _m?: TravelState;
     scout?: ScoutMemory;

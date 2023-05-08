@@ -184,7 +184,9 @@ export function unclaimRoom(roomName: string) {
         room.find(FIND_MY_CONSTRUCTION_SITES).forEach((site) => site.remove());
     }
 
-    Memory.operations = Memory.operations.filter((op) => op.targetRoom !== roomName);
+    Object.entries(Memory.operations)
+        .filter(([id, operation]) => operation.targetRoom !== roomName)
+        .forEach(([id, op]) => delete Memory.operations[id]);
     Memory.spawnAssignments = Memory.spawnAssignments.filter(
         (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
     );
@@ -206,7 +208,7 @@ export function addVisionRequest(request: VisionRequest): string | ScreepsReturn
     let observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room].observer);
     let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 10);
     if (suitableRoom) {
-        let requestId = `${Game.time}_${visionRequestIncrement++}`;
+        let requestId = `${Game.time}_${identifierIncrement++}`;
         Memory.visionRequests[requestId] = request;
         return requestId;
     } else {

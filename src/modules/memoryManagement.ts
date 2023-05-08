@@ -29,7 +29,7 @@ export function manageMemory() {
 
     global.roomConstructionsChecked = false;
 
-    global.visionRequestIncrement = 1;
+    global.identifierIncrement = 1;
 
     global.remoteSourcesChecked = false;
 
@@ -226,7 +226,7 @@ function initMissingMemoryValues() {
     }
 
     if (!Memory.operations) {
-        Memory.operations = [];
+        Memory.operations = {};
     }
 
     if (!Memory.playersToIgnore) {

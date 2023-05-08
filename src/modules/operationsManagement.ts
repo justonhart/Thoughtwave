@@ -35,49 +35,54 @@ const OPERATION_BOOST_MAP: { [key in OperationType]?: BoostType[] } = {
 };
 
 export function manageOperations() {
-    if (!Memory.operations) {
-        Memory.operations = [];
-    }
-
-    Memory.operations = Memory.operations.filter((op) => op.stage !== OperationStage.COMPLETE && (op?.expireAt ?? Game.time + 1) >= Game.time);
-    if (Memory.operations.length) {
-        Memory.operations.forEach((op) => {
+    Object.entries(Memory.operations).forEach(([operationId, operation]) => {
+        if (operation.stage === OperationStage.COMPLETE) {
+            if (Memory.debug.logOperations) {
+                console.log(`Operation ${operationId} (Type: ${operation.type} targeting ${operation.targetRoom}) completed successfully`);
+            }
+            delete Memory.operations[operationId];
+        } else if (operation.stage === OperationStage.FAILED) {
+            if (Memory.debug.logOperations) {
+                console.log(`Operation ${operationId} (Type: ${operation.type} targeting ${operation.targetRoom}) failed`);
+            }
+            delete Memory.operations[operationId];
+        } else {
             try {
-                switch (op.type) {
+                switch (operation.type) {
                     case OperationType.COLONIZE:
-                        manageColonizationOperation(op);
+                        manageColonizationOperation(operationId, operation);
                         break;
                     case OperationType.SECURE:
-                        manageSecureRoomOperation(op);
+                        manageSecureRoomOperation(operationId, operation);
                         break;
                     case OperationType.ROOM_RECOVERY:
-                        manageRoomRecoveryOperation(op);
+                        manageRoomRecoveryOperation(operationId, operation);
                         break;
                     case OperationType.ATTACK:
-                        manageAttackRoomOperation(op);
+                        manageAttackRoomOperation(operationId, operation);
                         break;
                     case OperationType.QUAD_ATTACK:
-                        manageQuadAttackRoomOperation(op);
+                        manageQuadAttackRoomOperation(operationId, operation);
                         break;
                     case OperationType.POWER_BANK:
-                        manageAddPowerBankOperation(op);
+                        manageAddPowerBankOperation(operationId, operation);
                         break;
                     case OperationType.COLLECTION:
                     case OperationType.UPGRADE_BOOST:
                     case OperationType.REMOTE_BUILD:
                     case OperationType.STERILIZE:
                     case OperationType.CLEAN:
-                        manageSimpleOperation(op);
+                        manageSimpleOperation(operationId, operation);
                         break;
                 }
             } catch (e) {
-                console.log(`Error caught in operation ${op.type} in ${op.originRoom} for ${op.targetRoom}: \n${e}`);
+                console.log(`Error caught in operation ${operationId} targeting ${operation.targetRoom}: \n${e}`);
             }
-        });
-    }
+        }
+    });
 }
 
-function manageColonizationOperation(op: Operation) {
+function manageColonizationOperation(opId: string, op: Operation) {
     if (!Game.rooms[op.originRoom]) {
         op.originRoom = findOperationOrigin(op.targetRoom)?.roomName;
     }
@@ -99,7 +104,7 @@ function manageColonizationOperation(op: Operation) {
                             role: Role.CLAIMER,
                             destination: op.targetRoom,
                             room: op.originRoom,
-                            portalLocations: op.portalLocations,
+                            waypoints: op.waypoints,
                         },
                     },
                 });
@@ -123,7 +128,7 @@ function manageColonizationOperation(op: Operation) {
                                 role: Role.MINER,
                                 assignment: key,
                                 room: op.targetRoom,
-                                portalLocations: op.portalLocations,
+                                waypoints: op.waypoints,
                             },
                         },
                     });
@@ -143,7 +148,7 @@ function manageColonizationOperation(op: Operation) {
                         memory: {
                             role: Role.COLONIZER,
                             destination: op.targetRoom,
-                            portalLocations: op.portalLocations,
+                            waypoints: op.waypoints,
                         },
                     },
                 });
@@ -160,7 +165,7 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
             room.energyStatus >= (opts?.minEnergyStatus ?? EnergyStatus.RECOVERING) &&
             (!opts?.maxThreatLevel || room.memory.threatLevel <= opts.maxThreatLevel) &&
             (!opts?.operationCriteria ||
-                Memory.operations.filter(
+                Object.values(Memory.operations).filter(
                     (operation) =>
                         operation.originRoom === room.name &&
                         opts.operationCriteria.type === operation.type &&
@@ -227,25 +232,21 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
     return bestRoom;
 }
 
-function manageSimpleOperation(op: Operation) {
+function manageSimpleOperation(opId: string, op: Operation) {
     if (!Game.rooms[op.originRoom]) {
         op.originRoom = findOperationOrigin(op.targetRoom)?.roomName;
     }
 
-    let assignedOperativesCount =
-        Object.values(Memory.creeps).filter((creep) => creep.destination === op.targetRoom && creep.operation === op.type).length +
-        Memory.spawnAssignments.filter(
-            (creep) => creep.spawnOpts.memory.destination === op.targetRoom && creep.spawnOpts.memory.operation === op.type
-        ).length;
-    if (op.originRoom && assignedOperativesCount < (op.operativeCount ?? 1)) {
+    const operatives = Object.values(Game.creeps).filter((c) => (c.memory.operationId = opId));
+
+    if (op.originRoom && operatives.length < (op.operativeCount ?? 1)) {
         Memory.spawnAssignments.push({
             designee: op.originRoom,
             body: PopulationManagement.createPartsArray(OPERATOR_PARTS_MAP[op.type], Game.rooms[op.originRoom].energyCapacityAvailable),
             spawnOpts: {
                 memory: {
                     role: Role.OPERATIVE,
-                    operation: op.type,
-                    destination: op.targetRoom,
+                    operationId: opId,
                 },
                 boosts: OPERATION_BOOST_MAP[op.type],
             },
@@ -279,17 +280,18 @@ export function addOperation(operationType: OperationType, targetRoom: string, o
             ...opts,
         };
 
-        if (!opts.disableLogging) {
-            console.log(`${originRoom} selected for operation targeting ${targetRoom}`);
+        const nextOperationId = `o${operationType}_${Game.time}_${global.identifierIncrement++}`;
+        if (Memory.debug.logOperations) {
+            console.log(`${originRoom} selected for operation ${nextOperationId}`);
         }
 
-        Memory.operations.push(newOp);
-    } else if (!opts.disableLogging) {
+        Memory.operations[nextOperationId] = newOp;
+    } else if (Memory.debug.logOperations) {
         console.log('No suitable origin found');
     }
 }
 
-function manageSecureRoomOperation(op: Operation) {
+function manageSecureRoomOperation(opId: string, op: Operation) {
     if (!Game.rooms[op.originRoom]) {
         const operationResult = findOperationOrigin(op.targetRoom);
         op.originRoom = operationResult?.roomName;
@@ -298,7 +300,7 @@ function manageSecureRoomOperation(op: Operation) {
 
     const origin = Game.rooms[op.originRoom];
 
-    const targetIsColonizeTarget = !!Memory.operations.find(
+    const targetIsColonizeTarget = Object.values(Memory.operations).some(
         (otherOperation) => op.targetRoom === otherOperation.targetRoom && otherOperation.type === OperationType.COLONIZE
     );
     const bodyParts =
@@ -331,15 +333,15 @@ function manageSecureRoomOperation(op: Operation) {
                     currentTaskPriority: Priority.MEDIUM,
                     combat: { flee: false },
                     room: op.targetRoom,
-                    portalLocations: op.portalLocations,
+                    waypoints: op.waypoints,
                 },
             },
         });
     }
 }
 
-function manageRoomRecoveryOperation(op: Operation) {
-    let targetRoom = Game.rooms[op.targetRoom];
+function manageRoomRecoveryOperation(opId: string, op: Operation) {
+    const targetRoom = Game.rooms[op.targetRoom];
 
     if (!targetRoom.find(FIND_MY_CONSTRUCTION_SITES).find((site) => site.structureType === STRUCTURE_SPAWN)) {
         let spawnPos = getSpawnPos(targetRoom);
@@ -362,21 +364,21 @@ function manageRoomRecoveryOperation(op: Operation) {
                         role: Role.MINER,
                         assignment: key,
                         room: op.targetRoom,
-                        portalLocations: op.portalLocations,
+                        waypoints: op.waypoints,
                     },
                 },
             });
         }
     });
 
-    let numberOfRecoveryWorkers =
-        Object.values(Memory.creeps).filter((creep) => creep.role === Role.WORKER && creep.room === op.targetRoom && creep.operation === op.type)
+    const numberOfRecoveryWorkers =
+        Object.values(Memory.creeps).filter((creep) => creep.role === Role.WORKER && creep.room === op.targetRoom && creep.operationId === opId)
             .length +
         Memory.spawnAssignments.filter(
             (creep) =>
                 creep.spawnOpts.memory.room === op.targetRoom &&
                 creep.spawnOpts.memory.role === Role.WORKER &&
-                creep.spawnOpts.memory.operation === op.type
+                creep.spawnOpts.memory.operationId === opId
         ).length;
     if (op.originRoom && numberOfRecoveryWorkers < (op.operativeCount ?? miningAssignments.length)) {
         Memory.spawnAssignments.push({
@@ -386,46 +388,42 @@ function manageRoomRecoveryOperation(op: Operation) {
                 memory: {
                     role: Role.WORKER,
                     room: op.targetRoom,
-                    operation: op.type,
-                    portalLocations: op.portalLocations,
+                    operationId: opId,
+                    waypoints: op.waypoints,
                 },
             },
         });
     }
 
     if (targetRoom.memory.layout === RoomLayout.BUNKER && !roomNeedsCoreStructures(targetRoom)) {
-        let opIndex = Memory.operations.findIndex((operation) => op === operation);
-        Memory.operations[opIndex].stage = OperationStage.COMPLETE;
+        Memory.operations[opId].stage = OperationStage.COMPLETE;
 
         placeBunkerConstructionSites(targetRoom);
     } else if (targetRoom.memory.layout === RoomLayout.STAMP) {
         // Simply send one recovery squad
         targetRoom.memory.dontCheckConstructionsBefore = targetRoom.memory.dontCheckConstructionsBefore - 1000;
-        let opIndex = Memory.operations.findIndex((operation) => op === operation);
-        Memory.operations[opIndex].stage = OperationStage.COMPLETE;
+        Memory.operations[opId].stage = OperationStage.COMPLETE;
     }
 }
 
-function manageAttackRoomOperation(op: Operation) {
+function manageAttackRoomOperation(opId: string, op: Operation) {
     const originRoom = Game.rooms[op.originRoom];
     const attackerBody = PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
         sortByBodyPart(MOVE, bodyA, bodyB)
     );
     const healerBody = [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)];
     createSquad(op, SquadType.DUO, attackerBody, healerBody, [BoostType.DISMANTLE], [BoostType.HEAL]);
-    const opIndex = Memory.operations.findIndex((operation) => op === operation);
-    Memory.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
+    Memory.operations[opId].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
 }
 
-function manageQuadAttackRoomOperation(op: Operation) {
+function manageQuadAttackRoomOperation(opId: string, op: Operation) {
     const originRoom = Game.rooms[op.originRoom];
     const attackerBody = PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
         sortByBodyPart(MOVE, bodyA, bodyB)
     );
     const healerBody = [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)];
     createSquad(op, SquadType.QUAD, attackerBody, healerBody, [BoostType.DISMANTLE], [BoostType.HEAL]);
-    const opIndex = Memory.operations.findIndex((operation) => op === operation);
-    Memory.operations[opIndex].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
+    Memory.operations[opId].stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
 }
 
 function sortByBodyPart(prioritizedBodyPart: BodyPartConstant, bodyA: BodyPartConstant, bodyB: BodyPartConstant) {
@@ -449,7 +447,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
         spawnOpts: {
             memory: {
                 role: Role.CLAIMER,
-                portalLocations: portalLocations,
+                waypoints: portalLocations,
                 destination: destinationRoom,
             },
         },
@@ -463,7 +461,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
                 role: Role.INTERSHARD_TRAVELLER,
                 nextRole: Role.MINER,
                 destination: destinationRoom,
-                portalLocations: portalLocations,
+                waypoints: portalLocations,
             },
         },
     });
@@ -476,7 +474,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
                 role: Role.INTERSHARD_TRAVELLER,
                 nextRole: Role.MINER,
                 destination: destinationRoom,
-                portalLocations: portalLocations,
+                waypoints: portalLocations,
             },
         },
     });
@@ -489,7 +487,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
                 role: Role.INTERSHARD_TRAVELLER,
                 nextRole: Role.WORKER,
                 destination: destinationRoom,
-                portalLocations: portalLocations,
+                waypoints: portalLocations,
             },
         },
     });
@@ -502,7 +500,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
                 role: Role.INTERSHARD_TRAVELLER,
                 nextRole: Role.WORKER,
                 destination: destinationRoom,
-                portalLocations: portalLocations,
+                waypoints: portalLocations,
             },
         },
     });
@@ -517,7 +515,7 @@ export function launchIntershardParty(portalLocations: string[], destinationRoom
  * If PowerBank Operation is not doable for some reason, then set it to false to avoid calculating this again
  * @param op
  */
-function manageAddPowerBankOperation(op: Operation) {
+function manageAddPowerBankOperation(opId: string, op: Operation) {
     const targetRoom = Game.rooms[op.targetRoom];
     const originRoom = Game.rooms[op.originRoom];
     switch (op.stage) {
@@ -591,7 +589,7 @@ function manageAddPowerBankOperation(op: Operation) {
             });
 
             // Spawn 1 protector
-            spawnPowerBankProtector(op, targetRoom, originRoom);
+            spawnPowerBankProtector(opId, op, targetRoom, originRoom);
 
             // Spawn Squads
             if (
@@ -644,8 +642,7 @@ function manageAddPowerBankOperation(op: Operation) {
                                     memory: {
                                         role: Role.OPERATIVE,
                                         room: op.originRoom,
-                                        operation: OperationType.POWER_BANK,
-                                        destination: op.targetRoom,
+                                        operationId: opId,
                                         currentTaskPriority: Priority.MEDIUM,
                                     },
                                 },
@@ -706,7 +703,7 @@ function manageAddPowerBankOperation(op: Operation) {
  * @param op
  * @param targetRoom
  */
-function spawnPowerBankProtector(op: Operation, targetRoom: Room, originRoom: Room) {
+function spawnPowerBankProtector(opId: string, op: Operation, targetRoom: Room, originRoom: Room) {
     const assignedProtectorCount =
         Object.values(Game.creeps).filter(
             (creep) =>
@@ -900,5 +897,5 @@ function createSquad(
     if (!Memory.squads) {
         Memory.squads = {};
     }
-    Memory.squads[squadId] = { squadType: SquadType.DUO, forcedDestinations: op.forcedDestinations, assignment: op.targetRoom };
+    Memory.squads[squadId] = { squadType: SquadType.DUO, forcedDestinations: op.waypoints, assignment: op.targetRoom };
 }

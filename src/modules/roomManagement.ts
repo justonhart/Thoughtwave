@@ -49,8 +49,6 @@ export function driveRoom(room: Room) {
 
     if (!room.canSpawn()) {
         // fail state - if a room has unexpectedly lost all spawns
-        if (!Memory.operations.find((op) => op.targetRoom === room.name && op.type === OperationType.COLONIZE)) {
-        }
     } else {
         room.memory.reservedEnergy = 0;
 

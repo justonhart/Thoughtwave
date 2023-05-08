@@ -12,7 +12,6 @@ import { Reserver } from '../roles/reserver';
 import { RemoteMiner } from '../roles/remoteMiner';
 import { Manager } from '../roles/manager';
 import { Operative } from '../roles/operative';
-import { Colonizer } from '../roles/colonizer';
 import { RampartProtector } from '../roles/rampartProtector';
 import { SquadAttacker } from '../roles/squadAttacker';
 import { MineralMiner } from '../roles/mineralMiner';
@@ -49,9 +48,6 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.CLAIMER:
             waveCreep = new Claimer(creep.id);
-            break;
-        case Role.COLONIZER:
-            waveCreep = new Colonizer(creep.id);
             break;
         case Role.SCOUT:
             waveCreep = new Scout(creep.id);

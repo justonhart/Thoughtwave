@@ -4,11 +4,10 @@ export class Operative extends WorkerCreep {
     protected run() {
         if (!this.operation) {
             this.memory.recycle = true;
-            delete this.memory.operation;
-            delete this.memory.destination;
+            delete this.memory.operationId;
         }
 
-        switch (this.memory.operation) {
+        switch (this.operation.type) {
             case OperationType.STERILIZE:
                 this.runSterilize();
                 break;
@@ -29,9 +28,9 @@ export class Operative extends WorkerCreep {
     }
 
     private runUpgradeBoost() {
-        if (Game.rooms[this.memory.destination].controller.level < 6) {
+        if (Game.rooms[this.operation.targetRoom]?.controller.level < 6) {
             if (this.store.energy) {
-                let controller = Game.rooms[this.memory.destination].controller;
+                let controller = Game.rooms[this.operation.targetRoom]?.controller;
                 if (this.pos.inRangeTo(controller, 3)) {
                     this.upgradeController(controller);
                 } else {
@@ -46,7 +45,7 @@ export class Operative extends WorkerCreep {
     }
 
     private runRemoteBuild() {
-        const room = Game.rooms[this.memory.destination];
+        const room = Game.rooms[this.operation.targetRoom];
         if (this.store.energy) {
             if (room) {
                 let target = Game.getObjectById(this.memory.targetId);
@@ -64,7 +63,7 @@ export class Operative extends WorkerCreep {
                     this.terminateOperation();
                 }
             } else {
-                this.travelToRoom(this.memory.destination);
+                this.travelToRoom(this.operation.targetRoom);
             }
         } else {
             if (room?.energyStatus > EnergyStatus.RECOVERING) {
@@ -77,7 +76,7 @@ export class Operative extends WorkerCreep {
 
     private runClean() {
         if (!this.memory.targetId) {
-            if (this.pos.roomName === this.memory.destination) {
+            if (this.pos.roomName === this.operation.targetRoom) {
                 let target = this.findCleanTarget();
                 if (!target) {
                     this.terminateOperation();
@@ -85,7 +84,7 @@ export class Operative extends WorkerCreep {
                     this.memory.targetId = target;
                 }
             } else {
-                this.travelToRoom(this.memory.destination);
+                this.travelToRoom(this.operation.targetRoom);
             }
         } else {
             let target = Game.getObjectById(this.memory.targetId) as Structure;
@@ -102,7 +101,7 @@ export class Operative extends WorkerCreep {
     }
 
     private runSterilize() {
-        if (this.travelToRoom(this.memory.destination, { range: 20 }) === IN_ROOM) {
+        if (this.travelToRoom(this.operation.targetRoom, { range: 20 }) === IN_ROOM) {
             //@ts-expect-error
             let target: Structure = Game.getObjectById(this.memory.targetId);
             if (!target) {
@@ -136,7 +135,7 @@ export class Operative extends WorkerCreep {
             } else {
                 this.travelTo(storage);
             }
-        } else if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
+        } else if (this.travelToRoom(this.operation.targetRoom) === IN_ROOM) {
             //cast target to storage for store property
             let target = Game.getObjectById(this.memory.targetId);
             if (!target) {
@@ -178,7 +177,7 @@ export class Operative extends WorkerCreep {
                 this.travelTo(target, { range: 4 });
             } else {
                 delete this.memory.targetId;
-                if (this.memory.operation !== OperationType.POWER_BANK) {
+                if (this.operation.type !== OperationType.POWER_BANK) {
                     // Gets terminated in operationsManagement when all operatives are dead (recycled)
                     this.terminateOperation();
                 } else {
@@ -189,7 +188,7 @@ export class Operative extends WorkerCreep {
     }
 
     private findCollectionTarget(): Id<Structure> | Id<Ruin> | Id<Resource> {
-        if (this.memory.operation === OperationType.POWER_BANK) {
+        if (this.operation.type === OperationType.POWER_BANK) {
             const powerbank = this.room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })?.shift();
             if (powerbank) {
                 return powerbank.id; // Go towards powerbank (easier to protect)
@@ -241,7 +240,7 @@ export class Operative extends WorkerCreep {
     }
 
     private findCleanTarget(): Id<Structure> {
-        let destinationRoom = Game.rooms[this.memory.destination];
+        let destinationRoom = Game.rooms[this.operation.targetRoom];
 
         let targets = destinationRoom.find(FIND_HOSTILE_STRUCTURES, {
             filter: (struct) =>
@@ -254,17 +253,8 @@ export class Operative extends WorkerCreep {
     }
 
     private terminateOperation() {
-        let opIndex = this.getOperationIndex();
-        if (opIndex > -1) {
-            Memory.operations[opIndex].stage = OperationStage.COMPLETE;
-        }
-
-        delete this.memory.destination;
-        delete this.memory.operation;
-    }
-
-    private getOperationIndex() {
-        return Memory.operations.findIndex((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
+        this.operation.stage = OperationStage.COMPLETE;
+        delete this.memory.operationId;
     }
 
     private gatherResourceFromOrigin(resource: ResourceConstant) {
@@ -277,7 +267,7 @@ export class Operative extends WorkerCreep {
     }
 
     private findBuildTarget(): Id<Structure> | Id<ConstructionSite> {
-        const room = Game.rooms[this.memory.destination];
+        const room = Game.rooms[this.operation.targetRoom];
 
         let constructedDefenses = this.pos
             .findInRange(FIND_STRUCTURES, 3)
