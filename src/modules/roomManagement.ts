@@ -1192,7 +1192,7 @@ function runFactory(room: Room) {
             const product = Object.keys(RESOURCE_COMPRESSION_MAP).find((res) => RESOURCE_COMPRESSION_MAP[res] === resourceToDecompress);
             const resourceNeeded = 5000 - room.terminal.store[product];
             const amountOfBarsToDecompress = Math.min(
-                Math.floor(resourceNeeded / 500) * 100,
+                Math.floor(resourceNeeded / 100) * 20,
                 Math.floor(room.storage.store[resourceToDecompress] / 100) * 100,
                 3000
             );
