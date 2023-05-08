@@ -29,6 +29,10 @@ interface RoomMemory {
     threatLevel: HomeRoomThreatLevel;
     resourceRequests?: string[];
     abandon?: boolean;
+    /**
+     * Tracks the amount of resources the manager is moving between storage structures. Used to include manager inventory in need calculation
+     */
+    transferBuffer: {[resource: string]: number}
 }
 
 interface RemoteSourceData {
@@ -97,6 +101,7 @@ interface Room {
     powerSpawn: StructurePowerSpawn;
     remoteMiningRooms: string[];
     remoteSources: string[];
+
 
     /**
      * Returns a map of each provided boost type to the number of boosts available
