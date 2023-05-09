@@ -50,6 +50,7 @@ export class Manager extends WaveCreep {
         }
         this.actionTaken = true;
         delete this.memory.targetId;
+        delete this.homeroom.memory.transferBuffer[resourceToTransfer];
     }
 
     private startNewTask() {
@@ -163,18 +164,21 @@ export class Manager extends WaveCreep {
 
         let res = this.getResourceToTransferToTerminal();
         if (terminal && res) {
-            this.withdraw(storage, res, Math.min(storage.store[res], 5000 - terminal?.store[res], this.store.getFreeCapacity()));
+            const amountToTransfer = Math.min(storage.store[res], 5000 - terminal.store[res], this.store.getFreeCapacity());
+            this.withdraw(storage, res, amountToTransfer);
             this.memory.targetId = terminal.id;
+            this.room.memory.transferBuffer[res] = amountToTransfer;
             return;
         }
 
         let remRes = this.getResourceToRemoveFromTerminal();
         if (terminal && remRes) {
-            let amount = MINERAL_COMPOUNDS.includes(remRes)
+            const amountToTransfer = MINERAL_COMPOUNDS.includes(remRes)
                 ? Math.min(terminal.store[remRes] - 5000, this.store.getFreeCapacity())
-                : Math.min(this.store.getFreeCapacity(), terminal?.store[remRes]);
-            this.withdraw(terminal, remRes, amount);
+                : Math.min(this.store.getFreeCapacity(), terminal.store[remRes]);
+            this.withdraw(terminal, remRes, amountToTransfer);
             this.memory.targetId = storage.id;
+            this.room.memory.transferBuffer[remRes] = amountToTransfer;
             return;
         }
 

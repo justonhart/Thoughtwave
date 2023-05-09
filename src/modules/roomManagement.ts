@@ -589,6 +589,7 @@ export function initRoom(room: Room) {
         mineralMiningAssignments: {},
         remoteSources: {},
         towerRepairMap: {},
+        transferBuffer: {}
     };
 
     //calculate room layout here
@@ -1031,6 +1032,10 @@ function initMissingMemoryValues(room: Room) {
     if (!room.memory.resourceRequests) {
         room.memory.resourceRequests = [];
     }
+
+    if(!room.memory.transferBuffer){
+        room.memory.transferBuffer = {};
+    }
 }
 
 export function addRemoteSourceClaim(room: Room) {
@@ -1341,10 +1346,22 @@ function runShipments(room: Room) {
                             Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
                             shipmentSentThisTick = true;
                         } else {
-                            console.log(
-                                `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - no recipient terminal`
-                            );
-                            Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
+                            switch(result){
+                                case ERR_NOT_ENOUGH_RESOURCES:
+                                    console.log(
+                                        `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - not enough resources to send`
+                                    );
+                                    Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
+                                    break;
+                                case ERR_INVALID_ARGS:
+                                    console.log(
+                                        `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - bad args`
+                                    );
+                                    Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
+                                    break;
+                                default:
+                                    Memory.shipments[shipmentId].status = ShipmentStatus.FAILED;
+                            }
                         }
                     }
                     break;
