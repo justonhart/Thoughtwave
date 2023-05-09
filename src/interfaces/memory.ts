@@ -63,6 +63,8 @@ interface Operation {
     pathCost?: number;
     toughHitsRequired?: number;
     visionRequests?: string[];
+    subOperations?: string[];
+    parentId?: string;
 }
 
 interface OperationOpts {
@@ -72,7 +74,7 @@ interface OperationOpts {
     targetPos?: string;
     resource?: ResourceConstant;
     expireAt?: number;
-    portalLocations?: string[];
+    waypoints?: string[];
     forcedDestinations?: string[];
     pathCost?: number;
     disableLogging?: boolean;
@@ -161,6 +163,7 @@ const enum SquadType {
     QUAD,
 }
 
+
 const enum OperationType {
     COLONIZE = 1,
     STERILIZE,
@@ -174,10 +177,12 @@ const enum OperationType {
     CLEAN,
     ADD_REMOTE_MINING,
     POWER_BANK,
+    TRANSFER
 }
 
 const enum OperationStage {
     FAILED = -1,
+    SUSPEND,
     PREPARE = 1,
     ACTIVE,
     CLAIM,

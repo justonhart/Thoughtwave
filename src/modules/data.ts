@@ -203,17 +203,16 @@ export function unclaimRoom(roomName: string) {
     return 'done';
 }
 
+export function observerInRange(roomName: string): boolean{
+    const observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room].observer);
+    return observerRooms.some((room) => Game.map.getRoomLinearDistance(roomName, room) <= 10);
+}
+
 //returns id
-export function addVisionRequest(request: VisionRequest): string | ScreepsReturnCode {
-    let observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room].observer);
-    let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 10);
-    if (suitableRoom) {
-        let requestId = `${Game.time}_${identifierIncrement++}`;
-        Memory.visionRequests[requestId] = request;
-        return requestId;
-    } else {
-        return ERR_NOT_FOUND;
-    }
+export function addVisionRequest(request: VisionRequest): string {
+    let requestId = `${Game.time}_${identifierIncrement++}`;
+    Memory.visionRequests[requestId] = request;
+    return requestId;
 }
 
 export function getExitDirections(roomName: string): DirectionConstant[] {

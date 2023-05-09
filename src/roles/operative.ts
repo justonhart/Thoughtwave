@@ -23,7 +23,38 @@ export class Operative extends WorkerCreep {
                 break;
             case OperationType.CLEAN:
                 this.runClean();
+                break
+            case OperationType.TRANSFER:
+                this.runTransfer();
                 break;
+        }
+    }
+
+    private runTransfer() {
+        if(this.store.getUsedCapacity()){
+            const destinationRoom = Game.rooms[this.operation.targetRoom];
+            if(destinationRoom?.storage){
+                if(this.pos.isNearTo(destinationRoom.storage)){
+                    this.transfer(destinationRoom.storage, this.operation.resource);
+                    this.memory.room = destinationRoom.name;
+                    this.memory.recycle = true;
+                }
+            } else {
+                const spawnPos = Memory.rooms[this.operation.targetRoom].stampLayout.spawn.find(stamp => stamp.rcl === 1).pos.toRoomPos();
+                const destinationPos = new RoomPosition(spawnPos.x, spawnPos.y + 1, spawnPos.roomName);
+                if(this.pos.isEqualTo(destinationPos)){
+                    const adjacentSpawn: StructureSpawn = this.pos.findInRange(FIND_MY_STRUCTURES, 1, {filter: s => s.structureType === STRUCTURE_SPAWN}) as unknown as StructureSpawn;
+                    if(adjacentSpawn){
+                        adjacentSpawn.recycleCreep(this);
+                    } else {
+                        this.suicide();
+                    }
+                } else {
+                    this.travelTo(destinationPos);
+                }
+            }
+        } else {
+            this.gatherResourceFromOrigin(this.operation.resource);
         }
     }
 
@@ -283,7 +314,7 @@ export class Operative extends WorkerCreep {
             return sites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
         }
 
-        const ramparts = room?.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_RAMPART && s.hits < 250000 });
+        const ramparts = room?.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_RAMPART});
         if (ramparts.length) {
             return this.room.name === room.name ? this.pos.findClosestByRange(ramparts).id : ramparts.pop().id;
         }

@@ -8,11 +8,11 @@ interface RoomMemory {
     unclaim?: boolean;
     managerPos?: string;
     anchorPoint?: string;
-    gates: Gate[];
-    repairSearchCooldown: number;
-    repairQueue: Id<Structure<StructureConstant>>[];
-    miningAssignments: { [posString: string]: string };
-    mineralMiningAssignments: { [posString: string]: string };
+    gates?: Gate[];
+    repairSearchCooldown?: number;
+    repairQueue?: Id<Structure<StructureConstant>>[];
+    miningAssignments?: { [posString: string]: string };
+    mineralMiningAssignments?: { [posString: string]: string };
     reservedEnergy?: number;
     layout?: RoomLayout;
     labTasks?: { [id: number]: LabTask };
@@ -26,13 +26,14 @@ interface RoomMemory {
     outstandingClaim?: string; //source to be claimed
     remoteSources?: { [sourcePos: string]: RemoteSourceData };
     lastRemoteSourceCheck?: number;
-    threatLevel: HomeRoomThreatLevel;
+    threatLevel?: HomeRoomThreatLevel;
     resourceRequests?: string[];
     abandon?: boolean;
     /**
      * Tracks the amount of resources the manager is moving between storage structures. Used to include manager inventory in need calculation
      */
-    transferBuffer: {[resource: string]: number}
+    transferBuffer?: {[resource: string]: number};
+    colonizationInProgress?: boolean;
 }
 
 interface RemoteSourceData {

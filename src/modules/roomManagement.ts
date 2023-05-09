@@ -139,7 +139,8 @@ export function driveRoom(room: Room) {
                 (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
                 (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
                 Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-                room.find(FIND_MY_CONSTRUCTION_SITES).length < 15
+                room.find(FIND_MY_CONSTRUCTION_SITES).length < 15 &&
+                !room.memory.colonizationInProgress
             ) {
                 let cpuUsed = 0;
                 // Cleanup any leftover storage/terminal that is in the way
@@ -273,6 +274,7 @@ export function driveRoom(room: Room) {
             if (
                 Game.time % 1000 !== 0 &&
                 !room.memory.outstandingClaim &&
+                !room.memory.colonizationInProgress &&
                 canSupportRemoteRoom(room) &&
                 Game.time % 25 === 0 &&
                 !global.remoteSourcesChecked &&
@@ -335,10 +337,12 @@ export function driveRoom(room: Room) {
             console.log(`Error caught running room ${room.name} for Labs: \n${e}`);
         }
 
-        try {
-            runSpawning(room);
-        } catch (e) {
-            console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
+        if(!room.memory.colonizationInProgress){
+            try {
+                runSpawning(room);
+            } catch (e) {
+                console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
+            }
         }
 
         if (room.factory) {
