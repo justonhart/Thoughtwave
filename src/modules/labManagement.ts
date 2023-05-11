@@ -286,17 +286,19 @@ export function spawnBoostTestCreep(roomName?: string) {
 
 function findBoostLab(room: Room, taskId: string): StructureLab {
     const reagentLabs = findReagentLabs(room);
-    const labTask = room.memory.labTasks[taskId];
+    const labTask: LabTask = room.memory.labTasks[taskId];
     const boostLabs = room.labs.filter((lab) => !reagentLabs.includes(lab));
+    console.log(labTask.needs[0].amount + " " + labTask.needs[0].resource + " needed");
     const availableBoostLab = boostLabs.find(
         (lab) =>
             (lab.taskId &&
                 room.memory.labTasks[lab.taskId].type === LabTaskType.BOOST &&
-                room.memory.labTasks[lab.taskId].needs[0].resource === labTask.needs[0].resource &&
-                lab.getFreeCapacity() >= labTask.needs[0].amount) ||
+                (room.memory.labTasks[lab.taskId].needs[0].resource === labTask.needs[0].resource) &&
+                (lab.getFreeCapacity() >= labTask.needs[0].amount)) ||
             (lab.taskId && room.memory.labTasks[lab.taskId].type === LabTaskType.REACT) ||
             !lab.taskId
     );
+    console.log(availableBoostLab.id + " selected for boost job with capacity " + availableBoostLab.getFreeCapacity() )
     return availableBoostLab;
 }
 

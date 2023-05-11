@@ -44,7 +44,7 @@ export class Operative extends WorkerCreep {
                 const destinationPos = new RoomPosition(spawnPos.x, spawnPos.y + 1, spawnPos.roomName);
                 if(this.pos.isEqualTo(destinationPos)){
                     const adjacentSpawn: StructureSpawn = this.pos.findInRange(FIND_MY_STRUCTURES, 1, {filter: s => s.structureType === STRUCTURE_SPAWN}) as unknown as StructureSpawn;
-                    if(adjacentSpawn){
+                    if(adjacentSpawn instanceof StructureSpawn){
                         adjacentSpawn.recycleCreep(this);
                     } else {
                         this.suicide();
@@ -68,7 +68,7 @@ export class Operative extends WorkerCreep {
                     this.travelTo(controller, { range: 3 });
                 }
             } else {
-                this.gatherResourceFromOrigin(RESOURCE_ENERGY);
+                this.gatherEnergy();
             }
         } else {
             this.terminateOperation();
@@ -78,7 +78,7 @@ export class Operative extends WorkerCreep {
     private runRemoteBuild() {
         const room = Game.rooms[this.operation.targetRoom];
         if (this.store.energy) {
-            if (room) {
+            if (room && this.room === room) {
                 let target = Game.getObjectById(this.memory.targetId);
                 if (!target) {
                     this.memory.targetId = this.findBuildTarget();
@@ -97,11 +97,7 @@ export class Operative extends WorkerCreep {
                 this.travelToRoom(this.operation.targetRoom);
             }
         } else {
-            if (room?.energyStatus > EnergyStatus.RECOVERING) {
-                this.gatherEnergy();
-            } else {
-                this.gatherResourceFromOrigin(RESOURCE_ENERGY);
-            }
+            this.gatherEnergy();
         }
     }
 
@@ -310,7 +306,10 @@ export class Operative extends WorkerCreep {
         }
 
         const sites = room?.find(FIND_MY_CONSTRUCTION_SITES);
-        if (sites.length) {
+        const nonRampartSites = sites.filter(s => s.structureType !== STRUCTURE_RAMPART);
+        if (nonRampartSites.length) {
+            return nonRampartSites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
+        } else if(sites.length){
             return sites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
         }
 

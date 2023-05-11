@@ -25,11 +25,6 @@ export default function manageFlags() {
             opts.originOpts.selectionCriteria = OriginCriteria.CLOSEST;
         }
 
-        addOperation(OperationType.SECURE, Game.flags.colonize.pos.roomName, {
-            operativeCount: 2,
-            expireAt: Game.time + 10000,
-            waypoints: portalLocations,
-        });
         addOperation(OperationType.COLONIZE, Game.flags.colonize.pos.roomName, opts);
         Game.flags.colonize.remove();
     }

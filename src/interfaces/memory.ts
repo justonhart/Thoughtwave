@@ -78,6 +78,7 @@ interface OperationOpts {
     forcedDestinations?: string[];
     pathCost?: number;
     disableLogging?: boolean;
+    parentId?: string
 }
 
 interface OriginOpts {
