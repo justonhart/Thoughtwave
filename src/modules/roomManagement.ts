@@ -143,7 +143,7 @@ export function driveRoom(room: Room) {
                 Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
                 room.find(FIND_MY_CONSTRUCTION_SITES).length < 15
             ) {
-                let cpuUsed = 0;
+                let cpuUsed = Game.cpu.getUsed();
                 // Cleanup any leftover storage/terminal that is in the way
                 if (
                     room.memory.stampLayout.spawn.some(
