@@ -383,10 +383,19 @@ function runTowers(room: Room, isRoomUnderAttack: boolean) {
     if (myHurtCreeps.length) {
         const mostHurtCreep = myHurtCreeps.reduce((mostHurt, nextCreep) => (mostHurt.hits < nextCreep.hits ? mostHurt : nextCreep));
 
-        // TODO: Optimize to only heal as much as needed
         if (mostHurtCreep) {
-            towers.forEach((tower) => tower.heal(mostHurtCreep));
-            return;
+            let healNeeded = mostHurtCreep.hitsMax - mostHurtCreep.hits;
+            for (let i = 0; i < towers.length; i++) {
+                const tower = towers[i];
+
+                if (healNeeded <= 0) {
+                    break;
+                }
+
+                healNeeded -= CombatIntel.calculateTotal([tower], mostHurtCreep.pos, CombatIntel.towerMinHeal, CombatIntel.towerMaxHeal);
+                tower.heal(mostHurtCreep);
+                towers.splice(i, 1); // Tower has already performed an action so remove from possible further actions
+            }
         }
     }
 
@@ -591,7 +600,7 @@ export function initRoom(room: Room) {
         mineralMiningAssignments: {},
         remoteSources: {},
         towerRepairMap: {},
-        transferBuffer: {}
+        transferBuffer: {},
     };
 
     //calculate room layout here
@@ -1035,7 +1044,7 @@ function initMissingMemoryValues(room: Room) {
         room.memory.resourceRequests = [];
     }
 
-    if(!room.memory.transferBuffer){
+    if (!room.memory.transferBuffer) {
         room.memory.transferBuffer = {};
     }
 }
@@ -1348,7 +1357,7 @@ function runShipments(room: Room) {
                             Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
                             shipmentSentThisTick = true;
                         } else {
-                            switch(result){
+                            switch (result) {
                                 case ERR_NOT_ENOUGH_RESOURCES:
                                     console.log(
                                         `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - not enough resources to send`

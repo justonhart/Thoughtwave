@@ -3,8 +3,8 @@ export class CombatIntel {
     private static towerMinRange = 5;
     private static towerMaxDmg = 600;
     private static towerMinDmg = 150;
-    private static towerMaxHeal = 400;
-    private static towerMinHeal = 100;
+    public static towerMaxHeal = 400;
+    public static towerMinHeal = 100;
 
     /**
      * Calculate actual damage done against creeps with tough parts
@@ -124,19 +124,19 @@ export class CombatIntel {
      * @param max dmg/heal maximum
      * @returns dmg/heal at pos
      */
-    private static calculateTotal(towers: StructureTower[], pos: RoomPosition, min: number, max: number): number {
+    public static calculateTotal(towers: StructureTower[], pos: RoomPosition, min: number, max: number): number {
         const interval = (max - min) / (this.towerMaxRange - this.towerMinRange); // Damage diff between ranges
-        return towers.reduce((totalDamage, nextTower) => {
+        return towers.reduce((totalAmount, nextTower) => {
             // Power Action
             const powerLevel = this.getTowerPowerLevel(nextTower);
             const range = nextTower.pos.getRangeTo(pos);
 
             if (range >= this.towerMaxRange) {
-                return min * powerLevel;
+                return (totalAmount += min * powerLevel);
             } else if (range <= this.towerMinRange) {
-                return max * powerLevel;
+                return (totalAmount += max * powerLevel);
             }
-            return (totalDamage += max - (range - this.towerMinRange) * interval) * powerLevel;
+            return (totalAmount += max - (range - this.towerMinRange) * interval) * powerLevel;
         }, 0);
     }
 
