@@ -835,7 +835,10 @@ function runSpawning(room: Room) {
         if (result === undefined && !spawn.store.getFreeCapacity()) {
             // did not spawn any workers so check if we can renew managers
             const renewableManager = room.creeps.find(
-                (creep) => creep.memory.role === Role.MANAGER && creep.ticksToLive < 1000 && spawn.pos.getRangeTo(creep) === 1
+                (creep) =>
+                    creep.memory.role === Role.MANAGER &&
+                    creep.ticksToLive < 1500 - Math.floor(600 / creep.body.length) &&
+                    spawn.pos.getRangeTo(creep) === 1
             );
             if (renewableManager) {
                 spawn.renewCreep(renewableManager);
