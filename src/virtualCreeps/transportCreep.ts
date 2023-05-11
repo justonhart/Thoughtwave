@@ -439,7 +439,9 @@ export class TransportCreep extends WaveCreep {
                 ).id;
         }
 
-        const tombstonesWithResources = room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
+        const tombstonesWithResources = (this.room.name === this.homeroom.name && !this.homeroom.storage)
+            ? room.find(FIND_TOMBSTONES).filter(t => t.store[RESOURCE_ENERGY])
+            : room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
         if (tombstonesWithResources.length) {
             return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
         }

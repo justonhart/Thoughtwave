@@ -27,6 +27,9 @@ export class WorkerCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1, maxRooms: 1 });
                     break;
+                case ERR_NOT_ENOUGH_RESOURCES:
+                    delete this.memory.energySource;
+                    break;
                 case 0:
                     this.stopGathering();
                     break;
@@ -40,7 +43,10 @@ export class WorkerCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1, maxRooms: 1 });
                     break;
-                case 0:
+                case ERR_NOT_ENOUGH_RESOURCES:
+                    delete this.memory.energySource;
+                    break;
+               case 0:
                     this.stopGathering();
                     break;
             }
@@ -48,12 +54,15 @@ export class WorkerCreep extends WaveCreep {
             return;
         }
 
-        if (target instanceof Ruin) {
+        if (target instanceof Ruin || target instanceof Tombstone) {
             switch (this.withdraw(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { ignoreCreeps: true, range: 1, maxRooms: 1 });
                     break;
-                case 0:
+                case ERR_NOT_ENOUGH_RESOURCES:
+                    delete this.memory.energySource;
+                    break;
+              case 0:
                     this.stopGathering();
                     break;
             }
@@ -82,13 +91,15 @@ export class WorkerCreep extends WaveCreep {
             return this.room.terminal.id;
         }
 
-        let nonStorageSources: (Ruin | Resource | Structure)[];
+        let nonStorageSources: (Ruin | Resource | Structure | Tombstone)[];
 
         let ruins = this.room.find(FIND_RUINS, {
             filter: (r) => {
                 return r.store[RESOURCE_ENERGY];
             },
         });
+
+        let tombstones = this.room.find(FIND_TOMBSTONES, { filter: t => t.store[RESOURCE_ENERGY]});
 
         let looseEnergyStacks = this.room
             .find(FIND_DROPPED_RESOURCES)
@@ -107,7 +118,7 @@ export class WorkerCreep extends WaveCreep {
                         ))
             );
 
-        nonStorageSources = [...ruins, ...looseEnergyStacks, ...containers];
+        nonStorageSources = [...tombstones, ...ruins, ...looseEnergyStacks, ...containers];
         if (nonStorageSources.length) {
             return this.pos.findClosestByRange(nonStorageSources).id;
         }
