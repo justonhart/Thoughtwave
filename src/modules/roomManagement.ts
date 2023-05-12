@@ -509,33 +509,6 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 });
             }
         } else if (currentNumProtectors) {
-            // Get all unboosted protectors and boost them (needed due to early detection system)
-            Object.values(Game.creeps)
-                .filter(
-                    (creep) =>
-                        creep.memory.role === Role.RAMPART_PROTECTOR &&
-                        creep.pos.roomName === homeRoom.name &&
-                        (!creep.memory.needsBoosted || !creep.body.some((part) => part.boost))
-                )
-                .forEach((creep) => {
-                    creep.memory.needsBoosted = true;
-                    const labTasksToAdd: LabTaskPartial[] = [];
-                    const requestsToAdd: ResourceRequestPartial[] = [];
-                    PopulationManagement.setLabTasksAndRequests(
-                        homeRoom,
-                        creep.name,
-                        creep.body.map((part) => part.type),
-                        labTasksToAdd,
-                        requestsToAdd,
-                        { boosts: [BoostType.ATTACK, BoostType.MOVE] }
-                    );
-                    labTasksToAdd.forEach((task) => {
-                        homeRoom.addLabTask(task);
-                    });
-                    requestsToAdd.forEach((request) => {
-                        homeRoom.addRequest(request.resource, request.amount);
-                    });
-                });
             Memory.spawnAssignments
                 .filter(
                     (creep) =>
