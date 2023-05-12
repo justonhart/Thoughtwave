@@ -326,6 +326,10 @@ function manageSimpleOperation(opId: string, op: Operation) {
             },
         });
     }
+
+    if(op.expireAt <= Game.time){
+        Memory.operations[opId].stage = OperationStage.COMPLETE;
+    }
 }
 
 export function addOperation(operationType: OperationType, targetRoom: string, opts?: OperationOpts): string {
