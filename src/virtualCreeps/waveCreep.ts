@@ -128,7 +128,40 @@ export class WaveCreep extends Creep {
         }
     }
 
+    /**
+     * Uses targetId2 due to many creeps using targetId for other operations and it then causing them to execute a different operation.
+     * Unlike recycle it will not take priority over all other operations so it is not implemented on waveCreep level.
+     */
+    protected renewCreep() {
+        if (this.travelToRoom(this.homeroom.name) === IN_ROOM && !this.memory.targetId2) {
+            this.memory.targetId2 = this.homeroom
+                .find(FIND_MY_SPAWNS)
+                ?.filter((spawn) => !spawn.spawning)
+                .shift()?.id;
+        }
+
+        const target = Game.getObjectById(this.memory.targetId2) as StructureSpawn;
+        if (target instanceof StructureSpawn) {
+            if (this.pos.isNearTo(target)) {
+                // Creep can not yet get renewed - move close to the spawn an wait
+                if (this.ticksToLive >= 1500 - Math.floor(600 / this.body.length)) {
+                    return;
+                }
+                const result = target.renewCreep(this);
+                // Spawner started spawning so find different one
+                if (result !== OK) {
+                    delete this.memory.targetId2;
+                }
+            } else {
+                this.travelTo(target, { range: 1 });
+            }
+        } else {
+            delete this.memory.targetId2;
+        }
+    }
+
     protected recycleCreep() {
+        this.memory.currentTaskPriority = Priority.HIGH; // Be able to move creeps off container
         if (this.travelToRoom(this.homeroom.name) === IN_ROOM && !this.memory.targetId) {
             if (this.homeroom.memory.layout === RoomLayout.STAMP) {
                 this.memory.targetId = this.homeroom
@@ -139,11 +172,9 @@ export class WaveCreep extends Creep {
                         )
                     )
                     ?.shift()?.id;
-            } else {
-                this.memory.targetId = this.homeroom
-                    .find(FIND_MY_SPAWNS)
-                    .filter((spawn) => !spawn.spawning)
-                    ?.shift()?.id;
+            }
+            if (!this.memory.targetId) {
+                this.memory.targetId = this.homeroom.find(FIND_MY_SPAWNS)?.shift()?.id;
             }
         }
 

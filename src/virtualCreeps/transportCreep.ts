@@ -47,6 +47,8 @@ export class TransportCreep extends WaveCreep {
                 } else {
                     this.runNonLabPrepTasks();
                 }
+            } else if (stop) {
+                this.renewCreep();
             }
         }
     }

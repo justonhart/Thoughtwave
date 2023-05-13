@@ -142,7 +142,7 @@ export function driveRoom(room: Room) {
                 room.find(FIND_MY_CONSTRUCTION_SITES).length < 15 &&
                 !room.memory.colonizationInProgress
             ) {
-                let cpuUsed = 0;
+                let cpuUsed = Game.cpu.getUsed();
                 // Cleanup any leftover storage/terminal that is in the way
                 if (
                     room.memory.stampLayout.spawn.some(
@@ -233,7 +233,7 @@ export function driveRoom(room: Room) {
         let isHomeUnderAttack = false;
         try {
             isHomeUnderAttack = runHomeSecurity(room);
-            runTowers(room, isHomeUnderAttack);
+            runTowers(room);
         } catch (e) {
             console.log(`Error caught running runHomeSecurity/runTowers in ${room.name}: \n${e}`);
         }
@@ -369,33 +369,40 @@ export function driveRoom(room: Room) {
     }
 }
 
-function runTowers(room: Room, isRoomUnderAttack: boolean) {
-    const towers = room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_TOWER) as StructureTower[];
+function runTowers(room: Room) {
+    let towers = room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_TOWER) as StructureTower[];
 
-    const myHurtCreeps = room
-        .find(FIND_MY_CREEPS)
-        .filter(
-            (creep) =>
-                creep.hits < creep.hitsMax &&
-                (!isRoomUnderAttack ||
-                    creep.memory.role === Role.RAMPART_PROTECTOR ||
-                    creep.memory.role === Role.DISTRIBUTOR ||
-                    creep.memory.role === Role.WORKER)
-        );
+    const myHurtCreeps = room.find(FIND_MY_CREEPS).filter((creep) => creep.hits < creep.hitsMax);
     if (myHurtCreeps.length) {
-        const mostHurtCreep = myHurtCreeps.reduce((mostHurt, nextCreep) => (mostHurt.hits < nextCreep.hits ? mostHurt : nextCreep));
+        for (let i = 0; i < myHurtCreeps.length && towers.length; i++) {
+            let healNeeded = myHurtCreeps[i].hitsMax - myHurtCreeps[i].hits;
+            for (let j = 0; j < towers.length; j++) {
+                if (healNeeded <= 0) {
+                    towers.splice(0, j); // N Towers have been used to heal creep so remove them from further actions
+                    break;
+                }
 
-        // TODO: Optimize to only heal as much as needed
-        if (mostHurtCreep) {
-            towers.forEach((tower) => tower.heal(mostHurtCreep));
-            return;
+                const tower = towers[j];
+                healNeeded -= CombatIntel.calculateTotal([tower], myHurtCreeps[i].pos, CombatIntel.towerMinHeal, CombatIntel.towerMaxHeal);
+                tower.heal(myHurtCreeps[i]);
+                if (j === towers.length - 1) {
+                    towers = []; // All towers were needed to heal creep so remove all towers from further actions
+                    break;
+                }
+            }
         }
+    }
+
+    // All towers are busy
+    if (!towers.length) {
+        return;
     }
 
     if (!room.controller.safeMode) {
         const focus = Object.values(Game.creeps).find((creep) => creep.room.name === room.name && creep.memory.targetId2 && creep.memory.ready >= 5);
         if (focus) {
             towers.forEach((tower) => tower.attack(Game.getObjectById(focus.memory.targetId2)));
+            towers = [];
         } else {
             // Towers do not attack creeps on the edge because this can cause them to simply waste energy if two attackers are in the room and the healers go in and out of the room
             const hostileCreep = room.find(FIND_HOSTILE_CREEPS).find((creep) => {
@@ -412,34 +419,33 @@ function runTowers(room: Room, isRoomUnderAttack: boolean) {
             });
             if (hostileCreep) {
                 towers.forEach((tower) => tower.attack(hostileCreep));
+                towers = [];
             }
         }
     }
 
     //if no defensive use for towers, repair roads
-    if (room.controller.safeMode || !isRoomUnderAttack) {
-        towers.forEach((tower) => {
-            let repairQueue = room.memory.repairQueue;
+    towers.forEach((tower) => {
+        let repairQueue = room.memory.repairQueue;
 
-            if (tower.store.energy > 600) {
-                if (!room.memory.towerRepairMap[tower.id]) {
-                    let roadId = repairQueue.find((id) => Game.getObjectById(id)?.structureType === STRUCTURE_ROAD) as Id<StructureRoad>;
-                    room.memory.towerRepairMap[tower.id] = roadId;
-                    room.removeFromRepairQueue(roadId);
-                }
+        if (tower.store.energy > 600) {
+            if (!room.memory.towerRepairMap[tower.id]) {
+                let roadId = repairQueue.find((id) => Game.getObjectById(id)?.structureType === STRUCTURE_ROAD) as Id<StructureRoad>;
+                room.memory.towerRepairMap[tower.id] = roadId;
+                room.removeFromRepairQueue(roadId);
+            }
 
-                let roadToRepair = Game.getObjectById(room.memory.towerRepairMap[tower.id]);
+            let roadToRepair = Game.getObjectById(room.memory.towerRepairMap[tower.id]);
 
-                if (roadToRepair?.hits < roadToRepair?.hitsMax) {
-                    tower.repair(roadToRepair);
-                } else {
-                    delete room.memory.towerRepairMap[tower.id];
-                }
+            if (roadToRepair?.hits < roadToRepair?.hitsMax) {
+                tower.repair(roadToRepair);
             } else {
                 delete room.memory.towerRepairMap[tower.id];
             }
-        });
-    }
+        } else {
+            delete room.memory.towerRepairMap[tower.id];
+        }
+    });
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {
@@ -566,7 +572,7 @@ export function initRoom(room: Room) {
         mineralMiningAssignments: {},
         remoteSources: {},
         towerRepairMap: {},
-        transferBuffer: {}
+        transferBuffer: {},
     };
 
     //calculate room layout here
@@ -801,7 +807,10 @@ function runSpawning(room: Room) {
         if (result === undefined && !spawn.store.getFreeCapacity()) {
             // did not spawn any workers so check if we can renew managers
             const renewableManager = room.creeps.find(
-                (creep) => creep.memory.role === Role.MANAGER && creep.ticksToLive < 1000 && spawn.pos.getRangeTo(creep) === 1
+                (creep) =>
+                    creep.memory.role === Role.MANAGER &&
+                    creep.ticksToLive < 1500 - Math.floor(600 / creep.body.length) &&
+                    spawn.pos.getRangeTo(creep) === 1
             );
             if (renewableManager) {
                 spawn.renewCreep(renewableManager);
@@ -1010,7 +1019,7 @@ function initMissingMemoryValues(room: Room) {
         room.memory.resourceRequests = [];
     }
 
-    if(!room.memory.transferBuffer){
+    if (!room.memory.transferBuffer) {
         room.memory.transferBuffer = {};
     }
 }
@@ -1323,7 +1332,7 @@ function runShipments(room: Room) {
                             Memory.shipments[shipmentId].status = ShipmentStatus.SHIPPED;
                             shipmentSentThisTick = true;
                         } else {
-                            switch(result){
+                            switch (result) {
                                 case ERR_NOT_ENOUGH_RESOURCES:
                                     console.log(
                                         `${Game.time} - Shipment FAILED: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient} - not enough resources to send`

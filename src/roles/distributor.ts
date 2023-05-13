@@ -48,7 +48,7 @@ export class Distributor extends TransportCreep {
         }
 
         // Nothing to do so drop everything off at storage
-        if (!target && this.room.storage?.store.getFreeCapacity()) {
+        if (!target && this.room.storage?.store.getFreeCapacity() && this.store.getUsedCapacity()) {
             target = this.homeroom.storage?.id;
         }
 
