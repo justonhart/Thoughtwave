@@ -299,8 +299,11 @@ export class TransportCreep extends WaveCreep {
                             containerStamp.type === 'center' && containerStamp.rcl <= this.homeroom.controller.level ? sum + 1 : sum,
                         0
                     );
+
+            const firstSpawnMispositioned = !this.room.find(FIND_MY_SPAWNS).every(spawn => this.room.memory.stampLayout?.spawn.some(stamp => stamp.pos === spawn.pos.toMemSafe()));
+
             // Do not refill spawn when all containers/managers are present
-            if (isStampRoom && !hasMissingManagersOrContainers) {
+            if (isStampRoom && !hasMissingManagersOrContainers && !firstSpawnMispositioned) {
                 targetStructureTypes = [STRUCTURE_EXTENSION];
             }
             // If no center link is present in Stamp rooms then fill up containers
@@ -402,10 +405,11 @@ export class TransportCreep extends WaveCreep {
                 return this.pos.findClosestByRange(labsNeedingEmptied).id;
             }
 
-            const ruinsWithResources = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 1000 });
-            if (ruinsWithResources.length) {
-                return this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 })?.id;
-            }
+        }
+
+        const ruinsWithResources = room.find(FIND_RUINS, { filter: (ruin) => this.room.storage ? ruin.store.getUsedCapacity() > 1000 : ruin.store[RESOURCE_ENERGY] });
+        if (ruinsWithResources.length) {
+            return this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 })?.id;
         }
 
         // For Stamps it only allows containers at miners when they are too full (should be emptied through link) or there isnt a link yet
@@ -562,7 +566,7 @@ export class TransportCreep extends WaveCreep {
     protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone | StructureLab | Ruin): void {
         this.memory.currentTaskPriority = Priority.HIGH;
 
-        let resourcesToWithdraw = target instanceof StructureLab ? [target.mineralType] : (Object.keys(target.store) as ResourceConstant[]);
+        let resourcesToWithdraw = this.homeroom.storage ? target instanceof StructureLab ? [target.mineralType] : (Object.keys(target.store) as ResourceConstant[]) : [RESOURCE_ENERGY];
         let nextResource: ResourceConstant = resourcesToWithdraw.shift();
         if (!this.pos.isNearTo(target)) {
             this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
