@@ -6,7 +6,7 @@ export class Miner extends WaveCreep {
         let assignedPos = this.memory.assignment.toRoomPos();
         if (this.pos.isEqualTo(assignedPos)) {
             // Prioritize filling extensions and repairing container
-            if (this.homeroom.memory.layout === RoomLayout.STAMP && this.getActiveBodyparts(CARRY)) {
+            if (this.getActiveBodyparts(CARRY)) {
                 const minerExtension = this.pos
                     .findInRange(FIND_MY_STRUCTURES, 1)
                     .find((structure) => structure.structureType === STRUCTURE_EXTENSION && structure.store.getFreeCapacity(RESOURCE_ENERGY));
@@ -48,7 +48,6 @@ export class Miner extends WaveCreep {
                 if (link) {
                     // Keep energy at miner for extensions
                     if (
-                        this.room.memory.layout === RoomLayout.STAMP &&
                         this.pos
                             .lookFor(LOOK_STRUCTURES)
                             .filter((structure) => structure.structureType === STRUCTURE_CONTAINER)

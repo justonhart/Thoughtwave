@@ -203,7 +203,7 @@ export function unclaimRoom(roomName: string) {
     return 'done';
 }
 
-export function observerInRange(roomName: string): boolean{
+export function observerInRange(roomName: string): boolean {
     const observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room].observer);
     return observerRooms.some((room) => Game.map.getRoomLinearDistance(roomName, room) <= 10);
 }
@@ -217,98 +217,6 @@ export function addVisionRequest(request: VisionRequest): string {
 
 export function getExitDirections(roomName: string): DirectionConstant[] {
     return Object.keys(Game.map.describeExits(roomName)).map((key) => parseInt(key)) as DirectionConstant[];
-}
-
-export function getBunkerPositions(room: Room): RoomPosition[] {
-    if (room.memory.anchorPoint) {
-        let anchor = room.memory.anchorPoint.toRoomPos();
-        let posArr = [];
-        for (let i = -6; i < 7; i++) {
-            for (let j = -6; j < 7; j++) {
-                posArr.push(room.getPositionAt(anchor.x + i, anchor.y + j));
-            }
-        }
-        return posArr;
-    }
-}
-
-export function getStructureForPos(layout: RoomLayout, targetPos: RoomPosition, anchorPoint: RoomPosition): BuildableStructureConstant {
-    switch (layout) {
-        case RoomLayout.BUNKER:
-            let xdif = targetPos.x - anchorPoint.x;
-            let ydif = targetPos.y - anchorPoint.y;
-
-            if (targetPos === anchorPoint || Math.abs(xdif) >= 7 || Math.abs(ydif) >= 7) {
-                return undefined;
-            }
-
-            if (xdif === 0) {
-                switch (ydif) {
-                    case 1:
-                        return STRUCTURE_TERMINAL;
-                    case -1:
-                        return STRUCTURE_SPAWN;
-                    case -2:
-                    case 2:
-                    case -6:
-                    case 6:
-                        return STRUCTURE_EXTENSION;
-                    default:
-                        return STRUCTURE_ROAD;
-                }
-            }
-
-            if (ydif === 0) {
-                switch (xdif) {
-                    case -2:
-                        return STRUCTURE_OBSERVER;
-                    case -1:
-                        return STRUCTURE_LINK;
-                    case 1:
-                        return STRUCTURE_FACTORY;
-                    case 2:
-                        return STRUCTURE_SPAWN;
-                    default:
-                        return STRUCTURE_ROAD;
-                }
-            }
-
-            if (Math.abs(xdif) === 6 || Math.abs(ydif) === 6) {
-                return STRUCTURE_ROAD;
-            }
-
-            if (ydif === -1 && xdif === -1) {
-                return STRUCTURE_SPAWN;
-            }
-            if (ydif === -1 && xdif === 1) {
-                return STRUCTURE_STORAGE;
-            }
-            if (ydif === 1 && xdif === 1) {
-                return STRUCTURE_POWER_SPAWN;
-            }
-            if (ydif === 1 && xdif === -1) {
-                return STRUCTURE_NUKER;
-            }
-
-            if (Math.abs(ydif) === Math.abs(xdif) && Math.abs(ydif) <= 5) {
-                return STRUCTURE_ROAD;
-            }
-            if ((ydif === -3 && xdif >= -1 && xdif <= 2) || (xdif === 3 && ydif >= -2 && ydif <= 1)) {
-                return STRUCTURE_TOWER;
-            }
-            if (ydif <= -2 && ydif >= -5 && xdif <= -3 && xdif >= -4) {
-                return STRUCTURE_LAB;
-            }
-            if (ydif <= -3 && ydif >= -4 && (xdif === -2 || xdif === -5)) {
-                return STRUCTURE_LAB;
-            }
-
-            if ((Math.abs(ydif) === 2 && Math.abs(xdif) === 1) || (Math.abs(xdif) === 2 && Math.abs(ydif) === 1)) {
-                return STRUCTURE_ROAD;
-            }
-
-            return STRUCTURE_EXTENSION;
-    }
 }
 
 export function isHighway(roomName: string): boolean {

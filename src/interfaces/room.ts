@@ -7,14 +7,12 @@ interface RoomMemory {
     controllerDistance?: number;
     unclaim?: boolean;
     managerPos?: string;
-    anchorPoint?: string;
     gates?: Gate[];
     repairSearchCooldown?: number;
     repairQueue?: Id<Structure<StructureConstant>>[];
     miningAssignments?: { [posString: string]: string };
     mineralMiningAssignments?: { [posString: string]: string };
     reservedEnergy?: number;
-    layout?: RoomLayout;
     labTasks?: { [id: number]: LabTask };
     dontCheckConstructionsBefore?: number;
     shipments?: number[]; //stores IDs for shipments to be referenced from Memory.shipments
@@ -32,7 +30,7 @@ interface RoomMemory {
     /**
      * Tracks the amount of resources the manager is moving between storage structures. Used to include manager inventory in need calculation
      */
-    transferBuffer?: {[resource: string]: number};
+    transferBuffer?: { [resource: string]: number };
     colonizationInProgress?: boolean;
 }
 
@@ -102,7 +100,6 @@ interface Room {
     powerSpawn: StructurePowerSpawn;
     remoteMiningRooms: string[];
     remoteSources: string[];
-
 
     /**
      * Returns a map of each provided boost type to the number of boosts available
@@ -261,11 +258,6 @@ const enum EnergyStatus {
 interface Gate {
     id: Id<StructureRampart>;
     lastToggled: number;
-}
-
-const enum RoomLayout {
-    BUNKER,
-    STAMP,
 }
 
 interface RemoteStats {

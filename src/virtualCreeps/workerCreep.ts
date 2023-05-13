@@ -46,7 +46,7 @@ export class WorkerCreep extends WaveCreep {
                 case ERR_NOT_ENOUGH_RESOURCES:
                     delete this.memory.energySource;
                     break;
-               case 0:
+                case 0:
                     this.stopGathering();
                     break;
             }
@@ -62,7 +62,7 @@ export class WorkerCreep extends WaveCreep {
                 case ERR_NOT_ENOUGH_RESOURCES:
                     delete this.memory.energySource;
                     break;
-              case 0:
+                case 0:
                     this.stopGathering();
                     break;
             }
@@ -99,7 +99,7 @@ export class WorkerCreep extends WaveCreep {
             },
         });
 
-        let tombstones = this.room.find(FIND_TOMBSTONES, { filter: t => t.store[RESOURCE_ENERGY]});
+        let tombstones = this.room.find(FIND_TOMBSTONES, { filter: (t) => t.store[RESOURCE_ENERGY] });
 
         let looseEnergyStacks = this.room
             .find(FIND_DROPPED_RESOURCES)
@@ -111,11 +111,10 @@ export class WorkerCreep extends WaveCreep {
                 (str) =>
                     str.structureType === STRUCTURE_CONTAINER &&
                     str.store.energy >= this.store.getCapacity() &&
-                    (this.room.memory.layout !== RoomLayout.STAMP ||
-                        !this.room.memory.stampLayout.container.some(
-                            (containerStamp) =>
-                                str.pos.toMemSafe() === containerStamp.pos && (containerStamp.type === 'center' || containerStamp.type === 'rm')
-                        ))
+                    !this.room.memory.stampLayout.container.some(
+                        (containerStamp) =>
+                            str.pos.toMemSafe() === containerStamp.pos && (containerStamp.type === 'center' || containerStamp.type === 'rm')
+                    )
             );
 
         nonStorageSources = [...tombstones, ...ruins, ...looseEnergyStacks, ...containers];
@@ -187,9 +186,8 @@ export class WorkerCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     const opts: TravelToOpts = { range: 3, maxRooms: 1, avoidEdges: true };
                     if (
-                        this.homeroom.memory.layout === RoomLayout.STAMP &&
-                        (this.homeroom.memory.threatLevel === HomeRoomThreatLevel.ENEMY_INVADERS ||
-                            this.homeroom.memory.threatLevel >= HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS)
+                        this.homeroom.memory.threatLevel === HomeRoomThreatLevel.ENEMY_INVADERS ||
+                        this.homeroom.memory.threatLevel >= HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS
                     ) {
                         opts.avoidEdges = true;
                     } else {

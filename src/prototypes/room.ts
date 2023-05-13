@@ -106,12 +106,7 @@ Object.defineProperty(Room.prototype, 'mineral', {
 
 Object.defineProperty(Room.prototype, 'managerLink', {
     get: function (this: Room) {
-        let posToCheck = this.memory.anchorPoint?.toRoomPos() || this.memory.managerPos?.toRoomPos();
-        if (this.memory.layout === RoomLayout.STAMP) {
-            posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'rm')?.pos?.toRoomPos();
-        } else if (this.memory.managerLink) {
-            return Game.getObjectById(this.memory.managerLink);
-        }
+        let posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'rm')?.pos?.toRoomPos();
 
         let link = posToCheck
             ?.findInRange(FIND_MY_STRUCTURES, 1)
@@ -127,11 +122,7 @@ Object.defineProperty(Room.prototype, 'managerLink', {
 Object.defineProperty(Room.prototype, 'upgraderLink', {
     get: function (this: Room) {
         let posToCheck: RoomPosition;
-        if (this.memory.layout === RoomLayout.STAMP) {
-            posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'controller')?.pos?.toRoomPos();
-        } else {
-            posToCheck = this.memory.upgraderLinkPos?.toRoomPos();
-        }
+        posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'controller')?.pos?.toRoomPos();
 
         let link = posToCheck
             ?.lookFor(LOOK_STRUCTURES)
@@ -267,7 +258,7 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
         console.log(`Attempting to create factory task in ${this.name}: ${amount} ${product}`);
     }
 
-    if(amount <= 0){
+    if (amount <= 0) {
         return ERR_INVALID_ARGS;
     }
 

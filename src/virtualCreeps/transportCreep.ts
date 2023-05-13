@@ -60,7 +60,6 @@ export class TransportCreep extends WaveCreep {
             return false;
         } else if (
             target instanceof StructureContainer &&
-            this.homeroom.memory.layout === RoomLayout.STAMP &&
             this.homeroom.memory.stampLayout.container.some(
                 (containerStamp) => containerStamp.type === 'center' && containerStamp.pos === target.pos.toMemSafe()
             )
@@ -169,20 +168,18 @@ export class TransportCreep extends WaveCreep {
         let containers = this.room.find(FIND_STRUCTURES).filter((str) => {
             let isAllowedStampContainer = true;
             // In Stamps do not allow retrieving energy from center/rm containers or miner containers with links
-            if (this.room.memory.layout === RoomLayout.STAMP) {
-                const container = this.room.memory.stampLayout.container.find((containerStamp) => str.pos.toMemSafe() === containerStamp.pos);
-                if (container && container.type?.includes('source')) {
-                    isAllowedStampContainer = !this.room.memory.stampLayout.link.some(
-                        (linkStamp) =>
-                            linkStamp.type === container.type &&
-                            linkStamp.pos
-                                .toRoomPos()
-                                .lookFor(LOOK_STRUCTURES)
-                                .some((lookStr) => lookStr.structureType === STRUCTURE_LINK)
-                    );
-                } else {
-                    isAllowedStampContainer = false;
-                }
+            const container = this.room.memory.stampLayout.container.find((containerStamp) => str.pos.toMemSafe() === containerStamp.pos);
+            if (container && container.type?.includes('source')) {
+                isAllowedStampContainer = !this.room.memory.stampLayout.link.some(
+                    (linkStamp) =>
+                        linkStamp.type === container.type &&
+                        linkStamp.pos
+                            .toRoomPos()
+                            .lookFor(LOOK_STRUCTURES)
+                            .some((lookStr) => lookStr.structureType === STRUCTURE_LINK)
+                );
+            } else {
+                isAllowedStampContainer = false;
             }
             return str.structureType === STRUCTURE_CONTAINER && str.store.energy >= this.store.getCapacity() && isAllowedStampContainer;
         });
@@ -255,15 +252,10 @@ export class TransportCreep extends WaveCreep {
             return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
         }
 
-        if (
-            this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable ||
-            (this.homeroom.memory.layout === RoomLayout.STAMP && this.homeroom.controller.level < 5)
-        ) {
+        if (this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable || this.homeroom.controller.level < 5) {
             let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
 
-            const isStampRoom = this.homeroom.memory.layout === RoomLayout.STAMP;
             const hasMissingManagersOrContainers =
-                isStampRoom &&
                 this.homeroom.controller.level > 1 &&
                 // Number of center managers
                 //@ts-ignore
@@ -300,23 +292,24 @@ export class TransportCreep extends WaveCreep {
                         0
                     );
 
-            const firstSpawnMispositioned = !this.room.find(FIND_MY_SPAWNS).every(spawn => this.room.memory.stampLayout?.spawn.some(stamp => stamp.pos === spawn.pos.toMemSafe()));
+            const firstSpawnMispositioned = !this.room
+                .find(FIND_MY_SPAWNS)
+                .every((spawn) => this.room.memory.stampLayout?.spawn.some((stamp) => stamp.pos === spawn.pos.toMemSafe()));
 
             // Do not refill spawn when all containers/managers are present
-            if (isStampRoom && !hasMissingManagersOrContainers && !firstSpawnMispositioned) {
+            if (!hasMissingManagersOrContainers && !firstSpawnMispositioned) {
                 targetStructureTypes = [STRUCTURE_EXTENSION];
             }
             // If no center link is present in Stamp rooms then fill up containers
             if (
-                isStampRoom &&
-                (this.homeroom.controller.level < 5 ||
-                    !ROOM_STRUCTURES.some(
-                        (structure) =>
-                            structure.structureType === STRUCTURE_LINK &&
-                            this.homeroom.memory.stampLayout.link.some(
-                                (linkStamp) => linkStamp.type === 'center' && linkStamp.pos === structure.pos.toMemSafe()
-                            )
-                    ))
+                this.homeroom.controller.level < 5 ||
+                !ROOM_STRUCTURES.some(
+                    (structure) =>
+                        structure.structureType === STRUCTURE_LINK &&
+                        this.homeroom.memory.stampLayout.link.some(
+                            (linkStamp) => linkStamp.type === 'center' && linkStamp.pos === structure.pos.toMemSafe()
+                        )
+                )
             ) {
                 targetStructureTypes.push(STRUCTURE_CONTAINER);
             }
@@ -329,8 +322,7 @@ export class TransportCreep extends WaveCreep {
                     // @ts-ignore
                     structure.store[RESOURCE_ENERGY] < structure.store.getCapacity(RESOURCE_ENERGY) &&
                     // Remove center extensions if there are missing containers/extensions
-                    (!isStampRoom ||
-                        structure.structureType !== STRUCTURE_EXTENSION ||
+                    (structure.structureType !== STRUCTURE_EXTENSION ||
                         hasMissingManagersOrContainers ||
                         !this.homeroom.memory.stampLayout.extension.some(
                             (extensionStamp) =>
@@ -338,8 +330,7 @@ export class TransportCreep extends WaveCreep {
                                 (extensionStamp.type === 'center' || extensionStamp.type?.includes('source'))
                         )) &&
                     // Fill up center containers
-                    (!isStampRoom ||
-                        structure.structureType !== (STRUCTURE_CONTAINER as StructureConstant) ||
+                    (structure.structureType !== (STRUCTURE_CONTAINER as StructureConstant) ||
                         this.homeroom.memory.stampLayout.container.some(
                             (containerStamp) => containerStamp.pos === structure.pos.toMemSafe() && containerStamp.type === 'center'
                         ))
@@ -347,7 +338,7 @@ export class TransportCreep extends WaveCreep {
 
             if (spawnStructures.length) {
                 // Switch between containers which is important in early rcl
-                if (this.homeroom.memory.layout === RoomLayout.STAMP && this.homeroom.controller.level < 5 && !hasMissingManagersOrContainers) {
+                if (this.homeroom.controller.level < 5 && !hasMissingManagersOrContainers) {
                     if (
                         spawnStructures.length > 1 &&
                         spawnStructures.every((structure) => structure.structureType === STRUCTURE_CONTAINER) &&
@@ -367,8 +358,7 @@ export class TransportCreep extends WaveCreep {
             return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
         }
 
-        // Bunker layouts dont need this since the manager takes care of it ELSE see if a powerSpawn needs energy or power (if power is available)
-        if (this.homeroom.memory.layout !== RoomLayout.BUNKER && this.homeroom.controller.level === 8) {
+        if (this.homeroom.controller.level === 8) {
             const powerSpawnInNeed = ROOM_STRUCTURES.filter(
                 (structure) =>
                     structure.structureType === STRUCTURE_POWER_SPAWN &&
@@ -404,10 +394,11 @@ export class TransportCreep extends WaveCreep {
             if (labsNeedingEmptied.length) {
                 return this.pos.findClosestByRange(labsNeedingEmptied).id;
             }
-
         }
 
-        const ruinsWithResources = room.find(FIND_RUINS, { filter: (ruin) => this.room.storage ? ruin.store.getUsedCapacity() > 1000 : ruin.store[RESOURCE_ENERGY] });
+        const ruinsWithResources = room.find(FIND_RUINS, {
+            filter: (ruin) => (this.room.storage ? ruin.store.getUsedCapacity() > 1000 : ruin.store[RESOURCE_ENERGY]),
+        });
         if (ruinsWithResources.length) {
             return this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 })?.id;
         }
@@ -418,16 +409,15 @@ export class TransportCreep extends WaveCreep {
                 structure.structureType === STRUCTURE_CONTAINER &&
                 structure.store.getUsedCapacity() &&
                 // Get mineral containers and miner containers that not yet have a link (only checks for rcl but it will still gather energy from container until link is build if it is too full)
-                (room.memory.layout !== RoomLayout.STAMP ||
-                    room.memory.stampLayout.container.some(
-                        (containerStamp) =>
-                            containerStamp.pos === structure.pos.toMemSafe() &&
-                            ((containerStamp.type === 'mineral' && this.room.storage) ||
-                                (containerStamp.type?.includes('source') &&
-                                    (structure.store.getFreeCapacity() < 300 ||
-                                        room.memory.stampLayout.link.find((linkDetail) => containerStamp.type === linkDetail.type)?.rcl >
-                                            this.homeroom.controller.level)))
-                    ))
+                room.memory.stampLayout.container.some(
+                    (containerStamp) =>
+                        containerStamp.pos === structure.pos.toMemSafe() &&
+                        ((containerStamp.type === 'mineral' && this.room.storage) ||
+                            (containerStamp.type?.includes('source') &&
+                                (structure.store.getFreeCapacity() < 300 ||
+                                    room.memory.stampLayout.link.find((linkDetail) => containerStamp.type === linkDetail.type)?.rcl >
+                                        this.homeroom.controller.level)))
+                )
         ) as StructureContainer[];
         const fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
         if (fillingContainers.length) {
@@ -445,9 +435,10 @@ export class TransportCreep extends WaveCreep {
                 ).id;
         }
 
-        const tombstonesWithResources = (this.room.name === this.homeroom.name && !this.homeroom.storage)
-            ? room.find(FIND_TOMBSTONES).filter(t => t.store[RESOURCE_ENERGY])
-            : room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
+        const tombstonesWithResources =
+            this.room.name === this.homeroom.name && !this.homeroom.storage
+                ? room.find(FIND_TOMBSTONES).filter((t) => t.store[RESOURCE_ENERGY])
+                : room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
         if (tombstonesWithResources.length) {
             return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
         }
@@ -566,7 +557,11 @@ export class TransportCreep extends WaveCreep {
     protected runCollectionJob(target: StructureContainer | StructureTerminal | Tombstone | StructureLab | Ruin): void {
         this.memory.currentTaskPriority = Priority.HIGH;
 
-        let resourcesToWithdraw = this.homeroom.storage ? target instanceof StructureLab ? [target.mineralType] : (Object.keys(target.store) as ResourceConstant[]) : [RESOURCE_ENERGY];
+        let resourcesToWithdraw = this.homeroom.storage
+            ? target instanceof StructureLab
+                ? [target.mineralType]
+                : (Object.keys(target.store) as ResourceConstant[])
+            : [RESOURCE_ENERGY];
         let nextResource: ResourceConstant = resourcesToWithdraw.shift();
         if (!this.pos.isNearTo(target)) {
             this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });

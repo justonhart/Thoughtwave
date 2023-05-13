@@ -1,6 +1,6 @@
 import { addHostileRoom, addVisionRequest, observerInRange, unclaimRoom } from './data';
 import { addOperation } from './operationsManagement';
-import { findBunkerLocation, findStampLocation } from './roomDesign';
+import { findStampLocation } from './roomDesign';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
@@ -244,7 +244,7 @@ export default function manageFlags() {
     }
 
     if (Game.flags.stamp) {
-        if(observerInRange(Game.flags.stamp.pos.roomName)){
+        if (observerInRange(Game.flags.stamp.pos.roomName)) {
             addVisionRequest({ targetRoom: Game.flags.stamp.pos.roomName });
 
             if (Game.rooms[Game.flags.stamp.pos.roomName]) {
