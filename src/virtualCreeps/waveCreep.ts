@@ -176,11 +176,18 @@ export class WaveCreep extends Creep {
 
         const target = Game.getObjectById(this.memory.targetId) as StructureSpawn;
         if (target instanceof StructureSpawn) {
-            let containerPos = target.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_CONTAINER })?.pop().pos;
-            if (this.pos.isEqualTo(containerPos)) {
+            let containerPos = target.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_CONTAINER })?.pop()?.pos;
+            if (containerPos && this.pos.isEqualTo(containerPos)) {
                 target.recycleCreep(this);
-            } else {
+            } else if(containerPos){
                 this.travelTo(containerPos);
+            } else {
+                containerPos = this.homeroom.memory.stampLayout.container.find(stamp => stamp.type === 'center')?.pos.toRoomPos();
+                if(this.pos.isEqualTo(containerPos)){
+                    this.suicide();
+                } else {
+                    this.travelTo(containerPos);
+                }
             }
         } else {
             delete this.memory.targetId;
