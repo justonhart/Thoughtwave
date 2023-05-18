@@ -65,6 +65,7 @@ interface Operation {
     visionRequests?: string[];
     subOperations?: string[];
     parentId?: string;
+    roomContainsStarterEnergy?: boolean;
 }
 
 interface OperationOpts {
@@ -78,7 +79,7 @@ interface OperationOpts {
     forcedDestinations?: string[];
     pathCost?: number;
     disableLogging?: boolean;
-    parentId?: string
+    parentId?: string;
 }
 
 interface OriginOpts {
@@ -164,7 +165,6 @@ const enum SquadType {
     QUAD,
 }
 
-
 const enum OperationType {
     COLONIZE = 1,
     STERILIZE,
@@ -178,7 +178,7 @@ const enum OperationType {
     CLEAN,
     ADD_REMOTE_MINING,
     POWER_BANK,
-    TRANSFER
+    TRANSFER,
 }
 
 const enum OperationStage {

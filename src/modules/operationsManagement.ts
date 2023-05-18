@@ -153,6 +153,16 @@ function manageColonizationOperation(opId: string) {
                 break;
             }
 
+            if (OPERATION.roomContainsStarterEnergy === undefined) {
+                const containsStarterEnergy =
+                    room
+                        .find(FIND_STRUCTURES)
+                        .filter((s) => s.structureType === STRUCTURE_STORAGE || s.structureType === STRUCTURE_TERMINAL)
+                        .reduce((energySum: number, nextStructure: StructureStorage) => nextStructure.store[RESOURCE_ENERGY] + energySum, 0) >= 40000;
+
+                OPERATION.roomContainsStarterEnergy = containsStarterEnergy;
+            }
+
             //structure cleanup
             room.find(FIND_HOSTILE_STRUCTURES)
                 .filter(
@@ -193,18 +203,20 @@ function manageColonizationOperation(opId: string) {
             }
 
             //Sub-operation Management
-            //transfer operation to supply other operations energy
-            const transferOperationId = OPERATION.subOperations.find((childId) => Memory.operations[childId]?.type === OperationType.TRANSFER);
-            if (!transferOperationId) {
-                let result = addOperation(OperationType.TRANSFER, OPERATION.targetRoom, {
-                    parentId: opId,
-                    resource: RESOURCE_ENERGY,
-                    originRoom: OPERATION.originRoom,
-                    operativeCount: originSpawnCount * 3,
-                    expireAt: Game.time + 6000,
-                });
-                if (result) {
-                    OPERATION.subOperations.push(result);
+            if (OPERATION.roomContainsStarterEnergy === false) {
+                //transfer operation to supply other operations energy
+                const transferOperationId = OPERATION.subOperations.find((childId) => Memory.operations[childId]?.type === OperationType.TRANSFER);
+                if (!transferOperationId) {
+                    let result = addOperation(OperationType.TRANSFER, OPERATION.targetRoom, {
+                        parentId: opId,
+                        resource: RESOURCE_ENERGY,
+                        originRoom: OPERATION.originRoom,
+                        operativeCount: originSpawnCount * 3,
+                        expireAt: Game.time + 6000,
+                    });
+                    if (result) {
+                        OPERATION.subOperations.push(result);
+                    }
                 }
             }
 
