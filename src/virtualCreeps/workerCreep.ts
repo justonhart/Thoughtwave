@@ -267,12 +267,15 @@ export class WorkerCreep extends WaveCreep {
                 constructionSites = constructionSites.filter((site) => ![STRUCTURE_ROAD, STRUCTURE_RAMPART].includes(site.structureType));
             }
 
-            //return the most-progressed construction site, proportionally
-            return constructionSites.reduce((mostProgressedSite, siteToCheck) =>
-                mostProgressedSite.progress / mostProgressedSite.progressTotal > siteToCheck.progress / siteToCheck.progressTotal
-                    ? mostProgressedSite
-                    : siteToCheck
-            ).id;
+            const mostProgressedRatio = constructionSites.reduce(
+                (mostProgressedRatio: number, nextSite: ConstructionSite) =>
+                    mostProgressedRatio > nextSite.progress / nextSite.progressTotal
+                        ? mostProgressedRatio
+                        : nextSite.progress / nextSite.progressTotal,
+                0
+            );
+            const mostProgressedSites = constructionSites.filter((site) => site.progress / site.progressTotal >= mostProgressedRatio);
+            return this.pos.findClosestByRange(mostProgressedSites).id;
         }
     }
 
