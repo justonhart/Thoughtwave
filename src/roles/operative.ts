@@ -23,7 +23,7 @@ export class Operative extends WorkerCreep {
                 break;
             case OperationType.CLEAN:
                 this.runClean();
-                break
+                break;
             case OperationType.TRANSFER:
                 this.runTransfer();
                 break;
@@ -31,20 +31,22 @@ export class Operative extends WorkerCreep {
     }
 
     private runTransfer() {
-        if(this.store.getUsedCapacity()){
+        if (this.store.getUsedCapacity()) {
             const destinationRoom = Game.rooms[this.operation.targetRoom];
-            if(destinationRoom?.storage){
-                if(this.pos.isNearTo(destinationRoom.storage)){
+            if (destinationRoom?.storage) {
+                if (this.pos.isNearTo(destinationRoom.storage)) {
                     this.transfer(destinationRoom.storage, this.operation.resource);
                     this.memory.room = destinationRoom.name;
                     this.memory.recycle = true;
                 }
             } else {
-                const spawnPos = Memory.rooms[this.operation.targetRoom].stampLayout.spawn.find(stamp => stamp.rcl === 1).pos.toRoomPos();
+                const spawnPos = Memory.rooms[this.operation.targetRoom].stampLayout.spawn.find((stamp) => stamp.rcl === 1).pos.toRoomPos();
                 const destinationPos = new RoomPosition(spawnPos.x, spawnPos.y + 1, spawnPos.roomName);
-                if(this.pos.isEqualTo(destinationPos)){
-                    const adjacentSpawn: StructureSpawn = this.pos.findInRange(FIND_MY_STRUCTURES, 1, {filter: s => s.structureType === STRUCTURE_SPAWN}) as unknown as StructureSpawn;
-                    if(adjacentSpawn instanceof StructureSpawn){
+                if (this.pos.isEqualTo(destinationPos)) {
+                    const adjacentSpawn: StructureSpawn = this.pos.findInRange(FIND_MY_STRUCTURES, 1, {
+                        filter: (s) => s.structureType === STRUCTURE_SPAWN,
+                    }) as unknown as StructureSpawn;
+                    if (adjacentSpawn instanceof StructureSpawn) {
                         adjacentSpawn.recycleCreep(this);
                     } else {
                         this.suicide();
@@ -91,7 +93,9 @@ export class Operative extends WorkerCreep {
                     this.runRepairJob(target);
                 } else {
                     this.onTaskFinished();
-                    this.terminateOperation();
+                    if (!this.room.controller?.my) {
+                        this.terminateOperation();
+                    }
                 }
             } else {
                 this.travelToRoom(this.operation.targetRoom);
@@ -306,14 +310,14 @@ export class Operative extends WorkerCreep {
         }
 
         const sites = room?.find(FIND_MY_CONSTRUCTION_SITES);
-        const nonRampartSites = sites.filter(s => s.structureType !== STRUCTURE_RAMPART);
+        const nonRampartSites = sites.filter((s) => s.structureType !== STRUCTURE_RAMPART);
         if (nonRampartSites.length) {
             return nonRampartSites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
-        } else if(sites.length){
+        } else if (sites.length) {
             return sites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
         }
 
-        const ramparts = room?.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_RAMPART});
+        const ramparts = room?.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_RAMPART });
         if (ramparts.length) {
             return this.room.name === room.name ? this.pos.findClosestByRange(ramparts).id : ramparts.pop().id;
         }
