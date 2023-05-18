@@ -1,5 +1,4 @@
 import { deleteExpiredRoomData } from './data';
-import { manageOperations } from './operationsManagement';
 import { getAllRoomNeeds } from './resourceManagement';
 
 export function manageMemory() {
@@ -44,7 +43,6 @@ export function manageMemory() {
         Memory.priceMap = getPriceMap();
     }
     mangeVisionRequests();
-    manageOperations();
     cleanSpawnAssignments();
 }
 

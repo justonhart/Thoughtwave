@@ -2,7 +2,7 @@ import driveCreep from './modules/creepDriver';
 import { addRoomData, updateRoomData } from './modules/data';
 import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
-import { addOperation } from './modules/operationsManagement';
+import { addOperation, manageOperations } from './modules/operationsManagement';
 import { createAndUpgradePCs, runPowerCreeps, spawnPowerCreeps } from './modules/powerCreepManagement';
 import { manageEmpireResources } from './modules/resourceManagement';
 import { driveRoom } from './modules/roomManagement';
@@ -31,6 +31,10 @@ module.exports.loop = function () {
     }
 
     cpuUsageString += `memory CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
+    cpuUsed = Game.cpu.getUsed();
+
+    manageOperations();
+    cpuUsageString += `operation CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}      `;
     cpuUsed = Game.cpu.getUsed();
 
     try {
