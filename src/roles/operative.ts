@@ -95,6 +95,8 @@ export class Operative extends WorkerCreep {
                     this.onTaskFinished();
                     if (!this.room.controller?.my) {
                         this.terminateOperation();
+                    } else {
+                        this.runUpgradeBoost();
                     }
                 }
             } else {

@@ -478,7 +478,7 @@ function runHomeSecurity(homeRoom: Room): boolean {
 }
 
 function hasEarlyDetectionThreat(roomName: string) {
-    return Object.values(Game.map.describeExits(roomName)).some((exitRoomName) => Memory.roomData[exitRoomName].threatDetected);
+    return Object.values(Game.map.describeExits(roomName)).some((exitRoomName) => Memory.roomData[exitRoomName]?.threatDetected);
 }
 
 export function initRoom(room: Room) {
