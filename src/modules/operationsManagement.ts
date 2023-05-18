@@ -100,18 +100,19 @@ function manageColonizationOperation(opId: string) {
         OPERATION.originRoom = findOperationOrigin(OPERATION.targetRoom)?.roomName;
     }
 
-    //During duration of operation, we want to keep the target room secured
-    const secureOperationId = OPERATION.subOperations.find((childId) => Memory.operations[childId].type === OperationType.SECURE);
-    if (!secureOperationId) {
-        let result = addOperation(OperationType.SECURE, OPERATION.targetRoom, { parentId: opId, originRoom: OPERATION.originRoom });
-        OPERATION.subOperations.push(result);
+    const originSpawnCount = Game.rooms[OPERATION.originRoom].find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN }).length;
+
+    if (Game.rooms[OPERATION.originRoom].controller.level >= 6) {
+        //During duration of operation, we want to keep the target room secured
+        const secureOperationId = OPERATION.subOperations.find((childId) => Memory.operations[childId].type === OperationType.SECURE);
+        if (!secureOperationId) {
+            let result = addOperation(OperationType.SECURE, OPERATION.targetRoom, { parentId: opId, originRoom: OPERATION.originRoom });
+            OPERATION.subOperations.push(result);
+        }
     }
 
     if (!Memory.rooms[OPERATION.targetRoom]) {
         Memory.rooms[OPERATION.targetRoom] = {};
-    }
-    if (!Memory.rooms[OPERATION.targetRoom].colonizationInProgress) {
-        Memory.rooms[OPERATION.targetRoom].colonizationInProgress;
     }
 
     switch (OPERATION.stage) {
@@ -203,7 +204,8 @@ function manageColonizationOperation(opId: string) {
                     parentId: opId,
                     resource: RESOURCE_ENERGY,
                     originRoom: OPERATION.originRoom,
-                    operativeCount: 6,
+                    operativeCount: originSpawnCount * 2,
+                    expireAt: Game.time + 6000,
                 });
                 if (result) {
                     OPERATION.subOperations.push(result);
@@ -216,7 +218,7 @@ function manageColonizationOperation(opId: string) {
                 let result = addOperation(OperationType.REMOTE_BUILD, OPERATION.targetRoom, {
                     parentId: opId,
                     originRoom: OPERATION.originRoom,
-                    operativeCount: 4,
+                    operativeCount: originSpawnCount,
                 });
                 if (result) {
                     OPERATION.subOperations.push(result);
@@ -229,7 +231,8 @@ function manageColonizationOperation(opId: string) {
                 let result = addOperation(OperationType.UPGRADE_BOOST, OPERATION.targetRoom, {
                     parentId: opId,
                     originRoom: OPERATION.originRoom,
-                    operativeCount: 6,
+                    operativeCount: originSpawnCount * 2,
+                    expireAt: Game.time + 6000,
                 });
                 if (result) {
                     OPERATION.subOperations.push(result);
@@ -237,7 +240,7 @@ function manageColonizationOperation(opId: string) {
             }
 
             //Operation Logic
-            if (room.controller.level >= 6 && room.terminal) {
+            if (Game.rooms[OPERATION.originRoom].controller.level >= 6 ? room.controller.level >= 6 && room.terminal : room.controller.level >= 3) {
                 OPERATION.stage = OperationStage.COMPLETE;
             }
 
