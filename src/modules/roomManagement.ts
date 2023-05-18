@@ -81,8 +81,7 @@ export function driveRoom(room: Room) {
                 (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
                 (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
                 Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-                room.find(FIND_MY_CONSTRUCTION_SITES).length < 15 &&
-                !room.memory.colonizationInProgress
+                room.find(FIND_MY_CONSTRUCTION_SITES).length < 15
             ) {
                 let cpuUsed = Game.cpu.getUsed();
                 // Cleanup any leftover storage/terminal that is in the way
