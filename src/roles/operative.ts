@@ -190,7 +190,7 @@ export class Operative extends WorkerCreep {
 
     private findCollectionTarget(): Id<Structure> | Id<Ruin> | Id<Resource> {
         if (this.memory.operation === OperationType.POWER_BANK) {
-            const powerbank = this.room.structures.filter((s) => s.structureType === STRUCTURE_POWER_BANK)?.shift();
+            const powerbank = this.room.structures.find((s) => s.structureType === STRUCTURE_POWER_BANK);
             if (powerbank) {
                 return powerbank.id; // Go towards powerbank (easier to protect)
             }
@@ -220,16 +220,14 @@ export class Operative extends WorkerCreep {
             return ruin.id;
         }
 
-        let structure = this.room.structures
-            .filter(
-                (s) =>
-                    (s.structureType === STRUCTURE_STORAGE ||
-                        s.structureType === STRUCTURE_TERMINAL ||
-                        (s.structureType === STRUCTURE_LAB && s.mineralType && s.store[s.mineralType]) ||
-                        (s.structureType === STRUCTURE_NUKER && (s.store.energy || s.store.G))) &&
-                    (this.operation.resource ? s.store[this.operation.resource] : s.store.getUsedCapacity())
-            )
-            .shift();
+        let structure = this.room.structures.find(
+            (s) =>
+                (s.structureType === STRUCTURE_STORAGE ||
+                    s.structureType === STRUCTURE_TERMINAL ||
+                    (s.structureType === STRUCTURE_LAB && s.mineralType && s.store[s.mineralType]) ||
+                    (s.structureType === STRUCTURE_NUKER && (s.store.energy || s.store.G))) &&
+                (this.operation.resource ? s.store[this.operation.resource] : s.store.getUsedCapacity())
+        );
 
         if (structure) {
             return structure.id;
@@ -279,13 +277,14 @@ export class Operative extends WorkerCreep {
     private findBuildTarget(): Id<Structure> | Id<ConstructionSite> {
         const room = Game.rooms[this.memory.destination];
 
-        let constructedDefenses = room.structures
-            .filter((struct) => this.pos.getRangeTo(struct) <= 3)
-            .filter(
-                (structure) => (structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) && structure.hits === 1
-            );
-        if (constructedDefenses.length) {
-            return constructedDefenses.shift().id;
+        let constructedDefenses = room?.structures.find(
+            (structure) =>
+                (structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) &&
+                structure.hits === 1 &&
+                this.pos.getRangeTo(structure) <= 3
+        );
+        if (constructedDefenses) {
+            return constructedDefenses.id;
         }
 
         const sites = room?.myConstructionSites;

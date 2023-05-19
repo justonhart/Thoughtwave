@@ -75,11 +75,9 @@ export function driveRoom(room: Room) {
 
             if (Game.time % REPAIR_QUEUE_REFRESH_PERIOD === 0) {
                 room.memory.repairQueue = findRepairTargets(room);
-                room.memory.needsWallRepair =
-                    room.structures.filter(
-                        (s) =>
-                            (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < room.getDefenseHitpointTarget()
-                    ).length > 0;
+                room.memory.needsWallRepair = room.structures.some(
+                    (s) => (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < room.getDefenseHitpointTarget()
+                );
             }
 
             if (room.memory.repairQueue.length) {
@@ -654,15 +652,14 @@ function runSpawning(room: Room) {
 
     busySpawns.forEach((spawn) => {
         if (spawn.spawning.remainingTime <= 0) {
-            let blockingCreeps = room.myCreeps.filter(
-                (creep) =>
-                    creep.memory.role !== Role.MANAGER &&
-                    (!creep.memory.targetId || creep.memory.currentTaskPriority <= Priority.HIGH) &&
-                    spawn.pos.isNearTo(creep)
-            );
-            blockingCreeps.forEach((blocker) => {
-                blocker.travelTo(spawn, { flee: true, range: 2 });
-            });
+            room.myCreeps
+                .filter(
+                    (creep) =>
+                        creep.memory.role !== Role.MANAGER &&
+                        (!creep.memory.targetId || creep.memory.currentTaskPriority <= Priority.HIGH) &&
+                        spawn.pos.isNearTo(creep)
+                )
+                .forEach((blocker) => blocker.travelTo(spawn, { flee: true, range: 2 }));
         }
     });
 
@@ -880,7 +877,7 @@ function placeMineralContainers(room: Room) {
 }
 
 function placeExtractor(room: Room) {
-    let extractor = room.structures.find((struct) => struct.structureType === STRUCTURE_EXTRACTOR);
+    const extractor = room.structures.some((struct) => struct.structureType === STRUCTURE_EXTRACTOR);
     if (!extractor) {
         let mineralPos = room.mineral.pos;
         room.createConstructionSite(mineralPos, STRUCTURE_EXTRACTOR);

@@ -40,8 +40,7 @@ export class Colonizer extends WorkerCreep {
                 if (target instanceof ConstructionSite) {
                     this.runBuildJob(target);
                 } else {
-                    let spawnCreated = this.room.myStructures.filter((struct) => struct.structureType === STRUCTURE_SPAWN).length > 0;
-                    if (spawnCreated) {
+                    if (this.room.mySpawns.length > 0) {
                         let opIndex = Memory.operations.findIndex((op) => op.type === OperationType.COLONIZE && op.targetRoom === this.room.name);
                         if (Memory.operations[opIndex]) {
                             Memory.operations[opIndex].stage = OperationStage.COMPLETE;

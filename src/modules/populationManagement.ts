@@ -174,12 +174,10 @@ export class PopulationManagement {
                 break;
             //room has no storage
             default:
-                let hasStartupEnergy =
-                    room.structures.filter(
-                        (struct) =>
-                            (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) &&
-                            struct.store.energy > 200000
-                    ).length > 0;
+                let hasStartupEnergy = room.structures.some(
+                    (struct) =>
+                        (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) && struct.store.energy > 200000
+                );
                 if (hasStartupEnergy) {
                     creepCapacity *= 4;
                 }
@@ -297,7 +295,7 @@ export class PopulationManagement {
             spawn.room.memory.miningAssignments[assigment] = name;
         } else if (
             result === ERR_NOT_ENOUGH_ENERGY &&
-            !spawn.room.myCreepsByMemory.filter((creep) => creep.memory.role === Role.MINER).length &&
+            !spawn.room.myCreepsByMemory.some((creep) => creep.memory.role === Role.MINER) &&
             (!spawn.room.storage || spawn.room.storage?.store[RESOURCE_ENERGY] < 1000)
         ) {
             let emergencyMinerBody: (WORK | MOVE | CARRY)[] = [WORK, WORK, MOVE];
@@ -972,9 +970,9 @@ export class PopulationManagement {
             (k) =>
                 mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED &&
                 (Game.rooms[k.toRoomPos()?.roomName]
-                    ? room.structures.filter(
+                    ? room.structures.some(
                           (struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.isActive() && k.toRoomPos().isNearTo(struct)
-                      ).length && Game.rooms[k.toRoomPos()?.roomName].mineral.mineralAmount > 0
+                      ) && Game.rooms[k.toRoomPos()?.roomName].mineral.mineralAmount > 0
                     : true)
         );
     }

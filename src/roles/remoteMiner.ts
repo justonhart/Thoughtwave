@@ -84,13 +84,11 @@ export class RemoteMiner extends WaveCreep {
                             const result = this.pos.createConstructionSite(STRUCTURE_CONTAINER);
                             if (result === ERR_RCL_NOT_ENOUGH) {
                                 // left over extensions from a stronghold
-                                const structure = this.room.structures
-                                    .filter(
-                                        (s) =>
-                                            s.structureType === STRUCTURE_CONTAINER &&
-                                            !Object.keys(this.homeroom.memory.remoteSources)?.some((sourcePos) => s.pos.toMemSafe() === sourcePos)
-                                    )
-                                    .shift();
+                                const structure = this.room.structures.find(
+                                    (s) =>
+                                        s.structureType === STRUCTURE_CONTAINER &&
+                                        !Object.keys(this.homeroom.memory.remoteSources)?.some((sourcePos) => s.pos.toMemSafe() === sourcePos)
+                                );
 
                                 if (structure) {
                                     this.memory.targetId2 = structure.id;

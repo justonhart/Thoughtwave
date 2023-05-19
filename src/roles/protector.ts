@@ -81,14 +81,14 @@ export class Protector extends CombatCreep {
             return hostileRamparts[0].id;
         }
 
-        const hostileStructures = this.room.hostileStructures.filter(
+        const hostileStructure = this.room.hostileStructures.find(
             (struct) =>
                 struct.structureType !== STRUCTURE_KEEPER_LAIR &&
                 struct.structureType !== STRUCTURE_CONTROLLER &&
                 !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity())
         );
-        if (hostileStructures.length) {
-            return hostileStructures[0].id;
+        if (hostileStructure) {
+            return hostileStructure.id;
         }
     }
 }

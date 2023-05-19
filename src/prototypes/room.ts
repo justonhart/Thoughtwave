@@ -85,7 +85,7 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
 });
 
 Room.prototype.canSpawn = function (this: Room): boolean {
-    return this.myStructures.filter((structure) => structure.structureType === STRUCTURE_SPAWN).length > 0;
+    return this.mySpawns.length > 0;
 };
 
 Object.defineProperty(Room.prototype, 'myCreepsByMemory', {
@@ -148,9 +148,7 @@ Object.defineProperty(Room.prototype, 'managerLink', {
         if (!this._managerLink) {
             const posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'rm')?.pos?.toRoomPos();
 
-            const link = this.myStructures
-                .filter((struct) => struct.structureType === STRUCTURE_LINK && posToCheck.isNearTo(struct))
-                .pop() as StructureLink;
+            const link = this.myStructures.find((struct) => struct.structureType === STRUCTURE_LINK && posToCheck.isNearTo(struct)) as StructureLink;
             this.memory.managerLink = link?.id;
             this._managerLink = link;
         }

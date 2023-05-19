@@ -121,7 +121,7 @@ export function getStoragePos(room: Room): RoomPosition {
         case RoomLayout.STAMP:
             return room.memory.stampLayout.storage[0].pos.toRoomPos();
         default:
-            return (room.myStructures.filter((struct) => struct.structureType === STRUCTURE_STORAGE) as StructureStorage[])[0].pos;
+            return room.myStructures.find((struct) => struct.structureType === STRUCTURE_STORAGE)?.pos;
     }
 }
 
@@ -333,8 +333,8 @@ export function placeMinerLinks(room: Room) {
                 let assignmentPos = assignmentString.toRoomPos();
 
                 let linkNeeded =
-                    !room.myStructures.find((structure) => structure.structureType === STRUCTURE_LINK && assignmentPos.isNearTo(structure)) &&
-                    !room.myConstructionSites.find((structure) => structure.structureType === STRUCTURE_LINK && assignmentPos.isNearTo(structure));
+                    !room.myStructures.some((structure) => structure.structureType === STRUCTURE_LINK && assignmentPos.isNearTo(structure)) &&
+                    !room.myConstructionSites.some((site) => site.structureType === STRUCTURE_LINK && assignmentPos.isNearTo(site));
 
                 if (linkNeeded) {
                     let looks = room.lookAtArea(assignmentPos.y - 1, assignmentPos.x - 1, assignmentPos.y + 1, assignmentPos.x + 1, true);

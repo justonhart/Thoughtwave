@@ -676,9 +676,9 @@ export class Pathing {
         if (creep.memory._m.path) {
             const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
             //check if creep is in nextPos
-            const obstacleCreep = creep.room.myCreeps.filter(
+            const obstacleCreep = creep.room.myCreeps.find(
                 (c) => creep.id !== c.id && creep.pos.isNearTo(c) && creep.pos.getDirectionTo(c) === nextDirection
-            )[0];
+            );
             if (obstacleCreep?.memory?._m?.destination) {
                 obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
                 if (obstacleCreep.memory._m?.path?.length > 1) {
@@ -725,9 +725,9 @@ export class Pathing {
                 obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
                 return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
             } else {
-                const powerCreepObstacle = creep.room.myPowerCreeps.filter(
+                const powerCreepObstacle = creep.room.myPowerCreeps.find(
                     (powerCreep) => creep.pos.isNearTo(powerCreep) && creep.pos.getDirectionTo(powerCreep) === nextDirection
-                )[0];
+                );
                 if (powerCreepObstacle) {
                     // @ts-ignore
                     powerCreepObstacle.memory._m.repath++;

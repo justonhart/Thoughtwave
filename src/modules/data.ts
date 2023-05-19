@@ -84,7 +84,7 @@ export function updateRoomData(room: Room) {
     if (isHighway(room.name)) {
         delete data.deposits;
 
-        const hasPowerBank = room.structures.filter((s) => s.structureType === STRUCTURE_POWER_BANK).length > 0;
+        const hasPowerBank = room.structures.some((s) => s.structureType === STRUCTURE_POWER_BANK);
         if (hasPowerBank && data.powerBank !== false) {
             data.powerBank = true;
         } else if (!hasPowerBank) {
@@ -104,7 +104,7 @@ export function updateRoomData(room: Room) {
         // Get all OWNED_ME adjacent rooms
         const isAdjacentToOwnedRoom = Object.values(Game.map.describeExits(room.name)).some((exitRoomName) => Memory.rooms[exitRoomName]);
         if (isAdjacentToOwnedRoom) {
-            const boostedAttacker = room.hostileCreeps.find(
+            const boostedAttacker = room.hostileCreeps.some(
                 (creep) =>
                     creep.owner.username !== 'Invader' &&
                     creep.getActiveBodyparts(TOUGH) &&

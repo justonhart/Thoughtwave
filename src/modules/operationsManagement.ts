@@ -533,9 +533,7 @@ function manageAddPowerBankOperation(op: Operation) {
             }
             if (targetRoom) {
                 op.visionRequests = [];
-                const powerBank = targetRoom.structures
-                    .filter((s) => s.structureType === STRUCTURE_POWER_BANK)
-                    .pop() as unknown as StructurePowerBank;
+                const powerBank = targetRoom.structures.find((s) => s.structureType === STRUCTURE_POWER_BANK) as StructurePowerBank;
                 if (powerBank && powerBank.ticksToDecay > 2500 && powerBank.power > 2000) {
                     const numFreeSpaces = Math.min(
                         targetRoom
@@ -603,9 +601,7 @@ function manageAddPowerBankOperation(op: Operation) {
 
             // Spawn Collectors
             if (targetRoom) {
-                const powerBank = targetRoom.structures
-                    .filter((s) => s.structureType === STRUCTURE_POWER_BANK)
-                    .pop() as unknown as StructurePowerBank;
+                const powerBank = targetRoom.structures.find((s) => s.structureType === STRUCTURE_POWER_BANK) as StructurePowerBank;
 
                 // No need to check every tick since damage is consistent
                 if (
