@@ -4,6 +4,9 @@ export class Operative extends WorkerCreep {
     protected run() {
         if (!this.operation) {
             this.memory.recycle = true;
+            if(this.room.controller?.my){
+                this.memory.room = this.room.name;
+            }
             delete this.memory.operationId;
         }
 
