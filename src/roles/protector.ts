@@ -20,7 +20,7 @@ export class Protector extends CombatCreep {
                     this.healSelf(false);
                     return;
                 } else {
-                    const hurtCreep = this.room.find(FIND_MY_CREEPS).find((creep) => creep.hits < creep.hitsMax);
+                    const hurtCreep = this.room.myCreeps.find((creep) => creep.hits < creep.hitsMax);
                     if (hurtCreep) {
                         const healing = this.heal(hurtCreep);
                         if (healing === ERR_NOT_IN_RANGE) {
@@ -57,7 +57,7 @@ export class Protector extends CombatCreep {
     }
 
     private findTarget() {
-        const hostileCreeps = this.room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
+        const hostileCreeps = this.room.hostileCreeps.filter((c) => c.owner.username !== 'Source Keeper');
         if (hostileCreeps.length) {
             // Find closest Enemy and attack it to avoid stepping off ramparts as ATTACK creeps (include worker creeps as dangerous since they can dismantle)
             if (this.pos.roomName === this.homeroom?.name) {
@@ -76,19 +76,17 @@ export class Protector extends CombatCreep {
 
             return closestDangerousHostile?.length ? closestDangerousHostile : this.pos.findClosestByRange(hostileCreeps).id;
         }
-        const hostileRamparts = this.room.find(FIND_HOSTILE_STRUCTURES, { filter: (struct) => struct.structureType == STRUCTURE_RAMPART });
+        const hostileRamparts = this.room.hostileStructures.filter((struct) => struct.structureType == STRUCTURE_RAMPART);
         if (hostileRamparts.length) {
             return hostileRamparts[0].id;
         }
 
-        const hostileStructures = this.room
-            .find(FIND_HOSTILE_STRUCTURES)
-            .filter(
-                (struct) =>
-                    struct.structureType !== STRUCTURE_KEEPER_LAIR &&
-                    struct.structureType !== STRUCTURE_CONTROLLER &&
-                    !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity())
-            );
+        const hostileStructures = this.room.hostileStructures.filter(
+            (struct) =>
+                struct.structureType !== STRUCTURE_KEEPER_LAIR &&
+                struct.structureType !== STRUCTURE_CONTROLLER &&
+                !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity())
+        );
         if (hostileStructures.length) {
             return hostileStructures[0].id;
         }

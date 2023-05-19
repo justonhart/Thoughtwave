@@ -149,16 +149,16 @@ export class SquadAttacker extends CombatCreep {
 
             let target: any;
             if (!target) {
-                const structuresToSearch = this.room.find(FIND_HOSTILE_STRUCTURES, {
-                    filter: (struct) =>
+                const structuresToSearch = this.room.hostileStructures.filter(
+                    (struct) =>
                         struct.structureType !== STRUCTURE_STORAGE &&
                         struct.structureType !== STRUCTURE_TERMINAL &&
                         struct.structureType !== STRUCTURE_LAB &&
                         struct.structureType !== STRUCTURE_NUKER &&
                         struct.structureType !== STRUCTURE_KEEPER_LAIR &&
                         struct.structureType !== STRUCTURE_INVADER_CORE &&
-                        struct.structureType !== STRUCTURE_CONTROLLER,
-                });
+                        struct.structureType !== STRUCTURE_CONTROLLER
+                );
 
                 target = this.pos.findClosestByRange(structuresToSearch, {
                     filter: (struct) => struct.structureType === STRUCTURE_TOWER,

@@ -13,12 +13,10 @@ export class Claimer extends WaveCreep {
 
             if (this.room.name === this.memory.destination) {
                 // If there is an invader claimer in the room send a cleanup creep
-                const invaderCore = this.room.find(FIND_HOSTILE_STRUCTURES, {
-                    filter: (struct) => struct.structureType === STRUCTURE_INVADER_CORE,
-                });
+                const hasInvaderCore = this.room.hostileStructures.some((struct) => struct.structureType === STRUCTURE_INVADER_CORE);
 
                 if (
-                    invaderCore.length &&
+                    hasInvaderCore &&
                     !Object.values(Game.creeps).filter(
                         (creep) =>
                             creep.memory.role === Role.PROTECTOR &&
@@ -54,7 +52,7 @@ export class Claimer extends WaveCreep {
                         Memory.operations[opIndex].stage = this.room.canSpawn() ? OperationStage.COMPLETE : OperationStage.BUILD;
                     }
 
-                    let preexistingStructures = this.room.find(FIND_STRUCTURES).filter(
+                    let preexistingStructures = this.room.structures.filter(
                         (structure) =>
                             //@ts-ignore
                             (![STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(structure.structureType) || posInsideBunker(structure.pos)) &&

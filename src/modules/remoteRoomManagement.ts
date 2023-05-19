@@ -77,8 +77,7 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
         let boosts = [];
         if (remoteRoom) {
             if (threatLevel === RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS) {
-                const highestHP = remoteRoom
-                    .find(FIND_HOSTILE_CREEPS)
+                const highestHP = remoteRoom.hostileCreeps
                     .filter((creep) => !Memory.playersToIgnore?.includes(creep.owner.username) && creep.owner.username !== 'Source Keeper')
                     .reduce((highestHP, nextCreep) => (highestHP < nextCreep.hitsMax ? nextCreep.hitsMax : highestHP), 0);
                 body = PopulationManagement.createDynamicCreepBody(Game.rooms[controllingRoomName], [ATTACK, MOVE], Math.ceil(highestHP / 10), 0);
@@ -141,13 +140,13 @@ export function calculateRemoteMinerWorkNeeded(roomName: string) {
 }
 
 function monitorThreatLevel(room: Room) {
-    const creeps = room.find(FIND_HOSTILE_CREEPS, { filter: (c) => c.owner.username !== 'Source Keeper' });
+    const creeps = room.hostileCreeps.filter((c) => c.owner.username !== 'Source Keeper');
 
     const currentThreadLevel = Memory.remoteData[room.name].threatLevel;
     let hasInvaderCore = currentThreadLevel === RemoteRoomThreatLevel.INVADER_CORE;
     if (currentThreadLevel < RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS && Game.time % 3 === 0) {
         // No need to check for this every tick in every remote room
-        hasInvaderCore = !!room.find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_INVADER_CORE }).length;
+        hasInvaderCore = !!room.hostileStructures.some((s) => s.structureType === STRUCTURE_INVADER_CORE);
     }
     return creeps.some((c) => c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0)
         ? RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
@@ -160,10 +159,8 @@ function monitorThreatLevel(room: Room) {
 
 function createKeeperLairData(remoteRoomName: string): { [id: Id<Source> | Id<Mineral>]: { id: Id<StructureKeeperLair>; pos: string } } {
     const lairs = {};
-    Game.rooms[remoteRoomName]
-        .find(FIND_HOSTILE_STRUCTURES, {
-            filter: (s) => s.structureType === STRUCTURE_KEEPER_LAIR,
-        })
+    Game.rooms[remoteRoomName].hostileStructures
+        .filter((s) => s.structureType === STRUCTURE_KEEPER_LAIR)
         .forEach((lair) => {
             const source = lair.pos.findClosestByRange(FIND_SOURCES);
             if (lair.pos.getRangeTo(source) < 6) {
@@ -184,8 +181,8 @@ function createKeeperLairData(remoteRoomName: string): { [id: Id<Source> | Id<Mi
  * @returns Boolean to check if a reassignment was possible
  */
 function reassignIdleProtector(controllingRoomName: string, remoteRoomName: string): boolean {
-    const protectors = Object.values(Game.creeps).filter(
-        (creep) => creep.memory.room === controllingRoomName && creep.memory.role === Role.PROTECTOR && creep.ticksToLive > 200
+    const protectors = Game.rooms[controllingRoomName].myCreepsByMemory.filter(
+        (creep) => creep.memory.role === Role.PROTECTOR && creep.ticksToLive > 200
     );
 
     if (controllingRoomName === remoteRoomName) {

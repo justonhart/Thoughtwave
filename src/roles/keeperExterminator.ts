@@ -12,7 +12,7 @@ export class KeeperExterminator extends CombatCreep {
             }
             //if destination is set, then miningPosition construction site needs defended
             if (this.memory.destination) {
-                let target = this.pos.findInRange(FIND_HOSTILE_CREEPS, 1)?.pop();
+                let target = this.room.hostileCreeps.find((creep) => this.pos.isNearTo(creep));
                 if (target) {
                     this.attack(target);
                 }
@@ -24,7 +24,9 @@ export class KeeperExterminator extends CombatCreep {
                     }
 
                     //scan area for keeper
-                    let keeper = target.pos.findInRange(FIND_HOSTILE_CREEPS, 5, { filter: (c) => c.owner.username === 'Source Keeper' }).shift();
+                    let keeper = this.room.hostileCreeps.find(
+                        (creep) => creep.owner.username === 'Source Keeper' && target.pos.getRangeTo(creep) <= 5
+                    );
                     if (keeper) {
                         this.memory.targetId = keeper.id;
                     }
@@ -49,13 +51,17 @@ export class KeeperExterminator extends CombatCreep {
     private findTarget(): Id<Creep> | Id<Structure> | Id<ConstructionSite> {
         let sourcesMined = Object.keys(Memory.remoteSourceAssignments).filter((key) => key.split('.')[2] === this.memory.assignment);
 
-        let invaders = Game.rooms[this.memory.assignment]?.find(FIND_HOSTILE_CREEPS, {
-            filter: (c) =>
-                (c.body.some((p) => p.type === ATTACK) || c.body.some((p) => p.type === RANGED_ATTACK) || c.body.some((p) => p.type === HEAL)) &&
-                c.owner.username !== 'Source Keeper',
-        });
-        if (invaders?.length) {
-            return this.pos.findClosestByPath(invaders)?.id || this.pos.findClosestByRange(invaders)?.id;
+        const targetRoom = Game.rooms[this.memory.assignment];
+
+        if (targetRoom) {
+            let invaders = targetRoom.hostileCreeps.filter(
+                (c) =>
+                    (c.body.some((p) => p.type === ATTACK) || c.body.some((p) => p.type === RANGED_ATTACK) || c.body.some((p) => p.type === HEAL)) &&
+                    c.owner.username !== 'Source Keeper'
+            );
+            if (invaders?.length) {
+                return this.pos.findClosestByPath(invaders)?.id || this.pos.findClosestByRange(invaders)?.id;
+            }
         }
 
         let threats = [];
@@ -69,7 +75,7 @@ export class KeeperExterminator extends CombatCreep {
                 return;
             }
 
-            let threat = source.toRoomPos().findInRange(FIND_HOSTILE_CREEPS, 5)?.pop();
+            let threat = targetRoom?.hostileCreeps?.find((creep) => source.toRoomPos().getRangeTo(creep) <= 5);
             if (threat) {
                 threats.push(threat);
             }

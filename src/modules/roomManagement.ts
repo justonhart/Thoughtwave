@@ -76,10 +76,10 @@ export function driveRoom(room: Room) {
             if (Game.time % REPAIR_QUEUE_REFRESH_PERIOD === 0) {
                 room.memory.repairQueue = findRepairTargets(room);
                 room.memory.needsWallRepair =
-                    room.find(FIND_STRUCTURES, {
-                        filter: (s) =>
-                            (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < room.getDefenseHitpointTarget(),
-                    }).length > 0;
+                    room.structures.filter(
+                        (s) =>
+                            (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < room.getDefenseHitpointTarget()
+                    ).length > 0;
             }
 
             if (room.memory.repairQueue.length) {
@@ -96,7 +96,7 @@ export function driveRoom(room: Room) {
                 (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
                 (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
                 Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-                room.find(FIND_MY_CONSTRUCTION_SITES).length < 15
+                room.myConstructionSites.length < 15
             ) {
                 let cpuUsed = Game.cpu.getUsed();
                 switch (room.controller.level) {
@@ -141,7 +141,7 @@ export function driveRoom(room: Room) {
                 (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
                 (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
                 Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-                room.find(FIND_MY_CONSTRUCTION_SITES).length < 15
+                room.myConstructionSites.length < 15
             ) {
                 let cpuUsed = Game.cpu.getUsed();
                 // Cleanup any leftover storage/terminal that is in the way
@@ -185,10 +185,10 @@ export function driveRoom(room: Room) {
                 }
 
                 // Check for any missing structures and add them
-                const constructionSites = room.find(FIND_MY_CONSTRUCTION_SITES);
+                const constructionSites = room.myConstructionSites;
                 let constructionSitesCount = constructionSites.length;
                 if (constructionSitesCount < 15) {
-                    const structures = room.find(FIND_STRUCTURES);
+                    const structures = room.structures;
                     const constructionStamps: { pos: RoomPosition; key: StructureConstant }[] = [];
                     // Check against all structures and construction sites currently in the room. If a stamp is not in either then add it as a construction site
                     Object.entries(room.memory.stampLayout)
@@ -242,29 +242,26 @@ export function driveRoom(room: Room) {
         if (room.memory.anchorPoint) {
             let anchorPoint = room.memory.anchorPoint.toRoomPos();
             if (
-                anchorPoint
-                    .findInRange(FIND_HOSTILE_CREEPS, 6)
-                    .some(
-                        (creep) =>
-                            creep.owner.username !== 'Invader' &&
-                            (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
-                    )
+                room.hostileCreeps.some(
+                    (creep) =>
+                        creep.owner.username !== 'Invader' &&
+                        (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
+                        anchorPoint.getRangeTo(creep) <= 6
+                )
             ) {
                 room.controller.activateSafeMode();
             }
-        } else if (room.memory.layout === RoomLayout.STAMP) {
+        } else if (room.memory.layout === RoomLayout.STAMP && room.memory.threatLevel > HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS) {
             if (
-                room
-                    .find(FIND_HOSTILE_CREEPS)
-                    .some(
-                        (creep) =>
-                            creep.owner.username !== 'Invader' &&
-                            (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
-                            creep.pos.x > 2 &&
-                            creep.pos.y > 2 &&
-                            creep.pos.x < 47 &&
-                            creep.pos.y < 47
-                    )
+                room.hostileCreeps.some(
+                    (creep) =>
+                        creep.owner.username !== 'Invader' &&
+                        (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
+                        creep.pos.x > 2 &&
+                        creep.pos.y > 2 &&
+                        creep.pos.x < 47 &&
+                        creep.pos.y < 47
+                )
             ) {
                 room.controller.activateSafeMode();
             }
@@ -273,12 +270,11 @@ export function driveRoom(room: Room) {
         if (room.energyStatus >= EnergyStatus.RECOVERING) {
             //if this room doesn't have any outstanding claims
             if (
-                Game.time % 1000 !== 0 &&
+                Game.time % 1000 === 0 &&
                 !room.memory.outstandingClaim &&
-                canSupportRemoteRoom(room) &&
-                Game.time % 25 === 0 &&
                 !global.remoteSourcesChecked &&
-                Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000
+                Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000 &&
+                canSupportRemoteRoom(room)
             ) {
                 try {
                     addRemoteSourceClaim(room);
@@ -368,9 +364,9 @@ export function driveRoom(room: Room) {
 }
 
 function runTowers(room: Room) {
-    let towers = room.find(FIND_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_TOWER) as StructureTower[];
+    let towers = room.myStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER) as StructureTower[];
 
-    const myHurtCreeps = room.find(FIND_MY_CREEPS).filter((creep) => creep.hits < creep.hitsMax);
+    const myHurtCreeps = room.myCreeps.filter((creep) => creep.hits < creep.hitsMax);
     if (myHurtCreeps.length) {
         for (let i = 0; i < myHurtCreeps.length && towers.length; i++) {
             let healNeeded = myHurtCreeps[i].hitsMax - myHurtCreeps[i].hits;
@@ -396,54 +392,48 @@ function runTowers(room: Room) {
         return;
     }
 
-    if (!room.controller.safeMode) {
-        const focus = Object.values(Game.creeps).find((creep) => creep.room.name === room.name && creep.memory.targetId2 && creep.memory.ready >= 5);
-        if (focus) {
-            towers.forEach((tower) => tower.attack(Game.getObjectById(focus.memory.targetId2)));
-            towers = [];
-        } else {
-            // Towers do not attack creeps on the edge because this can cause them to simply waste energy if two attackers are in the room and the healers go in and out of the room
-            const hostileCreep = room.find(FIND_HOSTILE_CREEPS).find((creep) => {
+    // TODO: recognize patterns to avoid shooting creeps that are going in and out of the room every tick and cant be killed in one shot
+    if (!room.controller.safeMode && room.memory.threatLevel > HomeRoomThreatLevel.SAFE) {
+        const hostileCreep = room.hostileCreeps
+            .filter((creep) => !Memory.playersToIgnore?.includes(creep.owner.username))
+            .find((creep) => {
                 const hostileCreepInfo = CombatIntel.getCreepCombatData(room, true, creep.pos);
                 const myCreepInfo = CombatIntel.getCreepCombatData(room, false, creep.pos);
                 const myTowerInfo = CombatIntel.getTowerCombatData(room, false, creep.pos);
-                return (
-                    CombatIntel.getPredictedDamage(
-                        myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
-                        hostileCreepInfo.highestDmgMultiplier,
-                        hostileCreepInfo.highestToughHits
-                    ) > hostileCreepInfo.totalHeal && !Memory.playersToIgnore?.includes(creep.owner.username)
+                return CombatIntel.getPredictedDamage(
+                    myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
+                    hostileCreepInfo.highestDmgMultiplier,
+                    hostileCreepInfo.highestToughHits
                 );
             });
-            if (hostileCreep) {
-                towers.forEach((tower) => tower.attack(hostileCreep));
-                towers = [];
-            }
+        if (hostileCreep) {
+            towers.forEach((tower) => tower.attack(hostileCreep));
+            towers = [];
         }
-    }
+    } else if (room.memory.repairQueue) {
+        //if no defensive use for towers, repair roads
+        towers.forEach((tower) => {
+            let repairQueue = room.memory.repairQueue;
 
-    //if no defensive use for towers, repair roads
-    towers.forEach((tower) => {
-        let repairQueue = room.memory.repairQueue;
+            if (tower.store.energy > 600) {
+                if (!room.memory.towerRepairMap[tower.id]) {
+                    let roadId = repairQueue.find((id) => Game.getObjectById(id)?.structureType === STRUCTURE_ROAD) as Id<StructureRoad>;
+                    room.memory.towerRepairMap[tower.id] = roadId;
+                    room.removeFromRepairQueue(roadId);
+                }
 
-        if (tower.store.energy > 600) {
-            if (!room.memory.towerRepairMap[tower.id]) {
-                let roadId = repairQueue.find((id) => Game.getObjectById(id)?.structureType === STRUCTURE_ROAD) as Id<StructureRoad>;
-                room.memory.towerRepairMap[tower.id] = roadId;
-                room.removeFromRepairQueue(roadId);
-            }
+                let roadToRepair = Game.getObjectById(room.memory.towerRepairMap[tower.id]);
 
-            let roadToRepair = Game.getObjectById(room.memory.towerRepairMap[tower.id]);
-
-            if (roadToRepair?.hits < roadToRepair?.hitsMax) {
-                tower.repair(roadToRepair);
+                if (roadToRepair?.hits < roadToRepair?.hitsMax) {
+                    tower.repair(roadToRepair);
+                } else {
+                    delete room.memory.towerRepairMap[tower.id];
+                }
             } else {
                 delete room.memory.towerRepairMap[tower.id];
             }
-        } else {
-            delete room.memory.towerRepairMap[tower.id];
-        }
-    });
+        });
+    }
 }
 
 function runHomeSecurity(homeRoom: Room): boolean {
@@ -659,17 +649,17 @@ function findMineralMiningPosition(room: Room): RoomPosition {
 }
 
 function runSpawning(room: Room) {
-    let spawns = Object.values(Game.spawns).filter((spawn) => spawn.room === room);
-
-    let busySpawns = spawns.filter((spawn) => spawn.spawning);
+    const spawns = room.mySpawns;
+    const busySpawns = spawns.filter((spawn) => spawn.spawning);
 
     busySpawns.forEach((spawn) => {
         if (spawn.spawning.remainingTime <= 0) {
-            let blockingCreeps = spawn.pos
-                .findInRange(FIND_MY_CREEPS, 1)
-                .filter(
-                    (creep) => creep.memory.role !== Role.MANAGER && (!creep.memory.targetId || creep.memory.currentTaskPriority <= Priority.HIGH)
-                );
+            let blockingCreeps = room.myCreeps.filter(
+                (creep) =>
+                    creep.memory.role !== Role.MANAGER &&
+                    (!creep.memory.targetId || creep.memory.currentTaskPriority <= Priority.HIGH) &&
+                    spawn.pos.isNearTo(creep)
+            );
             blockingCreeps.forEach((blocker) => {
                 blocker.travelTo(spawn, { flee: true, range: 2 });
             });
@@ -689,7 +679,7 @@ function runSpawning(room: Room) {
             }
         });
 
-    let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
+    const roomCreeps = room.myCreepsByMemory;
     let distributor = roomCreeps.find((creep) => creep.memory.role === Role.DISTRIBUTOR);
     let workerCount = roomCreeps.filter((creep) => creep.memory.role === Role.WORKER || creep.memory.role === Role.UPGRADER).length;
     let assignments = Memory.spawnAssignments.filter((assignment) => assignment.designee === room.name);
@@ -721,7 +711,7 @@ function runSpawning(room: Room) {
         });
     }
 
-    if (PopulationManagement.needsTransporter(room) && !roomUnderAttack) {
+    if (availableSpawns && PopulationManagement.needsTransporter(room) && !roomUnderAttack) {
         let options: SpawnOptions = {
             memory: {
                 room: room.name,
@@ -732,12 +722,12 @@ function runSpawning(room: Room) {
         spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
     }
 
-    if (PopulationManagement.needsMiner(room) && (!roomUnderAttack || room.memory.layout === undefined)) {
+    if (availableSpawns && PopulationManagement.needsMiner(room) && (!roomUnderAttack || room.memory.layout === undefined)) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
     }
 
-    if (PopulationManagement.needsManager(room)) {
+    if (availableSpawns && PopulationManagement.needsManager(room)) {
         if (room.memory.layout === RoomLayout.BUNKER) {
             const suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(room.memory.anchorPoint.toRoomPos()));
             if (suitableSpawn) {
@@ -763,12 +753,12 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (PopulationManagement.needsMineralMiner(room) && !roomUnderAttack) {
+    if (availableSpawns && PopulationManagement.needsMineralMiner(room) && !roomUnderAttack) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMineralMiner();
     }
 
-    if (workerCount >= room.workerCapacity && !roomUnderAttack) {
+    if (availableSpawns && workerCount >= room.workerCapacity && !roomUnderAttack) {
         assignments.forEach((assignment) => {
             const assignmentCost = assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
             const canSpawnAssignment = room.energyAvailable >= assignmentCost;
@@ -831,7 +821,7 @@ function runSpawning(room: Room) {
         const result = spawn.spawnWorker(roomUnderAttack);
         if (result === undefined && !spawn.store.getFreeCapacity()) {
             // did not spawn any workers so check if we can renew managers
-            const renewableManager = room.creeps.find(
+            const renewableManager = room.myCreepsByMemory.find(
                 (creep) =>
                     creep.memory.role === Role.MANAGER &&
                     creep.ticksToLive < 1500 - Math.floor(600 / creep.body.length) &&
@@ -847,14 +837,12 @@ function runSpawning(room: Room) {
 export function findRepairTargets(room: Room): Id<Structure>[] {
     let repairTargetQueue: Id<Structure>[] = [];
 
-    let damagedRoomStructures = room
-        .find(FIND_STRUCTURES)
-        .filter(
-            (structure) =>
-                structure.structureType !== STRUCTURE_WALL &&
-                structure.structureType !== STRUCTURE_RAMPART &&
-                structure.hits < (structure.structureType === STRUCTURE_ROAD ? structure.hitsMax * 0.9 : structure.hitsMax)
-        );
+    let damagedRoomStructures = room.structures.filter(
+        (structure) =>
+            structure.structureType !== STRUCTURE_WALL &&
+            structure.structureType !== STRUCTURE_RAMPART &&
+            structure.hits < (structure.structureType === STRUCTURE_ROAD ? structure.hitsMax * 0.9 : structure.hitsMax)
+    );
 
     damagedRoomStructures.sort((structureA, structureB) => structureA.hits / structureA.hitsMax - structureB.hits / structureB.hitsMax);
     damagedRoomStructures.forEach((structure) => {
@@ -892,7 +880,7 @@ function placeMineralContainers(room: Room) {
 }
 
 function placeExtractor(room: Room) {
-    let extractor = room.find(FIND_STRUCTURES).find((struct) => struct.structureType === STRUCTURE_EXTRACTOR);
+    let extractor = room.structures.find((struct) => struct.structureType === STRUCTURE_EXTRACTOR);
     if (!extractor) {
         let mineralPos = room.mineral.pos;
         room.createConstructionSite(mineralPos, STRUCTURE_EXTRACTOR);
@@ -1000,7 +988,7 @@ function getStructurePriority(structureType: StructureConstant): number {
 }
 
 export function canSupportRemoteRoom(room: Room) {
-    return Object.keys(room.memory.remoteSources).length < room.find(FIND_MY_SPAWNS).length * 3 && !roomNeedsCoreStructures(room);
+    return Object.keys(room.memory.remoteSources).length < room.mySpawns.length * 3 && !roomNeedsCoreStructures(room);
 }
 
 function initMissingMemoryValues(room: Room) {
@@ -1095,11 +1083,11 @@ export function destructiveReset(roomName: string) {
 
         delete Memory.rooms[room.name];
 
-        const structuresToDestroy = room.find(FIND_STRUCTURES, {
-            filter: (s) => s.structureType !== STRUCTURE_SPAWN && s.structureType !== STRUCTURE_STORAGE && s.structureType !== STRUCTURE_EXTRACTOR,
-        });
+        const structuresToDestroy = room.structures.filter(
+            (s) => s.structureType !== STRUCTURE_SPAWN && s.structureType !== STRUCTURE_STORAGE && s.structureType !== STRUCTURE_EXTRACTOR
+        );
 
-        let spawns = room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN });
+        let spawns = room.spawns;
         spawns.slice(1).forEach((spawn) => spawn.destroy());
 
         structuresToDestroy.forEach((struct) => struct.destroy());
@@ -1125,19 +1113,18 @@ export function destructiveReset(roomName: string) {
 
 function setThreatLevel(room: Room) {
     let threatLevel = HomeRoomThreatLevel.SAFE;
-    const hostileCreeps = room.find(FIND_HOSTILE_CREEPS);
-    if (hostileCreeps.length) {
+    if (room.hostileCreeps.length) {
         if (
-            hostileCreeps.some(
+            room.hostileCreeps.some(
                 (creep) => creep.owner.username !== 'Invader' && (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
             )
         ) {
             threatLevel = HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS;
-            sendEmailOnAttack(room, hostileCreeps[0].owner.username);
-        } else if (hostileCreeps.some((creep) => creep.owner.username !== 'Invader' && creep.getActiveBodyparts(WORK))) {
+            sendEmailOnAttack(room, room.hostileCreeps[0].owner.username);
+        } else if (room.hostileCreeps.some((creep) => creep.owner.username !== 'Invader' && creep.getActiveBodyparts(WORK))) {
             threatLevel = HomeRoomThreatLevel.ENEMY_DISMANTLERS;
-            sendEmailOnAttack(room, hostileCreeps[0].owner.username);
-        } else if (hostileCreeps.some((creep) => creep.owner.username === 'Invader')) {
+            sendEmailOnAttack(room, room.hostileCreeps[0].owner.username);
+        } else if (room.hostileCreeps.some((creep) => creep.owner.username === 'Invader')) {
             threatLevel = HomeRoomThreatLevel.ENEMY_INVADERS;
         } else {
             threatLevel = HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS;

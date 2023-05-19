@@ -94,18 +94,16 @@ export class WorkerCreep extends WaveCreep {
             .find(FIND_DROPPED_RESOURCES)
             .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
 
-        let containers = this.room
-            .find(FIND_STRUCTURES)
-            .filter(
-                (str) =>
-                    str.structureType === STRUCTURE_CONTAINER &&
-                    str.store.energy >= this.store.getCapacity() &&
-                    (this.room.memory.layout !== RoomLayout.STAMP ||
-                        !this.room.memory.stampLayout.container.some(
-                            (containerStamp) =>
-                                str.pos.toMemSafe() === containerStamp.pos && (containerStamp.type === 'center' || containerStamp.type === 'rm')
-                        ))
-            );
+        let containers = this.room.structures.filter(
+            (str) =>
+                str.structureType === STRUCTURE_CONTAINER &&
+                str.store.energy >= this.store.getCapacity() &&
+                (this.room.memory.layout !== RoomLayout.STAMP ||
+                    !this.room.memory.stampLayout.container.some(
+                        (containerStamp) =>
+                            str.pos.toMemSafe() === containerStamp.pos && (containerStamp.type === 'center' || containerStamp.type === 'rm')
+                    ))
+        );
 
         nonStorageSources = [...ruins, ...looseEnergyStacks, ...containers];
         if (nonStorageSources.length) {
@@ -248,7 +246,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected findConstructionSite(): Id<ConstructionSite> {
-        let constructionSites = this.homeroom.find(FIND_MY_CONSTRUCTION_SITES);
+        let constructionSites = this.homeroom.myConstructionSites;
         if (constructionSites.length) {
             //@ts-expect-error
             let containsPrioritySites = constructionSites.some((site) => ![STRUCTURE_ROAD, STRUCTURE_RAMPART].includes(site.structureType));

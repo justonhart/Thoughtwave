@@ -54,7 +54,7 @@ export class Manager extends WaveCreep {
     }
 
     private startNewTask() {
-        const structuresToManage = this.pos.findInRange(FIND_MY_STRUCTURES, 1);
+        const structuresToManage = this.room.myStructures.filter((struct) => this.pos.isNearTo(struct));
         const managerLink: StructureLink = structuresToManage.find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
         const nuker: StructureNuker = structuresToManage.find((structure) => structure.structureType === STRUCTURE_NUKER) as StructureNuker;
         const factory: StructureFactory = structuresToManage.find((structure) => structure.structureType === STRUCTURE_FACTORY) as StructureFactory;
@@ -207,7 +207,7 @@ export class Manager extends WaveCreep {
     }
 
     private startCenterTask() {
-        const structuresToManage = this.pos.findInRange(FIND_STRUCTURES, 1);
+        const structuresToManage = this.room.structures.filter((struct) => this.pos.isNearTo(struct));
         const managerLink = structuresToManage.find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
         const extensions = structuresToManage.filter((structure) => structure.structureType === STRUCTURE_EXTENSION) as StructureExtension[];
         const container = structuresToManage.find((structure) => structure.structureType === STRUCTURE_CONTAINER) as StructureContainer;
@@ -227,7 +227,7 @@ export class Manager extends WaveCreep {
         const extensionInNeed = extensions?.find(
             (extension) =>
                 extension.store.getFreeCapacity(RESOURCE_ENERGY) &&
-                this.room.creeps.some((creep) => creep.memory.role === Role.MANAGER && creep.memory.targetId !== extension.id)
+                this.room.myCreepsByMemory.some((creep) => creep.memory.role === Role.MANAGER && creep.memory.targetId !== extension.id)
         );
         if (extensionInNeed && (container?.store.energy || this.store.energy)) {
             if (!this.store.energy) {
