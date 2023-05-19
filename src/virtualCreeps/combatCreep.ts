@@ -48,7 +48,7 @@ export class CombatCreep extends WaveCreep {
             const exitCost = 10;
             let shouldFlee = true;
 
-            const hostilesInSquadRange = target.pos.findInRange(FIND_HOSTILE_CREEPS, 4); // check around target for proper massAttack pathing
+            const hostilesInSquadRange = this.room.hostileCreeps.filter((creep) => target.pos.getRangeTo(creep) <= 4); // check around target for proper massAttack pathing
             const rangeToTarget = this.pos.getRangeTo(target);
 
             // If not in range or a squad without melee creep, then go closer to enable massAttack
@@ -101,13 +101,11 @@ export class CombatCreep extends WaveCreep {
     }
 
     public identifySquads(): Id<Creep>[][] {
-        const hostileCreeps = this.room
-            .find(FIND_HOSTILE_CREEPS)
-            .filter((hostileCreep) =>
-                hostileCreep.body.some(
-                    (bodyPart) => bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === WORK || bodyPart.type === HEAL
-                )
-            );
+        const hostileCreeps = this.room.hostileCreeps.filter((hostileCreep) =>
+            hostileCreep.body.some(
+                (bodyPart) => bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === WORK || bodyPart.type === HEAL
+            )
+        );
         const squads: Creep[][] = [];
         hostileCreeps.forEach((hostileCreep) => {
             if (!squads.length) {
@@ -147,9 +145,9 @@ export class CombatCreep extends WaveCreep {
             (this.getActiveBodyparts(ATTACK) || this.getActiveBodyparts(RANGED_ATTACK))
         ) {
             const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
-            const enemy = this.pos
-                .findInRange(FIND_HOSTILE_CREEPS, range)
-                .find((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK));
+            const enemy = this.room.hostileCreeps.find(
+                (creep) => (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) && this.pos.getRangeTo(creep) <= range
+            );
             if (enemy) {
                 this.attackCreep(enemy);
                 return !!this.getActiveBodyparts(ATTACK);

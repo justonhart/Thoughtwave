@@ -44,9 +44,9 @@ export function computeRoomNameFromDiff(startingRoomName: string, xDiff: number,
 export function updateRoomData(room: Room) {
     let data = Memory.roomData[room.name];
 
-    let controllingInvaderCore: StructureInvaderCore = room
-        .find(FIND_HOSTILE_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_INVADER_CORE && s.level })
-        .shift() as StructureInvaderCore;
+    let controllingInvaderCore: StructureInvaderCore = room.hostileStructures.find(
+        (s) => s.structureType === STRUCTURE_INVADER_CORE && s.level
+    ) as StructureInvaderCore;
     if (controllingInvaderCore) {
         data.roomStatus = RoomMemoryStatus.OWNED_INVADER;
         data.roomLevel = controllingInvaderCore.level;
@@ -84,7 +84,7 @@ export function updateRoomData(room: Room) {
     if (isHighway(room.name)) {
         delete data.deposits;
 
-        const hasPowerBank = room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK }).length > 0;
+        const hasPowerBank = room.structures.some((s) => s.structureType === STRUCTURE_POWER_BANK);
         if (hasPowerBank && data.powerBank !== false) {
             data.powerBank = true;
         } else if (!hasPowerBank) {
@@ -104,15 +104,13 @@ export function updateRoomData(room: Room) {
         // Get all OWNED_ME adjacent rooms
         const isAdjacentToOwnedRoom = Object.values(Game.map.describeExits(room.name)).some((exitRoomName) => Memory.rooms[exitRoomName]);
         if (isAdjacentToOwnedRoom) {
-            const boostedAttacker = room
-                .find(FIND_HOSTILE_CREEPS)
-                .find(
-                    (creep) =>
-                        creep.owner.username !== 'Invader' &&
-                        creep.getActiveBodyparts(TOUGH) &&
-                        creep.getActiveBodyparts(ATTACK) + creep.getActiveBodyparts(RANGED_ATTACK) + creep.getActiveBodyparts(WORK) > 0 &&
-                        creep.body.some((part) => part.boost)
-                );
+            const boostedAttacker = room.hostileCreeps.some(
+                (creep) =>
+                    creep.owner.username !== 'Invader' &&
+                    creep.getActiveBodyparts(TOUGH) &&
+                    creep.getActiveBodyparts(ATTACK) + creep.getActiveBodyparts(RANGED_ATTACK) + creep.getActiveBodyparts(WORK) > 0 &&
+                    creep.body.some((part) => part.boost)
+            );
             if (boostedAttacker) {
                 data.threatDetected = true;
             } else {
@@ -125,11 +123,14 @@ export function updateRoomData(room: Room) {
 }
 
 export function getUsername(): string {
-    return (
-        Object.values(Game.spawns)?.shift()?.owner.username ||
-        Object.values(Game.creeps)?.shift()?.owner.username ||
-        Object.values(Game.rooms).find((room) => room.controller?.my).controller.owner.username
-    );
+    if (!Memory.username) {
+        Memory.username =
+            Object.values(Game.spawns)?.shift()?.owner.username ||
+            Object.values(Game.creeps)?.shift()?.owner.username ||
+            Object.values(Game.rooms).find((room) => room.controller?.my).controller.owner.username;
+    }
+
+    return Memory.username;
 }
 
 export function deleteExpiredRoomData() {
@@ -180,8 +181,8 @@ export function unclaimRoom(roomName: string) {
         room.controller.unclaim();
     }
 
-    if (room?.find(FIND_MY_CONSTRUCTION_SITES).length) {
-        room.find(FIND_MY_CONSTRUCTION_SITES).forEach((site) => site.remove());
+    if (room?.myConstructionSites.length) {
+        room.myConstructionSites.forEach((site) => site.remove());
     }
 
     Object.entries(Memory.operations)
@@ -191,8 +192,7 @@ export function unclaimRoom(roomName: string) {
         (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
     );
 
-    let roomCreeps = Object.values(Game.creeps).filter((c) => c.memory.room === roomName);
-    roomCreeps.forEach((creep) => {
+    room.myCreepsByMemory.forEach((creep) => {
         // delete creep memory to prevent automatic updates in memory management
         delete Memory.creeps[creep.name];
         creep.suicide();

@@ -28,11 +28,12 @@ export class Worker extends WorkerCreep {
             }
         }
 
-        let constructedDefenses = this.pos
-            .findInRange(FIND_STRUCTURES, 3)
-            .filter(
-                (structure) => (structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) && structure.hits === 1
-            );
+        let constructedDefenses = this.homeroom.structures.filter(
+            (struct) =>
+                (struct.structureType === STRUCTURE_RAMPART || struct.structureType === STRUCTURE_WALL) &&
+                struct.hits === 1 &&
+                this.pos.getRangeTo(struct) <= 3
+        );
         if (constructedDefenses.length) {
             return constructedDefenses.shift().id;
         }
@@ -44,12 +45,12 @@ export class Worker extends WorkerCreep {
             return this.homeroom.controller.id;
         }
 
-        let spawnSite = this.homeroom.find(FIND_CONSTRUCTION_SITES).find((site) => site.structureType === STRUCTURE_SPAWN);
+        let spawnSite = this.homeroom.myConstructionSites.find((site) => site.structureType === STRUCTURE_SPAWN);
         if (spawnSite && !this.homeroom.canSpawn()) {
             return spawnSite.id;
         }
 
-        let decayingStructuresAtRisk = this.homeroom.find(FIND_STRUCTURES).filter(
+        let decayingStructuresAtRisk = this.homeroom.structures.filter(
             (structure) =>
                 //@ts-expect-error
                 structure.ticksToDecay !== undefined &&
@@ -74,9 +75,9 @@ export class Worker extends WorkerCreep {
         }
 
         if (this.homeroom.memory.needsWallRepair) {
-            let defensesToRepair = this.homeroom.find(FIND_STRUCTURES, {
-                filter: (s) => (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) && s.hits < s.hitsMax,
-            });
+            let defensesToRepair = this.homeroom.structures.filter(
+                (s) => (s.structureType === STRUCTURE_RAMPART || s.structureType === STRUCTURE_WALL) && s.hits < s.hitsMax
+            );
             if (defensesToRepair.length) {
                 return defensesToRepair.reduce((weakest, defToCompare) => (weakest.hits < defToCompare.hits ? weakest : defToCompare))?.id;
             }

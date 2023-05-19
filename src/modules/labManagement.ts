@@ -24,9 +24,6 @@ export function runLabs(room: Room) {
         }
     });
 
-    let labs = room.labs;
-    let idleLabs = labs.filter((lab) => lab.status === LabStatus.IDLE);
-
     //If there is no react task, add react task
     if (!Object.values(room.memory.labTasks).some((task) => task.type === LabTaskType.REACT)) {
         let resourceToMake = getNextResourceToCreate(room);
@@ -51,7 +48,7 @@ export function runLabs(room: Room) {
             ([taskId, task]) => task.type === LabTaskType.REACT && task.status > TaskStatus.QUEUED
         )?.[0] as unknown as number;
         if (labTaskId) {
-            idleLabs.forEach((lab) => room.memory.labTasks[labTaskId]?.reactionLabs?.push(lab.id));
+            room.labs.filter((lab) => lab.status === LabStatus.IDLE).forEach((lab) => room.memory.labTasks[labTaskId]?.reactionLabs?.push(lab.id));
         }
     }
 
@@ -305,7 +302,7 @@ function findBoostLab(room: Room, taskId: string): StructureLab {
 function findReagentLabs(room: Room): StructureLab[] {
     const labsSortedByAdjacent = room.labs
         .map((lab) => {
-            return { lab: lab, adj: lab.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_LAB }).length };
+            return { lab: lab, adj: room.myStructures.filter((s) => s.structureType === STRUCTURE_LAB && s.pos.isNearTo(lab)).length };
         })
         .sort((a, b) => b.adj - a.adj)
         .map((obj) => obj.lab);

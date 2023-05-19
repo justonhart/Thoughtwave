@@ -273,9 +273,7 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
                         (!opts.operationCriteria.stage || operation.stage <= opts.operationCriteria.stage)
                 ).length < opts.operationCriteria.maxCount) &&
             Game.map.getRoomLinearDistance(room.name, targetRoom) <= (opts?.maxLinearDistance ?? 10) &&
-            (opts?.minSpawnCount
-                ? room.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_SPAWN }).length >= opts.minSpawnCount
-                : true) &&
+            (opts?.minSpawnCount ? room.mySpawns.length >= opts.minSpawnCount : true) &&
             (opts?.needsBoost ? room.labs.length > 0 : true)
     );
 
@@ -450,7 +448,7 @@ function manageSecureRoomOperation(opId: string, op: Operation) {
 function manageRoomRecoveryOperation(opId: string, op: Operation) {
     const targetRoom = Game.rooms[op.targetRoom];
 
-    if (!targetRoom.find(FIND_MY_CONSTRUCTION_SITES).find((site) => site.structureType === STRUCTURE_SPAWN)) {
+    if (!targetRoom.myConstructionSites.find((site) => site.structureType === STRUCTURE_SPAWN)) {
         let spawnPos = getSpawnPos(targetRoom);
         targetRoom.createConstructionSite(spawnPos, STRUCTURE_SPAWN);
     }
@@ -635,9 +633,7 @@ function manageAddPowerBankOperation(opId: string, op: Operation) {
             }
             if (targetRoom) {
                 op.visionRequests = [];
-                const powerBank = targetRoom
-                    .find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })
-                    .pop() as unknown as StructurePowerBank;
+                const powerBank = targetRoom.structures.find((s) => s.structureType === STRUCTURE_POWER_BANK) as StructurePowerBank;
                 if (powerBank && powerBank.ticksToDecay > 2500 && powerBank.power > 2000) {
                     const numFreeSpaces = Math.min(
                         targetRoom
@@ -647,9 +643,9 @@ function manageAddPowerBankOperation(opId: string, op: Operation) {
                     );
 
                     // Avoid conflict
-                    const hasEnemies = targetRoom
-                        .find(FIND_HOSTILE_CREEPS)
-                        .some((creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK));
+                    const hasEnemies = targetRoom.hostileCreeps.some(
+                        (creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK)
+                    );
                     // Don't bother getting powerbanks with only one space of access (could do that later but will have to boost healer/attacker)
                     if (numFreeSpaces > 1 && !hasEnemies) {
                         op.operativeCount = numFreeSpaces;
@@ -703,9 +699,7 @@ function manageAddPowerBankOperation(opId: string, op: Operation) {
 
             // Spawn Collectors
             if (targetRoom) {
-                const powerBank = targetRoom
-                    .find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })
-                    .pop() as unknown as StructurePowerBank;
+                const powerBank = targetRoom.structures.find((s) => s.structureType === STRUCTURE_POWER_BANK) as StructurePowerBank;
 
                 // No need to check every tick since damage is consistent
                 if (
@@ -880,7 +874,7 @@ function createSquad(
         squadId = 's4' + Game.shard.name.slice(-1) + originRoom.name + Game.time.toString().slice(-4);
     }
     const hasSquadLeader =
-        originRoom.creeps.find((creep) => creep.memory.role === Role.SQUAD_ATTACKER && creep.memory.assignment === op.targetRoom) ||
+        originRoom.myCreepsByMemory.find((creep) => creep.memory.role === Role.SQUAD_ATTACKER && creep.memory.assignment === op.targetRoom) ||
         Memory.spawnAssignments.find(
             (creep) => creep.spawnOpts.memory.assignment === op.targetRoom && creep.spawnOpts.memory.role === Role.SQUAD_ATTACKER
         );
@@ -906,7 +900,7 @@ function createSquad(
     }
 
     const hasSquadFollower =
-        originRoom.creeps.find(
+        originRoom.myCreepsByMemory.find(
             (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_FOLLOWER && creep.memory.assignment === op.targetRoom
         ) ||
         Memory.spawnAssignments.find(
@@ -936,7 +930,7 @@ function createSquad(
 
     if (type === SquadType.QUAD) {
         const hasSecondSquadLeader =
-            originRoom.creeps.filter(
+            originRoom.myCreepsByMemory.filter(
                 (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_LEADER && creep.memory.assignment === op.targetRoom
             ).length +
             Memory.spawnAssignments.filter(
@@ -965,7 +959,7 @@ function createSquad(
         }
 
         const hasSecondSquadFollower =
-            originRoom.creeps.filter(
+            originRoom.myCreepsByMemory.filter(
                 (creep) => creep.memory.combat?.squadMemberType === SquadMemberType.SQUAD_SECOND_FOLLOWER && creep.memory.assignment === op.targetRoom
             ).length +
             Memory.spawnAssignments.filter(

@@ -82,7 +82,10 @@ const enum RoomMemoryStatus {
 
 interface Room {
     removeFromRepairQueue(id: string): void;
-    creeps: Creep[];
+    myCreepsByMemory: Creep[];
+    myCreeps: Creep[];
+    myPowerCreeps: PowerCreep[];
+    hostileCreeps: Creep[];
     energyStatus: EnergyStatus;
     mineral: Mineral;
     managerLink: StructureLink;
@@ -90,6 +93,8 @@ interface Room {
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
     workerCapacity: number;
+    spawns: StructureSpawn[];
+    mySpawns: StructureSpawn[];
     labs: StructureLab[];
     getDefenseHitpointTarget(): number;
     addLabTask(opts: LabTaskPartial): ScreepsReturnCode;
@@ -100,6 +105,32 @@ interface Room {
     powerSpawn: StructurePowerSpawn;
     remoteMiningRooms: string[];
     remoteSources: string[];
+    myStructures: AnyOwnedStructure[];
+    hostileStructures: AnyOwnedStructure[];
+    structures: AnyStructure[];
+    myConstructionSites: ConstructionSite[];
+
+    // Caching - Only used in roomPrototypes
+    _myCreepsByMemory: Creep[];
+    _myCreeps: Creep[];
+    _myPowerCreeps: PowerCreep[];
+    _hostileCreeps: Creep[];
+    _mineral: Mineral;
+    _managerLink: StructureLink;
+    _upgraderLink: StructureLink;
+    _remoteMiningRooms: string[];
+    _remoteSources: string[];
+    _powerSpawn: StructurePowerSpawn;
+    _observer: StructureObserver;
+    _factory: StructureFactory;
+    _labs: StructureLab[];
+    _spawns: StructureSpawn[];
+    _mySpawns: StructureSpawn[];
+    _workerCapacity: number;
+    _myStructures: AnyOwnedStructure[];
+    _hostileStructures: AnyOwnedStructure[];
+    _structures: Structure[];
+    _myConstructionSites: ConstructionSite[];
 
     /**
      * Returns a map of each provided boost type to the number of boosts available

@@ -168,7 +168,7 @@ export class TransportCreep extends WaveCreep {
         });
 
         const looseEnergyStacks = this.room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount);
-        let containers = this.room.find(FIND_STRUCTURES).filter((str) => {
+        let containers = this.room.structures.filter((str) => {
             let isAllowedStampContainer = true;
             // In Stamps do not allow retrieving energy from center/rm containers or miner containers with links
             const container = this.room.memory.stampLayout.container.find((containerStamp) => str.pos.toMemSafe() === containerStamp.pos);
@@ -232,9 +232,7 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findRefillTarget(): Id<Structure> {
-        const ROOM_STRUCTURES = this.homeroom
-            .find(FIND_STRUCTURES)
-            .filter((s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_WALL);
+        const ROOM_STRUCTURES = this.homeroom.structures.filter((s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_WALL);
         const towers = ROOM_STRUCTURES.filter(
             (structure) => structure.structureType === STRUCTURE_TOWER && this.previousTargetId !== structure.id && structure.store.energy < 900
         ) as StructureTower[];
@@ -258,7 +256,7 @@ export class TransportCreep extends WaveCreep {
         if (this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable || this.homeroom.controller.level < 5) {
             let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
 
-            const numberOfManagers = this.homeroom.creeps.reduce(
+            const numberOfManagers = this.homeroom.myCreepsByMemory.reduce(
                 (sum: number, nextCreep: Creep) =>
                     nextCreep.memory.role === Role.MANAGER &&
                     this.homeroom.memory.stampLayout.managers.some((stamp) => stamp.type === 'center' && stamp.pos === nextCreep.memory.destination)
@@ -397,7 +395,7 @@ export class TransportCreep extends WaveCreep {
         }
 
         // For Stamps it only allows containers at miners when they are too full (should be emptied through link) or there isnt a link yet
-        const containers: StructureContainer[] = room.find(FIND_STRUCTURES).filter(
+        const containers: StructureContainer[] = room.structures.filter(
             (structure) =>
                 structure.structureType === STRUCTURE_CONTAINER &&
                 structure.store.getUsedCapacity() &&
@@ -460,9 +458,9 @@ export class TransportCreep extends WaveCreep {
             } else if (!this.pos.isNearTo(target)) {
                 let result = this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
                 if (this.memory._m.stuckCount && this.memory._m.path.length === 1) {
-                    let adjacentManagerAdjacentToTarget = this.pos
-                        .findInRange(FIND_MY_CREEPS, 1, { filter: (c) => c.memory.role === Role.MANAGER && c.pos.isNearTo(target) })
-                        ?.pop();
+                    let adjacentManagerAdjacentToTarget = this.room.myCreeps.find(
+                        (c) => c.memory.role === Role.MANAGER && this.pos.isNearTo(c) && c.pos.isNearTo(target)
+                    );
                     this.transfer(adjacentManagerAdjacentToTarget, RESOURCE_ENERGY);
                 }
             } else if (!this.actionTaken) {

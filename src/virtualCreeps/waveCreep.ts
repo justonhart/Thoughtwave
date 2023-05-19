@@ -134,10 +134,7 @@ export class WaveCreep extends Creep {
      */
     protected renewCreep() {
         if (this.travelToRoom(this.homeroom.name) === IN_ROOM && !this.memory.targetId2) {
-            this.memory.targetId2 = this.homeroom
-                .find(FIND_MY_SPAWNS)
-                ?.filter((spawn) => !spawn.spawning)
-                .shift()?.id;
+            this.memory.targetId2 = this.homeroom.mySpawns?.filter((spawn) => !spawn.spawning).shift()?.id;
         }
 
         const target = Game.getObjectById(this.memory.targetId2) as StructureSpawn;
@@ -163,31 +160,25 @@ export class WaveCreep extends Creep {
     protected recycleCreep() {
         this.memory.currentTaskPriority = Priority.HIGH; // Be able to move creeps off container
         if (this.travelToRoom(this.homeroom.name) === IN_ROOM && !this.memory.targetId) {
-            this.memory.targetId = this.homeroom
-                .find(FIND_MY_SPAWNS)
-                .filter((spawn) =>
-                    this.homeroom.memory.stampLayout.container.some((stamp) => stamp.type === 'center' && spawn.pos.isNearTo(stamp.pos.toRoomPos()))
-                )
-                ?.shift()?.id;
-            if (!this.memory.targetId) {
-                this.memory.targetId = this.homeroom.find(FIND_MY_SPAWNS)?.shift()?.id;
+                this.memory.targetId = this.homeroom.mySpawns
+                    .filter((spawn) =>
+                        this.homeroom.memory.stampLayout.container.some(
+                            (stamp) => stamp.type === 'center' && spawn.pos.isNearTo(stamp.pos.toRoomPos())
+                        )
+                    )
+                    ?.shift()?.id;
             }
-        }
+            if (!this.memory.targetId) {
+                this.memory.targetId = this.homeroom.mySpawns?.shift()?.id;
+            }
 
         const target = Game.getObjectById(this.memory.targetId) as StructureSpawn;
         if (target instanceof StructureSpawn) {
-            let containerPos = target.pos.findInRange(FIND_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_CONTAINER })?.pop()?.pos;
-            if (containerPos && this.pos.isEqualTo(containerPos)) {
+            let containerPos = this.homeroom.structures.find((s) => s.structureType === STRUCTURE_CONTAINER && target.pos.isNearTo(s))?.pos;
+            if (this.pos.isEqualTo(containerPos)) {
                 target.recycleCreep(this);
-            } else if(containerPos){
-                this.travelTo(containerPos);
             } else {
-                containerPos = this.homeroom.memory.stampLayout.container.find(stamp => stamp.type === 'center')?.pos.toRoomPos();
-                if(this.pos.isEqualTo(containerPos)){
-                    this.suicide();
-                } else {
-                    this.travelTo(containerPos);
-                }
+                this.travelTo(containerPos);
             }
         } else {
             delete this.memory.targetId;

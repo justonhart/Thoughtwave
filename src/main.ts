@@ -177,7 +177,7 @@ module.exports.loop = function () {
         runPowerCreeps(powerCreeps);
     }
 
-    if (Game.cpu.bucket === 10000) {
+    if (Game.cpu.bucket === 10000 && !Object.values(Memory.rooms).some((room) => room.threatLevel !== HomeRoomThreatLevel.SAFE)) {
         Game.cpu.generatePixel();
     }
 };

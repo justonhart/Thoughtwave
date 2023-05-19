@@ -1,4 +1,5 @@
 interface Memory {
+    username: string;
     remoteData: { [roomName: string]: RemoteData };
     roomData: { [roomName: string]: RoomData };
     priceMap?: { [resourceType: string]: number };

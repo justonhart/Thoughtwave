@@ -354,8 +354,7 @@ export class SquadManagement {
                         ignoreStructures: true,
                         maxRooms: 1,
                         customMatrixCosts: customCostMatrix.concat(
-                            this.squadLeader.room
-                                .find(FIND_MY_CREEPS)
+                            this.squadLeader.room.myCreeps
                                 .filter((myCreep) => myCreep.memory?.combat?.squadId !== this.squadLeader.memory.combat.squadId)
                                 .map((myCreep) => ({ x: myCreep.pos.x, y: myCreep.pos.y, cost: 255 }))
                         ),
@@ -371,15 +370,15 @@ export class SquadManagement {
         if (this.targetStructure && Game.getObjectById(this.targetStructure)) {
             target = Game.getObjectById(this.targetStructure);
         } else if (this.squadLeader.pos.roomName === this.assignment) {
-            const structuresToSearch = this.squadLeader.room.find(FIND_HOSTILE_STRUCTURES, {
-                filter: (struct) =>
+            const structuresToSearch = this.squadLeader.room.hostileStructures.filter(
+                (struct) =>
                     struct.structureType !== STRUCTURE_KEEPER_LAIR &&
                     struct.structureType !== STRUCTURE_LAB &&
                     struct.structureType !== STRUCTURE_NUKER &&
                     struct.structureType !== STRUCTURE_TERMINAL &&
                     struct.structureType !== STRUCTURE_STORAGE &&
-                    struct.structureType !== STRUCTURE_CONTROLLER,
-            });
+                    struct.structureType !== STRUCTURE_CONTROLLER
+            );
 
             target = this.squadLeader.pos.findClosestByRange(structuresToSearch, {
                 filter: (struct) => struct.structureType === STRUCTURE_TOWER,
@@ -457,8 +456,7 @@ export class SquadManagement {
 
     private findPath(target: any, range: number): PathFinderPath {
         const matrix = SquadManagement.getQuadMatrix(this.squadLeader, this.assignment, this.orientation, this.anchor).concat(
-            this.squadLeader.room
-                .find(FIND_MY_CREEPS)
+            this.squadLeader.room.myCreeps
                 .filter((myCreep) => myCreep.memory?.combat?.squadId !== this.squadLeader.memory.combat.squadId)
                 .map((myCreep) => ({ x: myCreep.pos.x, y: myCreep.pos.y, cost: 255 }))
         );
@@ -587,8 +585,7 @@ export class SquadManagement {
         const customCostMatrix: CustomMatrixCost[] = [];
 
         // Enemy Structures
-        Game.rooms[roomName]
-            .find(FIND_STRUCTURES)
+        Game.rooms[roomName].structures
             .filter((structure) => structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL)
             .forEach((blockade) => {
                 let cost = 25;
@@ -645,8 +642,7 @@ export class SquadManagement {
             }
         } else {
             // Structure Cost
-            Game.rooms[roomName]
-                .find(FIND_STRUCTURES)
+            Game.rooms[roomName].structures
                 .filter((structure) => structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL)
                 .forEach((blockade) => {
                     let cost = 50;

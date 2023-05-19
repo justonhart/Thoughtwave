@@ -41,7 +41,7 @@ export function findPoiAverage(room: Room) {
 
 // core structures are structures contained within auto-generated layouts: Spawns, storage, nuker, terminal, factory, extensions, labs, towers, observer
 export function roomNeedsCoreStructures(room: Room) {
-    let roomStructures = room.find(FIND_MY_STRUCTURES);
+    let roomStructures = room.myStructures;
     let spawnCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_SPAWN).length;
     let extensionCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_EXTENSION).length;
     let storage = roomStructures.filter((structure) => structure.structureType === STRUCTURE_STORAGE).length;

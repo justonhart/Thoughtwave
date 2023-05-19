@@ -387,20 +387,22 @@ export class Pathing {
                 matrix = matrix.clone();
                 if (options.avoidSourceKeepers && isKeeperRoom(room.name)) {
                     const terrain = Game.map.getRoomTerrain(roomName);
-                    room.find(FIND_HOSTILE_CREEPS, {
-                        filter: (creep) =>
-                            creep.owner.username === 'Source Keeper' &&
-                            (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0),
-                    }).forEach((creep) => {
-                        const avoidArea = getArea(creep.pos, 3);
-                        for (let x = avoidArea.left; x <= avoidArea.right; x++) {
-                            for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
-                                if ((x !== destination.x || y !== destination.y) && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
-                                    matrix.set(x, y, 50);
+                    room.hostileCreeps
+                        .filter(
+                            (creep) =>
+                                creep.owner.username === 'Source Keeper' &&
+                                (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0)
+                        )
+                        .forEach((creep) => {
+                            const avoidArea = getArea(creep.pos, 3);
+                            for (let x = avoidArea.left; x <= avoidArea.right; x++) {
+                                for (let y = avoidArea.top; y <= avoidArea.bottom; y++) {
+                                    if ((x !== destination.x || y !== destination.y) && terrain.get(x, y) !== TERRAIN_MASK_WALL) {
+                                        matrix.set(x, y, 50);
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
                 }
 
                 if (options.exitCost) {
@@ -468,18 +470,20 @@ export class Pathing {
                             road.split(',').forEach((pos) => matrix.set(parseInt(pos.split(':')[0]), parseInt(pos.split(':')[1]), 1))
                         );
                     }
-                    room.find(FIND_MY_CONSTRUCTION_SITES, { filter: (struct) => struct.structureType === STRUCTURE_ROAD }).forEach((struct) =>
-                        matrix.set(struct.pos.x, struct.pos.y, 1)
-                    );
+                    room.myConstructionSites
+                        .filter((struct) => struct.structureType === STRUCTURE_ROAD)
+                        .forEach((struct) => matrix.set(struct.pos.x, struct.pos.y, 1));
                 }
 
                 if (options.preferRamparts) {
-                    room.find(FIND_MY_STRUCTURES, { filter: (struct) => struct.structureType === STRUCTURE_RAMPART }).forEach((rampart) => {
-                        const costAtPos = matrix.get(rampart.pos.x, rampart.pos.y);
-                        if (!costAtPos || (costAtPos > 1 && costAtPos < 255)) {
-                            matrix.set(rampart.pos.x, rampart.pos.y, 2); // Ramparts without roads and walkable
-                        }
-                    });
+                    room.myStructures
+                        .filter((struct) => struct.structureType === STRUCTURE_RAMPART)
+                        .forEach((rampart) => {
+                            const costAtPos = matrix.get(rampart.pos.x, rampart.pos.y);
+                            if (!costAtPos || (costAtPos > 1 && costAtPos < 255)) {
+                                matrix.set(rampart.pos.x, rampart.pos.y, 2); // Ramparts without roads and walkable
+                            }
+                        });
                 }
 
                 if (options.customMatrixCosts) {
@@ -591,7 +595,7 @@ export class Pathing {
      * @returns changed costmatrix
      */
     static addStructuresToMatrix(room: Room, matrix: CostMatrix, roadCost: number): CostMatrix {
-        for (let structure of room.find(FIND_STRUCTURES)) {
+        for (let structure of room.structures) {
             if (structure.structureType === STRUCTURE_RAMPART) {
                 if (!structure.my) {
                     // Even if isPublic to avoid maze trap
@@ -607,7 +611,7 @@ export class Pathing {
                 }
             }
         }
-        for (let site of room.find(FIND_MY_CONSTRUCTION_SITES)) {
+        for (let site of room.myConstructionSites) {
             if (site.structureType === STRUCTURE_CONTAINER || site.structureType === STRUCTURE_ROAD || site.structureType === STRUCTURE_RAMPART) {
                 continue;
             }
@@ -618,7 +622,8 @@ export class Pathing {
     }
     //add creeps to matrix so that they will be avoided by other creeps
     static addCreepsToMatrix(room: Room, matrix: CostMatrix): CostMatrix {
-        room.find(FIND_CREEPS).forEach((creep) => matrix.set(creep.pos.x, creep.pos.y, 0xff));
+        room.myCreeps.forEach((creep) => matrix.set(creep.pos.x, creep.pos.y, 0xff));
+        room.hostileCreeps.forEach((creep) => matrix.set(creep.pos.x, creep.pos.y, 0xff));
         return matrix;
     }
     //serialize a path, Pathing style. Returns a string of directions.
@@ -669,7 +674,9 @@ export class Pathing {
         if (creep.memory._m.path) {
             const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
             //check if creep is in nextPos
-            const obstacleCreep = creep.pos.findInRange(FIND_MY_CREEPS, 1, { filter: (c) => creep.pos.getDirectionTo(c) === nextDirection })[0];
+            const obstacleCreep = creep.room.myCreeps.find(
+                (c) => creep.id !== c.id && creep.pos.isNearTo(c) && creep.pos.getDirectionTo(c) === nextDirection
+            );
             if (obstacleCreep?.memory?._m?.destination) {
                 obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
                 if (obstacleCreep.memory._m?.path?.length > 1) {
@@ -716,9 +723,9 @@ export class Pathing {
                 obstacleCreep.memory._m.repath++; // Since pushing a creep can mess with the path
                 return Pathing.moveObstacleCreep(obstacleCreep, Pathing.inverseDirection(nextDirection));
             } else {
-                const powerCreepObstacle = creep.pos.findInRange(FIND_MY_POWER_CREEPS, 1, {
-                    filter: (c) => creep.pos.getDirectionTo(c) === nextDirection,
-                })[0];
+                const powerCreepObstacle = creep.room.myPowerCreeps.find(
+                    (powerCreep) => creep.pos.isNearTo(powerCreep) && creep.pos.getDirectionTo(powerCreep) === nextDirection
+                );
                 if (powerCreepObstacle) {
                     // @ts-ignore
                     powerCreepObstacle.memory._m.repath++;
