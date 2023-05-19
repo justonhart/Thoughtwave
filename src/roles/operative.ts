@@ -120,7 +120,7 @@ export class Operative extends WorkerCreep {
     }
 
     private findSterilizeTarget(): Id<Structure> {
-        let target = this.room.find(FIND_HOSTILE_STRUCTURES).find((structure) => structure.structureType === STRUCTURE_SPAWN);
+        let target = this.room.hostileStructures.find((structure) => structure.structureType === STRUCTURE_SPAWN);
         return target?.id;
     }
 
@@ -190,7 +190,7 @@ export class Operative extends WorkerCreep {
 
     private findCollectionTarget(): Id<Structure> | Id<Ruin> | Id<Resource> {
         if (this.memory.operation === OperationType.POWER_BANK) {
-            const powerbank = this.room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_POWER_BANK })?.shift();
+            const powerbank = this.room.structures.find((s) => s.structureType === STRUCTURE_POWER_BANK);
             if (powerbank) {
                 return powerbank.id; // Go towards powerbank (easier to protect)
             }
@@ -220,16 +220,14 @@ export class Operative extends WorkerCreep {
             return ruin.id;
         }
 
-        let structure = this.room
-            .find(FIND_STRUCTURES, {
-                filter: (s) =>
-                    (s.structureType === STRUCTURE_STORAGE ||
-                        s.structureType === STRUCTURE_TERMINAL ||
-                        (s.structureType === STRUCTURE_LAB && s.mineralType && s.store[s.mineralType]) ||
-                        (s.structureType === STRUCTURE_NUKER && (s.store.energy || s.store.G))) &&
-                    (this.operation.resource ? s.store[this.operation.resource] : s.store.getUsedCapacity()),
-            })
-            .shift();
+        let structure = this.room.structures.find(
+            (s) =>
+                (s.structureType === STRUCTURE_STORAGE ||
+                    s.structureType === STRUCTURE_TERMINAL ||
+                    (s.structureType === STRUCTURE_LAB && s.mineralType && s.store[s.mineralType]) ||
+                    (s.structureType === STRUCTURE_NUKER && (s.store.energy || s.store.G))) &&
+                (this.operation.resource ? s.store[this.operation.resource] : s.store.getUsedCapacity())
+        );
 
         if (structure) {
             return structure.id;
@@ -243,12 +241,12 @@ export class Operative extends WorkerCreep {
     private findCleanTarget(): Id<Structure> {
         let destinationRoom = Game.rooms[this.memory.destination];
 
-        let targets = destinationRoom.find(FIND_HOSTILE_STRUCTURES, {
-            filter: (struct) =>
+        let targets = destinationRoom.hostileStructures.filter(
+            (struct) =>
                 !((struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) && struct.store.getUsedCapacity()) &&
                 !(struct.structureType === STRUCTURE_LAB && struct.mineralType) &&
-                !(struct.structureType === STRUCTURE_NUKER && (struct.store.energy || struct.store.G)),
-        });
+                !(struct.structureType === STRUCTURE_NUKER && (struct.store.energy || struct.store.G))
+        );
 
         return this.pos.findClosestByRange(targets)?.id;
     }
@@ -279,21 +277,22 @@ export class Operative extends WorkerCreep {
     private findBuildTarget(): Id<Structure> | Id<ConstructionSite> {
         const room = Game.rooms[this.memory.destination];
 
-        let constructedDefenses = this.pos
-            .findInRange(FIND_STRUCTURES, 3)
-            .filter(
-                (structure) => (structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) && structure.hits === 1
-            );
-        if (constructedDefenses.length) {
-            return constructedDefenses.shift().id;
+        let constructedDefenses = room?.structures.find(
+            (structure) =>
+                (structure.structureType === STRUCTURE_RAMPART || structure.structureType === STRUCTURE_WALL) &&
+                structure.hits === 1 &&
+                this.pos.getRangeTo(structure) <= 3
+        );
+        if (constructedDefenses) {
+            return constructedDefenses.id;
         }
 
-        const sites = room?.find(FIND_MY_CONSTRUCTION_SITES);
+        const sites = room?.myConstructionSites;
         if (sites.length) {
             return sites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
         }
 
-        const ramparts = room?.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_RAMPART && s.hits < 250000 });
+        const ramparts = room?.myStructures.filter((s) => s.structureType === STRUCTURE_RAMPART && s.hits < 250000);
         if (ramparts.length) {
             return this.room.name === room.name ? this.pos.findClosestByRange(ramparts).id : ramparts.pop().id;
         }

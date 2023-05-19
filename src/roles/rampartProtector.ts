@@ -18,8 +18,8 @@ export class RampartProtector extends CombatCreep {
             // Assasination
             if (this.memory.ready >= 5) {
                 const targetCreep = Game.getObjectById(this.memory.targetId2);
-                const secondProtector = Object.values(Game.creeps).find(
-                    (creep) => creep.id !== this.id && creep.room.name === this.room.name && creep.pos.isNearTo(targetCreep)
+                const secondProtector = this.room.myCreeps.find(
+                    (creep) => creep.id !== this.id && creep.pos.isNearTo(targetCreep)
                 ) as RampartProtector;
                 if (targetCreep && secondProtector) {
                     secondProtector.memory.ready = 0;
@@ -67,7 +67,7 @@ export class RampartProtector extends CombatCreep {
                     this.hits === this.hitsMax &&
                     this.ticksToLive > 7 &&
                     Pathing.sameCoord(this.pos, target.pos) &&
-                    !Object.values(Game.creeps).some(
+                    !this.room.myCreeps.some(
                         (creep) => creep.id !== this.id && creep.memory.targetId2 === this.memory.targetId2 && creep.memory.ready > 0
                     ) &&
                     !targetCreep.getActiveBodyparts(ATTACK) &&
@@ -80,10 +80,9 @@ export class RampartProtector extends CombatCreep {
                     this.memory.ready++;
 
                     if (this.memory.ready >= 3) {
-                        const secondProtector = Object.values(Game.creeps).find(
+                        const secondProtector = this.room.myCreeps.find(
                             (creep) =>
                                 creep.id !== this.id &&
-                                creep.room.name === this.room.name &&
                                 creep.ticksToLive > 5 &&
                                 creep.pos.getRangeTo(targetCreep) === 2 &&
                                 !creep.fatigue &&
@@ -109,7 +108,7 @@ export class RampartProtector extends CombatCreep {
                                 survive = this.canSurvive(
                                     Pathing.positionAtDirection(secondProtector.pos, secondProtector.pos.getDirectionTo(targetCreep))
                                 );
-                                if (!survive || Object.values(Game.creeps).some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
+                                if (!survive || this.room.myCreeps.some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
                                     this.memory.ready = 0;
                                     return;
                                 }
@@ -132,7 +131,7 @@ export class RampartProtector extends CombatCreep {
                                         (directionToEnemy + 1 === 9 ? 1 : directionToEnemy + 1) as DirectionConstant
                                     )
                                 );
-                                if (!survive || Object.values(Game.creeps).some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
+                                if (!survive || this.room.myCreeps.some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
                                     this.memory.ready = 0;
                                     return;
                                 }
@@ -155,7 +154,7 @@ export class RampartProtector extends CombatCreep {
                                         (directionToEnemy - 1 === 0 ? 8 : directionToEnemy - 1) as DirectionConstant
                                     )
                                 );
-                                if (!survive || Object.values(Game.creeps).some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
+                                if (!survive || this.room.myCreeps.some((creep) => creep.id !== this.id && creep.memory.ready >= 4)) {
                                     this.memory.ready = 0;
                                     return;
                                 }
@@ -231,45 +230,40 @@ export class RampartProtector extends CombatCreep {
 
     private findTarget(): Id<Creep> {
         let squads = this.identifySquads();
-        const alreadyTargeted = this.room.creeps
+        const alreadyTargeted = this.room.myCreeps
             .filter((creep) => creep.id !== this.id && creep.memory.role === Role.RAMPART_PROTECTOR)
             .map((creep) => creep.memory.targetId2);
         alreadyTargeted.forEach((targetId) => {
             squads = squads.filter((squad) => !squad.some((squadCreepId) => squadCreepId === targetId));
         });
 
-        let hostileCreeps = this.room
-            .find(FIND_HOSTILE_CREEPS)
-            .filter(
-                (creep: Creep) =>
-                    creep.body.some(
-                        (bodyPart) => bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === WORK || bodyPart.type === HEAL
-                    ) && squads.some((squad) => squad.some((squadCreepId) => squadCreepId === creep.id))
-            );
+        let hostileCreeps = this.room.hostileCreeps.filter(
+            (creep: Creep) =>
+                creep.body.some(
+                    (bodyPart) => bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === WORK || bodyPart.type === HEAL
+                ) && squads.some((squad) => squad.some((squadCreepId) => squadCreepId === creep.id))
+        );
 
         // If all squads are covered double team up
         if (!hostileCreeps.length) {
-            const otherProtectors = Object.values(Game.creeps).filter(
+            const otherProtectors = this.room.myCreeps.filter(
                 (creep) =>
                     this.id !== creep.id &&
                     creep.memory.role === Role.RAMPART_PROTECTOR &&
-                    creep.memory.room === this.memory.room &&
                     Game.getObjectById(creep.memory.targetId2)?.pos?.roomName === this.room.name
             );
 
             if (otherProtectors.length) {
                 // If in range to assasinate enemy creep
-                const closestCreeps = this.room
-                    .find(FIND_HOSTILE_CREEPS)
-                    .filter(
-                        (creep: Creep) =>
-                            creep.body.some(
-                                (bodyPart) =>
-                                    bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === WORK || bodyPart.type === HEAL
-                            ) &&
-                            creep.pos.getRangeTo(this) <= 2 &&
-                            creep.ticksToLive > 30
-                    );
+                const closestCreeps = this.room.hostileCreeps.filter(
+                    (creep: Creep) =>
+                        creep.body.some(
+                            (bodyPart) =>
+                                bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === WORK || bodyPart.type === HEAL
+                        ) &&
+                        creep.pos.getRangeTo(this) <= 2 &&
+                        creep.ticksToLive > 30
+                );
                 if (closestCreeps.length) {
                     let closestProtector;
                     const creepInRange = closestCreeps.find((hostileCreep) =>
@@ -307,13 +301,11 @@ export class RampartProtector extends CombatCreep {
         }
 
         // Shouldn't be needed but just in case nothing matched up
-        return this.room
-            .find(FIND_HOSTILE_CREEPS)
-            .find((creep: Creep) =>
-                creep.body.some(
-                    (bodyPart) => bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === WORK || bodyPart.type === HEAL
-                )
-            )?.id;
+        return this.room.hostileCreeps.find((creep: Creep) =>
+            creep.body.some(
+                (bodyPart) => bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK || bodyPart.type === WORK || bodyPart.type === HEAL
+            )
+        )?.id;
     }
 
     /**
@@ -322,12 +314,10 @@ export class RampartProtector extends CombatCreep {
      */
     private getTargetedRampart(hostileCreepId: Id<Creep>): Id<StructureRampart> {
         if (hostileCreepId) {
-            const myRamparts = this.room
-                .find(FIND_STRUCTURES)
-                .filter(
-                    (structure) =>
-                        structure.structureType === STRUCTURE_RAMPART && this.room.memory.miningAssignments[structure.pos.toMemSafe()] === undefined
-                ) as StructureRampart[];
+            const myRamparts = this.room.structures.filter(
+                (structure) =>
+                    structure.structureType === STRUCTURE_RAMPART && this.room.memory.miningAssignments[structure.pos.toMemSafe()] === undefined
+            ) as StructureRampart[];
 
             if (myRamparts.length) {
                 const closestHostile = Game.getObjectById(hostileCreepId);
@@ -337,7 +327,7 @@ export class RampartProtector extends CombatCreep {
                     .filter(
                         (rampart) =>
                             !rampart.pos.lookFor(LOOK_CREEPS).some((creep) => creep.memory.role === Role.RAMPART_PROTECTOR) &&
-                            !Object.values(Game.creeps).some((creep) => creep.id !== this.id && creep.memory.targetId === rampart.id)
+                            !this.room.myCreeps.some((creep) => creep.id !== this.id && creep.memory.targetId === rampart.id)
                     )
                     .forEach((emptyRamparts) => {
                         // Find closest rampart and prefer the ones that are in front of the enemy creep

@@ -7,12 +7,23 @@ export class Hero extends PowerCreep {
             this.renewCreep(target);
         } else if (!this.room.controller.isPowerEnabled) {
             this.enableCurrentRoom(target);
-        } else if (this.store.getUsedCapacity() > this.store.getCapacity() / 1.2) {
+        } else if (
+            this.store.getUsedCapacity() > this.store.getCapacity() / 1.2 &&
+            this.room.storage?.store?.getFreeCapacity() > this.store.getUsedCapacity()
+        ) {
             this.storeExtraOps(target);
         } else {
             // Passive Powers (should always run but with lower priority than active ones)
             this.generateOps();
-            this.boostSource(target);
+            this.runActivePowers(target);
+
+            // Should only happen when storage is full and no active powers are being used
+            if (this.store.getUsedCapacity() > this.store.getCapacity() / 1.1) {
+                if (target instanceof Source) {
+                    target = undefined; // Force it to grab a unboosted spawn
+                }
+                this.runActivePowers(target);
+            }
         }
 
         target = Game.getObjectById(this.memory.targetId) as Structure;
@@ -22,6 +33,14 @@ export class Hero extends PowerCreep {
                 range: target instanceof StructurePowerSpawn || target instanceof StructureController || target instanceof StructureStorage ? 1 : 3,
             });
         }
+    }
+
+    /**
+     * Should include all active powers in order of priority
+     * @param target
+     */
+    private runActivePowers(target: Structure) {
+        this.boostSource(target);
     }
 
     /**
@@ -151,7 +170,7 @@ export class Hero extends PowerCreep {
             this.withdraw(this.room.storage, RESOURCE_OPS, 300);
             delete this.memory.targetId;
         } else if (!target && this.memory.cooldown[PWR_OPERATE_SPAWN] < Game.time) {
-            const spawns = this.room.find(FIND_MY_SPAWNS);
+            const spawns = this.room.mySpawns;
             const targetSpawn = spawns.find(
                 (spawn) => !spawn.effects?.some((effect) => effect.effect === PWR_OPERATE_SPAWN && effect.ticksRemaining > 20)
             );

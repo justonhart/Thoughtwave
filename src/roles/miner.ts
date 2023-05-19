@@ -7,9 +7,12 @@ export class Miner extends WaveCreep {
         if (this.pos.isEqualTo(assignedPos)) {
             // Prioritize filling extensions and repairing container
             if (this.homeroom.memory.layout === RoomLayout.STAMP && this.getActiveBodyparts(CARRY)) {
-                const minerExtension = this.pos
-                    .findInRange(FIND_MY_STRUCTURES, 1)
-                    .find((structure) => structure.structureType === STRUCTURE_EXTENSION && structure.store.getFreeCapacity(RESOURCE_ENERGY));
+                const minerExtension = this.room.myStructures.find(
+                    (structure) =>
+                        structure.structureType === STRUCTURE_EXTENSION &&
+                        structure.store.getFreeCapacity(RESOURCE_ENERGY) &&
+                        this.pos.isNearTo(structure)
+                );
                 if (minerExtension) {
                     if (!this.store.energy) {
                         const container = this.pos

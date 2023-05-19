@@ -121,11 +121,7 @@ export function getStoragePos(room: Room): RoomPosition {
         case RoomLayout.STAMP:
             return room.memory.stampLayout.storage[0].pos.toRoomPos();
         default:
-            return (
-                room.find(FIND_MY_STRUCTURES, {
-                    filter: (struct) => struct.structureType === STRUCTURE_STORAGE,
-                }) as StructureStorage[]
-            )[0].pos;
+            return room.myStructures.find((struct) => struct.structureType === STRUCTURE_STORAGE)?.pos;
     }
 }
 
@@ -175,7 +171,7 @@ function getBunkerRoadsToPOIs(anchorPos: RoomPosition) {
             }
         }
 
-        roadPositions.push(...room.find(FIND_MY_CONSTRUCTION_SITES).filter((site) => site.structureType === STRUCTURE_ROAD));
+        roadPositions.push(...room.myConstructionSites.filter((site) => site.structureType === STRUCTURE_ROAD));
 
         if (Memory.rooms[room.name]) {
             blockedPositions.push(...Object.keys(room.memory.miningAssignments).map((pos) => pos.toRoomPos()));
@@ -337,8 +333,8 @@ export function placeMinerLinks(room: Room) {
                 let assignmentPos = assignmentString.toRoomPos();
 
                 let linkNeeded =
-                    !assignmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((structure) => structure.structureType === STRUCTURE_LINK) &&
-                    !assignmentPos.findInRange(FIND_MY_CONSTRUCTION_SITES, 1).find((site) => site.structureType === STRUCTURE_LINK);
+                    !room.myStructures.some((structure) => structure.structureType === STRUCTURE_LINK && assignmentPos.isNearTo(structure)) &&
+                    !room.myConstructionSites.some((site) => site.structureType === STRUCTURE_LINK && assignmentPos.isNearTo(site));
 
                 if (linkNeeded) {
                     let looks = room.lookAtArea(assignmentPos.y - 1, assignmentPos.x - 1, assignmentPos.y + 1, assignmentPos.x + 1, true);
@@ -386,7 +382,7 @@ export function placeUpgraderLink(room: Room) {
 
 // core structures are structures contained within auto-generated layouts: Spawns, storage, nuker, terminal, factory, extensions, labs, towers, observer
 export function roomNeedsCoreStructures(room: Room) {
-    let roomStructures = room.find(FIND_MY_STRUCTURES);
+    let roomStructures = room.myStructures;
     let spawnCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_SPAWN).length;
     let extensionCount = roomStructures.filter((structure) => structure.structureType === STRUCTURE_EXTENSION).length;
     let storage = roomStructures.filter((structure) => structure.structureType === STRUCTURE_STORAGE).length;
@@ -460,11 +456,15 @@ export function placeBunkerConstructionSites(room: Room) {
                     } else {
                         //only place roads adjacent to structures
                         let adjacentStructures =
-                            buildPosition
-                                .findInRange(FIND_MY_CONSTRUCTION_SITES, 1)
-                                .filter((s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_RAMPART)
+                            room.myConstructionSites
+                                .filter(
+                                    (structure) =>
+                                        structure.structureType !== STRUCTURE_ROAD &&
+                                        structure.structureType !== STRUCTURE_RAMPART &&
+                                        buildPosition.isNearTo(structure)
+                                )
                                 //@ts-expect-error
-                                .concat(buildPosition.findInRange(FIND_MY_STRUCTURES, 1))
+                                .concat(room.myStructures.filter((structure) => buildPosition.isNearTo(structure)))
                                 .filter((structure) => structure.structureType !== STRUCTURE_RAMPART).length > 0;
                         if (adjacentStructures) {
                             let addResult = room.createConstructionSite(buildPosition, structureType);

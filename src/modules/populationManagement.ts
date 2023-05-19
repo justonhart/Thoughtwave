@@ -57,10 +57,10 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn, roomUnderAttack?: boolean): ScreepsReturnCode {
         const INCOMING_NUKE = spawn.room.find(FIND_NUKES).length > 0;
-        let workers = spawn.room.creeps.filter((creep) => creep.memory.role === Role.WORKER);
-        let hasUpgrader = spawn.room.creeps.some((c) => c.memory.role === Role.UPGRADER);
+        let workers = spawn.room.myCreepsByMemory.filter((creep) => creep.memory.role === Role.WORKER);
+        let hasUpgrader = spawn.room.myCreepsByMemory.some((c) => c.memory.role === Role.UPGRADER);
         let roomNeedsConstruction =
-            spawn.room.memory.repairQueue.length + spawn.room.find(FIND_MY_CONSTRUCTION_SITES).length > 0 || spawn.room.memory.needsWallRepair;
+            spawn.room.memory.repairQueue.length + spawn.room.myConstructionSites.length > 0 || spawn.room.memory.needsWallRepair;
 
         let workerCount = workers.length + (hasUpgrader ? 1 : 0);
 
@@ -174,14 +174,10 @@ export class PopulationManagement {
                 break;
             //room has no storage
             default:
-                let hasStartupEnergy =
-                    room
-                        .find(FIND_STRUCTURES)
-                        .filter(
-                            (struct) =>
-                                (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) &&
-                                struct.store.energy > 200000
-                        ).length > 0;
+                let hasStartupEnergy = room.structures.some(
+                    (struct) =>
+                        (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) && struct.store.energy > 200000
+                );
                 if (hasStartupEnergy) {
                     creepCapacity *= 4;
                 }
@@ -209,9 +205,9 @@ export class PopulationManagement {
     static getMinerBody(miningPos: RoomPosition, energyCapacityAvailable: number, powerLevel: number = 0): (WORK | MOVE | CARRY)[] {
         let minerBody: (WORK | MOVE | CARRY)[] = [];
 
-        const minerStructures = miningPos
-            .findInRange(FIND_MY_STRUCTURES, 1)
-            .filter((s) => s.structureType === STRUCTURE_LINK || s.structureType === STRUCTURE_EXTENSION);
+        const minerStructures = Game.rooms[miningPos.roomName].myStructures.filter(
+            (struct) => (struct.structureType === STRUCTURE_LINK || struct.structureType === STRUCTURE_EXTENSION) && miningPos.isNearTo(struct)
+        );
         if (Memory.rooms[miningPos.roomName].layout === RoomLayout.STAMP) {
             if (minerStructures.some((minerStructure) => minerStructure.structureType === STRUCTURE_EXTENSION)) {
                 if (energyCapacityAvailable >= 850) {
@@ -275,7 +271,9 @@ export class PopulationManagement {
         };
 
         let assigmentPos = assigment.toRoomPos();
-        let link = assigmentPos.findInRange(FIND_MY_STRUCTURES, 1).find((s) => s.structureType === STRUCTURE_LINK) as StructureLink;
+        let link = spawn.room.myStructures.find(
+            (struct) => struct.structureType === STRUCTURE_LINK && assigmentPos.isNearTo(struct)
+        ) as StructureLink;
         if (link) {
             options.memory.link = link.id;
         }
@@ -297,7 +295,7 @@ export class PopulationManagement {
             spawn.room.memory.miningAssignments[assigment] = name;
         } else if (
             result === ERR_NOT_ENOUGH_ENERGY &&
-            !spawn.room.find(FIND_MY_CREEPS).filter((creep) => creep.memory.role === Role.MINER).length &&
+            !spawn.room.myCreepsByMemory.some((creep) => creep.memory.role === Role.MINER) &&
             (!spawn.room.storage || spawn.room.storage?.store[RESOURCE_ENERGY] < 1000)
         ) {
             let emergencyMinerBody: (WORK | MOVE | CARRY)[] = [WORK, WORK, MOVE];
@@ -766,8 +764,7 @@ export class PopulationManagement {
             const prioritizedExtensions = spawn.room.memory.stampLayout.extension.filter(
                 (extensionDetail) => extensionDetail.type?.includes('source') || extensionDetail.type === 'center'
             );
-            opts.energyStructures = spawn.room
-                .find(FIND_MY_STRUCTURES)
+            opts.energyStructures = spawn.room.myStructures
                 .filter((structure) => structure.structureType === STRUCTURE_SPAWN || structure.structureType === STRUCTURE_EXTENSION)
                 .sort((structA, structB) => {
                     if (structA.structureType === STRUCTURE_SPAWN) {
@@ -918,15 +915,16 @@ export class PopulationManagement {
     }
 
     static getNewStampManager(room: Room) {
-        const currentManagers = room.creeps.filter((creep) => creep.memory.role === Role.MANAGER).map((manager) => manager.memory.destination);
+        const currentManagers = room.myCreepsByMemory
+            .filter((creep) => creep.memory.role === Role.MANAGER)
+            .map((manager) => manager.memory.destination);
         return room.memory.stampLayout.managers.find(
             (managerDetail) => managerDetail.rcl <= room.controller.level && !currentManagers.some((positions) => managerDetail.pos === positions)
         );
     }
 
     static needsManager(room: Room): boolean {
-        let roomCreeps = Object.values(Game.creeps).filter((creep) => creep.memory.room === room.name);
-        let manager = roomCreeps.filter((creep) => creep.memory.role === Role.MANAGER);
+        let manager = room.myCreepsByMemory.filter((creep) => creep.memory.role === Role.MANAGER);
         if (room.memory.layout === RoomLayout.STAMP) {
             return room.memory.stampLayout.managers.filter((managerDetail) => managerDetail.rcl <= room.controller.level)?.length > manager?.length;
         }
@@ -944,7 +942,7 @@ export class PopulationManagement {
 
     static currentNumRampartProtectors(roomName: string): number {
         return (
-            Object.values(Game.creeps).filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR && creep.pos.roomName === roomName).length +
+            Game.rooms[roomName].myCreepsByMemory.filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR).length +
             Memory.spawnAssignments.filter(
                 (creep) => creep.spawnOpts.memory.role === Role.RAMPART_PROTECTOR && creep.spawnOpts.memory.room === roomName
             ).length
@@ -952,7 +950,7 @@ export class PopulationManagement {
     }
 
     static needsTransporter(room: Room) {
-        let transporter = Object.values(Game.creeps).find((c) => c.memory.role === Role.TRANSPORTER && c.memory.room === room.name);
+        let transporter = room.myCreepsByMemory.find((c) => c.memory.role === Role.TRANSPORTER);
         let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 1000);
         let bigRuins = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 10000 });
         return !transporter && !!room.storage && bigDroppedResources.length + bigRuins.length > 1;
@@ -972,11 +970,9 @@ export class PopulationManagement {
             (k) =>
                 mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED &&
                 (Game.rooms[k.toRoomPos()?.roomName]
-                    ? k
-                          .toRoomPos()
-                          .findInRange(FIND_STRUCTURES, 1)
-                          .filter((struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.isActive()).length &&
-                      Game.rooms[k.toRoomPos()?.roomName].mineral.mineralAmount > 0
+                    ? room.structures.some(
+                          (struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.isActive() && k.toRoomPos().isNearTo(struct)
+                      ) && Game.rooms[k.toRoomPos()?.roomName].mineral.mineralAmount > 0
                     : true)
         );
     }

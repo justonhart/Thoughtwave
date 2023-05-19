@@ -85,12 +85,48 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
 });
 
 Room.prototype.canSpawn = function (this: Room): boolean {
-    return this.find(FIND_MY_STRUCTURES).filter((structure) => structure.structureType === STRUCTURE_SPAWN).length > 0;
+    return this.mySpawns.length > 0;
 };
 
-Object.defineProperty(Room.prototype, 'creeps', {
+Object.defineProperty(Room.prototype, 'myCreepsByMemory', {
     get: function (this: Room) {
-        return Object.values(Game.creeps).filter((creep) => creep.memory.room === this.name);
+        if (!this._myCreepsByMemory) {
+            this._myCreepsByMemory = Object.values(Game.creeps).filter((creep) => creep.memory.room === this.name);
+        }
+        return this._myCreepsByMemory;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'myPowerCreeps', {
+    get: function (this: Room) {
+        if (!this._myPowerCreeps) {
+            this._myPowerCreeps = this.find(FIND_MY_POWER_CREEPS);
+        }
+        return this._myPowerCreeps;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'myCreeps', {
+    get: function (this: Room) {
+        if (!this._myCreeps) {
+            this._myCreeps = this.find(FIND_MY_CREEPS);
+        }
+        return this._myCreeps;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'hostileCreeps', {
+    get: function (this: Room) {
+        if (!this._hostileCreeps) {
+            this._hostileCreeps = this.find(FIND_HOSTILE_CREEPS);
+        }
+        return this._hostileCreeps;
     },
     enumerable: false,
     configurable: true,
@@ -98,7 +134,10 @@ Object.defineProperty(Room.prototype, 'creeps', {
 
 Object.defineProperty(Room.prototype, 'mineral', {
     get: function (this: Room) {
-        return this.find(FIND_MINERALS).pop();
+        if (!this._mineral) {
+            this._mineral = this.find(FIND_MINERALS).pop();
+        }
+        return this._mineral;
     },
     enumerable: false,
     configurable: true,
@@ -106,19 +145,14 @@ Object.defineProperty(Room.prototype, 'mineral', {
 
 Object.defineProperty(Room.prototype, 'managerLink', {
     get: function (this: Room) {
-        let posToCheck = this.memory.anchorPoint?.toRoomPos() || this.memory.managerPos?.toRoomPos();
-        if (this.memory.layout === RoomLayout.STAMP) {
-            posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'rm')?.pos?.toRoomPos();
-        } else if (this.memory.managerLink) {
-            return Game.getObjectById(this.memory.managerLink);
-        }
+        if (!this._managerLink) {
+            const posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'rm')?.pos?.toRoomPos();
 
-        let link = posToCheck
-            ?.findInRange(FIND_MY_STRUCTURES, 1)
-            .filter((structure) => structure.structureType === STRUCTURE_LINK)
-            .pop();
-        this.memory.managerLink = link?.id;
-        return link;
+            const link = this.myStructures.find((struct) => struct.structureType === STRUCTURE_LINK && posToCheck.isNearTo(struct)) as StructureLink;
+            this.memory.managerLink = link?.id;
+            this._managerLink = link;
+        }
+        return this._managerLink;
     },
     enumerable: false,
     configurable: true,
@@ -126,18 +160,16 @@ Object.defineProperty(Room.prototype, 'managerLink', {
 
 Object.defineProperty(Room.prototype, 'upgraderLink', {
     get: function (this: Room) {
-        let posToCheck: RoomPosition;
-        if (this.memory.layout === RoomLayout.STAMP) {
-            posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'controller')?.pos?.toRoomPos();
-        } else {
-            posToCheck = this.memory.upgraderLinkPos?.toRoomPos();
-        }
+        if (!this._upgraderLink) {
+            const posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'controller')?.pos?.toRoomPos();
 
-        let link = posToCheck
-            ?.lookFor(LOOK_STRUCTURES)
-            .filter((structure) => structure.structureType === STRUCTURE_LINK)
-            .pop();
-        return link;
+            const link = posToCheck
+                ?.lookFor(LOOK_STRUCTURES)
+                .filter((structure) => structure.structureType === STRUCTURE_LINK)
+                .pop() as StructureLink;
+            this._upgraderLink = link;
+        }
+        return this._upgraderLink;
     },
     enumerable: false,
     configurable: true,
@@ -145,7 +177,76 @@ Object.defineProperty(Room.prototype, 'upgraderLink', {
 
 Object.defineProperty(Room.prototype, 'workerCapacity', {
     get: function (this: Room) {
-        return PopulationManagement.calculateWorkerCapacity(this);
+        if (!this._workerCapacity) {
+            this._workerCapacity = PopulationManagement.calculateWorkerCapacity(this);
+        }
+        return this._workerCapacity;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'myConstructionSites', {
+    get: function (this: Room) {
+        if (!this._myConstructionSites) {
+            this._myConstructionSites = this.find(FIND_MY_CONSTRUCTION_SITES);
+        }
+        return this._myConstructionSites;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'structures', {
+    get: function (this: Room) {
+        if (!this._structures) {
+            this._structures = this.find(FIND_STRUCTURES);
+        }
+        return this._structures;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'myStructures', {
+    get: function (this: Room) {
+        if (!this._myStructures) {
+            this._myStructures = this.structures.filter((struct) => struct instanceof OwnedStructure && struct.my) as AnyOwnedStructure[];
+        }
+        return this._myStructures;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'hostileStructures', {
+    get: function (this: Room) {
+        if (!this._hostileStructures) {
+            this._hostileStructures = this.structures.filter((struct) => struct instanceof OwnedStructure && !struct.my) as AnyOwnedStructure[];
+        }
+        return this._hostileStructures;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'spawns', {
+    get: function (this: Room) {
+        if (!this._spawns) {
+            this._spawns = this.structures.filter((s) => s.structureType === STRUCTURE_SPAWN && s.isActive()) as StructureSpawn[];
+        }
+        return this._spawns;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'mySpawns', {
+    get: function (this: Room) {
+        if (!this._mySpawns) {
+            this._mySpawns = this.spawns.filter((s) => s.my) as StructureSpawn[];
+        }
+        return this._mySpawns;
     },
     enumerable: false,
     configurable: true,
@@ -153,7 +254,10 @@ Object.defineProperty(Room.prototype, 'workerCapacity', {
 
 Object.defineProperty(Room.prototype, 'labs', {
     get: function (this: Room) {
-        return this.find(FIND_MY_STRUCTURES).filter((s) => s.structureType === STRUCTURE_LAB && s.isActive());
+        if (!this._labs) {
+            this._labs = this.myStructures.filter((s) => s.structureType === STRUCTURE_LAB && s.isActive()) as StructureLab[];
+        }
+        return this._labs;
     },
     enumerable: false,
     configurable: true,
@@ -161,7 +265,10 @@ Object.defineProperty(Room.prototype, 'labs', {
 
 Object.defineProperty(Room.prototype, 'factory', {
     get: function (this: Room) {
-        return this.find(FIND_MY_STRUCTURES).find((s) => s.structureType === STRUCTURE_FACTORY && s.isActive());
+        if (!this._factory) {
+            this._factory = this.myStructures.find((s) => s.structureType === STRUCTURE_FACTORY && s.isActive()) as StructureFactory;
+        }
+        return this._factory;
     },
     enumerable: false,
     configurable: true,
@@ -169,7 +276,10 @@ Object.defineProperty(Room.prototype, 'factory', {
 
 Object.defineProperty(Room.prototype, 'observer', {
     get: function (this: Room) {
-        return this.find(FIND_MY_STRUCTURES).find((s) => s.structureType === STRUCTURE_OBSERVER && s.isActive());
+        if (!this._observer) {
+            this._observer = this.myStructures.find((s) => s.structureType === STRUCTURE_OBSERVER && s.isActive()) as StructureObserver;
+        }
+        return this._observer;
     },
     enumerable: false,
     configurable: true,
@@ -177,7 +287,10 @@ Object.defineProperty(Room.prototype, 'observer', {
 
 Object.defineProperty(Room.prototype, 'powerSpawn', {
     get: function (this: Room) {
-        return this.find(FIND_MY_STRUCTURES).find((s) => s.structureType === STRUCTURE_POWER_SPAWN && s.isActive());
+        if (!this._powerSpawn) {
+            this._powerSpawn = this.myStructures.find((s) => s.structureType === STRUCTURE_POWER_SPAWN && s.isActive()) as StructurePowerSpawn;
+        }
+        return this._powerSpawn;
     },
     enumerable: false,
     configurable: true,
@@ -185,7 +298,10 @@ Object.defineProperty(Room.prototype, 'powerSpawn', {
 
 Object.defineProperty(Room.prototype, 'remoteSources', {
     get: function (this: Room) {
-        return Object.keys(this.memory.remoteSources);
+        if (!this._remoteSources) {
+            this._remoteSources = Object.keys(this.memory.remoteSources);
+        }
+        return this._remoteSources;
     },
     enumerable: false,
     configurable: true,
@@ -193,7 +309,10 @@ Object.defineProperty(Room.prototype, 'remoteSources', {
 
 Object.defineProperty(Room.prototype, 'remoteMiningRooms', {
     get: function (this: Room) {
-        return this.remoteSources.map((s) => s.split('.')[2]);
+        if (!this._remoteMiningRooms) {
+            this._remoteMiningRooms = this.remoteSources.map((s) => s.split('.')[2]);
+        }
+        return this._remoteMiningRooms;
     },
     enumerable: false,
     configurable: true,
@@ -267,7 +386,7 @@ Room.prototype.addFactoryTask = function (this: Room, product: ResourceConstant,
         console.log(`Attempting to create factory task in ${this.name}: ${amount} ${product}`);
     }
 
-    if(amount <= 0){
+    if (amount <= 0) {
         return ERR_INVALID_ARGS;
     }
 

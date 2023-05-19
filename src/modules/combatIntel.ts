@@ -50,9 +50,9 @@ export class CombatIntel {
      * @returns
      */
     public static getTowerCombatData(room: Room, forHostile: boolean, pos?: RoomPosition): TowerCombatData {
-        const towers = room.find(forHostile ? FIND_HOSTILE_STRUCTURES : FIND_MY_STRUCTURES, {
-            filter: (struct) => struct.structureType === STRUCTURE_TOWER,
-        }) as StructureTower[];
+        let towers: StructureTower[] = forHostile
+            ? (room.hostileStructures.filter((struct) => struct.structureType === STRUCTURE_TOWER) as StructureTower[])
+            : (room.myStructures.filter((struct) => struct.structureType === STRUCTURE_TOWER) as StructureTower[]);
 
         if (!towers) {
             return;
@@ -82,22 +82,26 @@ export class CombatIntel {
      * @returns
      */
     public static getCreepCombatData(room: Room, forHostile: boolean, pos?: RoomPosition): RoomCreepsCombatData {
-        const hostileCreeps = room.find(forHostile ? FIND_HOSTILE_CREEPS : FIND_MY_CREEPS, {
-            filter: (creep: Creep) =>
-                !Memory.playersToIgnore?.includes(creep.owner.username) &&
-                creep.owner.username !== 'Source Keeper' &&
-                (creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(HEAL)),
-        }) as Creep[];
+        const creeps: Creep[] = forHostile
+            ? room.hostileCreeps.filter(
+                  (creep: Creep) =>
+                      !Memory.playersToIgnore?.includes(creep.owner.username) &&
+                      creep.owner.username !== 'Source Keeper' &&
+                      (creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(HEAL))
+              )
+            : room.myCreeps.filter(
+                  (creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(HEAL)
+              );
 
-        if (!hostileCreeps) {
+        if (!creeps) {
             return;
         }
 
         if (!pos) {
-            return this.calculateCreepsCombatData(hostileCreeps);
+            return this.calculateCreepsCombatData(creeps);
         }
 
-        return this.calculateCreepsCombatData(hostileCreeps, pos);
+        return this.calculateCreepsCombatData(creeps, pos);
     }
 
     /**
