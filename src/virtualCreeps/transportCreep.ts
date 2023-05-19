@@ -1,3 +1,4 @@
+import { PopulationManagement } from '../modules/populationManagement';
 import { WaveCreep } from './waveCreep';
 
 export class TransportCreep extends WaveCreep {
@@ -48,7 +49,9 @@ export class TransportCreep extends WaveCreep {
                     this.runNonLabPrepTasks();
                 }
             } else if (stop) {
-                this.renewCreep();
+                if (this.body.length >= PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], this.room.energyCapacityAvailable, 10).length) {
+                    this.renewCreep();
+                }
             }
         }
     }
@@ -255,42 +258,32 @@ export class TransportCreep extends WaveCreep {
         if (this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable || this.homeroom.controller.level < 5) {
             let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
 
+            const numberOfManagers = this.homeroom.creeps.reduce(
+                (sum: number, nextCreep: Creep) =>
+                    nextCreep.memory.role === Role.MANAGER &&
+                    this.homeroom.memory.stampLayout.managers.some((stamp) => stamp.type === 'center' && stamp.pos === nextCreep.memory.destination)
+                        ? sum + 1
+                        : sum,
+                0
+            );
+            const managersExpected = this.homeroom.memory.stampLayout.managers.reduce(
+                (sum: number, nextStamp) => (nextStamp.type === 'center' && nextStamp.rcl <= this.homeroom.controller.level ? sum + 1 : sum),
+                0
+            );
+            const numberOfContainers = ROOM_STRUCTURES.reduce(
+                (sum, nextStructure) =>
+                    nextStructure.structureType === STRUCTURE_CONTAINER &&
+                    this.homeroom.memory.stampLayout.container.some((stamp) => stamp.type === 'center' && stamp.pos === nextStructure.pos.toMemSafe())
+                        ? sum + 1
+                        : sum,
+                0
+            );
+            const expectedContainers = this.homeroom.memory.stampLayout.container.reduce(
+                (sum, nextStamp) => (nextStamp.type === 'center' && nextStamp.rcl <= this.homeroom.controller.level ? sum + 1 : sum),
+                0
+            );
             const hasMissingManagersOrContainers =
-                this.homeroom.controller.level > 1 &&
-                // Number of center managers
-                //@ts-ignore
-                (this.homeroom.creeps.reduce(
-                    (sum: number, nextCreep: Creep) =>
-                        nextCreep.memory.role === Role.MANAGER &&
-                        this.homeroom.memory.stampLayout.managers.some(
-                            (managerStamp) => managerStamp.type === 'center' && managerStamp.pos === nextCreep.memory.destination
-                        )
-                            ? sum + 1
-                            : sum,
-                    0
-                ) <
-                    // Number of center managers the room should have
-                    this.homeroom.memory.stampLayout.managers.reduce(
-                        (sum, nextStamp) => (nextStamp.type === 'center' && nextStamp.rcl <= this.homeroom.controller.level ? sum + 1 : sum),
-                        0
-                    ) ||
-                    // Number of center containers
-                    ROOM_STRUCTURES.reduce(
-                        (sum, structure) =>
-                            structure.structureType === (STRUCTURE_CONTAINER as StructureConstant) &&
-                            this.homeroom.memory.stampLayout.container.some(
-                                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos === structure.pos.toMemSafe()
-                            )
-                                ? sum + 1
-                                : sum,
-                        0
-                    )) <
-                    // Number of containers the room should have
-                    this.homeroom.memory.stampLayout.container.reduce(
-                        (sum, containerStamp) =>
-                            containerStamp.type === 'center' && containerStamp.rcl <= this.homeroom.controller.level ? sum + 1 : sum,
-                        0
-                    );
+                this.homeroom.controller.level > 1 && (numberOfManagers < managersExpected || numberOfContainers < expectedContainers);
 
             const firstSpawnMispositioned = !this.room
                 .find(FIND_MY_SPAWNS)
