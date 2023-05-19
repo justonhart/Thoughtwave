@@ -927,7 +927,7 @@ function scanArea(room: Room) {
     // Check all adjacent rooms if there hasnt been vision in 6 ticks to get early enemy detection
     const exitRoomName = Object.values(Game.map.describeExits(room.name)).find(
         (exitRoomName) =>
-            Memory.roomData[exitRoomName]?.asOf <= Game.time + 6 &&
+            Memory.roomData[exitRoomName]?.asOf <= Game.time - 6 &&
             ![RoomMemoryStatus.OWNED_OTHER, RoomMemoryStatus.OWNED_INVADER].some((status) => status === Memory.roomData[exitRoomName]?.roomStatus)
     );
     if (exitRoomName) {
