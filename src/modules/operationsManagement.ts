@@ -84,7 +84,7 @@ export function manageOperations() {
                     case OperationType.STERILIZE:
                     case OperationType.CLEAN:
                     case OperationType.TRANSFER:
-                        manageSimpleOperation(operationId, operation);
+                        manageSimpleOperation(operationId);
                         break;
                 }
             } catch (e) {
@@ -333,9 +333,10 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
     return bestRoom;
 }
 
-function manageSimpleOperation(opId: string, op: Operation) {
-    if (!Game.rooms[op.originRoom]) {
-        op.originRoom = findOperationOrigin(op.targetRoom)?.roomName;
+function manageSimpleOperation(opId: string) {
+    const OPERATION = Memory.operations[opId];
+    if (!Game.rooms[OPERATION.originRoom]) {
+        OPERATION.originRoom = findOperationOrigin(OPERATION.targetRoom)?.roomName;
     }
 
     const operativeCount =
@@ -345,24 +346,25 @@ function manageSimpleOperation(opId: string, op: Operation) {
             0
         );
 
-    if (op.originRoom && operativeCount < (op.operativeCount ?? 1)) {
+    if (OPERATION.originRoom && operativeCount < (OPERATION.operativeCount ?? 1)) {
         Memory.spawnAssignments.push({
-            designee: op.originRoom,
-            body: PopulationManagement.createPartsArray(OPERATOR_PARTS_MAP[op.type], Game.rooms[op.originRoom].energyCapacityAvailable),
+            designee: OPERATION.originRoom,
+            body: PopulationManagement.createPartsArray(OPERATOR_PARTS_MAP[OPERATION.type], Game.rooms[OPERATION.originRoom].energyCapacityAvailable),
             spawnOpts: {
                 memory: {
                     role: Role.OPERATIVE,
                     operationId: opId,
-                    room: op.originRoom,
+                    room: OPERATION.originRoom,
                 },
-                boosts: OPERATION_BOOST_MAP[op.type],
+                boosts: OPERATION_BOOST_MAP[OPERATION.type],
             },
         });
     }
 
-    if (op.expireAt <= Game.time) {
-        Memory.operations[opId].stage = OperationStage.COMPLETE;
+    if (OPERATION.expireAt <= Game.time) {
+        OPERATION.stage = OperationStage.COMPLETE;
     }
+    Memory.operations[opId] = OPERATION;
 }
 
 export function addOperation(operationType: OperationType, targetRoom: string, opts?: OperationOpts): string {
