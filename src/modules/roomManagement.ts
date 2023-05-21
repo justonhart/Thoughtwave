@@ -626,6 +626,14 @@ function runSpawning(room: Room) {
         }
     }
 
+    if (!room.observer && (room.memory.lastScout ?? 0) + 7500 <= Game.time) {
+        let spawn = availableSpawns.pop();
+        let result = spawn?.spawnScout();
+        if (result === OK) {
+            room.memory.lastScout = Game.time;
+        }
+    }
+
     if (availableSpawns && PopulationManagement.needsMineralMiner(room) && !roomUnderAttack) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMineralMiner();

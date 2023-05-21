@@ -455,6 +455,23 @@ export class PopulationManagement {
         return result;
     }
 
+    static spawnScout(spawn: StructureSpawn): ScreepsReturnCode {
+        const scoutMemory: ScoutMemory = {
+            role: Role.SCOUT,
+            room: spawn.room.name,
+            maxDepth: 5,
+        };
+
+        const options: SpawnOptions = {
+            memory: scoutMemory,
+        };
+
+        const body = [MOVE];
+
+        let result = spawn.smartSpawn(body, this.generateName(Role.SCOUT, spawn.name), options);
+        return result;
+    }
+
     // generates creep bodies by repeating a defined pattern up to n times, where n = levelCap
     static createPartsArray(partsBlock: BodyPartConstant[], energyCapacityAvailable: number, levelCap: number = 15): BodyPartConstant[] {
         let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
@@ -749,49 +766,49 @@ export class PopulationManagement {
                         return -1;
                     }
 
-                if (structB.structureType === STRUCTURE_SPAWN) {
-                    return 1;
-                }
+                    if (structB.structureType === STRUCTURE_SPAWN) {
+                        return 1;
+                    }
 
-                if (
-                    prioritizedExtensions.some(
-                        (extensionDetail) =>
-                            extensionDetail.pos.toRoomPos().x === structA.pos.x && extensionDetail.pos.toRoomPos().y === structA.pos.y
-                    )
-                ) {
-                    return -1;
-                }
-                if (
-                    prioritizedExtensions.some(
-                        (extensionDetail) =>
-                            extensionDetail.pos.toRoomPos().x === structB.pos.x && extensionDetail.pos.toRoomPos().y === structB.pos.y
-                    )
-                ) {
-                    return 1;
-                }
+                    if (
+                        prioritizedExtensions.some(
+                            (extensionDetail) =>
+                                extensionDetail.pos.toRoomPos().x === structA.pos.x && extensionDetail.pos.toRoomPos().y === structA.pos.y
+                        )
+                    ) {
+                        return -1;
+                    }
+                    if (
+                        prioritizedExtensions.some(
+                            (extensionDetail) =>
+                                extensionDetail.pos.toRoomPos().x === structB.pos.x && extensionDetail.pos.toRoomPos().y === structB.pos.y
+                        )
+                    ) {
+                        return 1;
+                    }
 
-                return 0;
-            }) as Array<StructureSpawn | StructureExtension>;
+                    return 0;
+                }) as Array<StructureSpawn | StructureExtension>;
 
-        let result = spawn.spawnCreep(body, name, opts);
+            let result = spawn.spawnCreep(body, name, opts);
 
-        if (result !== OK) {
-            console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
-        } else {
-            spawn.room.memory.reservedEnergy != undefined
-                ? (spawn.room.memory.reservedEnergy += partsArrayCost)
-                : (spawn.room.memory.reservedEnergy = partsArrayCost);
-            requestsToAdd.forEach((request) => {
-                spawn.room.addRequest(request.resource, request.amount);
-            });
-            labTasksToAdd.forEach((task) => {
-                spawn.room.addLabTask(task);
-            });
+            if (result !== OK) {
+                console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
+            } else {
+                spawn.room.memory.reservedEnergy != undefined
+                    ? (spawn.room.memory.reservedEnergy += partsArrayCost)
+                    : (spawn.room.memory.reservedEnergy = partsArrayCost);
+                requestsToAdd.forEach((request) => {
+                    spawn.room.addRequest(request.resource, request.amount);
+                });
+                labTasksToAdd.forEach((task) => {
+                    spawn.room.addLabTask(task);
+                });
+            }
+
+            return result;
         }
-
-        return result;
     }
-}
 
     static setLabTasksAndRequests(
         room: Room,

@@ -47,12 +47,12 @@ interface PriorityQueue {
 }
 
 interface ScoutMemory extends CreepMemory {
-    roomsVisited: { depth: number; roomName: string }[];
-    pathTree: string;
-    roomLastTick: string;
-    nextRoom: string;
-    maxDepth: number;
-    returnToLastRoom: boolean;
+    roomsVisited?: { depth: number; roomName: string }[];
+    pathTree?: string;
+    roomLastTick?: string;
+    nextRoom?: string;
+    maxDepth?: number;
+    returnToLastRoom?: boolean;
 }
 
 interface CombatMemory {

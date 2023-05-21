@@ -33,6 +33,7 @@ interface RoomMemory {
     transferBuffer?: { [resource: string]: number };
     colonizationInProgress?: boolean;
     roomType: RoomType;
+    lastScout?: number;
 }
 
 /**
