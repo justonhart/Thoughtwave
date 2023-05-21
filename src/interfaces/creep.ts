@@ -46,9 +46,13 @@ interface PriorityQueue {
     actionCallback: (creep: Creep) => void;
 }
 
-interface ScoutMemory {
-    path?: string[]; // Used for Pathfinding
-    spawn?: string; // Spawn Position
+interface ScoutMemory extends CreepMemory {
+    roomsVisited: { depth: number; roomName: string }[];
+    pathTree: string;
+    roomLastTick: string;
+    nextRoom: string;
+    maxDepth: number;
+    returnToLastRoom: boolean;
 }
 
 interface CombatMemory {
