@@ -112,7 +112,9 @@ function manageColonizationOperation(opId: string) {
     }
 
     if (!Memory.rooms[OPERATION.targetRoom]) {
-        Memory.rooms[OPERATION.targetRoom] = {};
+        Memory.rooms[OPERATION.targetRoom] = {
+            roomType: RoomType.HOMEROOM,
+        };
     }
     if (!Memory.rooms[OPERATION.targetRoom].colonizationInProgress) {
         Memory.rooms[OPERATION.targetRoom].colonizationInProgress;
@@ -461,8 +463,9 @@ function manageRoomRecoveryOperation(opId: string) {
     miningAssignments.forEach((key) => {
         if (
             Memory.rooms[OPERATION.targetRoom]?.miningAssignments?.[key] === AssignmentStatus.UNASSIGNED &&
-            !Memory.spawnAssignments.filter((creep) => creep.spawnOpts.memory.room === OPERATION.targetRoom && creep.spawnOpts.memory.assignment === key)
-                .length
+            !Memory.spawnAssignments.filter(
+                (creep) => creep.spawnOpts.memory.room === OPERATION.targetRoom && creep.spawnOpts.memory.assignment === key
+            ).length
         ) {
             Memory.rooms[OPERATION.targetRoom].miningAssignments[key] = AssignmentStatus.ASSIGNED;
             Memory.spawnAssignments.push({
@@ -481,8 +484,9 @@ function manageRoomRecoveryOperation(opId: string) {
     });
 
     const numberOfRecoveryWorkers =
-        Object.values(Memory.creeps).filter((creep) => creep.role === Role.WORKER && creep.room === OPERATION.targetRoom && creep.operationId === opId)
-            .length +
+        Object.values(Memory.creeps).filter(
+            (creep) => creep.role === Role.WORKER && creep.room === OPERATION.targetRoom && creep.operationId === opId
+        ).length +
         Memory.spawnAssignments.filter(
             (creep) =>
                 creep.spawnOpts.memory.room === OPERATION.targetRoom &&
@@ -523,7 +527,7 @@ function manageAttackRoomOperation(opId: string) {
 }
 
 function manageQuadAttackRoomOperation(opId: string) {
-    const OPERATION = Memory.operations[opId]; 
+    const OPERATION = Memory.operations[opId];
     const originRoom = Game.rooms[OPERATION.originRoom];
     const attackerBody = PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
         sortByBodyPart(MOVE, bodyA, bodyB)
@@ -770,14 +774,18 @@ function manageAddPowerBankOperation(opId: string) {
                     powerBank.hits < 10000 &&
                     Object.values(Memory.creeps).some(
                         (creep) =>
-                            creep.destination === OPERATION.targetRoom && creep.role === Role.OPERATIVE && !creep._m?.lastCoord?.includes(OPERATION.targetRoom)
+                            creep.destination === OPERATION.targetRoom &&
+                            creep.role === Role.OPERATIVE &&
+                            !creep._m?.lastCoord?.includes(OPERATION.targetRoom)
                     )
                 ) {
                     squadLeaders.forEach((squadLeader) => (squadLeader.memory.stop = true));
                     Object.values(Memory.creeps)
                         .filter(
                             (creep) =>
-                                creep.assignment === OPERATION.targetRoom && creep.role === Role.PROTECTOR && creep._m?.lastCoord?.includes(OPERATION.targetRoom)
+                                creep.assignment === OPERATION.targetRoom &&
+                                creep.role === Role.PROTECTOR &&
+                                creep._m?.lastCoord?.includes(OPERATION.targetRoom)
                         )
                         .forEach((protector) => (protector.stop = true));
                 } else {
@@ -785,7 +793,9 @@ function manageAddPowerBankOperation(opId: string) {
                     Object.values(Memory.creeps)
                         .filter(
                             (creep) =>
-                                creep.assignment === OPERATION.targetRoom && creep.role === Role.PROTECTOR && creep._m?.lastCoord?.includes(OPERATION.targetRoom)
+                                creep.assignment === OPERATION.targetRoom &&
+                                creep.role === Role.PROTECTOR &&
+                                creep._m?.lastCoord?.includes(OPERATION.targetRoom)
                         )
                         .forEach((protector) => delete protector.stop);
                 }

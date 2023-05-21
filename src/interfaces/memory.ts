@@ -240,3 +240,8 @@ const enum ResourceRequestStatus {
     ASSIGNED,
     FULFULLED,
 }
+
+interface EmpireData {
+    roomsOwned: number;
+    roomCap: number;
+}

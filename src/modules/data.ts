@@ -223,3 +223,10 @@ export function isHighway(roomName: string): boolean {
     const parsed = /^[WE]([0-9]+)[NS]([0-9]+)$/.exec(roomName) as unknown;
     return parsed[1] % 10 === 0 || parsed[2] % 10 === 0;
 }
+
+export function getEmpireData(): EmpireData {
+    return {
+        roomCap: Game.gcl.level,
+        roomsOwned: Object.values(Game.rooms).reduce((sum, nextRoom) => (nextRoom.controller?.my ? sum + 1 : sum), 0),
+    };
+}

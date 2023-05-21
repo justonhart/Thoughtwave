@@ -20,6 +20,8 @@ declare global {
     var remoteSourcesChecked: boolean;
 
     var initiatingPowerCreeps: boolean;
+
+    var empireData: EmpireData;
 }
 
 export {};

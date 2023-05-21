@@ -39,11 +39,15 @@ export class Reserver extends WaveCreep {
                     Memory.remoteData[this.memory.assignment].reservationState = RemoteRoomReservationStatus.STABLE;
                 }
 
-                // Reserve Controller in target room
-                switch (this.reserveController(this.room.controller)) {
-                    case ERR_NOT_IN_RANGE:
-                        this.travelTo(this.room.controller, { range: 1 });
-                        break;
+                if (!this.pos.isNearTo(this.room.controller)) {
+                    this.travelTo(this.room.controller);
+                } else {
+                    if (Memory.remoteData[this.memory.assignment].structuresCleared === false) {
+                        this.claimController(this.room.controller);
+                        Memory.rooms[this.room.name] = { roomType: RoomType.REMOTE_MINING };
+                    } else {
+                        this.reserveController(this.room.controller);
+                    }
                 }
             }
         }

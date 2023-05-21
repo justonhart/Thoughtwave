@@ -32,6 +32,19 @@ interface RoomMemory {
      */
     transferBuffer?: { [resource: string]: number };
     colonizationInProgress?: boolean;
+    roomType: RoomType;
+}
+
+/**
+ * Operating mode for owned room:
+ * - HOMEROOM is traditional room operations
+ * - REMOTE_MINING is temporary ownership for running room-owner level functions over remote mined rooms
+ * - OPERATION_CONTROLLED is for rooms owned for operation purposes
+ */
+const enum RoomType {
+    HOMEROOM = 1,
+    REMOTE_MINING,
+    OPERATION_CONTROLLED,
 }
 
 interface RemoteSourceData {
@@ -54,6 +67,7 @@ interface RemoteData {
     threatLevel: RemoteRoomThreatLevel;
     keeperExterminator?: string;
     sourceKeeperLairs?: { [sourcePos: string]: { id: Id<Structure<StructureConstant>>; pos: string } }; // keeperId: closestSourceId
+    structuresCleared?: boolean;
 }
 
 interface RoomData {

@@ -1,4 +1,4 @@
-import { deleteExpiredRoomData } from './data';
+import { deleteExpiredRoomData, getEmpireData } from './data';
 import { getAllRoomNeeds } from './resourceManagement';
 
 export function manageMemory() {
@@ -31,6 +31,8 @@ export function manageMemory() {
     global.identifierIncrement = 1;
 
     global.remoteSourcesChecked = false;
+
+    global.empireData = getEmpireData();
 
     deleteExpiredRoomData();
 

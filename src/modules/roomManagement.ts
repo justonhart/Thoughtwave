@@ -23,13 +23,27 @@ const RESOURCE_COMPRESSION_MAP = {
 };
 
 export function driveRoom(room: Room) {
+    switch (room.memory.roomType) {
+        case RoomType.REMOTE_MINING:
+            driveRemoteMiningRoom(room);
+            break;
+        case RoomType.OPERATION_CONTROLLED:
+            break;
+        case RoomType.HOMEROOM:
+        default:
+            driveHomeRoom(room);
+            break;
+    }
+}
+
+function driveHomeRoom(room: Room) {
     if (room.memory?.unclaim) {
         delete Memory.rooms[room.name];
         return;
     }
 
     if (!Memory.rooms[room.name] || Object.keys(Memory.rooms[room.name])?.length === 0) {
-        initRoom(room);
+        initHomeRoom(room);
     } else {
         initMissingMemoryValues(room);
     }
@@ -178,17 +192,15 @@ export function driveRoom(room: Room) {
         }
 
         if (
-            room
-                .hostileCreeps
-                .some(
-                    (creep) =>
-                        creep.owner.username !== 'Invader' &&
-                        (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
-                        creep.pos.x > 2 &&
-                        creep.pos.y > 2 &&
-                        creep.pos.x < 47 &&
-                        creep.pos.y < 47
-                )
+            room.hostileCreeps.some(
+                (creep) =>
+                    creep.owner.username !== 'Invader' &&
+                    (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
+                    creep.pos.x > 2 &&
+                    creep.pos.y > 2 &&
+                    creep.pos.x < 47 &&
+                    creep.pos.y < 47
+            )
         ) {
             room.controller.activateSafeMode();
         }
@@ -288,6 +300,23 @@ export function driveRoom(room: Room) {
         }
 
         delete room.memory.reservedEnergy;
+    }
+}
+
+function driveRemoteMiningRoom(room: Room) {
+    if (Memory.remoteData[room.name].structuresCleared === false) {
+        const structuresToClear = room.structures.filter(
+            (s) =>
+                s.structureType !== STRUCTURE_CONTAINER &&
+                s.structureType !== STRUCTURE_ROAD &&
+                s.structureType !== STRUCTURE_CONTROLLER &&
+                s.structureType !== STRUCTURE_INVADER_CORE
+        );
+        structuresToClear.forEach((s) => s.destroy());
+        Memory.remoteData[room.name].structuresCleared = true;
+    } else {
+        room.controller.unclaim();
+        delete Memory.rooms[room.name];
     }
 }
 
@@ -471,9 +500,10 @@ function hasEarlyDetectionThreat(roomName: string) {
     return Object.values(Game.map.describeExits(roomName)).some((exitRoomName) => Memory.roomData[exitRoomName]?.threatDetected);
 }
 
-export function initRoom(room: Room) {
+export function initHomeRoom(room: Room) {
     Memory.rooms[room.name] = {
         threatLevel: HomeRoomThreatLevel.SAFE,
+        roomType: RoomType.HOMEROOM,
         gates: [],
         repairSearchCooldown: 0,
         repairQueue: [],
@@ -573,7 +603,7 @@ function runSpawning(room: Room) {
         spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
     }
 
-    if (availableSpawns && PopulationManagement.needsMiner(room) && !roomUnderAttack ){
+    if (availableSpawns && PopulationManagement.needsMiner(room) && !roomUnderAttack) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
     }
@@ -814,6 +844,10 @@ export function canSupportRemoteRoom(room: Room) {
 }
 
 function initMissingMemoryValues(room: Room) {
+    if (!room.memory.roomType) {
+        room.memory.roomType = RoomType.HOMEROOM;
+    }
+
     if (!room.memory.gates) {
         room.memory.gates = [];
     }

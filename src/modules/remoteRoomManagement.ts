@@ -16,6 +16,28 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
             const lairData = createKeeperLairData(remoteRoomName);
             Memory.remoteData[remoteRoomName].sourceKeeperLairs = lairData;
             overridePreviousRoad(controllingRoomName, remoteRoomName);
+        } else {
+            if (global.empireData.roomsOwned < global.empireData.roomCap && Memory.remoteData[remoteRoomName].structuresCleared === undefined) {
+                const reserver = Game.creeps[Memory.remoteData[remoteRoomName].reserver];
+                if (
+                    reserver &&
+                    reserver.pos.isNearTo(remoteRoom.controller) &&
+                    !Object.values(Memory.rooms).some((room) => room.roomType === RoomType.REMOTE_MINING)
+                ) {
+                    const structuresToClear = remoteRoom.structures.some(
+                        (s) =>
+                            s.structureType !== STRUCTURE_CONTROLLER &&
+                            s.structureType !== STRUCTURE_CONTAINER &&
+                            s.structureType !== STRUCTURE_ROAD &&
+                            s.structureType !== STRUCTURE_INVADER_CORE
+                    );
+                    if (!structuresToClear) {
+                        Memory.remoteData[remoteRoomName].structuresCleared = true;
+                    } else {
+                        Memory.remoteData[remoteRoomName].structuresCleared = false;
+                    }
+                }
+            }
         }
         Memory.remoteData[remoteRoomName].threatLevel = monitorThreatLevel(remoteRoom);
     }
