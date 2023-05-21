@@ -2,7 +2,7 @@ import { decodeRoad, getRoadSegments } from './roads';
 import { drawLayout } from './roomDesign';
 
 export function runVisuals() {
-    highlightHostileRooms();
+    visualizeRoomData();
     if (Memory.debug?.drawRoads) {
         drawRoadsFromRoomData();
     }
@@ -34,12 +34,14 @@ function drawRoadsFromRoomData() {
     });
 }
 
-function highlightHostileRooms() {
-    Object.keys(Memory.roomData)
-        .filter((roomName) => Memory.roomData[roomName].hostile)
-        .forEach((roomName) => {
-            Game.map.visual.rect(new RoomPosition(0, 0, roomName), 50, 50, { fill: '#8b0000', stroke: '#8b0000', strokeWidth: 2 });
-        });
+function visualizeRoomData() {
+    Object.entries(Memory.roomData).forEach(([roomName, data]) => {
+        if (data.hostile) {
+            Game.map.visual.rect(new RoomPosition(0, 0, roomName), 50, 50, { fill: '#8b0000', stroke: '#8b0000', strokeWidth: 2, opacity: 0.25 });
+        } else if (data.asOf) {
+            Game.map.visual.rect(new RoomPosition(0, 0, roomName), 50, 50, { opacity: 0.15, stroke: '#00ffff', strokeWidth: 2 });
+        }
+    });
 }
 
 function drawLinesToRemoteRooms() {
