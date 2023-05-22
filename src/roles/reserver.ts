@@ -1,6 +1,7 @@
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Reserver extends WaveCreep {
+    memory: ReserverMemory;
     protected run() {
         if (!Memory.remoteData[this.memory.assignment]) return (this.memory.recycle = true);
 

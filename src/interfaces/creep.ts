@@ -182,3 +182,63 @@ interface OperativeMemory extends CreepMemory {
      */
     operationId?: string;
 }
+
+interface GathererMemory extends CreepMemory{
+    /**
+     * The position of the remote source this creep is assigned to
+     */
+    assignment?: string;
+    /**
+     * The Id of the container corresponding to the assigned source
+     */
+    targetId?: Id<StructureContainer>;
+    /**
+     * The time at which a replacement should be spawned
+     */
+    spawnReplacementAt?: number;
+}
+
+interface RemoteMinerMemory extends CreepMemory{
+    /**
+     * The time at which a replacement should be spawned
+    */
+    spawnReplacementAt?: number; 
+    /**
+     * The position of the remote source to which this creep is assigned
+     */
+    assignment?: string;
+    /**
+     * The Id of the source this RemoteMiner as assigned to
+     */
+    targetId?: Id<Source>;
+    /**
+     * Id of problem structure to dismantle
+     */
+    targetId2?: Id<Structure>;
+}
+
+interface KeeperExterminatorMemory extends CreepMemory{
+    /**
+     * Name of room this KeeperExterminator is assigned to
+     */
+    assignment?: string;
+    /**
+     * Id of keeper to exterminate OR structure/site to defend (if no keeper found)
+     */
+    targetId?: Id<Creep> | Id<Structure> | Id<ConstructionSite>;
+    /**
+     * Position the exterminator needs to move to
+     */
+    destination?: string;
+}
+
+interface ReserverMemory extends CreepMemory{
+    /**
+     * Name of remote room this Reserver is assigned to
+     */
+    assignment?: string;
+    /**
+     * Position of the target room controller
+     */
+    destination?: string;
+}

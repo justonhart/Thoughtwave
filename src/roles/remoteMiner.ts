@@ -1,6 +1,7 @@
 import { isKeeperRoom } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class RemoteMiner extends WaveCreep {
+    memory: RemoteMinerMemory;
     protected run() {
         if (Game.time === this.memory.spawnReplacementAt) {
             this.homeroom.memory.remoteSources[this.memory.assignment].miner = AssignmentStatus.UNASSIGNED;
