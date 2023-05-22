@@ -252,3 +252,14 @@ interface MineralMinerMemory extends CreepMemory {
      */
     assignment?: string;
 }
+
+interface ManagerMemory extends CreepMemory{
+    /**
+     * The manager position this manager is assigned to
+     */
+    destination?: string;
+    /**
+     * The structure the manager is going to transfer its current inventory contents to
+     */
+    targetId?: Id<Structure>;
+}

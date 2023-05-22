@@ -5,7 +5,7 @@ const MINERAL_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(RE
 
 export class Manager extends WaveCreep {
     private actionTaken = false;
-
+    memory: ManagerMemory;
     protected run() {
         const managerPos = this.memory.destination?.toRoomPos();
         const isCenterStampManager = this.room.memory.stampLayout.managers.some(
