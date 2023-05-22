@@ -188,6 +188,7 @@ export function assignRemoteSource(source: string, roomName: string) {
             } else if (!isCenterRoom(remoteRoomName)) {
                 remoteData.reservationState = RemoteRoomReservationStatus.LOW;
                 remoteData.reserver = AssignmentStatus.UNASSIGNED;
+                remoteData.shouldCheckStructures = true;
             }
             if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
                 remoteData.mineralMiner = AssignmentStatus.UNASSIGNED;

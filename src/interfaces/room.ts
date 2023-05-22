@@ -68,7 +68,8 @@ interface RemoteData {
     threatLevel: RemoteRoomThreatLevel;
     keeperExterminator?: string;
     sourceKeeperLairs?: { [sourcePos: string]: { id: Id<Structure<StructureConstant>>; pos: string } }; // keeperId: closestSourceId
-    structuresCleared?: boolean;
+    shouldCheckStructures?: boolean;
+    clearStructures?: boolean;
 }
 
 interface RoomData {

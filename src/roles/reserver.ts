@@ -42,7 +42,7 @@ export class Reserver extends WaveCreep {
                 if (!this.pos.isNearTo(this.room.controller)) {
                     this.travelTo(this.room.controller);
                 } else {
-                    if (Memory.remoteData[this.memory.assignment].structuresCleared === false) {
+                    if (Memory.remoteData[this.memory.assignment].clearStructures) {
                         this.claimController(this.room.controller);
                         Memory.rooms[this.room.name] = { roomType: RoomType.REMOTE_MINING };
                     } else {

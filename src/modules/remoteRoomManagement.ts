@@ -17,7 +17,7 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
             Memory.remoteData[remoteRoomName].sourceKeeperLairs = lairData;
             overridePreviousRoad(controllingRoomName, remoteRoomName);
         } else {
-            if (global.empireData.roomsOwned < global.empireData.roomCap && Memory.remoteData[remoteRoomName].structuresCleared === undefined) {
+            if (global.empireData.roomsOwned < global.empireData.roomCap && Memory.remoteData[remoteRoomName].shouldCheckStructures) {
                 const reserver = Game.creeps[Memory.remoteData[remoteRoomName].reserver];
                 if (
                     reserver &&
@@ -32,9 +32,10 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
                             s.structureType !== STRUCTURE_INVADER_CORE
                     );
                     if (!structuresToClear) {
-                        Memory.remoteData[remoteRoomName].structuresCleared = true;
+                        delete Memory.remoteData[remoteRoomName].shouldCheckStructures;
                     } else {
-                        Memory.remoteData[remoteRoomName].structuresCleared = false;
+                        delete Memory.remoteData[remoteRoomName].shouldCheckStructures;
+                        Memory.remoteData[remoteRoomName].clearStructures = true;
                     }
                 }
             }

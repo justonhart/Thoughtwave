@@ -304,7 +304,7 @@ function driveHomeRoom(room: Room) {
 }
 
 function driveRemoteMiningRoom(room: Room) {
-    if (Memory.remoteData[room.name].structuresCleared === false) {
+    if (Memory.remoteData[room.name].clearStructures) {
         const structuresToClear = room.structures.filter(
             (s) =>
                 s.structureType !== STRUCTURE_CONTAINER &&
@@ -313,7 +313,7 @@ function driveRemoteMiningRoom(room: Room) {
                 s.structureType !== STRUCTURE_INVADER_CORE
         );
         structuresToClear.forEach((s) => s.destroy());
-        Memory.remoteData[room.name].structuresCleared = true;
+        delete Memory.remoteData[room.name].clearStructures;
     } else {
         room.controller.unclaim();
         delete Memory.rooms[room.name];
