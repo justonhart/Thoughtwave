@@ -2,9 +2,7 @@ interface CreepMemory {
     debug?: boolean;
     ready?: number;
     targetId2?: Id<Creep> | Id<Structure>; // In case creeps have a secondary target (rampart protectors or miners who need to clear out container before being able to go to their main target)
-    gatheringLabResources?: boolean;
     needsBoosted?: boolean;
-    labNeeds?: LabNeed[];
     resourceSource?: Id<Structure>;
     waypoints?: string[];
     destination?: string;
@@ -12,7 +10,11 @@ interface CreepMemory {
     targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral> | Id<Source>;
     miningPos?: string;
     gathering?: boolean;
+    stop?: boolean;
     energySource?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
+    /**
+     * The 'homeroom'; usually, the room the creep was spawned in and the room the creep works to support
+     */
     room?: string;
     /**
      * The job the creep performs. Job functions defined in src/roles/
@@ -26,8 +28,6 @@ interface CreepMemory {
     _m?: TravelState;
     combat?: CombatMemory;
     nextRole?: Role;
-    sleepCollectTil?: number;
-    stop?: boolean;
     spawnReplacementAt?: number;
     recycle?: boolean;
 }
@@ -137,4 +137,23 @@ interface MinerMemory extends CreepMemory {
      * RoomPosition the miner stands on to work
      */
     assignment: string;
+}
+
+interface TransportCreepMemory extends CreepMemory {
+    /**
+     * If true, the creep is gathering energy for refill tasks
+     */
+    gathering?: boolean;
+    /**
+     * List of the LabNeeds the creep is currently working
+     */
+    labNeeds?: LabNeed[];
+    /**
+     * If true, the creep is currently gathering up resources to fulfill lab needs
+     */
+    gatheringLabResources?: boolean;
+    /**
+     * If defined, tells the transportCreep to not look for collection targets (for CPU conservation)
+     */
+    sleepCollectTil?: number;
 }

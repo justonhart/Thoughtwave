@@ -8,6 +8,7 @@ export class TransportCreep extends WaveCreep {
     protected outgoingResourceAmount: number = 0; // Dropped off energy in the same tick to do proper retargeting
     protected actionTaken: boolean = false;
     protected labs: StructureLab[];
+    memory: TransportCreepMemory;
     protected run() {
         if (this.memory.gathering === true) {
             this.gatherEnergy();
