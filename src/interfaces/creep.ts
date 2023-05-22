@@ -2,15 +2,19 @@ interface CreepMemory {
     debug?: boolean;
     ready?: number;
     targetId2?: Id<Creep> | Id<Structure>; // In case creeps have a secondary target (rampart protectors or miners who need to clear out container before being able to go to their main target)
+    /**
+     * If set, WaveCreep will override default behavior with boost behavior
+     */
     needsBoosted?: boolean;
-    resourceSource?: Id<Structure>;
     waypoints?: string[];
     destination?: string;
     assignment?: string;
     targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral> | Id<Source>;
-    miningPos?: string;
     gathering?: boolean;
     stop?: boolean;
+    /**
+     * The id for the object from which this creep is gathering energy. Could be structure, creep, resource stacks, ruins, or tombstones
+     */
     energySource?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
     /**
      * The 'homeroom'; usually, the room the creep was spawned in and the room the creep works to support
@@ -20,7 +24,6 @@ interface CreepMemory {
      * The job the creep performs. Job functions defined in src/roles/
      */
     role?: Role;
-    operationId?: string;
     /**
      * The empire's priority of the creep's current task. Used for determining which creep shove outcomes
      */
@@ -156,4 +159,26 @@ interface TransportCreepMemory extends CreepMemory {
      * If defined, tells the transportCreep to not look for collection targets (for CPU conservation)
      */
     sleepCollectTil?: number;
+}
+
+interface WorkerCreepMemory extends CreepMemory {
+    /**
+     * If true, the creep is currently gathering energy to complete it's task
+     */
+    gathering?: boolean;
+    /**
+     * The Id for the structure or construction site this WorkerCreep is currently working on
+     */
+    targetId?: Id<Structure> | Id<ConstructionSite>;
+}
+
+interface OperativeMemory extends CreepMemory {
+    /**
+     * The object this Operative is working on - type varies depending on operation type
+     */
+    targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral> | Id<Source>;
+    /**
+     * The id of the operation this Operative is assigned to
+     */
+    operationId?: string;
 }

@@ -2,7 +2,6 @@ import { CombatIntel } from './combatIntel';
 import { addVisionRequest, observerInRange } from './data';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
-import { findStampLocation } from './roomDesign';
 import { getSpawnPos } from './roomDesign';
 
 const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } = {
@@ -124,19 +123,22 @@ function manageColonizationOperation(opId: string) {
         case OperationStage.CLAIM:
             //Creep management
             const claimerExistsOrAssigned: boolean =
-                Object.values(Memory.creeps).some((creep) => creep.role === Role.CLAIMER && creep.operationId === opId) ||
-                Memory.spawnAssignments.some((creep) => creep.spawnOpts.memory.operationId === opId && creep.spawnOpts.memory.role === Role.CLAIMER);
+                Object.values(Memory.creeps).some((creep: OperativeMemory) => creep.role === Role.CLAIMER && creep.operationId === opId) ||
+                Memory.spawnAssignments.some(
+                    (creep) => (creep.spawnOpts.memory as OperativeMemory).operationId === opId && creep.spawnOpts.memory.role === Role.CLAIMER
+                );
             if (OPERATION.originRoom && !claimerExistsOrAssigned) {
+                const operativeMemory: OperativeMemory = {
+                    role: Role.CLAIMER,
+                    operationId: opId,
+                    room: OPERATION.originRoom,
+                    waypoints: OPERATION.waypoints,
+                };
                 Memory.spawnAssignments.push({
                     designee: OPERATION.originRoom,
                     body: [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM],
                     spawnOpts: {
-                        memory: {
-                            role: Role.CLAIMER,
-                            operationId: opId,
-                            room: OPERATION.originRoom,
-                            waypoints: OPERATION.waypoints,
-                        },
+                        memory: operativeMemory,
                     },
                 });
             }
@@ -340,22 +342,24 @@ function manageSimpleOperation(opId: string) {
     }
 
     const operativeCount =
-        Object.values(Game.creeps).reduce((sum, nextCreep) => (nextCreep.memory.operationId === opId ? sum + 1 : sum), 0) +
+        Object.values(Game.creeps).reduce((sum, nextCreep) => ((nextCreep.memory as OperativeMemory).operationId === opId ? sum + 1 : sum), 0) +
         Object.values(Memory.spawnAssignments).reduce(
-            (sum, nextAssignment) => (nextAssignment.spawnOpts.memory.operationId === opId ? sum + 1 : sum),
+            (sum, nextAssignment) => ((nextAssignment.spawnOpts.memory as OperativeMemory).operationId === opId ? sum + 1 : sum),
             0
         );
 
     if (OPERATION.originRoom && operativeCount < (OPERATION.operativeCount ?? 1)) {
+        const operativeMemory: OperativeMemory = {
+            role: Role.OPERATIVE,
+            operationId: opId,
+            room: OPERATION.originRoom,
+        };
+
         Memory.spawnAssignments.push({
             designee: OPERATION.originRoom,
             body: PopulationManagement.createPartsArray(OPERATOR_PARTS_MAP[OPERATION.type], Game.rooms[OPERATION.originRoom].energyCapacityAvailable),
             spawnOpts: {
-                memory: {
-                    role: Role.OPERATIVE,
-                    operationId: opId,
-                    room: OPERATION.originRoom,
-                },
+                memory: operativeMemory,
                 boosts: OPERATION_BOOST_MAP[OPERATION.type],
             },
         });
@@ -485,13 +489,13 @@ function manageRoomRecoveryOperation(opId: string) {
 
     const numberOfRecoveryWorkers =
         Object.values(Memory.creeps).filter(
-            (creep) => creep.role === Role.WORKER && creep.room === OPERATION.targetRoom && creep.operationId === opId
+            (creep) => creep.role === Role.WORKER && creep.room === OPERATION.targetRoom && (creep as OperativeMemory).operationId === opId
         ).length +
         Memory.spawnAssignments.filter(
             (creep) =>
                 creep.spawnOpts.memory.room === OPERATION.targetRoom &&
                 creep.spawnOpts.memory.role === Role.WORKER &&
-                creep.spawnOpts.memory.operationId === opId
+                (creep.spawnOpts.memory as OperativeMemory).operationId === opId
         ).length;
     if (OPERATION.originRoom && numberOfRecoveryWorkers < (OPERATION.operativeCount ?? miningAssignments.length)) {
         Memory.spawnAssignments.push({
@@ -503,7 +507,7 @@ function manageRoomRecoveryOperation(opId: string) {
                     room: OPERATION.targetRoom,
                     operationId: opId,
                     waypoints: OPERATION.waypoints,
-                },
+                } as OperativeMemory,
             },
         });
     }
@@ -751,7 +755,7 @@ function manageAddPowerBankOperation(opId: string) {
                                         room: OPERATION.originRoom,
                                         operationId: opId,
                                         currentTaskPriority: Priority.MEDIUM,
-                                    },
+                                    } as OperativeMemory,
                                 },
                             });
                         }

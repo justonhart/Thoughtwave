@@ -42,7 +42,7 @@ Object.defineProperty(Creep.prototype, 'homeroom', {
 
 Object.defineProperty(Creep.prototype, 'operation', {
     get: function (this: Creep) {
-        return Memory.operations[this.memory.operationId];
+        return Memory.operations[(this.memory as OperativeMemory).operationId];
     },
     enumerable: false,
     configurable: true,

@@ -1,10 +1,11 @@
 import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
 export class Operative extends WorkerCreep {
+    memory: OperativeMemory;
     protected run() {
         if (!this.operation) {
             this.memory.recycle = true;
-            if(this.room.controller?.my){
+            if (this.room.controller?.my) {
                 this.memory.room = this.room.name;
             }
             delete this.memory.operationId;
