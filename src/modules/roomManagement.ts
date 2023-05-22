@@ -873,7 +873,7 @@ function initMissingMemoryValues(room: Room) {
     }
 
     if (!room.memory.labTasks) {
-        room.memory.labTasks = [];
+        room.memory.labTasks = {};
     }
 
     if (!room.memory.shipments) {
