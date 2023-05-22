@@ -183,7 +183,7 @@ interface OperativeMemory extends CreepMemory {
     operationId?: string;
 }
 
-interface GathererMemory extends CreepMemory{
+interface GathererMemory extends CreepMemory {
     /**
      * The position of the remote source this creep is assigned to
      */
@@ -198,11 +198,11 @@ interface GathererMemory extends CreepMemory{
     spawnReplacementAt?: number;
 }
 
-interface RemoteMinerMemory extends CreepMemory{
+interface RemoteMinerMemory extends CreepMemory {
     /**
      * The time at which a replacement should be spawned
-    */
-    spawnReplacementAt?: number; 
+     */
+    spawnReplacementAt?: number;
     /**
      * The position of the remote source to which this creep is assigned
      */
@@ -217,7 +217,7 @@ interface RemoteMinerMemory extends CreepMemory{
     targetId2?: Id<Structure>;
 }
 
-interface KeeperExterminatorMemory extends CreepMemory{
+interface KeeperExterminatorMemory extends CreepMemory {
     /**
      * Name of room this KeeperExterminator is assigned to
      */
@@ -232,7 +232,7 @@ interface KeeperExterminatorMemory extends CreepMemory{
     destination?: string;
 }
 
-interface ReserverMemory extends CreepMemory{
+interface ReserverMemory extends CreepMemory {
     /**
      * Name of remote room this Reserver is assigned to
      */
@@ -241,4 +241,14 @@ interface ReserverMemory extends CreepMemory{
      * Position of the target room controller
      */
     destination?: string;
+}
+interface RemoteMineralMinerMemory extends CreepMemory {
+    assignment?: string;
+}
+
+interface MineralMinerMemory extends CreepMemory {
+    /**
+     * The position at which the MineralMiner works
+     */
+    assignment?: string;
 }

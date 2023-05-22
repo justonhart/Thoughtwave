@@ -1,6 +1,7 @@
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class MineralMiner extends WaveCreep {
+    memory: MineralMinerMemory;
     protected run() {
         let assignedPos = this.memory.assignment.toRoomPos();
         if (this.pos.isEqualTo(assignedPos)) {

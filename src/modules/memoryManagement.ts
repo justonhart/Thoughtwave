@@ -92,14 +92,14 @@ function handleDeadCreep(deadCreepName: string) {
     let deadCreepMemory = Memory.creeps[deadCreepName];
 
     if (Game.rooms[deadCreepMemory.room]?.controller?.my && Memory.rooms[deadCreepMemory.room]) {
-        if (deadCreepMemory.role === Role.MINER){
-            Memory.rooms[deadCreepMemory.room].miningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
+        if (deadCreepMemory.role === Role.MINER) {
+            Memory.rooms[deadCreepMemory.room].miningAssignments[(deadCreepMemory as MinerMemory).assignment] = AssignmentStatus.UNASSIGNED;
         }
         if (
             deadCreepMemory.role === Role.REMOTE_MINER &&
-            Memory.rooms[deadCreepMemory.room].remoteSources[deadCreepMemory.assignment]?.miner === deadCreepName
+            Memory.rooms[deadCreepMemory.room].remoteSources[(deadCreepMemory as RemoteMinerMemory).assignment]?.miner === deadCreepName
         ) {
-            Memory.rooms[deadCreepMemory.room].remoteSources[deadCreepMemory.assignment].miner = AssignmentStatus.UNASSIGNED;
+            Memory.rooms[deadCreepMemory.room].remoteSources[(deadCreepMemory as RemoteMinerMemory).assignment].miner = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.role === Role.GATHERER) {
             let source = Object.entries(Memory.rooms[deadCreepMemory.room].remoteSources).find(([source, data]) =>
@@ -112,20 +112,21 @@ function handleDeadCreep(deadCreepName: string) {
                 Memory.rooms[deadCreepMemory.room].remoteSources[source].gatherers[gathererIndex] = AssignmentStatus.UNASSIGNED;
             }
         }
-        if (deadCreepMemory.role === Role.RESERVER && Memory.remoteData[deadCreepMemory.assignment]) {
+        if (deadCreepMemory.role === Role.RESERVER && Memory.remoteData[(deadCreepMemory as ReserverMemory).assignment]) {
             Memory.remoteData[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.role === Role.MINERAL_MINER) {
-            Memory.rooms[deadCreepMemory.room].mineralMiningAssignments[deadCreepMemory.assignment] = AssignmentStatus.UNASSIGNED;
+            Memory.rooms[deadCreepMemory.room].mineralMiningAssignments[(deadCreepMemory as MineralMinerMemory).assignment] =
+                AssignmentStatus.UNASSIGNED;
         }
         if (
             deadCreepMemory.role === Role.KEEPER_EXTERMINATOR &&
-            Memory.remoteData[deadCreepMemory.assignment]?.keeperExterminator === deadCreepName
+            Memory.remoteData[(deadCreepMemory as KeeperExterminatorMemory).assignment]?.keeperExterminator === deadCreepName
         ) {
-            Memory.remoteData[deadCreepMemory.assignment].keeperExterminator = AssignmentStatus.UNASSIGNED;
+            Memory.remoteData[(deadCreepMemory as KeeperExterminatorMemory).assignment].keeperExterminator = AssignmentStatus.UNASSIGNED;
         }
         if (deadCreepMemory.role === Role.REMOTE_MINERAL_MINER && Memory.remoteData[deadCreepMemory.assignment]) {
-            Memory.remoteData[deadCreepMemory.assignment].mineralMiner = AssignmentStatus.UNASSIGNED;
+            Memory.remoteData[(deadCreepMemory as RemoteMineralMinerMemory).assignment].mineralMiner = AssignmentStatus.UNASSIGNED;
         }
     }
 
