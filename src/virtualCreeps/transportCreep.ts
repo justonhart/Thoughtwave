@@ -716,8 +716,16 @@ export class TransportCreep extends WaveCreep {
                     } else {
                         console.log(`${Game.time} - ${this.homeroom.name} distributor hit error working lab task: ${result}`);
                         switch (result) {
+                            case ERR_FULL:
+                                const needIndex = this.homeroom.memory.labTasks[targetLab.taskId].needs.findIndex((need) => need.resource === targetLab.mineralType && need.lab === targetLab.id);
+                                if(needIndex > -1){
+                                    this.homeroom.memory.labTasks[targetLab.taskId].needs[needIndex].amount = 0;
+                                    this.memory.labNeeds[0].amount = 0;
+                                    this.memory.labNeeds.shift();
+                                    break;
+                                } 
                             default:
-                                const labTaskId = targetLab.taskId;
+                                let labTaskId = targetLab.taskId;
                                 delete this.homeroom.memory.labTasks[labTaskId];
                                 delete this.memory.labNeeds;
                                 delete this.memory.gatheringLabResources;
