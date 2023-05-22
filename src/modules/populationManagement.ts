@@ -243,36 +243,25 @@ export class PopulationManagement {
     }
 
     static spawnMiner(spawn: StructureSpawn): ScreepsReturnCode {
-        let assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
-        let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
-        let currentMiner: Creep;
-        // if (!assigment) {
-        //     // Check for TTL
-        //     currentMiner = spawn.room.creeps.find(
-        //         (creep) =>
-        //             creep.memory.role === Role.MINER &&
-        //             creep.memory.room === spawn.room.name &&
-        //             creep.ticksToLive <
-        //                 PopulationManagement.getMinerBody(creep.memory.assignment.toRoomPos(), spawn.room.energyCapacityAvailable).length * 3
-        //     );
-        //     assigment = currentMiner?.memory.assignment;
-        // }
-
-        let options: SpawnOptions = {
-            memory: {
-                assignment: assigment,
-                room: spawn.room.name,
-                role: Role.MINER,
-            },
+        const assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
+        const assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
+        const assigmentPos = assigment.toRoomPos();
+        const minerMemory: MinerMemory = {
+            assignment: assigment,
+            room: spawn.room.name,
+            role: Role.MINER,
         };
 
-        let assigmentPos = assigment.toRoomPos();
         let link = spawn.room.myStructures.find(
             (struct) => struct.structureType === STRUCTURE_LINK && assigmentPos.isNearTo(struct)
         ) as StructureLink;
         if (link) {
-            options.memory.link = link.id;
+            minerMemory.link = link.id;
         }
+
+        let options: SpawnOptions = {
+            memory: minerMemory,
+        };
 
         let name = this.generateName(options.memory.role, spawn.name);
 
@@ -285,9 +274,6 @@ export class PopulationManagement {
         }
         let result = spawn.smartSpawn(PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable, powerLevel), name, options);
         if (result === OK) {
-            if (currentMiner) {
-                currentMiner.memory.hasTTLReplacement = true;
-            }
             spawn.room.memory.miningAssignments[assigment] = name;
         } else if (
             result === ERR_NOT_ENOUGH_ENERGY &&
@@ -297,9 +283,6 @@ export class PopulationManagement {
             let emergencyMinerBody: (WORK | MOVE | CARRY)[] = [CARRY, WORK, WORK, MOVE];
             result = spawn.smartSpawn(emergencyMinerBody, name, options);
             if (result === OK) {
-                if (currentMiner) {
-                    currentMiner.memory.hasTTLReplacement = true;
-                }
                 spawn.room.memory.miningAssignments[assigment] = name;
             }
         }

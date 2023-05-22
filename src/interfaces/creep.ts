@@ -7,23 +7,25 @@ interface CreepMemory {
     labNeeds?: LabNeed[];
     resourceSource?: Id<Structure>;
     waypoints?: string[];
-    link?: Id<StructureLink>;
     destination?: string;
     assignment?: string;
     targetId?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> | Id<Mineral> | Id<Source>;
     miningPos?: string;
-    hasTTLReplacement?: boolean;
     gathering?: boolean;
     energySource?: Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin>;
     room?: string;
+    /**
+     * The job the creep performs. Job functions defined in src/roles/
+     */
     role?: Role;
     operationId?: string;
+    /**
+     * The empire's priority of the creep's current task. Used for determining which creep shove outcomes
+     */
     currentTaskPriority?: Priority;
     _m?: TravelState;
-    scout?: ScoutMemory;
     combat?: CombatMemory;
     nextRole?: Role;
-    storeRoadInMemory?: Id<StructureContainer>;
     sleepCollectTil?: number;
     stop?: boolean;
     spawnReplacementAt?: number;
@@ -48,11 +50,29 @@ interface PriorityQueue {
 }
 
 interface ScoutMemory extends CreepMemory {
+    /**
+     * A list of all rooms visited AND the depth of that particular visit. Depth is tracked so creeps don't block the room later
+     */
     roomsVisited?: { depth: number; roomName: string }[];
+    /**
+     * A string made from concatenated DirectionConstants from the origin point
+     */
     pathTree?: string;
+    /**
+     * The room the scout was in last tick
+     */
     roomLastTick?: string;
+    /**
+     * The room the scout is travelling to
+     */
     nextRoom?: string;
+    /**
+     * The number of rooms the creep should move from origin
+     */
     maxDepth?: number;
+    /**
+     * If true, the creep is done exploring this node's children and is returning to the previous node
+     */
     returnToLastRoom?: boolean;
 }
 
@@ -106,4 +126,15 @@ const enum Role {
     INTERSHARD_TRAVELLER = 'INTERSHARD_TRAVELLER',
     KEEPER_EXTERMINATOR = 'KEEPER_EXTERMINATOR',
     REMOTE_MINERAL_MINER = 'REMOTE_MINERAL_MINER',
+}
+
+interface MinerMemory extends CreepMemory {
+    /**
+     * Link the miner uses to send energy back to manager
+     */
+    link?: Id<StructureLink>;
+    /**
+     * RoomPosition the miner stands on to work
+     */
+    assignment: string;
 }
