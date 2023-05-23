@@ -1,122 +1,107 @@
+import { Pathing } from '../modules/pathing';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Scout extends WaveCreep {
+    memory: ScoutMemory;
     protected run() {
-        // let nextTarget = this.memory.scout?.path[this.memory.scout.path.length - 1];
-        // if (!nextTarget) {
-        //     // Set memory
-        //     if (!this.memory.scout) {
-        //         this.memory.scout = { path: [this.room.name], spawn: this.pos.toMemSafe() };
-        //     }
-        //     if (!Memory.empire.scoutAssignments) {
-        //         Memory.empire.scoutAssignments = {};
-        //     }
-        //     if (!Memory.empire.scoutAssignments[this.memory.room]) {
-        //         Memory.empire.scoutAssignments[this.memory.room] = [];
-        //     }
-        //     nextTarget = this.findTarget();
-        //     this.memory.scout.path.push(nextTarget);
-        // }
-        // // Go to the target room
-        // if (this.travelToRoom(nextTarget, { checkForHostilesAtDestination: true }) === IN_ROOM) {
-        //     const maxRemoteMiningRooms = this.homeroom.controller.level < 7 ? 3 : 6;
-        //     // Set Room memory
-        //     if (
-        //         Game.shard.name !== 'shard3' &&
-        //         Object.keys(this.homeroom.memory.remoteAssignments).length < maxRemoteMiningRooms &&
-        //         !this.room.controller?.owner?.username &&
-        //         (!this.room.controller?.reservation?.username ||
-        //             this.room.controller?.reservation?.username === this.owner.username ||
-        //             this.room.controller?.reservation?.username === 'Invader') &&
-        //         !Memory.empire.hostileRooms.find((room) => room.room === this.room.name) &&
-        //         !this.room.find(FIND_HOSTILE_CREEPS, {
-        //             filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0,
-        //         }).length &&
-        //         !this.room.find(FIND_HOSTILE_STRUCTURES, {
-        //             filter: (struct) => struct.structureType === STRUCTURE_KEEPER_LAIR,
-        //         }).length
-        //     ) {
-        //         this.room.find(FIND_SOURCES).forEach((source) => {
-        //             const pathFinder = this.getPath(source.pos);
-        //             if (
-        //                 !pathFinder.incomplete &&
-        //                 !Memory.rooms[this.memory.room].remoteAssignments[this.room.name]?.miners[
-        //                     pathFinder.path[pathFinder.path.length - 1].toMemSafe()
-        //                 ]
-        //             ) {
-        //                 // Set Miner/Gatherer/Reserver
-        //                 if (!Memory.rooms[this.memory.room].remoteAssignments[this.room.name]) {
-        //                     Memory.rooms[this.memory.room].remoteAssignments[this.room.name] = {
-        //                         miners: new Map(),
-        //                         gatherer: AssignmentStatus.UNASSIGNED,
-        //                         reserver: AssignmentStatus.UNASSIGNED,
-        //                         needsConstruction: true,
-        //                         energyStatus: EnergyStatus.STABLE,
-        //                         state: RemoteMiningRoomState.SAFE,
-        //                         controllerState: RemoteMiningRoomControllerState.LOW,
-        //                     };
-        //                 }
-        //                 Memory.rooms[this.memory.room].remoteAssignments[this.room.name].miners[
-        //                     pathFinder.path[pathFinder.path.length - 1].toMemSafe()
-        //                 ] = AssignmentStatus.UNASSIGNED;
-        //             }
-        //         });
-        //         nextTarget = this.findTarget();
-        //     } else {
-        //         nextTarget = this.findTarget(true);
-        //     }
-        //     this.memory.scout.path.push(nextTarget);
-        // }
+        if (this.memory.pathTree === undefined) {
+            if (this.memory.debug) {
+                console.log('creating scout memory');
+            }
+            this.initScoutMemory();
+        }
+
+        if (this.room.name !== this.memory.roomLastTick) {
+            if (this.memory.returnToLastRoom) {
+                if (this.memory.debug) {
+                    console.log('returned to last room, pruning last path node. depth: ' + (this.getDepth() - 1));
+                }
+                this.memory.pathTree = this.memory.pathTree.substring(0, this.memory.pathTree.length - 1);
+                delete this.memory.returnToLastRoom;
+                delete this.memory.nextRoom;
+            } else {
+                this.updatePath();
+            }
+        }
+
+        if (Memory.roomData[this.room.name].hostile || this.memory.pathTree.length >= this.memory.maxDepth) {
+            if (this.memory.debug) {
+                console.log(`Returning to last room: hostile:${Memory.roomData[this.room.name].hostile} depth:${this.memory.pathTree.length}`);
+            }
+            this.memory.returnToLastRoom = true;
+        }
+
+        if (!this.memory.returnToLastRoom && !this.memory.nextRoom) {
+            const nextRoom = this.getNextRoom();
+            if (nextRoom) {
+                if (this.memory.debug) {
+                    console.log('next room destination acquired: ' + nextRoom);
+                }
+                this.memory.nextRoom = nextRoom;
+            } else {
+                if (this.memory.pathTree.length) {
+                    if (this.memory.debug) {
+                        console.log('no more rooms, returning to last node');
+                    }
+                    this.memory.returnToLastRoom = true;
+                } else {
+                    //scouting completed
+                    if (this.memory.debug) {
+                        console.log('scouting completed');
+                    }
+                    this.memory.recycle = true;
+                    this.recycleCreep();
+                    return;
+                }
+            }
+        }
+
+        if (this.memory.returnToLastRoom && !this.memory.nextRoom) {
+            if (this.memory.pathTree.length) {
+                this.memory.nextRoom = Game.map.describeExits(this.room.name)[
+                    Pathing.inverseDirection(Number.parseInt(this.memory.pathTree.slice(-1)) as DirectionConstant)
+                ];
+                if (this.memory.debug) {
+                    console.log(`Setting nextRoom to previous room: ${this.memory.nextRoom}`);
+                }
+            }
+        }
+
+        if (this.memory.nextRoom) {
+            this.travelToRoom(this.memory.nextRoom, { maxRooms: 1 });
+        }
+
+        this.memory.roomLastTick = this.room.name;
     }
 
-    /**
-     * Find new room for scout to check out.
-     *
-     * @param ignoreCurrentRoom Avoid looking for new exits from current room
-     * @returns new scoutTarget
-     */
-    // private findTarget(ignoreCurrentRoom?: boolean): string {
-    //     // Find all exits but filter for those that are not yet in empire memory unless currentRoom has hostiles
-    //     if (!ignoreCurrentRoom) {
-    //         const adjacentRooms = Object.values(Game.map.describeExits(this.room.name)).filter(
-    //             (adjacentRoom) =>
-    //                 adjacentRoom !== undefined &&
-    //                 !Game.rooms[adjacentRoom] &&
-    //                 ![].concat(...Object.values(Memory.empire.scoutAssignments)).includes(adjacentRoom) &&
-    //                 Game.map.getRoomLinearDistance(this.memory.room, adjacentRoom) < 2
-    //         );
+    private initScoutMemory() {
+        this.memory.pathTree = '';
+        this.memory.roomsVisited = [{ depth: this.getDepth(), roomName: this.room.name }];
+        if (!this.memory.maxDepth) {
+            this.memory.maxDepth = 3;
+        }
+        this.memory.roomLastTick = this.room.name;
+    }
 
-    //         // Add rooms if scout hasn't been there yet
-    //         if (adjacentRooms.length) {
-    //             Memory.empire.scoutAssignments[this.memory.room].push(...adjacentRooms);
-    //         }
-    //     }
-
-    //     // check empire memory against scout travelHistory to see if any rooms are left.
-    //     const nextRoom: string = Memory.empire.scoutAssignments[this.memory.room].find(
-    //         (roomToScout: string) => !this.memory.scout.path.includes(roomToScout)
-    //     );
-
-    //     // Exit Condition
-    //     if (!nextRoom) {
-    //         console.log(`${this.name} has finished scouting.`);
-    //         this.suicide();
-    //         return;
-    //     }
-
-    //     return nextRoom;
-    // }
-
-    /**
-     * Calculate path to target from homeBase. Set higher maxCost to let the scout go further from his base ==> costOutsideOfBase = maxCost - 25
-     * Swamp cost is set to 2 since roadCost is higher therefor it will not be as efficient
-     * @returns
-     */
-    private getPath(target: RoomPosition): PathFinderPath {
-        return PathFinder.search(
-            this.memory.scout.spawn.toRoomPos(),
-            { pos: target, range: 1 },
-            { plainCost: 1, swampCost: 2, maxCost: this.homeroom.controller.level < 7 ? 70 : 90 }
+    private getNextRoom(): string {
+        const adjacentRooms = Object.values(Game.map.describeExits(this.room.name));
+        return adjacentRooms.find(
+            (room) =>
+                !Memory.roomData[room]?.hostile &&
+                !this.memory.roomsVisited.some((visit) => visit.roomName === room && visit.depth <= this.getDepth() + 1)
         );
+    }
+
+    private getDepth(): number {
+        return this.memory.pathTree.length;
+    }
+
+    private updatePath(): void {
+        this.memory.pathTree += Game.map.findExit(this.memory.roomLastTick, this.room.name).toString();
+        if (this.memory.debug) {
+            console.log(this.room.name + ' reached, updating path - depth: ' + this.getDepth());
+        }
+        this.memory.roomsVisited.push({ depth: this.getDepth(), roomName: this.room.name });
+        delete this.memory.nextRoom;
     }
 }

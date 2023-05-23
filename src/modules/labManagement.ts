@@ -14,7 +14,7 @@ const BOOST_MAP: { [key in BoostType]: ResourceConstant } = {
 export function runLabs(room: Room) {
     //manage queue
     Object.entries(room.memory.labTasks).forEach(([taskId, task]) => {
-        switch (task.status) {
+        switch (task?.status) {
             case TaskStatus.QUEUED:
                 attemptToStartTask(room, taskId);
                 break;
@@ -25,7 +25,7 @@ export function runLabs(room: Room) {
     });
 
     //If there is no react task, add react task
-    if (!Object.values(room.memory.labTasks).some((task) => task.type === LabTaskType.REACT)) {
+    if (room.labs.length >= 3 && !Object.values(room.memory.labTasks).some((task) => task.type === LabTaskType.REACT)) {
         let resourceToMake = getNextResourceToCreate(room);
         if (resourceToMake) {
             let reagents = getReagents(resourceToMake);
@@ -153,7 +153,12 @@ function runUnboostTask(task: LabTask): LabTask {
     return task;
 }
 
-export function addLabTask(room: Room, opts: LabTaskPartial): OK | ERR_NOT_ENOUGH_RESOURCES {
+export function addLabTask(room: Room, opts: LabTaskPartial): ScreepsReturnCode {
+    
+    if((opts.type === LabTaskType.REACT && room.labs.length < 3) || (opts.type === LabTaskType.BOOST && room.labs.length < 1)){
+        return ERR_INVALID_TARGET;
+    }
+    
     //check room for necessary resources
     let roomHasAllResources = opts.needs.map((need) => roomHasNeededResource(room, need)).reduce((hasNeeded, nextNeed) => hasNeeded && nextNeed);
 
@@ -283,17 +288,19 @@ export function spawnBoostTestCreep(roomName?: string) {
 
 function findBoostLab(room: Room, taskId: string): StructureLab {
     const reagentLabs = findReagentLabs(room);
-    const labTask = room.memory.labTasks[taskId];
+    const labTask: LabTask = room.memory.labTasks[taskId];
     const boostLabs = room.labs.filter((lab) => !reagentLabs.includes(lab));
+    console.log(labTask.needs[0].amount + " " + labTask.needs[0].resource + " needed");
     const availableBoostLab = boostLabs.find(
         (lab) =>
             (lab.taskId &&
                 room.memory.labTasks[lab.taskId].type === LabTaskType.BOOST &&
-                room.memory.labTasks[lab.taskId].needs[0].resource === labTask.needs[0].resource &&
-                lab.getFreeCapacity() >= labTask.needs[0].amount) ||
+                (room.memory.labTasks[lab.taskId].needs[0].resource === labTask.needs[0].resource) &&
+                (lab.getFreeCapacity() >= labTask.needs[0].amount)) ||
             (lab.taskId && room.memory.labTasks[lab.taskId].type === LabTaskType.REACT) ||
             !lab.taskId
     );
+    console.log(availableBoostLab.id + " selected for boost job with capacity " + availableBoostLab.getFreeCapacity() )
     return availableBoostLab;
 }
 

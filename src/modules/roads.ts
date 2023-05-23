@@ -1,4 +1,3 @@
-import { getBunkerPositions, getStructureForPos } from './data';
 import { getArea } from './misc';
 
 const MAPPING = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -31,21 +30,11 @@ export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: Roa
             let matrix = new PathFinder.CostMatrix();
 
             if (Memory.roomData[roomName]?.roomStatus === RoomMemoryStatus.OWNED_ME) {
-                if (Memory.rooms[roomName].layout === RoomLayout.BUNKER) {
-                    getBunkerPositions(Game.rooms[roomName]).forEach((pos) =>
-                        matrix.set(
-                            pos.x,
-                            pos.y,
-                            getStructureForPos(RoomLayout.BUNKER, pos, Memory.rooms[roomName].anchorPoint.toRoomPos()) === STRUCTURE_ROAD ? 1 : 255
-                        )
-                    );
-                } else if (Memory.rooms[roomName].layout === RoomLayout.STAMP) {
-                    Object.entries(Game.rooms[roomName].memory.stampLayout).forEach(([key, stampsDetails]: [string, StampDetail[]]) =>
-                        stampsDetails.forEach((detail) =>
-                            matrix.set(detail.pos.toRoomPos().x, detail.pos.toRoomPos().y, key === 'road' || key === 'rampart' ? 1 : 255)
-                        )
-                    );
-                }
+                Object.entries(Game.rooms[roomName].memory.stampLayout).forEach(([key, stampsDetails]: [string, StampDetail[]]) =>
+                    stampsDetails.forEach((detail) =>
+                        matrix.set(detail.pos.toRoomPos().x, detail.pos.toRoomPos().y, key === 'road' || key === 'rampart' ? 1 : 255)
+                    )
+                );
             }
 
             if (!opts.ignoreOtherRoads && Memory.roomData[roomName]?.roads) {

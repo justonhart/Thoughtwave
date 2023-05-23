@@ -5,15 +5,12 @@ const MINERAL_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(RE
 
 export class Manager extends WaveCreep {
     private actionTaken = false;
-
+    memory: ManagerMemory;
     protected run() {
-        const managerPos =
-            this.room.memory.layout === RoomLayout.STAMP ? this.memory.destination?.toRoomPos() : this.room.memory?.managerPos?.toRoomPos();
-        const isCenterStampManager =
-            this.room.memory.layout === RoomLayout.STAMP &&
-            this.room.memory.stampLayout.managers.some(
-                (managerDetail) => managerDetail.type === 'center' && managerDetail.pos === managerPos.toMemSafe()
-            );
+        const managerPos = this.memory.destination?.toRoomPos();
+        const isCenterStampManager = this.room.memory.stampLayout.managers.some(
+            (managerDetail) => managerDetail.type === 'center' && managerDetail.pos === managerPos.toMemSafe()
+        );
 
         if (managerPos?.isEqualTo(this.pos) === false) {
             this.travelTo(managerPos);
@@ -73,11 +70,7 @@ export class Manager extends WaveCreep {
         }
 
         // Send energy to the center if the center link has no energy in it
-        if (
-            managerLink?.cooldown === 0 &&
-            (storage?.store.energy || managerLink?.store.energy > 0 || terminal?.store.energy > 0) &&
-            this.room.memory.layout === RoomLayout.STAMP
-        ) {
+        if (managerLink?.cooldown === 0 && (storage?.store.energy || managerLink?.store.energy > 0 || terminal?.store.energy > 0)) {
             const posToCheck = this.room.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'center').pos?.toRoomPos();
             let centerLink = posToCheck?.lookFor(LOOK_STRUCTURES).find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
             if (centerLink) {

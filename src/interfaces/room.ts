@@ -7,14 +7,12 @@ interface RoomMemory {
     controllerDistance?: number;
     unclaim?: boolean;
     managerPos?: string;
-    anchorPoint?: string;
-    gates: Gate[];
-    repairSearchCooldown: number;
-    repairQueue: Id<Structure<StructureConstant>>[];
-    miningAssignments: { [posString: string]: string };
-    mineralMiningAssignments: { [posString: string]: string };
+    gates?: Gate[];
+    repairSearchCooldown?: number;
+    repairQueue?: Id<Structure<StructureConstant>>[];
+    miningAssignments?: { [posString: string]: string };
+    mineralMiningAssignments?: { [posString: string]: string };
     reservedEnergy?: number;
-    layout?: RoomLayout;
     labTasks?: { [id: number]: LabTask };
     dontCheckConstructionsBefore?: number;
     shipments?: number[]; //stores IDs for shipments to be referenced from Memory.shipments
@@ -26,13 +24,28 @@ interface RoomMemory {
     outstandingClaim?: string; //source to be claimed
     remoteSources?: { [sourcePos: string]: RemoteSourceData };
     lastRemoteSourceCheck?: number;
-    threatLevel: HomeRoomThreatLevel;
+    threatLevel?: HomeRoomThreatLevel;
     resourceRequests?: string[];
     abandon?: boolean;
     /**
      * Tracks the amount of resources the manager is moving between storage structures. Used to include manager inventory in need calculation
      */
-    transferBuffer: { [resource: string]: number };
+    transferBuffer?: { [resource: string]: number };
+    colonizationInProgress?: boolean;
+    roomType: RoomType;
+    lastScout?: number;
+}
+
+/**
+ * Operating mode for owned room:
+ * - HOMEROOM is traditional room operations
+ * - REMOTE_MINING is temporary ownership for running room-owner level functions over remote mined rooms
+ * - OPERATION_CONTROLLED is for rooms owned for operation purposes
+ */
+const enum RoomType {
+    HOMEROOM = 1,
+    REMOTE_MINING,
+    OPERATION_CONTROLLED,
 }
 
 interface RemoteSourceData {
@@ -55,6 +68,8 @@ interface RemoteData {
     threatLevel: RemoteRoomThreatLevel;
     keeperExterminator?: string;
     sourceKeeperLairs?: { [sourcePos: string]: { id: Id<Structure<StructureConstant>>; pos: string } }; // keeperId: closestSourceId
+    shouldCheckStructures?: boolean;
+    clearStructures?: boolean;
 }
 
 interface RoomData {
@@ -290,11 +305,6 @@ const enum EnergyStatus {
 interface Gate {
     id: Id<StructureRampart>;
     lastToggled: number;
-}
-
-const enum RoomLayout {
-    BUNKER,
-    STAMP,
 }
 
 interface RemoteStats {

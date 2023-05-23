@@ -2,6 +2,7 @@ import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class KeeperExterminator extends CombatCreep {
     private attacked: boolean = false;
+    memory: KeeperExterminatorMemory;
     protected run() {
         this.manageLifecycle();
         let target = Game.getObjectById(this.memory.targetId);

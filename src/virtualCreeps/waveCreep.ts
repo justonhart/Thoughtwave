@@ -16,8 +16,8 @@ export class WaveCreep extends Creep {
             } else {
                 this.getNextBoost();
             }
-        } else if (this.memory.portalLocations?.[0]) {
-            let portalPos = this.memory.portalLocations[0].toRoomPos();
+        } else if (this.memory.waypoints?.[0]) {
+            let portalPos = this.memory.waypoints[0].toRoomPos();
 
             if (!this.pos.isNearTo(portalPos)) {
                 this.travelTo(portalPos);
@@ -26,7 +26,7 @@ export class WaveCreep extends Creep {
                     .lookFor(LOOK_STRUCTURES)
                     .find((struct) => struct.structureType === STRUCTURE_PORTAL) as StructurePortal;
 
-                this.memory.portalLocations = this.memory.portalLocations.filter((pos) => pos !== this.memory.portalLocations[0]);
+                this.memory.waypoints = this.memory.waypoints.filter((pos) => pos !== this.memory.waypoints[0]);
 
                 if (portalStructure.destination instanceof RoomPosition) {
                     this.moveTo(portalPos);
@@ -117,7 +117,7 @@ export class WaveCreep extends Creep {
         if (nextBoostTask) {
             let boostLab = Game.getObjectById(nextBoostTask.reactionLabs?.[0]);
             if (boostLab && nextBoostTask.status === TaskStatus.ACTIVE) {
-                this.memory.currentTaskPriority = Priority.HIGH;
+                this.memory.currentTaskPriority = Priority.MEDIUM;
                 this.travelTo(boostLab, { range: 1 });
             } else {
                 this.memory.currentTaskPriority = Priority.LOW;
@@ -160,7 +160,6 @@ export class WaveCreep extends Creep {
     protected recycleCreep() {
         this.memory.currentTaskPriority = Priority.HIGH; // Be able to move creeps off container
         if (this.travelToRoom(this.homeroom.name) === IN_ROOM && !this.memory.targetId) {
-            if (this.homeroom.memory.layout === RoomLayout.STAMP) {
                 this.memory.targetId = this.homeroom.mySpawns
                     .filter((spawn) =>
                         this.homeroom.memory.stampLayout.container.some(
@@ -172,24 +171,17 @@ export class WaveCreep extends Creep {
             if (!this.memory.targetId) {
                 this.memory.targetId = this.homeroom.mySpawns?.shift()?.id;
             }
-        }
 
         const target = Game.getObjectById(this.memory.targetId) as StructureSpawn;
         if (target instanceof StructureSpawn) {
-            if (this.homeroom.memory.layout === RoomLayout.STAMP) {
-                let containerPos = this.homeroom.structures.find((s) => s.structureType === STRUCTURE_CONTAINER && target.pos.isNearTo(s))?.pos;
+            let containerPos = this.homeroom.structures.find((s) => s.structureType === STRUCTURE_CONTAINER && target.pos.isNearTo(s))?.pos;
+            if(containerPos){
                 if (this.pos.isEqualTo(containerPos)) {
                     target.recycleCreep(this);
                 } else {
                     this.travelTo(containerPos);
                 }
-            } else {
-                if (this.pos.isNearTo(target)) {
-                    target.recycleCreep(this);
-                } else {
-                    this.travelTo(target, { range: 1 });
-                }
-            }
+           }
         } else {
             delete this.memory.targetId;
         }

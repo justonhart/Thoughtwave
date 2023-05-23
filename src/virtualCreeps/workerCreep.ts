@@ -27,6 +27,9 @@ export class WorkerCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1, maxRooms: 1 });
                     break;
+                case ERR_NOT_ENOUGH_RESOURCES:
+                    delete this.memory.energySource;
+                    break;
                 case 0:
                     this.stopGathering();
                     break;
@@ -40,6 +43,9 @@ export class WorkerCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1, maxRooms: 1 });
                     break;
+                case ERR_NOT_ENOUGH_RESOURCES:
+                    delete this.memory.energySource;
+                    break;
                 case 0:
                     this.stopGathering();
                     break;
@@ -48,10 +54,13 @@ export class WorkerCreep extends WaveCreep {
             return;
         }
 
-        if (target instanceof Ruin) {
+        if (target instanceof Ruin || target instanceof Tombstone) {
             switch (this.withdraw(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { ignoreCreeps: true, range: 1, maxRooms: 1 });
+                    break;
+                case ERR_NOT_ENOUGH_RESOURCES:
+                    delete this.memory.energySource;
                     break;
                 case 0:
                     this.stopGathering();
@@ -82,13 +91,15 @@ export class WorkerCreep extends WaveCreep {
             return this.room.terminal.id;
         }
 
-        let nonStorageSources: (Ruin | Resource | Structure)[];
+        let nonStorageSources: (Ruin | Resource | Structure | Tombstone)[];
 
         let ruins = this.room.find(FIND_RUINS, {
             filter: (r) => {
                 return r.store[RESOURCE_ENERGY];
             },
         });
+
+        let tombstones = this.room.find(FIND_TOMBSTONES, { filter: (t) => t.store[RESOURCE_ENERGY] });
 
         let looseEnergyStacks = this.room
             .find(FIND_DROPPED_RESOURCES)
@@ -98,14 +109,13 @@ export class WorkerCreep extends WaveCreep {
             (str) =>
                 str.structureType === STRUCTURE_CONTAINER &&
                 str.store.energy >= this.store.getCapacity() &&
-                (this.room.memory.layout !== RoomLayout.STAMP ||
-                    !this.room.memory.stampLayout.container.some(
-                        (containerStamp) =>
-                            str.pos.toMemSafe() === containerStamp.pos && (containerStamp.type === 'center' || containerStamp.type === 'rm')
-                    ))
+                !this.room.memory.stampLayout.container.some(
+                    (containerStamp) =>
+                        str.pos.toMemSafe() === containerStamp.pos && (containerStamp.type === 'center' || containerStamp.type === 'rm')
+                )
         );
 
-        nonStorageSources = [...ruins, ...looseEnergyStacks, ...containers];
+        nonStorageSources = [...tombstones, ...ruins, ...looseEnergyStacks, ...containers];
         if (nonStorageSources.length) {
             return this.pos.findClosestByRange(nonStorageSources).id;
         }
@@ -174,9 +184,8 @@ export class WorkerCreep extends WaveCreep {
                 case ERR_NOT_IN_RANGE:
                     const opts: TravelToOpts = { range: 3, maxRooms: 1, avoidEdges: true };
                     if (
-                        this.homeroom.memory.layout === RoomLayout.STAMP &&
-                        (this.homeroom.memory.threatLevel === HomeRoomThreatLevel.ENEMY_INVADERS ||
-                            this.homeroom.memory.threatLevel >= HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS)
+                        this.homeroom.memory.threatLevel === HomeRoomThreatLevel.ENEMY_INVADERS ||
+                        this.homeroom.memory.threatLevel >= HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS
                     ) {
                         opts.avoidEdges = true;
                     } else {
@@ -256,12 +265,15 @@ export class WorkerCreep extends WaveCreep {
                 constructionSites = constructionSites.filter((site) => ![STRUCTURE_ROAD, STRUCTURE_RAMPART].includes(site.structureType));
             }
 
-            //return the most-progressed construction site, proportionally
-            return constructionSites.reduce((mostProgressedSite, siteToCheck) =>
-                mostProgressedSite.progress / mostProgressedSite.progressTotal > siteToCheck.progress / siteToCheck.progressTotal
-                    ? mostProgressedSite
-                    : siteToCheck
-            ).id;
+            const mostProgressedRatio = constructionSites.reduce(
+                (mostProgressedRatio: number, nextSite: ConstructionSite) =>
+                    mostProgressedRatio > nextSite.progress / nextSite.progressTotal
+                        ? mostProgressedRatio
+                        : nextSite.progress / nextSite.progressTotal,
+                0
+            );
+            const mostProgressedSites = constructionSites.filter((site) => site.progress / site.progressTotal >= mostProgressedRatio);
+            return this.pos.findClosestByRange(mostProgressedSites).id;
         }
     }
 

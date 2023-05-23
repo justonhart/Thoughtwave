@@ -5,7 +5,7 @@ interface Memory {
     priceMap?: { [resourceType: string]: number };
     logCPU?: boolean;
     spawnAssignments?: SpawnAssignment[];
-    operations?: Operation[];
+    operations?: { [operationId: string]: Operation };
     playersToIgnore?: string[];
     squads?: { [squadId: string]: Squad };
     marketBlacklist?: string[]; //player names we don't want to sell to
@@ -60,11 +60,13 @@ interface Operation {
     targetPos?: string;
     resource?: ResourceConstant;
     expireAt?: number;
-    portalLocations?: string[];
-    forcedDestinations?: string[];
+    waypoints?: string[];
     pathCost?: number;
     toughHitsRequired?: number;
     visionRequests?: string[];
+    subOperations?: string[];
+    parentId?: string;
+    roomContainsStarterEnergy?: boolean;
 }
 
 interface OperationOpts {
@@ -74,10 +76,11 @@ interface OperationOpts {
     targetPos?: string;
     resource?: ResourceConstant;
     expireAt?: number;
-    portalLocations?: string[];
+    waypoints?: string[];
     forcedDestinations?: string[];
     pathCost?: number;
     disableLogging?: boolean;
+    parentId?: string;
 }
 
 interface OriginOpts {
@@ -176,9 +179,12 @@ const enum OperationType {
     CLEAN,
     ADD_REMOTE_MINING,
     POWER_BANK,
+    TRANSFER,
 }
 
 const enum OperationStage {
+    FAILED = -1,
+    SUSPEND,
     PREPARE = 1,
     ACTIVE,
     CLAIM,
@@ -194,6 +200,7 @@ interface VisionRequest {
 }
 
 interface DebugSettings {
+    logOperations?: boolean;
     drawStamps?: boolean;
     logCpu?: boolean;
     drawRoads?: boolean;
@@ -232,4 +239,9 @@ const enum ResourceRequestStatus {
     SUBMITTED,
     ASSIGNED,
     FULFULLED,
+}
+
+interface EmpireData {
+    roomsOwned: number;
+    roomCap: number;
 }

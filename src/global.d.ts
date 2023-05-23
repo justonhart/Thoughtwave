@@ -15,11 +15,13 @@ declare global {
 
     var nextTickFunctions: (() => void)[];
 
-    var visionRequestIncrement: number;
+    var identifierIncrement: number;
 
     var remoteSourcesChecked: boolean;
 
     var initiatingPowerCreeps: boolean;
+
+    var empireData: EmpireData;
 }
 
 export {};

@@ -1,14 +1,17 @@
 import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
 export class Operative extends WorkerCreep {
+    memory: OperativeMemory;
     protected run() {
         if (!this.operation) {
             this.memory.recycle = true;
-            delete this.memory.operation;
-            delete this.memory.destination;
+            if (this.room.controller?.my) {
+                this.memory.room = this.room.name;
+            }
+            delete this.memory.operationId;
         }
 
-        switch (this.memory.operation) {
+        switch (this.operation.type) {
             case OperationType.STERILIZE:
                 this.runSterilize();
                 break;
@@ -25,20 +28,53 @@ export class Operative extends WorkerCreep {
             case OperationType.CLEAN:
                 this.runClean();
                 break;
+            case OperationType.TRANSFER:
+                this.runTransfer();
+                break;
+        }
+    }
+
+    private runTransfer() {
+        if (this.store.getUsedCapacity()) {
+            const destinationRoom = Game.rooms[this.operation.targetRoom];
+            if (destinationRoom?.storage) {
+                if (this.pos.isNearTo(destinationRoom.storage)) {
+                    this.transfer(destinationRoom.storage, this.operation.resource);
+                    this.memory.room = destinationRoom.name;
+                    this.memory.recycle = true;
+                }
+            } else {
+                const spawnPos = Memory.rooms[this.operation.targetRoom].stampLayout.spawn.find((stamp) => stamp.rcl === 1).pos.toRoomPos();
+                const destinationPos = new RoomPosition(spawnPos.x, spawnPos.y + 1, spawnPos.roomName);
+                if (this.pos.isEqualTo(destinationPos)) {
+                    const adjacentSpawn: StructureSpawn = this.pos.findInRange(FIND_MY_STRUCTURES, 1, {
+                        filter: (s) => s.structureType === STRUCTURE_SPAWN,
+                    }) as unknown as StructureSpawn;
+                    if (adjacentSpawn instanceof StructureSpawn) {
+                        adjacentSpawn.recycleCreep(this);
+                    } else {
+                        this.suicide();
+                    }
+                } else {
+                    this.travelTo(destinationPos);
+                }
+            }
+        } else {
+            this.gatherResourceFromOrigin(this.operation.resource);
         }
     }
 
     private runUpgradeBoost() {
-        if (Game.rooms[this.memory.destination].controller.level < 6) {
+        if (Game.rooms[this.operation.targetRoom]?.controller.level < 6) {
             if (this.store.energy) {
-                let controller = Game.rooms[this.memory.destination].controller;
+                let controller = Game.rooms[this.operation.targetRoom]?.controller;
                 if (this.pos.inRangeTo(controller, 3)) {
                     this.upgradeController(controller);
                 } else {
                     this.travelTo(controller, { range: 3 });
                 }
             } else {
-                this.gatherResourceFromOrigin(RESOURCE_ENERGY);
+                this.gatherEnergy();
             }
         } else {
             this.terminateOperation();
@@ -46,9 +82,9 @@ export class Operative extends WorkerCreep {
     }
 
     private runRemoteBuild() {
-        const room = Game.rooms[this.memory.destination];
+        const room = Game.rooms[this.operation.targetRoom];
         if (this.store.energy) {
-            if (room) {
+            if (room && this.room === room) {
                 let target = Game.getObjectById(this.memory.targetId);
                 if (!target) {
                     this.memory.targetId = this.findBuildTarget();
@@ -61,23 +97,23 @@ export class Operative extends WorkerCreep {
                     this.runRepairJob(target);
                 } else {
                     this.onTaskFinished();
-                    this.terminateOperation();
+                    if (!this.room.controller?.my) {
+                        this.terminateOperation();
+                    } else {
+                        this.runUpgradeBoost();
+                    }
                 }
             } else {
-                this.travelToRoom(this.memory.destination);
+                this.travelToRoom(this.operation.targetRoom);
             }
         } else {
-            if (room?.energyStatus > EnergyStatus.RECOVERING) {
-                this.gatherEnergy();
-            } else {
-                this.gatherResourceFromOrigin(RESOURCE_ENERGY);
-            }
+            this.gatherEnergy();
         }
     }
 
     private runClean() {
         if (!this.memory.targetId) {
-            if (this.pos.roomName === this.memory.destination) {
+            if (this.pos.roomName === this.operation.targetRoom) {
                 let target = this.findCleanTarget();
                 if (!target) {
                     this.terminateOperation();
@@ -85,7 +121,7 @@ export class Operative extends WorkerCreep {
                     this.memory.targetId = target;
                 }
             } else {
-                this.travelToRoom(this.memory.destination);
+                this.travelToRoom(this.operation.targetRoom);
             }
         } else {
             let target = Game.getObjectById(this.memory.targetId) as Structure;
@@ -102,7 +138,7 @@ export class Operative extends WorkerCreep {
     }
 
     private runSterilize() {
-        if (this.travelToRoom(this.memory.destination, { range: 20 }) === IN_ROOM) {
+        if (this.travelToRoom(this.operation.targetRoom, { range: 20 }) === IN_ROOM) {
             //@ts-expect-error
             let target: Structure = Game.getObjectById(this.memory.targetId);
             if (!target) {
@@ -136,7 +172,7 @@ export class Operative extends WorkerCreep {
             } else {
                 this.travelTo(storage);
             }
-        } else if (this.travelToRoom(this.memory.destination) === IN_ROOM) {
+        } else if (this.travelToRoom(this.operation.targetRoom) === IN_ROOM) {
             //cast target to storage for store property
             let target = Game.getObjectById(this.memory.targetId);
             if (!target) {
@@ -178,7 +214,7 @@ export class Operative extends WorkerCreep {
                 this.travelTo(target, { range: 4 });
             } else {
                 delete this.memory.targetId;
-                if (this.memory.operation !== OperationType.POWER_BANK) {
+                if (this.operation.type !== OperationType.POWER_BANK) {
                     // Gets terminated in operationsManagement when all operatives are dead (recycled)
                     this.terminateOperation();
                 } else {
@@ -189,7 +225,7 @@ export class Operative extends WorkerCreep {
     }
 
     private findCollectionTarget(): Id<Structure> | Id<Ruin> | Id<Resource> {
-        if (this.memory.operation === OperationType.POWER_BANK) {
+        if (this.operation.type === OperationType.POWER_BANK) {
             const powerbank = this.room.structures.find((s) => s.structureType === STRUCTURE_POWER_BANK);
             if (powerbank) {
                 return powerbank.id; // Go towards powerbank (easier to protect)
@@ -239,7 +275,7 @@ export class Operative extends WorkerCreep {
     }
 
     private findCleanTarget(): Id<Structure> {
-        let destinationRoom = Game.rooms[this.memory.destination];
+        let destinationRoom = Game.rooms[this.operation.targetRoom];
 
         let targets = destinationRoom.hostileStructures.filter(
             (struct) =>
@@ -252,17 +288,8 @@ export class Operative extends WorkerCreep {
     }
 
     private terminateOperation() {
-        let opIndex = this.getOperationIndex();
-        if (opIndex > -1) {
-            Memory.operations[opIndex].stage = OperationStage.COMPLETE;
-        }
-
-        delete this.memory.destination;
-        delete this.memory.operation;
-    }
-
-    private getOperationIndex() {
-        return Memory.operations.findIndex((op) => op.targetRoom === this.memory.destination && op.type === this.memory.operation);
+        this.operation.stage = OperationStage.COMPLETE;
+        delete this.memory.operationId;
     }
 
     private gatherResourceFromOrigin(resource: ResourceConstant) {
@@ -275,7 +302,7 @@ export class Operative extends WorkerCreep {
     }
 
     private findBuildTarget(): Id<Structure> | Id<ConstructionSite> {
-        const room = Game.rooms[this.memory.destination];
+        const room = Game.rooms[this.operation.targetRoom];
 
         let constructedDefenses = room?.structures.find(
             (structure) =>
@@ -288,11 +315,14 @@ export class Operative extends WorkerCreep {
         }
 
         const sites = room?.myConstructionSites;
-        if (sites.length) {
+        const nonRampartSites = sites.filter((s) => s.structureType !== STRUCTURE_RAMPART);
+        if (nonRampartSites.length) {
+            return nonRampartSites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
+        } else if (sites.length) {
             return sites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
         }
 
-        const ramparts = room?.myStructures.filter((s) => s.structureType === STRUCTURE_RAMPART && s.hits < 250000);
+        const ramparts = room?.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_RAMPART });
         if (ramparts.length) {
             return this.room.name === room.name ? this.pos.findClosestByRange(ramparts).id : ramparts.pop().id;
         }

@@ -1,6 +1,7 @@
 import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
 export class Upgrader extends WorkerCreep {
+    memory: WorkerCreepMemory;
     protected run() {
         if (!this.room.upgraderLink) {
             if (!this.store.energy) {

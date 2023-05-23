@@ -1,6 +1,7 @@
 import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
 export class Worker extends WorkerCreep {
+    memory: WorkerCreepMemory;
     protected performDuties() {
         let target = Game.getObjectById(this.memory.targetId);
 

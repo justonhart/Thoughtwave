@@ -55,3 +55,7 @@ StructureSpawn.prototype.spawnKeeperExterminator = function (remoteRoomName: str
 StructureSpawn.prototype.spawnRemoteMineralMiner = function (remoteRoomName: string) {
     return PopulationManagement.spawnRemoteMineralMiner(this, remoteRoomName);
 };
+
+StructureSpawn.prototype.spawnScout = function () {
+    return PopulationManagement.spawnScout(this);
+};

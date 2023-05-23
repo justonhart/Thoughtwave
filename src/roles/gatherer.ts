@@ -3,6 +3,7 @@ import { posExistsOnRoad } from '../modules/roads';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
+    memory: GathererMemory;
     protected run() {
         if (
             this.memory?.spawnReplacementAt >= Game.time &&
@@ -115,7 +116,7 @@ export class Gatherer extends TransportCreep {
         if (Game.rooms[this.memory.assignment.toRoomPos().roomName]) {
             let id = this.getMiningPosition()
                 .lookFor(LOOK_STRUCTURES)
-                .find((s) => s.structureType === STRUCTURE_CONTAINER)?.id;
+                .find((s) => s.structureType === STRUCTURE_CONTAINER)?.id as Id<StructureContainer>;
             this.memory.targetId = id;
             return id;
         }

@@ -51,6 +51,10 @@ export class Protector extends CombatCreep {
             } else if (creepActionReturnCode === OK) {
                 this.healSelf(!!this.getActiveBodyparts(ATTACK));
             }
+
+            if(!target){
+                this.travelTo(new RoomPosition(25, 25, this.room.name), {range: 22});
+            }
         } else if (this.damaged()) {
             this.healSelf(this.defendSelf());
         }

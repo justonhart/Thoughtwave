@@ -1,23 +1,12 @@
 import { CombatIntel } from './combatIntel';
-import { computeRoomNameFromDiff, isCenterRoom, isKeeperRoom } from './data';
-import { addLabTask, runLabs } from './labManagement';
+import { computeRoomNameFromDiff } from './data';
+import { runLabs } from './labManagement';
 import { PopulationManagement } from './populationManagement';
 import { assignRemoteSource, findSuitableRemoteSource, removeSourceAssignment } from './remoteMining';
 import { manageRemoteRoom } from './remoteRoomManagement';
 import { shipmentReady } from './resourceManagement';
 import { deleteRoad } from './roads';
-import {
-    placeBunkerOuterRamparts,
-    placeBunkerConstructionSites,
-    placeMinerLinks,
-    placeRoadsToPOIs,
-    cleanRoom,
-    placeBunkerInnerRamparts,
-    placeBunkerCoreRamparts,
-    roomNeedsCoreStructures,
-    placeUpgraderLink,
-    findStampLocation,
-} from './roomDesign';
+import { roomNeedsCoreStructures, findStampLocation } from './roomDesign';
 
 const BUILD_CHECK_PERIOD = 100;
 const REPAIR_QUEUE_REFRESH_PERIOD = 500;
@@ -34,13 +23,27 @@ const RESOURCE_COMPRESSION_MAP = {
 };
 
 export function driveRoom(room: Room) {
+    switch (room.memory.roomType) {
+        case RoomType.REMOTE_MINING:
+            driveRemoteMiningRoom(room);
+            break;
+        case RoomType.OPERATION_CONTROLLED:
+            break;
+        case RoomType.HOMEROOM:
+        default:
+            driveHomeRoom(room);
+            break;
+    }
+}
+
+function driveHomeRoom(room: Room) {
     if (room.memory?.unclaim) {
         delete Memory.rooms[room.name];
         return;
     }
 
     if (!Memory.rooms[room.name] || Object.keys(Memory.rooms[room.name])?.length === 0) {
-        initRoom(room);
+        initHomeRoom(room);
     } else {
         initMissingMemoryValues(room);
     }
@@ -49,8 +52,6 @@ export function driveRoom(room: Room) {
 
     if (!room.canSpawn()) {
         // fail state - if a room has unexpectedly lost all spawns
-        if (!Memory.operations.find((op) => op.targetRoom === room.name && op.type === OperationType.COLONIZE)) {
-        }
     } else {
         room.memory.reservedEnergy = 0;
 
@@ -88,53 +89,6 @@ export function driveRoom(room: Room) {
             }
 
             if (
-                room.memory.layout === RoomLayout.BUNKER &&
-                Game.cpu.bucket > 200 &&
-                !global.roomConstructionsChecked &&
-                (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
-                (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
-                Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-                room.myConstructionSites.length < 15
-            ) {
-                let cpuUsed = Game.cpu.getUsed();
-                switch (room.controller.level) {
-                    case 8:
-                        if (!roomNeedsCoreStructures(room)) {
-                            placeBunkerCoreRamparts(room);
-                        }
-                    case 7:
-                        placeUpgraderLink(room);
-                    case 6:
-                        if (!roomNeedsCoreStructures(room)) {
-                            placeBunkerInnerRamparts(room);
-                        }
-                        placeExtractor(room);
-                        placeMineralContainers(room);
-                    case 5:
-                        placeMinerLinks(room);
-                    case 4:
-                        if (!roomNeedsCoreStructures(room)) {
-                            placeBunkerOuterRamparts(room);
-                            placeMiningRamparts(room);
-                        }
-                    case 3:
-                        placeMiningPositionContainers(room);
-                    case 2:
-                        placeBunkerConstructionSites(room);
-                        placeRoadsToPOIs(room);
-                    case 1:
-                        cleanRoom(room);
-                }
-                global.roomConstructionsChecked = true;
-                room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
-                cpuUsed = Game.cpu.getUsed() - cpuUsed;
-                if (Memory.debug.logRoomPlacementCpu) {
-                    console.log(`CPU used on ${room.name} bunker layout: ${cpuUsed}`);
-                }
-            }
-
-            if (
-                room.memory.layout === RoomLayout.STAMP &&
                 !global.roomConstructionsChecked &&
                 (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
                 (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
@@ -237,32 +191,18 @@ export function driveRoom(room: Room) {
             console.log(`Error caught running runHomeSecurity/runTowers in ${room.name}: \n${e}`);
         }
 
-        if (room.memory.anchorPoint) {
-            let anchorPoint = room.memory.anchorPoint.toRoomPos();
-            if (
-                room.hostileCreeps.some(
-                    (creep) =>
-                        creep.owner.username !== 'Invader' &&
-                        (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
-                        anchorPoint.getRangeTo(creep) <= 6
-                )
-            ) {
-                room.controller.activateSafeMode();
-            }
-        } else if (room.memory.layout === RoomLayout.STAMP && room.memory.threatLevel > HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS) {
-            if (
-                room.hostileCreeps.some(
-                    (creep) =>
-                        creep.owner.username !== 'Invader' &&
-                        (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
-                        creep.pos.x > 2 &&
-                        creep.pos.y > 2 &&
-                        creep.pos.x < 47 &&
-                        creep.pos.y < 47
-                )
-            ) {
-                room.controller.activateSafeMode();
-            }
+        if (
+            room.hostileCreeps.some(
+                (creep) =>
+                    creep.owner.username !== 'Invader' &&
+                    (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
+                    creep.pos.x > 2 &&
+                    creep.pos.y > 2 &&
+                    creep.pos.x < 47 &&
+                    creep.pos.y < 47
+            )
+        ) {
+            room.controller.activateSafeMode();
         }
 
         if (room.energyStatus >= EnergyStatus.RECOVERING) {
@@ -331,10 +271,12 @@ export function driveRoom(room: Room) {
             console.log(`Error caught running room ${room.name} for Labs: \n${e}`);
         }
 
-        try {
-            runSpawning(room);
-        } catch (e) {
-            console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
+        if (!room.memory.colonizationInProgress) {
+            try {
+                runSpawning(room);
+            } catch (e) {
+                console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
+            }
         }
 
         if (room.factory) {
@@ -358,6 +300,23 @@ export function driveRoom(room: Room) {
         }
 
         delete room.memory.reservedEnergy;
+    }
+}
+
+function driveRemoteMiningRoom(room: Room) {
+    if (Memory.remoteData[room.name].clearStructures) {
+        const structuresToClear = room.structures.filter(
+            (s) =>
+                s.structureType !== STRUCTURE_CONTAINER &&
+                s.structureType !== STRUCTURE_ROAD &&
+                s.structureType !== STRUCTURE_CONTROLLER &&
+                s.structureType !== STRUCTURE_INVADER_CORE
+        );
+        structuresToClear.forEach((s) => s.destroy());
+        delete Memory.remoteData[room.name].clearStructures;
+    } else {
+        room.controller.unclaim();
+        delete Memory.rooms[room.name];
     }
 }
 
@@ -446,13 +405,6 @@ function runHomeSecurity(homeRoom: Room): boolean {
         return false; // Towers can handle it for sure
     }
 
-    if (
-        homeRoom.memory.layout === RoomLayout.BUNKER &&
-        hostileCreepData.totalHeal < CombatIntel.towerDamageAtRange(towerData, 12) * hostileCreepData.highestDmgMultiplier
-    ) {
-        return false; // Closest Creeps in BunkerLayout have to be in a range of 12 if they want to hit the ramparts in any way
-    }
-
     // No Towers and/or ramparts yet so spawn a minimum protector with heal which can then kite the invader around
     if (hostileCreepData.creeps.length && homeRoom.controller.level < 4) {
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
@@ -501,33 +453,6 @@ function runHomeSecurity(homeRoom: Room): boolean {
                 });
             }
         } else if (currentNumProtectors) {
-            // Get all unboosted protectors and boost them (needed due to early detection system)
-            Object.values(Game.creeps)
-                .filter(
-                    (creep) =>
-                        creep.memory.role === Role.RAMPART_PROTECTOR &&
-                        creep.pos.roomName === homeRoom.name &&
-                        (!creep.memory.needsBoosted || !creep.body.some((part) => part.boost))
-                )
-                .forEach((creep) => {
-                    creep.memory.needsBoosted = true;
-                    const labTasksToAdd: LabTaskPartial[] = [];
-                    const requestsToAdd: ResourceRequestPartial[] = [];
-                    PopulationManagement.setLabTasksAndRequests(
-                        homeRoom,
-                        creep.name,
-                        creep.body.map((part) => part.type),
-                        labTasksToAdd,
-                        requestsToAdd,
-                        { boosts: [BoostType.ATTACK, BoostType.MOVE] }
-                    );
-                    labTasksToAdd.forEach((task) => {
-                        homeRoom.addLabTask(task);
-                    });
-                    requestsToAdd.forEach((request) => {
-                        homeRoom.addRequest(request.resource, request.amount);
-                    });
-                });
             Memory.spawnAssignments
                 .filter(
                     (creep) =>
@@ -572,12 +497,13 @@ function runHomeSecurity(homeRoom: Room): boolean {
 }
 
 function hasEarlyDetectionThreat(roomName: string) {
-    return Object.values(Game.map.describeExits(roomName)).some((exitRoomName) => Memory.roomData[exitRoomName].threatDetected);
+    return Object.values(Game.map.describeExits(roomName)).some((exitRoomName) => Memory.roomData[exitRoomName]?.threatDetected);
 }
 
-export function initRoom(room: Room) {
+export function initHomeRoom(room: Room) {
     Memory.rooms[room.name] = {
         threatLevel: HomeRoomThreatLevel.SAFE,
+        roomType: RoomType.HOMEROOM,
         gates: [],
         repairSearchCooldown: 0,
         repairQueue: [],
@@ -591,7 +517,6 @@ export function initRoom(room: Room) {
     //calculate room layout here
     const valid = findStampLocation(room);
     if (valid) {
-        room.memory.layout = RoomLayout.STAMP;
         const spawn = room.memory.stampLayout.spawn.find((spawnDetail) => spawnDetail.rcl === 1);
         room.createConstructionSite(spawn.pos.toRoomPos(), STRUCTURE_SPAWN);
         room.memory.miningAssignments = {};
@@ -602,47 +527,6 @@ export function initRoom(room: Room) {
         room.memory.stampLayout.container
             .filter((containerStamp) => containerStamp.type === 'mineral')
             .forEach((mineralStamp) => (room.memory.mineralMiningAssignments[mineralStamp.pos] = AssignmentStatus.UNASSIGNED));
-    }
-}
-
-function findMiningPostitions(room: Room) {
-    let sources = room.find(FIND_SOURCES);
-    let miningPositions = new Set<RoomPosition>();
-    sources.forEach((source) => {
-        let possiblePositions = room
-            .lookForAtArea(LOOK_TERRAIN, source.pos.y - 1, source.pos.x - 1, source.pos.y + 1, source.pos.x + 1, true)
-            .filter((terrain) => terrain.terrain != 'wall')
-            .map((terrain) => new RoomPosition(terrain.x, terrain.y, source.room.name));
-
-        //set closest position to storage as container position
-        let anchorPoint = room.memory.anchorPoint.toRoomPos();
-        let referencePos = anchorPoint ? new RoomPosition(anchorPoint.x + 1, anchorPoint.y - 1, room.name) : room.controller.pos;
-        let candidate = referencePos.findClosestByPath(possiblePositions, { ignoreCreeps: true });
-        if (candidate) {
-            miningPositions.add(candidate);
-        }
-    });
-
-    // if a unique mining position was found for each source
-    if (miningPositions.size === sources.length) {
-        return Array.from(miningPositions);
-    }
-
-    return undefined;
-}
-
-function findMineralMiningPosition(room: Room): RoomPosition {
-    let possiblePositions = room
-        .lookForAtArea(LOOK_TERRAIN, room.mineral.pos.y - 1, room.mineral.pos.x - 1, room.mineral.pos.y + 1, room.mineral.pos.x + 1, true)
-        .filter((terrain) => terrain.terrain != 'wall')
-        .map((terrain) => new RoomPosition(terrain.x, terrain.y, room.mineral.room.name));
-
-    //set closest position to storage as container position
-    let anchorPoint = room.memory.anchorPoint.toRoomPos();
-    let referencePos = anchorPoint ? new RoomPosition(anchorPoint.x + 1, anchorPoint.y - 1, room.name) : room.controller.pos;
-    let candidate = referencePos.findClosestByPath(possiblePositions, { ignoreCreeps: true });
-    if (candidate) {
-        return candidate;
     }
 }
 
@@ -719,34 +603,34 @@ function runSpawning(room: Room) {
         spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
     }
 
-    if (availableSpawns && PopulationManagement.needsMiner(room) && (!roomUnderAttack || room.memory.layout === undefined)) {
+    if (availableSpawns && PopulationManagement.needsMiner(room) && !roomUnderAttack) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
     }
 
-    if (availableSpawns && PopulationManagement.needsManager(room)) {
-        if (room.memory.layout === RoomLayout.BUNKER) {
-            const suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(room.memory.anchorPoint.toRoomPos()));
+    if (PopulationManagement.needsManager(room)) {
+        // Look for spawn closest to new Manager if none found just spawn it
+        const newManagerPos = PopulationManagement.getNewStampManager(room)?.pos;
+        if (newManagerPos) {
+            const suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(newManagerPos.toRoomPos()));
             if (suitableSpawn) {
                 suitableSpawn.spawnManager();
                 availableSpawns = availableSpawns.filter((spawn) => spawn !== suitableSpawn);
-            }
-        } else if (room.memory.layout === RoomLayout.STAMP) {
-            // Look for spawn closest to new Manager if none found just spawn it
-            const newManagerPos = PopulationManagement.getNewStampManager(room)?.pos;
-            if (newManagerPos) {
-                const suitableSpawn = availableSpawns.find((spawn) => spawn.pos.isNearTo(newManagerPos.toRoomPos()));
-                if (suitableSpawn) {
-                    suitableSpawn.spawnManager();
-                    availableSpawns = availableSpawns.filter((spawn) => spawn !== suitableSpawn);
-                } else {
-                    let spawn = availableSpawns.pop();
-                    spawn?.spawnManager();
-                }
+            } else {
+                let spawn = availableSpawns.pop();
+                spawn?.spawnManager();
             }
         } else {
             let spawn = availableSpawns.pop();
             spawn?.spawnManager();
+        }
+    }
+
+    if (!room.observer && (room.memory.lastScout ?? 0) + 7500 <= Game.time) {
+        let spawn = availableSpawns.pop();
+        let result = spawn?.spawnScout();
+        if (result === OK) {
+            room.memory.lastScout = Game.time;
         }
     }
 
@@ -863,27 +747,6 @@ function placeMiningRamparts(room: Room) {
     });
 }
 
-function placeMineralContainers(room: Room) {
-    if (!room.memory.mineralMiningAssignments || !Object.keys(room.memory.mineralMiningAssignments).length) {
-        room.memory.mineralMiningAssignments = {};
-        let mineralMiningPos = findMineralMiningPosition(room);
-        room.memory.mineralMiningAssignments[mineralMiningPos.toMemSafe()] = AssignmentStatus.UNASSIGNED;
-    }
-
-    let miningPositions = Object.keys(room.memory.mineralMiningAssignments).map((pos) => pos.toRoomPos());
-    miningPositions.forEach((pos) => {
-        Game.rooms[pos.roomName]?.createConstructionSite(pos.x, pos.y, STRUCTURE_CONTAINER);
-    });
-}
-
-function placeExtractor(room: Room) {
-    const extractor = room.structures.some((struct) => struct.structureType === STRUCTURE_EXTRACTOR);
-    if (!extractor) {
-        let mineralPos = room.mineral.pos;
-        room.createConstructionSite(mineralPos, STRUCTURE_EXTRACTOR);
-    }
-}
-
 export function getStructuresToProtect(nukes: Nuke[]) {
     let structuresToProtectWithHitAmounts = new Map<string, number>();
 
@@ -989,6 +852,10 @@ export function canSupportRemoteRoom(room: Room) {
 }
 
 function initMissingMemoryValues(room: Room) {
+    if (!room.memory.roomType) {
+        room.memory.roomType = RoomType.HOMEROOM;
+    }
+
     if (!room.memory.gates) {
         room.memory.gates = [];
     }
@@ -1006,7 +873,7 @@ function initMissingMemoryValues(room: Room) {
     }
 
     if (!room.memory.labTasks) {
-        room.memory.labTasks = [];
+        room.memory.labTasks = {};
     }
 
     if (!room.memory.shipments) {

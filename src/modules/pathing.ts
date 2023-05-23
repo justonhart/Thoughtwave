@@ -431,20 +431,18 @@ export class Pathing {
                     }
                 }
 
-                if (Memory.rooms[room.name]?.anchorPoint || Memory.rooms[room.name]?.managerPos) {
-                    let managerPos = room.memory.anchorPoint?.toRoomPos() || room.memory.managerPos?.toRoomPos();
+                if (Memory.rooms[room.name]?.managerPos) {
+                    let managerPos = room.memory.managerPos?.toRoomPos();
                     if (!Pathing.sameCoord(managerPos, destination)) {
                         matrix.set(managerPos.x, managerPos.y, 50);
                     }
                 }
 
-                if (Memory.rooms[room.name]?.layout === RoomLayout.STAMP) {
-                    room.memory.stampLayout.managers.forEach((managerStamp) => {
-                        if (!Pathing.sameCoord(managerStamp.pos.toRoomPos(), destination)) {
-                            matrix.set(managerStamp.pos.toRoomPos().x, managerStamp.pos.toRoomPos().y, 50);
-                        }
-                    });
-                }
+                room.memory.stampLayout?.managers.forEach((managerStamp) => {
+                    if (!Pathing.sameCoord(managerStamp.pos.toRoomPos(), destination)) {
+                        matrix.set(managerStamp.pos.toRoomPos().x, managerStamp.pos.toRoomPos().y, 50);
+                    }
+                });
 
                 if (Memory.rooms[room.name]?.miningAssignments) {
                     Object.keys(room.memory.miningAssignments)

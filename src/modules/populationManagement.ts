@@ -208,16 +208,12 @@ export class PopulationManagement {
         const minerStructures = Game.rooms[miningPos.roomName].myStructures.filter(
             (struct) => (struct.structureType === STRUCTURE_LINK || struct.structureType === STRUCTURE_EXTENSION) && miningPos.isNearTo(struct)
         );
-        if (Memory.rooms[miningPos.roomName].layout === RoomLayout.STAMP) {
-            if (minerStructures.some((minerStructure) => minerStructure.structureType === STRUCTURE_EXTENSION)) {
-                if (energyCapacityAvailable >= 850) {
-                    minerBody = [CARRY, CARRY, CARRY];
-                } else {
-                    minerBody = [CARRY];
-                }
+        if (minerStructures.some((minerStructure) => minerStructure.structureType === STRUCTURE_EXTENSION)) {
+            if (energyCapacityAvailable >= 850) {
+                minerBody = [CARRY, CARRY, CARRY];
+            } else {
+                minerBody = [CARRY];
             }
-        } else if (minerStructures.some((minerStructure) => minerStructure.structureType === STRUCTURE_LINK)) {
-            minerBody = [CARRY];
         }
         energyCapacityAvailable -= minerBody.length * 50;
         let numAdditionalWork = Math.ceil((powerLevel * 3.33) / 2);
@@ -247,36 +243,25 @@ export class PopulationManagement {
     }
 
     static spawnMiner(spawn: StructureSpawn): ScreepsReturnCode {
-        let assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
-        let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
-        let currentMiner: Creep;
-        // if (!assigment) {
-        //     // Check for TTL
-        //     currentMiner = spawn.room.creeps.find(
-        //         (creep) =>
-        //             creep.memory.role === Role.MINER &&
-        //             creep.memory.room === spawn.room.name &&
-        //             creep.ticksToLive <
-        //                 PopulationManagement.getMinerBody(creep.memory.assignment.toRoomPos(), spawn.room.energyCapacityAvailable).length * 3
-        //     );
-        //     assigment = currentMiner?.memory.assignment;
-        // }
-
-        let options: SpawnOptions = {
-            memory: {
-                assignment: assigment,
-                room: spawn.room.name,
-                role: Role.MINER,
-            },
+        const assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
+        const assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
+        const assigmentPos = assigment.toRoomPos();
+        const minerMemory: MinerMemory = {
+            assignment: assigment,
+            room: spawn.room.name,
+            role: Role.MINER,
         };
 
-        let assigmentPos = assigment.toRoomPos();
         let link = spawn.room.myStructures.find(
             (struct) => struct.structureType === STRUCTURE_LINK && assigmentPos.isNearTo(struct)
         ) as StructureLink;
         if (link) {
-            options.memory.link = link.id;
+            minerMemory.link = link.id;
         }
+
+        let options: SpawnOptions = {
+            memory: minerMemory,
+        };
 
         let name = this.generateName(options.memory.role, spawn.name);
 
@@ -289,24 +274,15 @@ export class PopulationManagement {
         }
         let result = spawn.smartSpawn(PopulationManagement.getMinerBody(assigmentPos, spawn.room.energyCapacityAvailable, powerLevel), name, options);
         if (result === OK) {
-            if (currentMiner) {
-                currentMiner.memory.hasTTLReplacement = true;
-            }
             spawn.room.memory.miningAssignments[assigment] = name;
         } else if (
             result === ERR_NOT_ENOUGH_ENERGY &&
             !spawn.room.myCreepsByMemory.some((creep) => creep.memory.role === Role.MINER) &&
             (!spawn.room.storage || spawn.room.storage?.store[RESOURCE_ENERGY] < 1000)
         ) {
-            let emergencyMinerBody: (WORK | MOVE | CARRY)[] = [WORK, WORK, MOVE];
-            if (spawn.room.memory.layout === RoomLayout.STAMP) {
-                emergencyMinerBody.unshift(CARRY);
-            }
+            let emergencyMinerBody: (WORK | MOVE | CARRY)[] = [CARRY, WORK, WORK, MOVE];
             result = spawn.smartSpawn(emergencyMinerBody, name, options);
             if (result === OK) {
-                if (currentMiner) {
-                    currentMiner.memory.hasTTLReplacement = true;
-                }
                 spawn.room.memory.miningAssignments[assigment] = name;
             }
         }
@@ -459,6 +435,23 @@ export class PopulationManagement {
             Memory.remoteData[remoteRoomName].reserver = name;
         }
 
+        return result;
+    }
+
+    static spawnScout(spawn: StructureSpawn): ScreepsReturnCode {
+        const scoutMemory: ScoutMemory = {
+            role: Role.SCOUT,
+            room: spawn.room.name,
+            maxDepth: 5,
+        };
+
+        const options: SpawnOptions = {
+            memory: scoutMemory,
+        };
+
+        const body = [MOVE];
+
+        let result = spawn.smartSpawn(body, this.generateName(Role.SCOUT, spawn.name), options);
         return result;
     }
 
@@ -721,21 +714,6 @@ export class PopulationManagement {
 
         this.setLabTasksAndRequests(spawn.room, name, body, labTasksToAdd, requestsToAdd, opts);
 
-        // find safe spawn direction in predefined layouts
-        if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
-            if (!opts.directions) {
-                let anchorPoint = spawn.room.memory.anchorPoint.toRoomPos();
-
-                if (spawn.pos.x - anchorPoint.x === 0) {
-                    opts.directions = [TOP_LEFT, TOP_RIGHT];
-                } else if (spawn.pos.x - anchorPoint.x === -1) {
-                    opts.directions = [TOP_LEFT, TOP, LEFT];
-                } else if (spawn.pos.x - anchorPoint.x === 2) {
-                    opts.directions = [TOP, TOP_RIGHT, RIGHT, BOTTOM_RIGHT, BOTTOM];
-                }
-            }
-        }
-
         if (!opts.disableSort) {
             const getSortValue = (part: BodyPartConstant): number => {
                 switch (part) {
@@ -794,25 +772,25 @@ export class PopulationManagement {
 
                     return 0;
                 }) as Array<StructureSpawn | StructureExtension>;
+
+            let result = spawn.spawnCreep(body, name, opts);
+
+            if (result !== OK) {
+                console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
+            } else {
+                spawn.room.memory.reservedEnergy != undefined
+                    ? (spawn.room.memory.reservedEnergy += partsArrayCost)
+                    : (spawn.room.memory.reservedEnergy = partsArrayCost);
+                requestsToAdd.forEach((request) => {
+                    spawn.room.addRequest(request.resource, request.amount);
+                });
+                labTasksToAdd.forEach((task) => {
+                    spawn.room.addLabTask(task);
+                });
+            }
+
+            return result;
         }
-
-        let result = spawn.spawnCreep(body, name, opts);
-
-        if (result !== OK) {
-            console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
-        } else {
-            spawn.room.memory.reservedEnergy != undefined
-                ? (spawn.room.memory.reservedEnergy += partsArrayCost)
-                : (spawn.room.memory.reservedEnergy = partsArrayCost);
-            requestsToAdd.forEach((request) => {
-                spawn.room.addRequest(request.resource, request.amount);
-            });
-            labTasksToAdd.forEach((task) => {
-                spawn.room.addLabTask(task);
-            });
-        }
-
-        return result;
     }
 
     static setLabTasksAndRequests(
@@ -880,29 +858,17 @@ export class PopulationManagement {
         let immobile = false;
 
         let levelCap = 8;
-        if (spawn.room.memory?.layout === RoomLayout.BUNKER) {
-            let anchorPoint = spawn.room.memory.anchorPoint.toRoomPos();
-
-            if (spawn.pos.x - anchorPoint.x === 0) {
-                options.directions = [BOTTOM];
-            } else if (spawn.pos.x - anchorPoint.x === -1) {
-                options.directions = [BOTTOM_RIGHT];
+        const newManager = this.getNewStampManager(spawn.room);
+        if (newManager) {
+            options.memory.destination = newManager.pos;
+            // Center Managers (and before terminal stage) don't need as many carry parts
+            if (newManager.type !== 'rm' || spawn.room.controller.level < 6) {
+                levelCap = 2;
             }
-
-            immobile = true;
-        } else if (spawn.room.memory?.layout === RoomLayout.STAMP) {
-            const newManager = this.getNewStampManager(spawn.room);
-            if (newManager) {
-                options.memory.destination = newManager.pos;
-                // Center Managers (and before terminal stage) don't need as many carry parts
-                if (newManager.type !== 'rm' || spawn.room.controller.level < 6) {
-                    levelCap = 2;
-                }
-                // Use immobile only after center finished building to avoid spot being taken
-                if (newManager.type !== 'rm' && spawn.room.controller.level > 4 && spawn.pos.isNearTo(newManager.pos.toRoomPos())) {
-                    options.directions = [spawn.pos.getDirectionTo(newManager.pos.toRoomPos())];
-                    immobile = true;
-                }
+            // Use immobile only after center finished building to avoid spot being taken
+            if (newManager.type !== 'rm' && spawn.room.controller.level > 4 && spawn.pos.isNearTo(newManager.pos.toRoomPos())) {
+                options.directions = [spawn.pos.getDirectionTo(newManager.pos.toRoomPos())];
+                immobile = true;
             }
         }
 
@@ -925,10 +891,7 @@ export class PopulationManagement {
 
     static needsManager(room: Room): boolean {
         let manager = room.myCreepsByMemory.filter((creep) => creep.memory.role === Role.MANAGER);
-        if (room.memory.layout === RoomLayout.STAMP) {
-            return room.memory.stampLayout.managers.filter((managerDetail) => managerDetail.rcl <= room.controller.level)?.length > manager?.length;
-        }
-        return room.controller?.level >= 5 && (room.memory.layout !== undefined || !!room.memory.managerPos) && !manager?.length;
+        return room.memory.stampLayout.managers.filter((managerDetail) => managerDetail.rcl <= room.controller.level)?.length > manager?.length;
     }
 
     static hasProtector(roomName: string): boolean {

@@ -1,6 +1,6 @@
-import { addHostileRoom, addVisionRequest, unclaimRoom } from './data';
+import { addHostileRoom, addVisionRequest, observerInRange, unclaimRoom } from './data';
 import { addOperation } from './operationsManagement';
-import { findBunkerLocation, findStampLocation } from './roomDesign';
+import { findStampLocation } from './roomDesign';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {
@@ -12,7 +12,7 @@ export default function manageFlags() {
         }
 
         let opts: OperationOpts = {
-            portalLocations: portalLocations,
+            waypoints: portalLocations,
             originOpts: {
                 ignoreTerrain: true,
             },
@@ -25,11 +25,6 @@ export default function manageFlags() {
             opts.originOpts.selectionCriteria = OriginCriteria.CLOSEST;
         }
 
-        addOperation(OperationType.SECURE, Game.flags.colonize.pos.roomName, {
-            operativeCount: 2,
-            expireAt: Game.time + 10000,
-            portalLocations: portalLocations,
-        });
         addOperation(OperationType.COLONIZE, Game.flags.colonize.pos.roomName, opts);
         Game.flags.colonize.remove();
     }
@@ -57,7 +52,7 @@ export default function manageFlags() {
             Game.flags.portal.remove();
         }
         let opts: OperationOpts = {
-            portalLocations: portalLocations,
+            waypoints: portalLocations,
         };
 
         if (Game.flags.origin) {
@@ -101,7 +96,7 @@ export default function manageFlags() {
         }
 
         let opts: OperationOpts = {
-            portalLocations: portalLocations,
+            waypoints: portalLocations,
         };
 
         if (Game.flags.origin) {
@@ -115,7 +110,7 @@ export default function manageFlags() {
         addOperation(OperationType.SECURE, Game.flags.secure.pos.roomName, {
             operativeCount: 2,
             expireAt: Game.time + 4500,
-            portalLocations: portalLocations,
+            waypoints: portalLocations,
         });
         Game.flags.secure.remove();
     }
@@ -129,7 +124,7 @@ export default function manageFlags() {
         }
 
         let opts: OperationOpts = {
-            portalLocations: portalLocations,
+            waypoints: portalLocations,
         };
 
         if (Game.flags.origin) {
@@ -248,23 +243,13 @@ export default function manageFlags() {
         Game.flags.clean.remove();
     }
 
-    if (Game.flags.bunker) {
-        let result = addVisionRequest({ targetRoom: Game.flags.bunker.pos.roomName });
-
-        if (result === ERR_NOT_FOUND) {
-            console.log('No observers in range');
-        } else if (Game.rooms[Game.flags.bunker.pos.roomName]) {
-            findBunkerLocation(Game.rooms[Game.flags.bunker.pos.roomName]);
-        }
-    }
-
     if (Game.flags.stamp) {
-        let result = addVisionRequest({ targetRoom: Game.flags.stamp.pos.roomName });
+        if (observerInRange(Game.flags.stamp.pos.roomName)) {
+            addVisionRequest({ targetRoom: Game.flags.stamp.pos.roomName });
 
-        if (result === ERR_NOT_FOUND) {
-            console.log('No observers in range');
-        } else if (Game.rooms[Game.flags.stamp.pos.roomName]) {
-            findStampLocation(Game.rooms[Game.flags.stamp.pos.roomName], false);
+            if (Game.rooms[Game.flags.stamp.pos.roomName]) {
+                findStampLocation(Game.rooms[Game.flags.stamp.pos.roomName], false);
+            }
         }
     }
 }

@@ -147,7 +147,6 @@ Object.defineProperty(Room.prototype, 'managerLink', {
     get: function (this: Room) {
         if (!this._managerLink) {
             const posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'rm')?.pos?.toRoomPos();
-
             const link = this.myStructures.find((struct) => struct.structureType === STRUCTURE_LINK && posToCheck.isNearTo(struct)) as StructureLink;
             this.memory.managerLink = link?.id;
             this._managerLink = link;
@@ -162,7 +161,6 @@ Object.defineProperty(Room.prototype, 'upgraderLink', {
     get: function (this: Room) {
         if (!this._upgraderLink) {
             const posToCheck = this.memory.stampLayout.link.find((linkDetail) => linkDetail.type === 'controller')?.pos?.toRoomPos();
-
             const link = posToCheck
                 ?.lookFor(LOOK_STRUCTURES)
                 .filter((structure) => structure.structureType === STRUCTURE_LINK)
@@ -327,7 +325,7 @@ Room.prototype.getBoostsAvailable = function (this: Room, boostTypes: BoostType[
 };
 
 Room.prototype.getDefenseHitpointTarget = function (this: Room): number {
-    return this.controller.level < 8 ? this.controller.level * this.controller.level * 50000 : 300000000;
+    return this.controller.level === 8 ? 300000000 : this.controller.level >= 6 ? this.controller.level * this.controller.level * 50000 : 200000;
 };
 
 Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> | Id<ConstructionSite> {
