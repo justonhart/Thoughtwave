@@ -62,7 +62,13 @@ export class CombatCreep extends WaveCreep {
                 }
             } else if (
                 CombatIntel.getPredictedDamage(combatIntelEnemy.totalRanged, combatIntelMe.highestDmgMultiplier, combatIntelMe.highestToughHits) <=
-                combatIntelMe.totalHeal
+                    combatIntelMe.totalHeal ||
+                (CombatIntel.getPredictedDamage(
+                    combatIntelMe.totalRanged,
+                    combatIntelEnemy.highestDmgMultiplier,
+                    combatIntelEnemy.highestToughHits
+                ) >= combatIntelEnemy.totalHeal &&
+                    combatIntelMe.totalRanged > combatIntelEnemy.totalRanged)
             ) {
                 // More heal than enemy ranged dmg
                 range = 3;

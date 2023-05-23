@@ -420,8 +420,38 @@ function manageSecureRoomOperation(opId: string) {
 
     const origin = Game.rooms[OPERATION.originRoom];
 
-    const bodyParts = [RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, HEAL, MOVE, MOVE, MOVE, MOVE];
-    const body = PopulationManagement.createPartsArray(bodyParts, origin.energyCapacityAvailable);
+    const body = [
+        RANGED_ATTACK,
+        RANGED_ATTACK,
+        RANGED_ATTACK,
+        RANGED_ATTACK,
+        RANGED_ATTACK,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        MOVE,
+        HEAL,
+        HEAL,
+        HEAL,
+        HEAL,
+        HEAL,
+        HEAL,
+        HEAL,
+        HEAL,
+        HEAL,
+        HEAL,
+    ];
     let assignedProtectorCount =
         Object.values(Game.creeps).filter(
             (creep) =>
@@ -446,7 +476,7 @@ function manageSecureRoomOperation(opId: string) {
                     room: OPERATION.targetRoom,
                     waypoints: OPERATION.waypoints,
                 },
-                boosts: [BoostType.RANGED_ATTACK, BoostType.HEAL],
+                boosts: [BoostType.RANGED_ATTACK],
             },
         });
     }
@@ -521,11 +551,25 @@ function manageRoomRecoveryOperation(opId: string) {
 function manageAttackRoomOperation(opId: string) {
     const OPERATION = Memory.operations[opId];
     const originRoom = Game.rooms[OPERATION.originRoom];
-    const attackerBody = PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 25).sort((bodyA, bodyB) =>
-        sortByBodyPart(MOVE, bodyA, bodyB)
-    );
-    const healerBody = [RANGED_ATTACK, MOVE, ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 24)];
-    createSquad(OPERATION, SquadType.DUO, attackerBody, healerBody, [BoostType.DISMANTLE], [BoostType.HEAL]);
+    const attackerBody = [
+        TOUGH,
+        TOUGH,
+        MOVE,
+        MOVE,
+        ...PopulationManagement.createPartsArray([RANGED_ATTACK, MOVE], originRoom.energyCapacityAvailable, 23).sort((bodyA, bodyB) =>
+            sortByBodyPart(MOVE, bodyA, bodyB)
+        ),
+    ];
+    const healerBody = [
+        TOUGH,
+        TOUGH,
+        MOVE,
+        MOVE,
+        RANGED_ATTACK,
+        MOVE,
+        ...PopulationManagement.createPartsArray([HEAL, MOVE], originRoom.energyCapacityAvailable - 200, 22),
+    ];
+    createSquad(OPERATION, SquadType.DUO, attackerBody, healerBody, [BoostType.TOUGH], [BoostType.TOUGH, BoostType.HEAL]);
     OPERATION.stage = OperationStage.COMPLETE; // For now it will only spawn one set. Later this can check TTL to spawn reinforments or even multiple until targetRoom has been cleared
     Memory.operations[opId] = OPERATION;
 }
@@ -723,11 +767,13 @@ function manageAddPowerBankOperation(opId: string) {
                 if (
                     Game.time % 50 === 0 &&
                     powerBank &&
-                    !Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE) &&
-                    !Object.values(Memory.spawnAssignments).some(
-                        (spawnAssignment) =>
-                            spawnAssignment.spawnOpts.memory.destination === targetRoom.name &&
-                            spawnAssignment.spawnOpts.memory.role === Role.OPERATIVE
+                    !(
+                        Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE) ||
+                        Object.values(Memory.spawnAssignments).some(
+                            (spawnAssignment) =>
+                                spawnAssignment.spawnOpts.memory.destination === targetRoom.name &&
+                                spawnAssignment.spawnOpts.memory.role === Role.OPERATIVE
+                        )
                     )
                 ) {
                     // TTL Spawning
