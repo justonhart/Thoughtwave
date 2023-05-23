@@ -202,6 +202,7 @@ interface Room {
 }
 
 interface RoomPosition {
+    findClosestCreepByRange: (this: RoomPosition, forHostile: boolean) => void;
     toMemSafe(): string;
     neighbors(includeDiagonal?: boolean, includeCenter?: boolean): RoomPosition[];
 }

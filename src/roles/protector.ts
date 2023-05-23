@@ -48,7 +48,10 @@ export class Protector extends CombatCreep {
             // Enable retargeting on same tick
             if (!this.memory.combat.flee && creepActionReturnCode !== OK && creepActionReturnCode !== ERR_NOT_IN_RANGE) {
                 delete this.memory.targetId;
-            } else if (creepActionReturnCode === OK) {
+            }
+            if (creepActionReturnCode !== OK && this.getActiveBodyparts(ATTACK)) {
+                this.healSelf(false);
+            } else {
                 this.healSelf(!!this.getActiveBodyparts(ATTACK));
             }
 
@@ -86,10 +89,7 @@ export class Protector extends CombatCreep {
         }
 
         const hostileStructure = this.room.hostileStructures.find(
-            (struct) =>
-                struct.structureType !== STRUCTURE_KEEPER_LAIR &&
-                struct.structureType !== STRUCTURE_CONTROLLER &&
-                !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity())
+            (struct) => struct.hits > 0 && !(struct.structureType === STRUCTURE_STORAGE && struct.store.getUsedCapacity())
         );
         if (hostileStructure) {
             return hostileStructure.id;

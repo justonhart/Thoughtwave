@@ -723,7 +723,12 @@ function manageAddPowerBankOperation(opId: string) {
                 if (
                     Game.time % 50 === 0 &&
                     powerBank &&
-                    !Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE)
+                    !Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE) &&
+                    !Object.values(Memory.spawnAssignments).some(
+                        (spawnAssignment) =>
+                            spawnAssignment.spawnOpts.memory.destination === targetRoom.name &&
+                            spawnAssignment.spawnOpts.memory.role === Role.OPERATIVE
+                    )
                 ) {
                     // TTL Spawning
                     if (

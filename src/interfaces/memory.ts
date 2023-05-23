@@ -201,6 +201,7 @@ interface VisionRequest {
 
 interface DebugSettings {
     logOperations?: boolean;
+    earlyNotify?: boolean;
     drawStamps?: boolean;
     logCpu?: boolean;
     drawRoads?: boolean;

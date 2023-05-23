@@ -334,10 +334,19 @@ export class SquadManagement {
             } else if (Game.flags.squadMove?.pos?.roomName === this.assignment) {
                 // Manual Pathing
                 this.squadLeader.travelTo(Game.flags.squadMove);
+            } else if (this.squadLeader.hits / this.squadLeader.hitsMax < 0.7) {
+                this.squadLeader.travelToRoom(this.squadLeader.homeroom?.name);
             } else if (this.squadLeader.pos.roomName !== this.assignment || this.squadFollower.pos.roomName !== this.assignment) {
                 this.squadLeader.travelToRoom(this.assignment);
             } else {
                 const target = this.findPathingTarget();
+                if (this.squadLeader.memory._m.path) {
+                    this.nextDirection = parseInt(this.squadLeader.memory._m.path[0], 10) as DirectionConstant;
+                    if (this.getObstacleStructure()) {
+                        return;
+                    }
+                }
+
                 if (target instanceof Creep) {
                     if (target.onEdge()) {
                         return; // Do not move out of the room to chase target
@@ -361,6 +370,7 @@ export class SquadManagement {
                     });
                 }
             }
+            // TODO: make squadLeader find a position to the right or left of leader to go into room for exit rampart (even better make them go into the room at the same time)
             this.squadFollower.move(this.squadFollower.pos.getDirectionTo(this.squadLeader));
         }
     }
@@ -401,7 +411,11 @@ export class SquadManagement {
             }
         }
 
-        if (target) {
+        if (
+            target &&
+            (target.structureType !== STRUCTURE_POWER_BANK ||
+                !this.squadLeader.room.hostileCreeps.some((creep) => creep.getActiveBodyparts(ATTACK) && this.squadLeader.pos.getRangeTo(creep) <= 5))
+        ) {
             this.targetStructure = target?.id;
         } else {
             target = this.findHostileCreep();
@@ -411,7 +425,7 @@ export class SquadManagement {
     }
 
     private findHostileCreep() {
-        return this.squadLeader.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+        return this.squadLeader.pos.findClosestCreepByRange(true);
     }
 
     /**

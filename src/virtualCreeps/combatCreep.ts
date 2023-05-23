@@ -1,3 +1,4 @@
+import { CombatIntel } from '../modules/combatIntel';
 import { WaveCreep } from './waveCreep';
 
 export class CombatCreep extends WaveCreep {
@@ -26,8 +27,6 @@ export class CombatCreep extends WaveCreep {
         return ERR_NO_BODYPART;
     }
 
-    // Info: In homeroom this will not work ==> Shouldnt matter as soon as ramparts are up but otherwise move to spawn?
-    // Go back to the exit toward creeps homeroom while avoiding creeps along the way
     public flee() {
         return this.travelToRoom(this.homeroom?.name, { ignoreCreeps: false, avoidSourceKeepers: true });
     }
@@ -44,25 +43,34 @@ export class CombatCreep extends WaveCreep {
             }
             return this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: 1, maxRooms: 1, exitCost: 10 });
         } else if (this.getActiveBodyparts(RANGED_ATTACK)) {
-            let range = 3;
-            const exitCost = 10;
+            let range = 5;
             let shouldFlee = true;
 
-            const hostilesInSquadRange = this.room.hostileCreeps.filter((creep) => target.pos.getRangeTo(creep) <= 4); // check around target for proper massAttack pathing
-            const rangeToTarget = this.pos.getRangeTo(target);
-
-            // If not in range or a squad without melee creep, then go closer to enable massAttack
+            const combatIntelEnemy = CombatIntel.getCreepCombatData(this.room, true, target.pos);
+            const combatIntelMe = CombatIntel.getCreepCombatData(this.room, false, this.pos);
+            // TODO: If our creep has more heal than the enemy, it can happen that after a couple attacks the heal is more than the enemy damage output causing the creep to flee from a target it could actually kill over time
             if (
-                !(target.getActiveBodyparts(ATTACK) || target.getActiveBodyparts(RANGED_ATTACK)) ||
-                rangeToTarget > range ||
-                (hostilesInSquadRange.length > 1 && !hostilesInSquadRange.some((creep) => creep.getActiveBodyparts(ATTACK)))
+                CombatIntel.getPredictedDamage(combatIntelEnemy.totalDmg, combatIntelMe.highestDmgMultiplier, combatIntelMe.highestToughHits) <=
+                combatIntelMe.totalHeal
             ) {
+                // More heal than enemy dmg
                 range = 1;
                 shouldFlee = false;
-            } else if (!target.getActiveBodyparts(ATTACK)) {
-                range = 2; // Against other RANGED_ATTACK units to keep them from fleeing
+                if (this.pos.isNearTo(target) && !target.onEdge()) {
+                    // Close Range movement to stick to the enemy
+                    return this.move(this.pos.getDirectionTo(target));
+                }
+            } else if (
+                CombatIntel.getPredictedDamage(combatIntelEnemy.totalRanged, combatIntelMe.highestDmgMultiplier, combatIntelMe.highestToughHits) <=
+                combatIntelMe.totalHeal
+            ) {
+                // More heal than enemy ranged dmg
+                range = 3;
+                shouldFlee = this.pos.getRangeTo(target) <= range;
             }
-            return this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: exitCost });
+
+            // TODO: avoid walls when fleeing
+            return this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: 10 });
         }
     }
 
@@ -83,7 +91,8 @@ export class CombatCreep extends WaveCreep {
     }
 
     /**
-     * Flee to a different room to heal.
+     * TODO: change flee above to keep running from all enemies. Should only go towards exits that are not owned and prefer vacant
+     * Flee to a different room to heal. Change this to flee to any of the exits (goals) while avoiding enemies
      *
      * @returns boolean, to see if creep has arrived in new room
      */
@@ -150,9 +159,10 @@ export class CombatCreep extends WaveCreep {
             );
             if (enemy) {
                 this.attackCreep(enemy);
-                return !!this.getActiveBodyparts(ATTACK);
+                return range === 1;
             }
         }
+        return false;
     }
 
     protected recycleCreep() {
