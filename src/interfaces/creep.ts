@@ -263,3 +263,7 @@ interface ManagerMemory extends CreepMemory{
      */
     targetId?: Id<Structure>;
 }
+
+interface ClaimerMemory extends OperativeMemory { 
+    claimRoomType: RoomType;
+}

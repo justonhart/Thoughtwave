@@ -1,6 +1,7 @@
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Claimer extends WaveCreep {
+    memory: ClaimerMemory;
     protected run() {
         if (this.room.name === this.operation.targetRoom) {
             const controller = this.room.controller;
@@ -9,7 +10,13 @@ export class Claimer extends WaveCreep {
                     if (!this.pos.isNearTo(controller)) {
                         this.travelTo(controller);
                     } else {
-                        this.claimController(controller);
+                        let result = this.claimController(controller);
+                        if(result === OK){
+                            this.room.memory = {
+                                roomType: this.memory.claimRoomType
+                            }
+                        }
+                        
                     }
                 }
             }

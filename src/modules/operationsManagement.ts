@@ -110,11 +110,6 @@ function manageColonizationOperation(opId: string) {
         }
     }
 
-    if (!Memory.rooms[OPERATION.targetRoom]) {
-        Memory.rooms[OPERATION.targetRoom] = {
-            roomType: RoomType.HOMEROOM,
-        };
-    }
     if (!Memory.rooms[OPERATION.targetRoom].colonizationInProgress) {
         Memory.rooms[OPERATION.targetRoom].colonizationInProgress;
     }
@@ -128,17 +123,18 @@ function manageColonizationOperation(opId: string) {
                     (creep) => (creep.spawnOpts.memory as OperativeMemory).operationId === opId && creep.spawnOpts.memory.role === Role.CLAIMER
                 );
             if (OPERATION.originRoom && !claimerExistsOrAssigned) {
-                const operativeMemory: OperativeMemory = {
+                const claimerMemory: ClaimerMemory = {
                     role: Role.CLAIMER,
                     operationId: opId,
                     room: OPERATION.originRoom,
                     waypoints: OPERATION.waypoints,
+                    claimRoomType: RoomType.HOMEROOM
                 };
                 Memory.spawnAssignments.push({
                     designee: OPERATION.originRoom,
                     body: [MOVE, MOVE, MOVE, MOVE, MOVE, CLAIM],
                     spawnOpts: {
-                        memory: operativeMemory,
+                        memory: claimerMemory,
                     },
                 });
             }

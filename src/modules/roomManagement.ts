@@ -42,7 +42,7 @@ function driveHomeRoom(room: Room) {
         return;
     }
 
-    if (!Memory.rooms[room.name] || Object.keys(Memory.rooms[room.name])?.length === 0) {
+    if (!Memory.rooms[room.name] || Object.values(room.memory).length <= 1) {
         initHomeRoom(room);
     } else {
         initMissingMemoryValues(room);
