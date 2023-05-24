@@ -56,7 +56,7 @@ export class Operative extends WorkerCreep {
                         this.suicide();
                     }
                 } else {
-                    this.travelTo(destinationPos);
+                    this.travelTo(destinationPos, {avoidHostileRooms: true});
                 }
             }
         } else {
@@ -71,7 +71,7 @@ export class Operative extends WorkerCreep {
                 if (this.pos.inRangeTo(controller, 3)) {
                     this.upgradeController(controller);
                 } else {
-                    this.travelTo(controller, { range: 3 });
+                    this.travelTo(controller, { range: 3, avoidHostileRooms: true });
                 }
             } else {
                 this.gatherEnergy();
@@ -104,7 +104,7 @@ export class Operative extends WorkerCreep {
                     }
                 }
             } else {
-                this.travelToRoom(this.operation.targetRoom);
+                this.travelToRoom(this.operation.targetRoom, {avoidHostileRooms: true});
             }
         } else {
             this.gatherEnergy();
