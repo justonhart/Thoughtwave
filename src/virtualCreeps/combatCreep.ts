@@ -48,7 +48,7 @@ export class CombatCreep extends WaveCreep {
 
             const combatIntelEnemy = CombatIntel.getCreepCombatData(this.room, true, target.pos);
             const combatIntelMe = CombatIntel.getCreepCombatData(this.room, false, this.pos);
-            // TODO: If our creep has more heal than the enemy, it can happen that after a couple attacks the heal is more than the enemy damage output causing the creep to flee from a target it could actually kill over time
+
             if (
                 CombatIntel.getPredictedDamage(combatIntelEnemy.totalDmg, combatIntelMe.highestDmgMultiplier, combatIntelMe.highestToughHits) <=
                 combatIntelMe.totalHeal
@@ -61,6 +61,7 @@ export class CombatCreep extends WaveCreep {
                     return this.move(this.pos.getDirectionTo(target));
                 }
             } else if (
+                // More Heal than enemy Damage or more Damage than enemy heal and damage
                 CombatIntel.getPredictedDamage(combatIntelEnemy.totalRanged, combatIntelMe.highestDmgMultiplier, combatIntelMe.highestToughHits) <=
                     combatIntelMe.totalHeal ||
                 (CombatIntel.getPredictedDamage(
@@ -73,6 +74,21 @@ export class CombatCreep extends WaveCreep {
                 // More heal than enemy ranged dmg
                 range = 3;
                 shouldFlee = this.pos.getRangeTo(target) <= range;
+            } else {
+                // Check combined Damage of all ranged creeps ==> Can be false if creeps are targeting different enemies
+                const rangedAttackers = this.room.myCreeps.filter((creep) => creep.getActiveBodyparts(RANGED_ATTACK));
+                const combatIntelMeTotal = CombatIntel.calculateCreepsCombatData(rangedAttackers);
+                if (
+                    CombatIntel.getPredictedDamage(
+                        combatIntelMeTotal.totalRanged,
+                        combatIntelEnemy.highestDmgMultiplier,
+                        combatIntelEnemy.highestToughHits
+                    ) >= combatIntelEnemy.totalHeal &&
+                    combatIntelMeTotal.totalRanged > combatIntelEnemy.totalRanged
+                ) {
+                    range = 3;
+                    shouldFlee = this.pos.getRangeTo(target) <= range;
+                }
             }
 
             // TODO: avoid walls when fleeing

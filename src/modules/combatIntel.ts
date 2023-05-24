@@ -150,7 +150,7 @@ export class CombatIntel {
      * @param pos
      * @returns
      */
-    private static calculateCreepsCombatData(creeps: Creep[], pos?: RoomPosition): RoomCreepsCombatData {
+    public static calculateCreepsCombatData(creeps: Creep[], pos?: RoomPosition): RoomCreepsCombatData {
         let roomCreepsCombatData = {
             totalDmg: 0,
             totalAttack: 0,
