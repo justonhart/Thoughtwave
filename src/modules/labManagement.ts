@@ -97,7 +97,13 @@ function runReactTask(task: LabTask): LabTask {
     let primaryLabs = task.reactionLabs.map((id) => Game.getObjectById(id));
     let auxillaryLabs = task.auxillaryLabs.map((id) => Game.getObjectById(id));
 
-    if (!auxillaryLabs.map((lab) => !lab.mineralType || lab.store[lab.mineralType] < 5).reduce((anyEmpty, next) => anyEmpty || next)) {
+    //remove full labs from the react task - when a lab is not empty and has no task, it's status is NEEDS_EMPTYING
+    let fullLabs = primaryLabs.filter(lab => lab.mineralType && lab.store.getFreeCapacity(lab.mineralType) < 5);
+    task.reactionLabs = task.reactionLabs.filter(labId => !fullLabs.some(lab => lab.id === labId));
+    primaryLabs = task.reactionLabs.map(id => Game.getObjectById(id));
+
+    //if both reactant labs have 5 or more resource, produce
+    if (!auxillaryLabs.some((lab) => !lab.mineralType || lab.store.getUsedCapacity(lab.mineralType) < 5)) {
         primaryLabs.forEach((lab) => {
             lab.runReaction(auxillaryLabs[0], auxillaryLabs[1]);
         });
