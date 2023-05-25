@@ -48,214 +48,18 @@ function driveHomeRoom(room: Room) {
         initMissingMemoryValues(room);
     }
 
-    setThreatLevel(room);
+    runHomeroomDefense(room);
 
     if (!room.canSpawn()) {
         // fail state - if a room has unexpectedly lost all spawns
     } else {
         room.memory.reservedEnergy = 0;
-
-        let nukes = room.find(FIND_NUKES);
-        if (room.controller.level >= 6 && nukes.length && getStructuresToProtect(nukes)?.length) {
-            let structuresAtRisk = getStructuresToProtect(nukes);
-            structuresAtRisk.forEach((structureId) => {
-                let structure = Game.getObjectById(structureId);
-                room.visual.circle(structure.pos, { opacity: 1, strokeWidth: 0.8, stroke: '#f44336' });
-                if (structure && !structure?.getRampart()) {
-                    let constructionSite = structure?.pos.lookFor(LOOK_CONSTRUCTION_SITES).pop();
-                    if (constructionSite?.structureType !== STRUCTURE_RAMPART) {
-                        constructionSite?.remove();
-                        structure.pos.createConstructionSite(STRUCTURE_RAMPART);
-                    }
-                }
-            });
-        } else {
-            if (room.memory.repairSearchCooldown > 0) {
-                room.memory.repairSearchCooldown--;
-            }
-
-            if (Game.time % REPAIR_QUEUE_REFRESH_PERIOD === 0) {
-                room.memory.repairQueue = findRepairTargets(room);
-                room.memory.needsWallRepair = room.structures.some(
-                    (s) => (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < room.getDefenseHitpointTarget()
-                );
-            }
-
-            if (room.memory.repairQueue.length) {
-                room.memory.repairQueue.forEach((job) => {
-                    let pos = Game.getObjectById(job)?.pos;
-                    room.visual.text('🛠', pos);
-                });
-            }
-
-            if (
-                !global.roomConstructionsChecked &&
-                (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
-                (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
-                Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-                room.myConstructionSites.length < 15
-            ) {
-                let cpuUsed = Game.cpu.getUsed();
-                // Cleanup any leftover storage/terminal that is in the way
-                if (
-                    room.memory.stampLayout.spawn.some(
-                        (spawnStamp) =>
-                            spawnStamp.rcl <= room.controller.level &&
-                            !room
-                                .lookAt(spawnStamp.pos.toRoomPos())
-                                .some(
-                                    (lookObj) =>
-                                        lookObj.constructionSite?.structureType === spawnStamp.type ||
-                                        lookObj.structure?.structureType === spawnStamp.type
-                                )
-                    )
-                ) {
-                    if (room.storage) {
-                        const destroyStorage = Object.values(room.memory.stampLayout).some((stamps: StampDetail[]) =>
-                            stamps.some((stamp) => stamp.rcl < 4 && stamp.pos === room.storage.pos.toMemSafe())
-                        );
-                        if (destroyStorage) {
-                            room.storage.destroy();
-                        }
-                    }
-                    if (room.terminal) {
-                        const destroyTerminal = Object.values(room.memory.stampLayout).some((stamps: StampDetail[]) =>
-                            stamps.some((stamp) => stamp.rcl < 4 && stamp.pos === room.terminal.pos.toMemSafe())
-                        );
-                        if (destroyTerminal) {
-                            room.terminal.destroy();
-                        }
-                    }
-                }
-
-                // Cleanup left over storage/terminal
-                if (room.controller.level > 3 && room.storage && !room.storage?.my) {
-                    room.storage.destroy();
-                }
-                if (room.controller.level > 3 && room.terminal && !room.terminal?.my) {
-                    room.terminal.destroy();
-                }
-
-                // Check for any missing structures and add them
-                const constructionSites = room.myConstructionSites;
-                let constructionSitesCount = constructionSites.length;
-                if (constructionSitesCount < 15) {
-                    const structures = room.structures;
-                    const constructionStamps: { pos: RoomPosition; key: StructureConstant }[] = [];
-                    // Check against all structures and construction sites currently in the room. If a stamp is not in either then add it as a construction site
-                    Object.entries(room.memory.stampLayout)
-                        .filter(([key, stamps]: [string, StampDetail[]]) => key !== 'managers')
-                        .forEach(([key, stamps]: [string, StampDetail[]]) => {
-                            stamps
-                                .filter(
-                                    (stamp) =>
-                                        stamp.rcl <= room.controller.level &&
-                                        !structures.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()) &&
-                                        !constructionSites.some(
-                                            (structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()
-                                        )
-                                )
-                                .forEach((stamp) => constructionStamps.push({ pos: stamp.pos.toRoomPos(), key: key as StructureConstant }));
-                        });
-                    constructionStamps.sort((a, b) => {
-                        return getStructurePriority(a.key) > getStructurePriority(b.key) ? 1 : -1;
-                    });
-                    while (constructionStamps?.length && constructionSitesCount < 15) {
-                        const nextConstructionSite = constructionStamps.pop();
-                        const result = room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
-                        if (result !== OK) {
-                            console.log(
-                                `Could not createConstruction for Stamp layout in room ${room.name}. Result: ${result}. Type: ${
-                                    nextConstructionSite.key
-                                }. Position: ${nextConstructionSite.pos.toMemSafe()}`
-                            );
-                        }
-                        constructionSitesCount++;
-                    }
-                }
-
-                global.roomConstructionsChecked = true;
-                room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
-                cpuUsed = Game.cpu.getUsed() - cpuUsed;
-                if (Memory.debug.logRoomPlacementCpu) {
-                    console.log(`CPU used on ${room.name} stamp layout: ${cpuUsed}`);
-                }
-            }
-        }
-
-        let isHomeUnderAttack = false;
-        try {
-            isHomeUnderAttack = runHomeSecurity(room);
-            runTowers(room);
-        } catch (e) {
-            console.log(`Error caught running runHomeSecurity/runTowers in ${room.name}: \n${e}`);
-        }
-
-        if (
-            room.hostileCreeps.some(
-                (creep) =>
-                    creep.owner.username !== 'Invader' &&
-                    (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
-                    creep.pos.x > 2 &&
-                    creep.pos.y > 2 &&
-                    creep.pos.x < 47 &&
-                    creep.pos.y < 47
-            )
-        ) {
-            room.controller.activateSafeMode();
-        }
-
-        if (room.energyStatus >= EnergyStatus.RECOVERING) {
-            //if this room doesn't have any outstanding claims
-            if (
-                Game.time % 1000 === 0 &&
-                !room.memory.outstandingClaim &&
-                !global.remoteSourcesChecked &&
-                Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000 &&
-                canSupportRemoteRoom(room)
-            ) {
-                try {
-                    addRemoteSourceClaim(room);
-                    room.memory.lastRemoteSourceCheck = Game.time;
-                    global.remoteSourcesChecked = true;
-                } catch (e) {
-                    console.log(`Error caught running addRemoteSourceClaim in ${room.name}: \n${e}`);
-                }
-            }
-
-            if (room.memory.outstandingClaim && Game.time % 1000 === 0) {
-                try {
-                    let result = executeRemoteSourceClaim(room);
-                    if (result === OK) {
-                        delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
-                        delete room.memory.outstandingClaim;
-                    } else {
-                        console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
-                    }
-                } catch (e) {
-                    console.log(`Error caught running executeRemoteSourceClaim in ${room.name}: \n${e}`);
-                }
-            }
-        }
-
-        if (room.observer) {
-            let visionRequestId = room.memory.visionRequests?.find(
-                (rq) => !Memory.visionRequests[rq].onTick || Memory.visionRequests[rq].onTick === Game.time + 1
-            );
-            if (visionRequestId) {
-                try {
-                    runVisionRequest(room, visionRequestId);
-                } catch (e) {
-                    console.log(`Error caught running room ${room.name} for Observer request: \n${e}`);
-                }
-            } else {
-                try {
-                    scanArea(room);
-                } catch (e) {
-                    console.log(`Error caught running room ${room.name} for Observer scanning: \n${e}`);
-                }
-            }
-        }
+        
+        runRoomMaintenance(room);
+        runStructureManagement(room);
+        runRemoteSourceManagement(room); 
+        runObserver(room);
+        
 
         if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50 && room.energyStatus >= EnergyStatus.STABLE) {
             try {
@@ -271,12 +75,10 @@ function driveHomeRoom(room: Room) {
             console.log(`Error caught running room ${room.name} for Labs: \n${e}`);
         }
 
-        if (!room.memory.colonizationInProgress) {
-            try {
-                runSpawning(room);
-            } catch (e) {
-                console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
-            }
+        try {
+            runSpawning(room);
+        } catch (e) {
+            console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
         }
 
         if (room.factory) {
@@ -295,9 +97,7 @@ function driveHomeRoom(room: Room) {
             }
         }
 
-        if (!isHomeUnderAttack) {
-            runRemoteRooms(room);
-        }
+        runRemoteRooms(room);
 
         delete room.memory.reservedEnergy;
     }
@@ -350,7 +150,7 @@ function runTowers(room: Room) {
     }
 
     // TODO: recognize patterns to avoid shooting creeps that are going in and out of the room every tick and cant be killed in one shot
-    if (!room.controller.safeMode && room.memory.threatLevel > HomeRoomThreatLevel.SAFE) {
+    if (!room.controller.safeMode ){
         const hostileCreep = room.hostileCreeps
             .filter((creep) => !Memory.playersToIgnore?.includes(creep.owner.username))
             .find((creep) => {
@@ -502,7 +302,6 @@ function hasEarlyDetectionThreat(roomName: string) {
 
 export function initHomeRoom(room: Room) {
     Memory.rooms[room.name] = {
-        threatLevel: HomeRoomThreatLevel.SAFE,
         roomType: RoomType.HOMEROOM,
         gates: [],
         repairSearchCooldown: 0,
@@ -576,23 +375,7 @@ function runSpawning(room: Room) {
             .reduce((sum, next) => sum + next);
     }
 
-    const roomUnderAttack = room.memory.threatLevel > HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS && !room.controller.safeMode;
-    if (roomUnderAttack) {
-        let protectorAssignments = assignments.filter(
-            (assignment) =>
-                assignment.spawnOpts.memory.room === room.name &&
-                (assignment.spawnOpts.memory.role === Role.RAMPART_PROTECTOR || assignment.spawnOpts.memory.role === Role.PROTECTOR)
-        );
-        protectorAssignments.forEach((assignment) => {
-            let canSpawnAssignment = room.energyAvailable >= assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
-            if (canSpawnAssignment) {
-                let spawn = availableSpawns.pop();
-                spawn?.spawnAssignedCreep(assignment);
-            }
-        });
-    }
-
-    if (availableSpawns && PopulationManagement.needsTransporter(room) && !roomUnderAttack) {
+    if (availableSpawns && PopulationManagement.needsTransporter(room)) {
         let options: SpawnOptions = {
             memory: {
                 room: room.name,
@@ -603,7 +386,7 @@ function runSpawning(room: Room) {
         spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
     }
 
-    if (availableSpawns && PopulationManagement.needsMiner(room) && !roomUnderAttack) {
+    if (availableSpawns && PopulationManagement.needsMiner(room)) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
     }
@@ -634,12 +417,12 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (availableSpawns && PopulationManagement.needsMineralMiner(room) && !roomUnderAttack) {
+    if (availableSpawns && PopulationManagement.needsMineralMiner(room)) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMineralMiner();
     }
 
-    if (availableSpawns && workerCount >= room.workerCapacity && !roomUnderAttack) {
+    if (availableSpawns && workerCount >= room.workerCapacity) {
         assignments.forEach((assignment) => {
             const assignmentCost = assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
             const canSpawnAssignment = room.energyAvailable >= assignmentCost;
@@ -665,7 +448,7 @@ function runSpawning(room: Room) {
             }
         });
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING && room.remoteSources.length && !roomUnderAttack) {
+        if (room.energyStatus >= EnergyStatus.RECOVERING && room.remoteSources.length) {
             let exterminatorNeed = PopulationManagement.findExterminatorNeed(room);
             if (exterminatorNeed) {
                 let spawn = availableSpawns.pop();
@@ -699,7 +482,7 @@ function runSpawning(room: Room) {
     }
 
     availableSpawns.forEach((spawn) => {
-        const result = spawn.spawnWorker(roomUnderAttack);
+        const result = spawn.spawnWorker();
         if (result === undefined && !spawn.store.getFreeCapacity()) {
             // did not spawn any workers so check if we can renew managers
             const renewableManager = room.myCreepsByMemory.find(
@@ -975,35 +758,13 @@ export function destructiveReset(roomName: string) {
     }
 }
 
-function setThreatLevel(room: Room) {
-    let threatLevel = HomeRoomThreatLevel.SAFE;
-    if (room.hostileCreeps.length) {
-        if (
-            room.hostileCreeps.some(
-                (creep) => creep.owner.username !== 'Invader' && (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
-            )
-        ) {
-            threatLevel = HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS;
-            sendEmailOnAttack(room, room.hostileCreeps[0].owner.username);
-        } else if (room.hostileCreeps.some((creep) => creep.owner.username !== 'Invader' && creep.getActiveBodyparts(WORK))) {
-            threatLevel = HomeRoomThreatLevel.ENEMY_DISMANTLERS;
-            sendEmailOnAttack(room, room.hostileCreeps[0].owner.username);
-        } else if (room.hostileCreeps.some((creep) => creep.owner.username === 'Invader')) {
-            threatLevel = HomeRoomThreatLevel.ENEMY_INVADERS;
-        } else {
-            threatLevel = HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS;
-        }
-    }
-    room.memory.threatLevel = threatLevel;
-}
-
 /**
  * Create Game notification when attacked by other players
  * @param room room that is being attacked
  * @param enemyUsername enemy player
  */
 function sendEmailOnAttack(room: Room, enemyUsername: string) {
-    if (room.memory.threatLevel <= HomeRoomThreatLevel.ENEMY_INVADERS) {
+    if (room.memory.threatLevel <= HomeRoomThreatLevel.MODERATE) {
         Game.notify(`Room ${room.name} is under attack by ${enemyUsername} at ${Game.time}!`);
     }
 }
@@ -1231,3 +992,229 @@ function runShipments(room: Room) {
         }
     });
 }
+
+/**
+ * Tracks room structure statuses and maintains repair queue 
+ */
+function runRoomMaintenance(room: Room){
+    if (room.memory.repairSearchCooldown > 0) {
+        room.memory.repairSearchCooldown--;
+    }
+
+    if (Game.time % REPAIR_QUEUE_REFRESH_PERIOD === 0) {
+        room.memory.repairQueue = findRepairTargets(room);
+        room.memory.needsWallRepair = room.structures.some(
+            (s) => (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < room.getDefenseHitpointTarget()
+        );
+    }
+
+    if (room.memory.repairQueue.length) {
+        room.memory.repairQueue.forEach((job) => {
+            let pos = Game.getObjectById(job)?.pos;
+            room.visual.text('🛠', pos);
+        });
+    }
+}
+
+function runHomeroomDefense(room: Room): void {
+    //monitor nukes
+    manageIncomingNukes(room);
+    calculateThreatLevel(room);
+
+    runTowers(room);
+}
+
+
+function manageIncomingNukes(room: Room): void{
+    const nukes = room.find(FIND_NUKES);
+    room.defenseData.structuresWithNukeRisk = getStructuresToProtect(nukes);
+    room.defenseData.structuresWithNukeRisk.forEach((structureId) => {
+        let structure = Game.getObjectById(structureId);
+        room.visual.circle(structure.pos, { opacity: 1, strokeWidth: 0.8, stroke: '#f44336' });
+        if (structure && !structure.getRampart()) {
+            let constructionSite = structure.pos.lookFor(LOOK_CONSTRUCTION_SITES).pop();
+            if (constructionSite?.structureType !== STRUCTURE_RAMPART) {
+                constructionSite?.remove();
+                structure.pos.createConstructionSite(STRUCTURE_RAMPART);
+            }
+        }
+    });
+}
+
+function runStructureManagement(room: Room): void {
+    if (
+        !global.roomConstructionsChecked &&
+        (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
+        (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
+        Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
+        room.myConstructionSites.length < 15
+    ) {
+        let cpuUsed = Game.cpu.getUsed();
+        // Cleanup any leftover storage/terminal that is in the way
+        if (
+            room.memory.stampLayout.spawn.some(
+                (spawnStamp) =>
+                    spawnStamp.rcl <= room.controller.level &&
+                    !room
+                        .lookAt(spawnStamp.pos.toRoomPos())
+                        .some(
+                            (lookObj) =>
+                                lookObj.constructionSite?.structureType === spawnStamp.type ||
+                                lookObj.structure?.structureType === spawnStamp.type
+                        )
+            )
+        ) {
+            if (room.storage) {
+                const destroyStorage = Object.values(room.memory.stampLayout).some((stamps: StampDetail[]) =>
+                    stamps.some((stamp) => stamp.rcl < 4 && stamp.pos === room.storage.pos.toMemSafe())
+                );
+                if (destroyStorage) {
+                    room.storage.destroy();
+                }
+            }
+            if (room.terminal) {
+                const destroyTerminal = Object.values(room.memory.stampLayout).some((stamps: StampDetail[]) =>
+                    stamps.some((stamp) => stamp.rcl < 4 && stamp.pos === room.terminal.pos.toMemSafe())
+                );
+                if (destroyTerminal) {
+                    room.terminal.destroy();
+                }
+            }
+        }
+
+        // Cleanup left over storage/terminal
+        if (room.controller.level > 3 && room.storage && !room.storage?.my) {
+            room.storage.destroy();
+        }
+        if (room.controller.level > 3 && room.terminal && !room.terminal?.my) {
+            room.terminal.destroy();
+        }
+
+        // Check for any missing structures and add them
+        const constructionSites = room.myConstructionSites;
+        let constructionSitesCount = constructionSites.length;
+        if (constructionSitesCount < 15) {
+            const structures = room.structures;
+            const constructionStamps: { pos: RoomPosition; key: StructureConstant }[] = [];
+            // Check against all structures and construction sites currently in the room. If a stamp is not in either then add it as a construction site
+            Object.entries(room.memory.stampLayout)
+                .filter(([key, stamps]: [string, StampDetail[]]) => key !== 'managers')
+                .forEach(([key, stamps]: [string, StampDetail[]]) => {
+                    stamps
+                        .filter(
+                            (stamp) =>
+                                stamp.rcl <= room.controller.level &&
+                                !structures.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()) &&
+                                !constructionSites.some(
+                                    (structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()
+                                )
+                        )
+                        .forEach((stamp) => constructionStamps.push({ pos: stamp.pos.toRoomPos(), key: key as StructureConstant }));
+                });
+            constructionStamps.sort((a, b) => {
+                return getStructurePriority(a.key) > getStructurePriority(b.key) ? 1 : -1;
+            });
+            while (constructionStamps?.length && constructionSitesCount < 15) {
+                const nextConstructionSite = constructionStamps.pop();
+                const result = room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
+                if (result !== OK) {
+                    console.log(
+                        `Could not createConstruction for Stamp layout in room ${room.name}. Result: ${result}. Type: ${
+                            nextConstructionSite.key
+                        }. Position: ${nextConstructionSite.pos.toMemSafe()}`
+                    );
+                }
+                constructionSitesCount++;
+            }
+        }
+
+        global.roomConstructionsChecked = true;
+        room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
+        cpuUsed = Game.cpu.getUsed() - cpuUsed;
+        if (Memory.debug.logRoomPlacementCpu) {
+            console.log(`CPU used on ${room.name} stamp layout: ${cpuUsed}`);
+        }
+    }
+}
+function runRemoteSourceManagement(room: Room) {
+    if (room.energyStatus >= EnergyStatus.RECOVERING) {
+        //if this room doesn't have any outstanding claims
+        if (
+            Game.time % 1000 === 0 &&
+            !room.memory.outstandingClaim &&
+            !global.remoteSourcesChecked &&
+            Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000 &&
+            canSupportRemoteRoom(room)
+        ) {
+            try {
+                addRemoteSourceClaim(room);
+                room.memory.lastRemoteSourceCheck = Game.time;
+                global.remoteSourcesChecked = true;
+            } catch (e) {
+                console.log(`Error caught running addRemoteSourceClaim in ${room.name}: \n${e}`);
+            }
+        }
+
+        if (room.memory.outstandingClaim && Game.time % 1000 === 0) {
+            try {
+                let result = executeRemoteSourceClaim(room);
+                if (result === OK) {
+                    delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
+                    delete room.memory.outstandingClaim;
+                } else {
+                    console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
+                }
+            } catch (e) {
+                console.log(`Error caught running executeRemoteSourceClaim in ${room.name}: \n${e}`);
+            }
+        }
+    }
+}
+
+function runObserver(room: Room) {
+    if (room.observer) {
+        let visionRequestId = room.memory.visionRequests?.find(
+            (rq) => !Memory.visionRequests[rq].onTick || Memory.visionRequests[rq].onTick === Game.time + 1
+        );
+        if (visionRequestId) {
+            try {
+                runVisionRequest(room, visionRequestId);
+            } catch (e) {
+                console.log(`Error caught running room ${room.name} for Observer request: \n${e}`);
+            }
+        } else {
+            try {
+                scanArea(room);
+            } catch (e) {
+                console.log(`Error caught running room ${room.name} for Observer scanning: \n${e}`);
+            }
+        }
+    }
+}
+
+function setThreatLevel(room: Room) {
+        let threatLevel = HomeRoomThreatLevel.SAFE;
+        if (room.hostileCreeps.length) {
+            if (
+                room.hostileCreeps.some(
+                    (creep) => creep.owner.username !== 'Invader' && (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
+                )
+            ) {
+                threatLevel = HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS;
+                sendEmailOnAttack(room, room.hostileCreeps[0].owner.username);
+            } else if (room.hostileCreeps.some((creep) => creep.owner.username !== 'Invader' && creep.getActiveBodyparts(WORK))) {
+                threatLevel = HomeRoomThreatLevel.ENEMY_DISMANTLERS;
+                sendEmailOnAttack(room, room.hostileCreeps[0].owner.username);
+            } else if (room.hostileCreeps.some((creep) => creep.owner.username === 'Invader')) {
+                threatLevel = HomeRoomThreatLevel.ENEMY_INVADERS;
+            } else {
+                threatLevel = HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS;
+            }
+        }
+        room.memory.threatLevel = threatLevel;
+    }
+
+    if(room.hostileCreeps.length){
+        
+    }
+

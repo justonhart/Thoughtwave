@@ -264,7 +264,7 @@ export function findOperationOrigin(targetRoom: string, opts?: OriginOpts): Orig
             room.controller?.my &&
             room.canSpawn() &&
             room.energyStatus >= (opts?.minEnergyStatus ?? EnergyStatus.RECOVERING) &&
-            (!opts?.maxThreatLevel || room.memory.threatLevel <= opts.maxThreatLevel) &&
+            (!opts?.maxThreatLevel || room.defenseData.threatLevel <= opts.maxThreatLevel) &&
             (!opts?.operationCriteria ||
                 Object.values(Memory.operations).filter(
                     (operation) =>

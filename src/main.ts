@@ -33,16 +33,6 @@ module.exports.loop = function () {
     cpuUsageString += `memory CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
     cpuUsed = Game.cpu.getUsed();
 
-    manageOperations();
-    cpuUsageString += `operation CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}      `;
-    cpuUsed = Game.cpu.getUsed();
-
-    try {
-        manageFlags();
-    } catch (e) {
-        console.log(`Error caught in flag management: \n${e}`);
-    }
-
     let roomCpuUsed = cpuUsed;
     let cpuRoomUsageString = '';
     Object.values(Game.rooms).forEach((room) => {
@@ -70,6 +60,10 @@ module.exports.loop = function () {
     });
 
     cpuUsageString += `rooms CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
+    cpuUsed = Game.cpu.getUsed();
+
+    manageOperations();
+    cpuUsageString += `operation CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}      `;
     cpuUsed = Game.cpu.getUsed();
 
     let creepCpuUsed = cpuUsed;
@@ -118,7 +112,6 @@ module.exports.loop = function () {
                         minEnergyStatus: EnergyStatus.SURPLUS,
                         minSpawnCount: 3,
                         selectionCriteria: OriginCriteria.CLOSEST,
-                        maxThreatLevel: HomeRoomThreatLevel.ENEMY_INVADERS,
                         maxLinearDistance: 5,
                         operationCriteria: { type: OperationType.POWER_BANK, maxCount: 1, stage: OperationStage.PREPARE },
                     },
@@ -177,7 +170,13 @@ module.exports.loop = function () {
         runPowerCreeps(powerCreeps);
     }
 
-    if (Game.cpu.bucket === 10000 && !Object.values(Memory.rooms).some((room) => room.threatLevel !== HomeRoomThreatLevel.SAFE)) {
+    try {
+        manageFlags();
+    } catch (e) {
+        console.log(`Error caught in flag management: \n${e}`);
+    }
+
+    if (Game.cpu.bucket === 10000){
         Game.cpu.generatePixel();
     }
 };

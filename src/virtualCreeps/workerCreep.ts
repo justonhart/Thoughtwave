@@ -184,14 +184,7 @@ export class WorkerCreep extends WaveCreep {
             switch (repairSuccess) {
                 case ERR_NOT_IN_RANGE:
                     const opts: TravelToOpts = { range: 3, maxRooms: 1, avoidEdges: true };
-                    if (
-                        this.homeroom.memory.threatLevel === HomeRoomThreatLevel.ENEMY_INVADERS ||
-                        this.homeroom.memory.threatLevel >= HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS
-                    ) {
-                        opts.avoidEdges = true;
-                    } else {
-                        opts.exitCost = 10;
-                    }
+                    opts.exitCost = 10;
                     this.travelTo(target, opts);
                     break;
                 case ERR_NOT_ENOUGH_RESOURCES:

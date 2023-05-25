@@ -49,17 +49,6 @@ RoomPosition.prototype.neighbors = function (this: RoomPosition, includeDiagonal
     return adjacentPositions;
 };
 
-Room.prototype.getRepairTarget = function (this: Room): Id<Structure> {
-    let targets = this.memory.repairQueue;
-
-    if (targets.length === 0 && !this.memory.repairSearchCooldown) {
-        this.memory.repairQueue = findRepairTargets(this);
-        this.memory.repairSearchCooldown = 250;
-    }
-
-    return this.memory.repairQueue.shift();
-};
-
 Room.prototype.removeFromRepairQueue = function (this: Room, idToRemove: string): void {
     this.memory.repairQueue = this.memory.repairQueue.filter((id) => id !== idToRemove);
 };

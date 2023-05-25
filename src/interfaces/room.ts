@@ -24,7 +24,6 @@ interface RoomMemory {
     outstandingClaim?: string; //source to be claimed
     remoteSources?: { [sourcePos: string]: RemoteSourceData };
     lastRemoteSourceCheck?: number;
-    threatLevel?: HomeRoomThreatLevel;
     resourceRequests?: string[];
     abandon?: boolean;
     /**
@@ -34,6 +33,7 @@ interface RoomMemory {
     colonizationInProgress?: boolean;
     roomType: RoomType;
     lastScout?: number;
+    threatLevel?: HomeRoomThreatLevel;
 }
 
 /**
@@ -106,7 +106,6 @@ interface Room {
     mineral: Mineral;
     managerLink: StructureLink;
     upgraderLink: StructureLink;
-    getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
     workerCapacity: number;
     spawns: StructureSpawn[];
@@ -125,6 +124,7 @@ interface Room {
     hostileStructures: AnyOwnedStructure[];
     structures: AnyStructure[];
     myConstructionSites: ConstructionSite[];
+    defenseData: RoomDefenseData;
 
     // Caching - Only used in roomPrototypes
     _myCreepsByMemory: Creep[];
@@ -257,26 +257,25 @@ const enum RemoteRoomThreatLevel {
 }
 
 /**
- * The enums on the top overwrite the lower ones (for example if an attack unit is in the room and a structure it will set ENEMY_ATTACK_CREEPS)
+ * The threat level of a homeroom. Determines which operational functions occur
  */
 const enum HomeRoomThreatLevel {
+    /**
+     * No threats detected, operate as normal
+     */
     SAFE = 0,
     /**
-     * Enemy Creeps with no threat (scouts, collectors)
+     * Some enemies spotted, but nothing beyond a nuisance (Scouts, Low-level invaders, etc)
      */
-    ENEMY_NON_COMBAT_CREEPS,
+    LOW,
     /**
-     * Invaders (npcs)
+     * Room under threat. Reserve resources, prevent new automatic operations (incoming *unhandled* nukes)
      */
-    ENEMY_INVADERS,
+    MODERATE,
     /**
-     * Enemy Creeps with no attack but work parts
+     * Room in imminent danger. Run only room operations necessary for room survival. (Under siege by powerful creeps)
      */
-    ENEMY_DISMANTLERS,
-    /**
-     * Enemy Creeps with attack body parts
-     */
-    ENEMY_ATTTACK_CREEPS,
+    HIGHEST,
 }
 
 const enum RemoteRoomReservationStatus {
@@ -320,4 +319,9 @@ interface RemoteStats {
     reserverUpkeep: number;
     exterminatorUpkeep: number;
     miningPos: RoomPosition;
+}
+
+interface RoomDefenseData {
+    structuresWithNukeRisk?: Id<Structure>[];
+    threatLevel?: HomeRoomThreatLevel; 
 }
