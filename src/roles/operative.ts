@@ -3,6 +3,7 @@ import { WorkerCreep } from '../virtualCreeps/workerCreep';
 export class Operative extends WorkerCreep {
     memory: OperativeMemory;
     protected run() {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         if (!this.operation) {
             this.memory.recycle = true;
             if (this.room.controller?.my) {
