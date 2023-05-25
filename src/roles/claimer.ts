@@ -3,6 +3,9 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class Claimer extends WaveCreep {
     memory: ClaimerMemory;
     protected run() {
+        if(!this.operation){
+            this.memory.recycle = true;
+        }
         if (this.room.name === this.operation.targetRoom) {
             const controller = this.room.controller;
             if (controller) {
