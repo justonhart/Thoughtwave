@@ -732,7 +732,7 @@ function manageAddPowerBankOperation(opId: string) {
             // If attackers are dying then abandon operation
             const squadLeaders = squads.filter((squad) => squad.members).map((squad) => Game.creeps[squad.members[SquadMemberType.SQUAD_LEADER]]);
             squadLeaders.forEach((squadLeader) => {
-                if (squadLeader.hits < squadLeader.hitsMax / 2) {
+                if (squadLeader.hits < squadLeader.hitsMax / 4) {
                     // Recycle Creeps after destroying powerbank
                     Object.values(Memory.creeps)
                         .filter((creep) => creep.assignment === targetRoom.name || creep.destination === targetRoom.name)
@@ -746,7 +746,7 @@ function manageAddPowerBankOperation(opId: string) {
             });
 
             // Spawn 1 protector
-            spawnPowerBankProtector(opId, OPERATION, targetRoom, originRoom);
+            spawnPowerBankProtector(OPERATION);
 
             // Spawn Squads
             if (
@@ -767,13 +767,14 @@ function manageAddPowerBankOperation(opId: string) {
                 if (
                     Game.time % 50 === 0 &&
                     powerBank &&
-                    !(
-                        Object.values(Memory.creeps).some((creep) => creep.destination === targetRoom.name && creep.role === Role.OPERATIVE) ||
-                        Object.values(Memory.spawnAssignments).some(
-                            (spawnAssignment) =>
-                                spawnAssignment.spawnOpts.memory.destination === targetRoom.name &&
-                                spawnAssignment.spawnOpts.memory.role === Role.OPERATIVE
-                        )
+                    !Object.values(Memory.creeps).some(
+                        (creep: OperativeMemory) =>
+                            Memory.operations[creep.operationId]?.targetRoom === targetRoom.name && creep.role === Role.OPERATIVE
+                    ) &&
+                    !Object.values(Memory.spawnAssignments).some(
+                        (spawnAssignment) =>
+                            Memory.operations[(spawnAssignment.spawnOpts.memory as OperativeMemory)?.operationId]?.targetRoom === targetRoom.name &&
+                            spawnAssignment.spawnOpts.memory.role === Role.OPERATIVE
                     )
                 ) {
                     // TTL Spawning
@@ -814,13 +815,16 @@ function manageAddPowerBankOperation(opId: string) {
                 } else if (!powerBank) {
                     // Recycle Creeps after destroying powerbank
                     Object.values(Memory.creeps)
-                        .filter((creep) => creep.assignment === targetRoom.name && creep.role !== Role.OPERATIVE)
+                        .filter(
+                            (creep: OperativeMemory) =>
+                                Memory.operations[creep.operationId]?.targetRoom === targetRoom.name && creep.role === Role.PROTECTOR
+                        )
                         .forEach((creep) => (creep.recycle = true));
                     Object.values(Memory.squads)
                         .filter((squad) => squad.assignment === targetRoom.name && squad.members)
                         .forEach((squad) => Object.values(squad.members).forEach((creepName) => (Memory.creeps[creepName].recycle = true)));
                     OPERATION.stage = OperationStage.CLAIM;
-                    return;
+                    break;
                 }
 
                 // Wait until all operatives are in the room to avoid wasting power (should not happen but sometimes spawning takes too long for collectors)
@@ -828,8 +832,8 @@ function manageAddPowerBankOperation(opId: string) {
                     powerBank &&
                     powerBank.hits < 10000 &&
                     Object.values(Memory.creeps).some(
-                        (creep) =>
-                            creep.destination === OPERATION.targetRoom &&
+                        (creep: OperativeMemory) =>
+                            Memory.operations[creep.operationId]?.targetRoom === OPERATION.targetRoom &&
                             creep.role === Role.OPERATIVE &&
                             !creep._m?.lastCoord?.includes(OPERATION.targetRoom)
                     )
@@ -857,7 +861,12 @@ function manageAddPowerBankOperation(opId: string) {
             }
             break;
         case OperationStage.CLAIM:
-            if (!Object.values(Memory.creeps).some((creep) => creep.destination === OPERATION.targetRoom && creep.role === Role.OPERATIVE)) {
+            if (
+                !Object.values(Memory.creeps).some(
+                    (creep: OperativeMemory) =>
+                        Memory.operations[creep.operationId]?.targetRoom === OPERATION.targetRoom && creep.role === Role.OPERATIVE
+                )
+            ) {
                 OPERATION.stage = OperationStage.COMPLETE;
             }
             break;
@@ -872,7 +881,7 @@ function manageAddPowerBankOperation(opId: string) {
  * @param op
  * @param targetRoom
  */
-function spawnPowerBankProtector(opId: string, op: Operation, targetRoom: Room, originRoom: Room) {
+function spawnPowerBankProtector(op: Operation) {
     const assignedProtectorCount =
         Object.values(Game.creeps).filter(
             (creep) =>
@@ -885,53 +894,22 @@ function spawnPowerBankProtector(opId: string, op: Operation, targetRoom: Room, 
         ).length;
 
     if (!assignedProtectorCount) {
-        let notSpawned = true;
-        if (targetRoom) {
-            const combatIntel = CombatIntel.getCreepCombatData(targetRoom, true);
-            if (combatIntel && combatIntel.totalAttack > 300) {
-                const dmgNeeded =
-                    CombatIntel.getPredictedDamageNeeded(combatIntel.totalHeal, combatIntel.highestDmgMultiplier, combatIntel.highestToughHits) +
-                    Math.ceil(combatIntel.highestHP / 25);
-                let body: BodyPartConstant[];
-                let boosts = [];
-                if (combatIntel.totalRanged > 200) {
-                    boosts.push(BoostType.TOUGH);
-                }
-                if (combatIntel.totalRanged >= 120) {
-                    boosts.push(BoostType.HEAL);
-                }
-                if (dmgNeeded >= 180) {
-                    boosts.push(BoostType.RANGED_ATTACK);
-                }
-                body = PopulationManagement.createDynamicCreepBody(
-                    originRoom,
-                    [RANGED_ATTACK, HEAL, MOVE, TOUGH],
-                    dmgNeeded,
-                    Math.max(combatIntel.totalRanged, dmgNeeded / 2),
-                    { boosts: boosts }
-                );
-                notSpawned = false;
-            }
-        }
-
-        if (notSpawned) {
-            const body = PopulationManagement.createDynamicCreepBody(Game.rooms[op.originRoom], [RANGED_ATTACK, HEAL, MOVE], 300, 160, {
-                boosts: [BoostType.RANGED_ATTACK],
-            });
-            Memory.spawnAssignments.push({
-                designee: op.originRoom,
-                body: body,
-                spawnOpts: {
-                    memory: {
-                        role: Role.PROTECTOR,
-                        assignment: op.targetRoom,
-                        currentTaskPriority: Priority.MEDIUM,
-                        combat: { flee: false },
-                        room: op.originRoom,
-                    },
+        const body = PopulationManagement.createDynamicCreepBody(Game.rooms[op.originRoom], [RANGED_ATTACK, HEAL, MOVE], 300, 160, {
+            boosts: [BoostType.RANGED_ATTACK],
+        });
+        Memory.spawnAssignments.push({
+            designee: op.originRoom,
+            body: body,
+            spawnOpts: {
+                memory: {
+                    role: Role.PROTECTOR,
+                    assignment: op.targetRoom,
+                    currentTaskPriority: Priority.MEDIUM,
+                    combat: { flee: false },
+                    room: op.originRoom,
                 },
-            });
-        }
+            },
+        });
     }
 }
 

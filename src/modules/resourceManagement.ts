@@ -124,7 +124,7 @@ export function manageEmpireResources() {
             case ResourceRequestStatus.ASSIGNED:
                 const allShipmentsCompleted = request.shipments.every((id) => Memory.shipments[id]?.status === ShipmentStatus.SHIPPED);
                 if (allShipmentsCompleted) {
-                    Memory.resourceRequests[requestId].status = ResourceRequestStatus.FULFULLED;
+                    Memory.resourceRequests[requestId].status = ResourceRequestStatus.FULFILLED;
                 } else if (request.shipments.some((id) => !Memory.shipments[id] || Memory.shipments[id].status === ShipmentStatus.FAILED)) {
                     Memory.resourceRequests[requestId].shipments = request.shipments.filter(
                         (id) => Memory.shipments[id] && Memory.shipments[id].status !== ShipmentStatus.FAILED
@@ -136,7 +136,7 @@ export function manageEmpireResources() {
                 console.log(`${Game.time} - Resource request failed: ${request.room} - ${request.resource}`);
                 delete Memory.resourceRequests[requestId];
                 break;
-            case ResourceRequestStatus.FULFULLED:
+            case ResourceRequestStatus.FULFILLED:
                 if (Memory.debug.logShipments)
                     console.log(`${Game.time} - Request fulfilled: ${request.amount} ${request.resource} for ${request.room}`);
                 request.shipments.forEach((id) => delete Memory.shipments[id]);

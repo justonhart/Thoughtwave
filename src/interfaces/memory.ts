@@ -239,7 +239,7 @@ const enum ResourceRequestStatus {
     FAILED = -1,
     SUBMITTED,
     ASSIGNED,
-    FULFULLED,
+    FULFILLED,
 }
 
 interface EmpireData {

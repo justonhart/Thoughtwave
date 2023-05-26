@@ -359,7 +359,6 @@ export class Pathing {
                 }
             }
 
-            const room = Game.rooms[roomName];
             if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination.roomName && Pathing.checkAvoid(roomName)) {
                 if (!Memory.roomData[roomName]?.owner) {
                     // Hostile but not owned room
@@ -369,6 +368,7 @@ export class Pathing {
             }
 
             let matrix: CostMatrix;
+            const room = Game.rooms[roomName];
             if (room) {
                 if (Memory.creeps[creepName] && !Memory.creeps[creepName]._m.visibleRooms.includes(room.name)) {
                     Memory.creeps[creepName]._m.visibleRooms.push(room.name);
@@ -506,9 +506,8 @@ export class Pathing {
                     }
                     return Infinity;
                 }
-                const isMyRoom = Game.rooms[roomName] && Game.rooms[roomName].controller && Game.rooms[roomName].controller.my;
                 const isRemoteMiningRoom = Memory.remoteData[roomName];
-                if (isMyRoom || isRemoteMiningRoom) {
+                if (Game.rooms[roomName]?.controller?.my || isRemoteMiningRoom) {
                     return 1;
                 }
                 if (options.preferHighway) {

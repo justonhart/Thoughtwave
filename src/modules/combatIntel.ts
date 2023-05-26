@@ -55,7 +55,7 @@ export class CombatIntel {
             : (room.myStructures.filter((struct) => struct.structureType === STRUCTURE_TOWER) as StructureTower[]);
 
         if (!towers) {
-            return;
+            return { minDmg: 0, maxDmg: 0, minHeal: 0, maxHeal: 0 };
         }
 
         let combatData: TowerCombatData = {
@@ -92,10 +92,6 @@ export class CombatIntel {
             : room.myCreeps.filter(
                   (creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(HEAL)
               );
-
-        if (!creeps) {
-            return;
-        }
 
         if (!pos) {
             return this.calculateCreepsCombatData(creeps);

@@ -357,10 +357,12 @@ function runTowers(room: Room) {
                 const hostileCreepInfo = CombatIntel.getCreepCombatData(room, true, creep.pos);
                 const myCreepInfo = CombatIntel.getCreepCombatData(room, false, creep.pos);
                 const myTowerInfo = CombatIntel.getTowerCombatData(room, false, creep.pos);
-                return CombatIntel.getPredictedDamage(
-                    myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
-                    hostileCreepInfo.highestDmgMultiplier,
-                    hostileCreepInfo.highestToughHits
+                return (
+                    CombatIntel.getPredictedDamage(
+                        myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
+                        hostileCreepInfo.highestDmgMultiplier,
+                        hostileCreepInfo.highestToughHits
+                    ) > hostileCreepInfo.totalHeal
                 );
             });
         if (hostileCreep) {
