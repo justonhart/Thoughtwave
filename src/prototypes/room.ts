@@ -49,6 +49,19 @@ RoomPosition.prototype.neighbors = function (this: RoomPosition, includeDiagonal
     return adjacentPositions;
 };
 
+RoomPosition.prototype.findClosestCreepByRange = function (this: RoomPosition, forHostile: boolean) {
+    const targetRoom = Game.rooms[this.roomName];
+    if (!targetRoom) {
+        // No visibility
+        return;
+    }
+    const target = forHostile ? targetRoom.hostileCreeps : targetRoom.myCreeps;
+    if (target.length === 1) {
+        return target[0];
+    }
+    return target.reduce((closestCreep, nextCreep) => (this.getRangeTo(closestCreep) < this.getRangeTo(nextCreep) ? closestCreep : nextCreep));
+};
+
 Room.prototype.getRepairTarget = function (this: Room): Id<Structure> {
     let targets = this.memory.repairQueue;
 
