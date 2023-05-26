@@ -220,7 +220,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
                         .filter((rampart) => !rampart.type)
                         .some((exitRampart) => exitRampart.pos.toRoomPos().getRangeTo(extension.pos.toRoomPos()) < 3)
             )
-            .forEach((minerExtension) => stamps.rampart.push({ rcl: 4, pos: minerExtension.pos }));
+            .forEach((minerExtension) => stamps.rampart.push({ rcl: 4, type: 'miner', pos: minerExtension.pos }));
         stamps.link
             .filter(
                 (link) =>
@@ -229,7 +229,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
                         .filter((rampart) => !rampart.type)
                         .some((exitRampart) => exitRampart.pos.toRoomPos().getRangeTo(link.pos.toRoomPos()) < 3)
             )
-            .forEach((minerLink) => stamps.rampart.push({ rcl: 4, pos: minerLink.pos }));
+            .forEach((minerLink) => stamps.rampart.push({ rcl: 4, type: 'miner', pos: minerLink.pos }));
         stamps.container
             .filter(
                 (container) =>
@@ -238,7 +238,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
                         .filter((rampart) => !rampart.type)
                         .some((exitRampart) => exitRampart.pos.toRoomPos().getRangeTo(container.pos.toRoomPos()) < 3)
             )
-            .forEach((minerContainer) => stamps.rampart.push({ rcl: 4, pos: minerContainer.pos }));
+            .forEach((minerContainer) => stamps.rampart.push({ rcl: 4, type: 'miner', pos: minerContainer.pos }));
 
         addRoadToPois(room.controller.pos, stamps, 3, STRUCTURE_CONTROLLER, terrain, 3);
 

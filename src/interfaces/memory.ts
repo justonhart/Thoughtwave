@@ -201,6 +201,7 @@ interface VisionRequest {
 
 interface DebugSettings {
     logOperations?: boolean;
+    earlyNotify?: boolean;
     drawStamps?: boolean;
     logCpu?: boolean;
     drawRoads?: boolean;
@@ -238,7 +239,7 @@ const enum ResourceRequestStatus {
     FAILED = -1,
     SUBMITTED,
     ASSIGNED,
-    FULFULLED,
+    FULFILLED,
 }
 
 interface EmpireData {

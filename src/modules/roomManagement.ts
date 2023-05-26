@@ -357,10 +357,12 @@ function runTowers(room: Room) {
                 const hostileCreepInfo = CombatIntel.getCreepCombatData(room, true, creep.pos);
                 const myCreepInfo = CombatIntel.getCreepCombatData(room, false, creep.pos);
                 const myTowerInfo = CombatIntel.getTowerCombatData(room, false, creep.pos);
-                return CombatIntel.getPredictedDamage(
-                    myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
-                    hostileCreepInfo.highestDmgMultiplier,
-                    hostileCreepInfo.highestToughHits
+                return (
+                    CombatIntel.getPredictedDamage(
+                        myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
+                        hostileCreepInfo.highestDmgMultiplier,
+                        hostileCreepInfo.highestToughHits
+                    ) > hostileCreepInfo.totalHeal
                 );
             });
         if (hostileCreep) {
@@ -409,6 +411,9 @@ function runHomeSecurity(homeRoom: Room): boolean {
     if (hostileCreepData.creeps.length && homeRoom.controller.level < 4) {
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (!currentNumProtectors) {
+            Game.notify(
+                `Room ${homeRoom.name} is under attack by ${homeRoom.hostileCreeps[0].owner.username} at ${Game.time}! Active Defense initiated.`
+            );
             Memory.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: [RANGED_ATTACK, MOVE, MOVE, HEAL],
@@ -433,7 +438,9 @@ function runHomeSecurity(homeRoom: Room): boolean {
             (hostileCreepData.creeps.length >= 4 &&
                 currentNumProtectors + (hostileCreepData.creeps.length > 12 ? 1 : -1) - Math.floor(hostileCreepData.creeps.length / 4) < 0)
         ) {
-            console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
+            Game.notify(
+                `Room ${homeRoom.name} is under attack by ${homeRoom.hostileCreeps[0].owner.username} at ${Game.time}! Active Defense initiated.`
+            );
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
             const attackerBody = PopulationManagement.createPartsArray([ATTACK, ATTACK, ATTACK, ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10);
             if (attackerBody.length) {
@@ -1003,7 +1010,7 @@ function setThreatLevel(room: Room) {
  * @param enemyUsername enemy player
  */
 function sendEmailOnAttack(room: Room, enemyUsername: string) {
-    if (room.memory.threatLevel <= HomeRoomThreatLevel.ENEMY_INVADERS) {
+    if (Memory.debug.earlyNotify && room.memory.threatLevel <= HomeRoomThreatLevel.ENEMY_INVADERS) {
         Game.notify(`Room ${room.name} is under attack by ${enemyUsername} at ${Game.time}!`);
     }
 }
