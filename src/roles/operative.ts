@@ -2,6 +2,7 @@ import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
 export class Operative extends WorkerCreep {
     memory: OperativeMemory;
+    operation: ResourceOperation;
     protected run() {
         this.memory.currentTaskPriority = Priority.MEDIUM;
         if (!this.operation) {
@@ -57,7 +58,7 @@ export class Operative extends WorkerCreep {
                         this.suicide();
                     }
                 } else {
-                    this.travelTo(destinationPos, {avoidHostileRooms: true});
+                    this.travelTo(destinationPos, { avoidHostileRooms: true });
                 }
             }
         } else {
@@ -105,7 +106,7 @@ export class Operative extends WorkerCreep {
                     }
                 }
             } else {
-                this.travelToRoom(this.operation.targetRoom, {avoidHostileRooms: true});
+                this.travelToRoom(this.operation.targetRoom, { avoidHostileRooms: true });
             }
         } else {
             this.gatherEnergy();

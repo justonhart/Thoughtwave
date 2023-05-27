@@ -77,6 +77,10 @@ interface ScoutMemory extends CreepMemory {
      * If true, the creep is done exploring this node's children and is returning to the previous node
      */
     returnToLastRoom?: boolean;
+    /**
+     * If set, scouting a route for an operation instead of normal behavior
+     */
+    operationId?: string;
 }
 
 interface CombatMemory {
@@ -253,7 +257,7 @@ interface MineralMinerMemory extends CreepMemory {
     assignment?: string;
 }
 
-interface ManagerMemory extends CreepMemory{
+interface ManagerMemory extends CreepMemory {
     /**
      * The manager position this manager is assigned to
      */
@@ -264,6 +268,6 @@ interface ManagerMemory extends CreepMemory{
     targetId?: Id<Structure>;
 }
 
-interface ClaimerMemory extends OperativeMemory { 
+interface ClaimerMemory extends OperativeMemory {
     claimRoomType: RoomType;
 }
