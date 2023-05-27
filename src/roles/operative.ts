@@ -324,6 +324,13 @@ export class Operative extends WorkerCreep {
             return sites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
         }
 
+        if(this.room.controller?.my){
+            const structureToRepair = room?.structures.find(s => (s.structureType === STRUCTURE_ROAD || s.structureType === STRUCTURE_CONTAINER) && s.hits < s.hitsMax)
+            if(structureToRepair){
+                return structureToRepair.id;
+            }
+        }
+
         const ramparts = room?.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_RAMPART });
         if (ramparts.length) {
             return this.room.name === room.name ? this.pos.findClosestByRange(ramparts).id : ramparts.pop().id;

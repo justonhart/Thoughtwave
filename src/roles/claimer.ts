@@ -18,11 +18,6 @@ export class Claimer extends WaveCreep {
                             this.attackController(controller);
                         } else {
                             let result = this.claimController(controller);
-                            if (result === OK) {
-                                this.room.memory = {
-                                    roomType: this.memory.claimRoomType,
-                                };
-                            }
                         }
                     }
                 }

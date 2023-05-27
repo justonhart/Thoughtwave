@@ -665,7 +665,7 @@ export class PopulationManagement {
 
         for (
             let i = 0;
-            i < Math.floor((spawn.room.energyAvailable - (spawn.room.memory.reservedEnergy ?? 0)) / partsBlockCost) &&
+            i < Math.floor((spawn.room.energyAvailable - (spawn.room.reservedEnergy ?? 0)) / partsBlockCost) &&
             (i + 1) * partsBlock.length <= 50 &&
             i < levelCap;
             i++
@@ -704,8 +704,7 @@ export class PopulationManagement {
 
     static smartSpawn(spawn: StructureSpawn, name: string, body: BodyPartConstant[], opts?: SpawnOptions) {
         let partsArrayCost = body.length ? body.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost) : 0;
-
-        if (partsArrayCost > spawn.room.energyAvailable - (spawn.room.memory.reservedEnergy ?? 0)) {
+        if (partsArrayCost > spawn.room.energyAvailable - (spawn.room.reservedEnergy ?? 0)) {
             return ERR_NOT_ENOUGH_ENERGY;
         }
 
@@ -778,9 +777,9 @@ export class PopulationManagement {
             if (result !== OK) {
                 console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
             } else {
-                spawn.room.memory.reservedEnergy != undefined
-                    ? (spawn.room.memory.reservedEnergy += partsArrayCost)
-                    : (spawn.room.memory.reservedEnergy = partsArrayCost);
+                spawn.room.reservedEnergy != undefined
+                    ? (spawn.room.reservedEnergy += partsArrayCost)
+                    : (spawn.room.reservedEnergy = partsArrayCost);
                 requestsToAdd.forEach((request) => {
                     spawn.room.addRequest(request.resource, request.amount);
                 });

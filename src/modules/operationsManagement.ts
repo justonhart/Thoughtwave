@@ -2,7 +2,7 @@ import { CombatIntel } from './combatIntel';
 import { addVisionRequest, observerInRange } from './data';
 import { Pathing } from './pathing';
 import { PopulationManagement } from './populationManagement';
-import { getSpawnPos } from './roomDesign';
+import { findStampLocation, getSpawnPos } from './roomDesign';
 
 const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } = {
     [OperationType.COLONIZE]: OperationStage.PREPARE,
@@ -60,7 +60,7 @@ export function manageOperations() {
             try {
                 switch (operation.type) {
                     case OperationType.COLONIZE:
-                        manageColonizationOperation(operationId);
+                        manageColonizeOperation(operationId);
                         break;
                     case OperationType.SECURE:
                         manageSecureRoomOperation(operationId);
@@ -93,7 +93,7 @@ export function manageOperations() {
     });
 }
 
-function manageColonizationOperation(opId: string) {
+function manageColonizeOperation(opId: string) {
     const OPERATION = Memory.operations[opId] as ColonizeOperation;
     if (!Game.rooms[OPERATION.originRoom]) {
         OPERATION.originRoom = findOperationOrigin(OPERATION.targetRoom)?.roomName;
@@ -212,7 +212,7 @@ function manageColonizationOperation(opId: string) {
                     operationId: opId,
                     room: OPERATION.originRoom,
                     waypoints: OPERATION.waypoints,
-                    claimRoomType: RoomType.HOMEROOM,
+                    claimRoomType: RoomType.OPERATION_CONTROLLED,
                 };
                 Memory.spawnAssignments.push({
                     designee: OPERATION.originRoom,
@@ -247,23 +247,58 @@ function manageColonizationOperation(opId: string) {
                 OPERATION.roomContainsStarterEnergy = containsStarterEnergy;
             }
 
+            //room management
+            if(!Memory.rooms[OPERATION.targetRoom]?.stampLayout){
+                Memory.rooms[OPERATION.targetRoom] = {
+                    roomType: RoomType.OPERATION_CONTROLLED,
+                    threatLevel: HomeRoomThreatLevel.SAFE,
+                    gates: [],
+                    repairSearchCooldown: 0,
+                    repairQueue: [],
+                    miningAssignments: {},
+                    mineralMiningAssignments: {},
+                    remoteSources: {},
+                    towerRepairMap: {},
+                    transferBuffer: {},
+                    controllingOperation: opId
+                };
+                let stampResult = findStampLocation(room);
+                if(!stampResult){
+                    break;
+                }
+            }
+
             //structure cleanup
-            room.find(FIND_HOSTILE_STRUCTURES)
+            room.hostileStructures
                 .filter(
-                    (s) => s.structureType !== STRUCTURE_STORAGE && s.structureType !== STRUCTURE_TERMINAL && s.structureType !== STRUCTURE_EXTRACTOR
+                    (s) => s.structureType !== STRUCTURE_STORAGE && s.structureType !== STRUCTURE_TERMINAL && s.structureType !== STRUCTURE_EXTRACTOR && s.structureType !== STRUCTURE_INVADER_CORE
                 )
                 .forEach((s) => s.destroy());
 
             //structure placement
             switch (room.controller.level) {
                 case 6:
-                    if (!room.terminal) {
-                        room.memory.stampLayout.terminal.shift()?.pos.toRoomPos().createConstructionSite(STRUCTURE_TERMINAL);
+                    if (!room.terminal?.my) {
+                        if(room.terminal?.my === false){
+                            room.terminal.destroy();
+                        } else {
+                            room.memory.stampLayout.terminal.shift()?.pos.toRoomPos().createConstructionSite(STRUCTURE_TERMINAL);
+                        }
                     }
                 case 4:
-                    if (!room.storage) {
-                        room.memory.stampLayout.storage.shift()?.pos.toRoomPos().createConstructionSite(STRUCTURE_STORAGE);
+                    if (!room.storage?.my) {
+                        if(room.storage?.my === false){
+                            room.storage.destroy();
+                        } else {
+                            room.memory.stampLayout.storage.shift()?.pos.toRoomPos().createConstructionSite(STRUCTURE_STORAGE);
+                        }
                     }
+                case 2:
+                    room.memory.stampLayout.extension.filter(stamp => stamp.rcl === 2).forEach(stamp => {
+                        if(!stamp.pos.toRoomPos().look().some(look => (look.type === LOOK_STRUCTURES && look.structure.structureType === STRUCTURE_EXTENSION) || (look.type === LOOK_CONSTRUCTION_SITES && look.constructionSite.structureType === STRUCTURE_EXTENSION))){
+                            stamp.pos.toRoomPos().createConstructionSite(STRUCTURE_EXTENSION);
+                        }
+                    });
                 default:
                     const spawnPos = room.memory.stampLayout.spawn.find((stamp) => stamp.rcl === 1)?.pos.toRoomPos();
                     if (!room.canSpawn()) {
@@ -286,20 +321,38 @@ function manageColonizationOperation(opId: string) {
                     }
             }
 
+            //in-room spawning
+            let spawn = room.spawns.find(spawn => !spawn.spawning);
+            if(spawn){
+                if(PopulationManagement.needsManager(room)){
+                    spawn.spawnManager();
+                }
+                if(!room.myCreeps.some(c => c.memory.role === Role.DISTRIBUTOR)){
+                    spawn.spawnDistributor();
+                } else if(PopulationManagement.needsMiner(room)){
+                    spawn.spawnMiner();
+                }
+            }
+
             //Sub-operation Management
             if (OPERATION.roomContainsStarterEnergy === false) {
                 //transfer operation to supply other operations energy
                 const transferOperationId = OPERATION.subOperations.find((childId) => Memory.operations[childId]?.type === OperationType.TRANSFER);
-                if (!transferOperationId) {
+                if (!transferOperationId && Game.rooms[OPERATION.originRoom].getResourceAmount(RESOURCE_ENERGY) >= 100000) {
                     let result = addOperation(OperationType.TRANSFER, OPERATION.targetRoom, {
                         parentId: opId,
                         resource: RESOURCE_ENERGY,
                         originRoom: OPERATION.originRoom,
                         operativeCount: originSpawnCount * 3,
-                        expireAt: Game.time + 6000,
                     });
                     if (result) {
                         OPERATION.subOperations.push(result);
+                    }
+                } else {
+                    if(Game.rooms[OPERATION.originRoom].getResourceAmount(RESOURCE_ENERGY) < 100000){
+                        Memory.operations[transferOperationId].stage = OperationStage.SUSPEND;
+                    } else if(Memory.operations[transferOperationId].stage !== OperationStage.ACTIVE && Game.rooms[OPERATION.originRoom].getResourceAmount(RESOURCE_ENERGY) > 150000) {
+                        Memory.operations[transferOperationId].stage = OperationStage.ACTIVE
                     }
                 }
             }
@@ -311,7 +364,6 @@ function manageColonizationOperation(opId: string) {
                     parentId: opId,
                     originRoom: OPERATION.originRoom,
                     operativeCount: originSpawnCount * 2,
-                    expireAt: Game.time + 6000,
                 });
                 if (result) {
                     OPERATION.subOperations.push(result);
@@ -325,7 +377,6 @@ function manageColonizationOperation(opId: string) {
                     parentId: opId,
                     originRoom: OPERATION.originRoom,
                     operativeCount: originSpawnCount * 2,
-                    expireAt: Game.time + 6000,
                 });
                 if (result) {
                     OPERATION.subOperations.push(result);
@@ -335,6 +386,8 @@ function manageColonizationOperation(opId: string) {
             //Operation Logic
             if (originRoomLevel >= 6 ? room.controller.level >= 6 && room.terminal : room.controller.level >= 3) {
                 OPERATION.stage = OperationStage.COMPLETE;
+                room.memory.roomType = RoomType.HOMEROOM;
+                OPERATION.subOperations.forEach(opId => Memory.operations[opId].stage = OperationStage.COMPLETE);
             }
 
             break;

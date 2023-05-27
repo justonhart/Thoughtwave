@@ -54,7 +54,7 @@ function driveHomeRoom(room: Room) {
     if (!room.canSpawn()) {
         // fail state - if a room has unexpectedly lost all spawns
     } else {
-        room.memory.reservedEnergy = 0;
+        room.reservedEnergy = 0;
 
         let nukes = room.find(FIND_NUKES);
         if (room.controller.level >= 6 && nukes.length && getStructuresToProtect(nukes)?.length) {
@@ -188,8 +188,6 @@ function driveHomeRoom(room: Room) {
         if (!isHomeUnderAttack) {
             runRemoteRooms(room);
         }
-
-        delete room.memory.reservedEnergy;
     }
 }
 
@@ -468,7 +466,7 @@ function runSpawning(room: Room){
     } else if (distributor.ticksToLive < 100) {
         //reserve energy & spawn for distributor
         availableSpawns.pop();
-        room.memory.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
+        room.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
             .map((part) => BODYPART_COST[part])
             .reduce((sum, next) => sum + next);
     }
@@ -1129,7 +1127,7 @@ function runShipments(room: Room) {
     });
 }
 
-function manageMaintenance(room: Room) {
+export function manageMaintenance(room: Room) {
     if (room.memory.repairSearchCooldown > 0) {
         room.memory.repairSearchCooldown--;
     }

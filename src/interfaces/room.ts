@@ -12,7 +12,6 @@ interface RoomMemory {
     repairQueue?: Id<Structure<StructureConstant>>[];
     miningAssignments?: { [posString: string]: string };
     mineralMiningAssignments?: { [posString: string]: string };
-    reservedEnergy?: number;
     labTasks?: { [id: number]: LabTask };
     dontCheckConstructionsBefore?: number;
     shipments?: number[]; //stores IDs for shipments to be referenced from Memory.shipments
@@ -34,6 +33,10 @@ interface RoomMemory {
     colonizationInProgress?: boolean;
     roomType: RoomType;
     lastScout?: number;
+    /**
+     * Id of the operation controlling this room
+     */
+    controllingOperation?: string;
 }
 
 /**
@@ -125,6 +128,7 @@ interface Room {
     hostileStructures: AnyOwnedStructure[];
     structures: AnyStructure[];
     myConstructionSites: ConstructionSite[];
+    reservedEnergy: number;
 
     // Caching - Only used in roomPrototypes
     _myCreepsByMemory: Creep[];
