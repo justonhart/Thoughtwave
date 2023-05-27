@@ -10,6 +10,7 @@ module.exports = function (grunt) {
                 email: process.env.email,
                 token: process.env.token,
                 branch: 'default',
+                server: 'season'
             },
             dist: {
                 src: ['dist/*.js'],
