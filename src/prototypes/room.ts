@@ -56,7 +56,9 @@ RoomPosition.prototype.findClosestCreepByRange = function (this: RoomPosition, f
         return;
     }
     const target = forHostile ? targetRoom.hostileCreeps : targetRoom.myCreeps;
-    if (target.length === 1) {
+    if (!target.length) {
+        return;
+    } else if (target.length === 1) {
         return target[0];
     }
     return target.reduce((closestCreep, nextCreep) => (this.getRangeTo(closestCreep) < this.getRangeTo(nextCreep) ? closestCreep : nextCreep));
