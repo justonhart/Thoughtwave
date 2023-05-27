@@ -207,7 +207,6 @@ export class Pathing {
             if (opts.pathsRoomPositions?.length === 0 && creep.memory._m.path?.length && !opts.avoidedTemporaryHostileRooms) {
                 Array.prototype.push.apply(opts.pathsRoomPositions, pathFinder.path);
             }
-            //creep.memory._m.stuckCount = 0;
 
             // Do not remove next path if instantly going back to old room
             if (
@@ -236,10 +235,9 @@ export class Pathing {
         const nextDirection = parseInt(creep.memory._m.path[0], 10) as DirectionConstant;
         if (
             !creep.memory._m.keepPath &&
-            opts.avoidSourceKeepers &&
             creep.memory._m.lastCoord &&
             creep.memory._m.lastCoord?.toRoomPos().roomName !== creep.pos.roomName &&
-            !creep.memory._m.visibleRooms.includes(creep.pos.roomName)
+            (creep.memory._m.onSegmentedPath || (opts.avoidSourceKeepers && !creep.memory._m.visibleRooms.includes(creep.pos.roomName)))
         ) {
             delete creep.memory._m.path; // Recalculate path in each new room as well if the creep should avoid hostiles in each room
         } else if (creep.memory._m.lastCoord && creep.memory._m.lastCoord?.toRoomPos().roomName !== creep.pos.roomName && creep.memory._m.keepPath) {
@@ -316,24 +314,34 @@ export class Pathing {
         origin = Pathing.normalizePos(origin);
         destination = Pathing.normalizePos(destination);
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
-        if (origin.roomName !== destination.roomName && !options.allowedRooms && !creep.memory._m.repath) {
-            const roomDistance = Game.map.getRoomLinearDistance(origin.roomName, destination.roomName);
-            if (roomDistance >= 2) {
-                const route = this.findRoute(origin.roomName, destination.roomName, options);
-                if (route !== ERR_NO_PATH) {
-                    options.allowedRooms = route;
-                }
+        if (origin.roomName !== destination.roomName && !options.allowedRooms) {
+            const route = this.findRoute(origin.roomName, destination.roomName, options);
+            if (route !== ERR_NO_PATH) {
+                options.allowedRooms = route;
             }
         }
-        const goals = [
-            {
-                pos: destination,
-                range: range,
-            },
-        ];
-        if (options.goals) {
+
+        let goals = [];
+        if (options.allowedRooms?.length >= 3) {
+            // Long Route so only find detailed path for the first 4 rooms. This also avoids issues with creeps getting stuck against 1 wide walls.
+            goals = [
+                {
+                    pos: new RoomPosition(25, 25, options.allowedRooms[2]),
+                    range: 24,
+                },
+            ];
+            creep.memory._m.onSegmentedPath = true; // Recalculate on every new room for the current/next room. This is done to optimize Pathing (knows the optimal exit to take)
+        } else {
+            goals = [
+                {
+                    pos: destination,
+                    range: range,
+                },
+            ];
             goals.concat(options.goals);
+            delete creep.memory._m.onSegmentedPath;
         }
+
         return PathFinder.search(origin, goals, {
             maxOps: options.maxOps,
             plainCost: Math.ceil(2 / options.efficiency),
