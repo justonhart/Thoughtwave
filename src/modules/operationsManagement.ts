@@ -937,10 +937,7 @@ function manageAddPowerBankOperation(opId: string) {
                 } else if (!powerBank) {
                     // Recycle Creeps after destroying powerbank
                     Object.values(Memory.creeps)
-                        .filter(
-                            (creep: OperativeMemory) =>
-                                Memory.operations[creep.operationId]?.targetRoom === targetRoom.name && creep.role === Role.PROTECTOR
-                        )
+                        .filter((creep: OperativeMemory) => creep.assignment === targetRoom.name && creep.role === Role.PROTECTOR)
                         .forEach((creep) => (creep.recycle = true));
                     Object.values(Memory.squads)
                         .filter((squad) => squad.assignment === targetRoom.name && squad.members)
