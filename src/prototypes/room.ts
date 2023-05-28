@@ -368,7 +368,7 @@ Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> 
 };
 
 Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConstant): number {
-    return (this.storage?.store[resource] ?? 0) + (this.terminal?.store[resource] ?? 0) + (this.memory.transferBuffer[resource] ?? 0);
+    return (this.storage?.store[resource] ?? 0) + (this.terminal?.store[resource] ?? 0) + (this.memory.transferBuffer[resource]?.amount ?? 0);
 };
 
 Room.prototype.getCompressedResourceAmount = function (this: Room, resource: ResourceConstant): number {

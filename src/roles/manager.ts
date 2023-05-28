@@ -160,7 +160,7 @@ export class Manager extends WaveCreep {
             const amountToTransfer = Math.min(storage.store[res], 5000 - terminal.store[res], this.store.getFreeCapacity());
             this.withdraw(storage, res, amountToTransfer);
             this.memory.targetId = terminal.id;
-            this.room.memory.transferBuffer[res] = amountToTransfer;
+            this.room.memory.transferBuffer[res] = { amount: amountToTransfer, creepName: this.name };
             return;
         }
 
@@ -171,7 +171,7 @@ export class Manager extends WaveCreep {
                 : Math.min(this.store.getFreeCapacity(), terminal.store[remRes]);
             this.withdraw(terminal, remRes, amountToTransfer);
             this.memory.targetId = storage.id;
-            this.room.memory.transferBuffer[remRes] = amountToTransfer;
+            this.room.memory.transferBuffer[remRes] = { amount: amountToTransfer, creepName: this.name };
             return;
         }
 
