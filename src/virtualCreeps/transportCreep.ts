@@ -305,6 +305,10 @@ export class TransportCreep extends WaveCreep {
             ) {
                 targetStructureTypes.push(STRUCTURE_CONTAINER);
             }
+            
+            if(this.memory.debug){
+                console.log(`${this.name} - target structures types: ${targetStructureTypes}`)
+            }
 
             let spawnStructures = ROOM_STRUCTURES.filter(
                 (structure) =>
@@ -323,9 +327,10 @@ export class TransportCreep extends WaveCreep {
                         )) &&
                     // Fill up center containers
                     (structure.structureType !== (STRUCTURE_CONTAINER as StructureConstant) ||
+                        (this.homeroom.energyAvailable === this.homeroom.energyCapacityAvailable &&
                         this.homeroom.memory.stampLayout.container.some(
                             (containerStamp) => containerStamp.pos === structure.pos.toMemSafe() && containerStamp.type === 'center'
-                        ))
+                        )))
             ) as AnyStructure[];
 
             if (spawnStructures.length) {

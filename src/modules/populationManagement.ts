@@ -188,17 +188,10 @@ export class PopulationManagement {
 
     static needsMiner(room: Room): boolean {
         let roomNeedsMiner = Object.values(room.memory.miningAssignments).some((assignment) => assignment === AssignmentStatus.UNASSIGNED);
-        // if (!roomNeedsMiner) {
-        //     // Check for TTL
-        //     roomNeedsMiner = room.creeps.some(
-        //         (creep) =>
-        //             creep.memory.role === Role.MINER &&
-        //             creep.memory.room === room.name &&
-        //             !creep.memory.hasTTLReplacement &&
-        //             creep.ticksToLive <
-        //                 PopulationManagement.getMinerBody(creep.memory.assignment.toRoomPos(), room.energyCapacityAvailable).length * 3
-        //     );
-        // }
+        if(!roomNeedsMiner){
+            let undersizedMiner = Object.keys(room.memory.miningAssignments).some(assignment => Game.creeps[room.memory.miningAssignments[assignment]].body.length  < PopulationManagement.getMinerBody(assignment.toRoomPos(), room.energyCapacityAvailable).length);
+            return undersizedMiner;
+        }
         return roomNeedsMiner;
     }
 
@@ -244,7 +237,11 @@ export class PopulationManagement {
 
     static spawnMiner(spawn: StructureSpawn): ScreepsReturnCode {
         const assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
-        const assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
+        let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
+        if(!assigment) {
+            //if no empty assignment, then an undersized miner needs to be replaced;
+            assigment = assigmentKeys.find(pos => Game.creeps[spawn.room.memory.miningAssignments[pos]].body.length < PopulationManagement.getMinerBody(pos.toRoomPos(), spawn.room.energyCapacityAvailable).length)
+        }
         const assigmentPos = assigment.toRoomPos();
         const minerMemory: MinerMemory = {
             assignment: assigment,
@@ -825,17 +822,21 @@ export class PopulationManagement {
                         }
                         boostsAvailableInRoom += boostsToImport;
                     }
+                    
+                    const boostResourceAmount = Math.min(boostsRequested, boostsAvailableInRoom) * 30;
 
-                    labTasksToAdd.push({
-                        type: LabTaskType.BOOST,
-                        needs: [
-                            {
-                                resource: BOOST_RESOURCE_MAP[boostType] as ResourceConstant,
-                                amount: Math.min(boostsRequested, boostsAvailableInRoom) * 30,
-                            },
-                        ],
-                        targetCreepName: name,
-                    });
+                    if(boostResourceAmount > 0){
+                        labTasksToAdd.push({
+                            type: LabTaskType.BOOST,
+                            needs: [
+                                {
+                                    resource: BOOST_RESOURCE_MAP[boostType] as ResourceConstant,
+                                    amount: boostResourceAmount,
+                                },
+                            ],
+                            targetCreepName: name,
+                        });
+                    }
                 });
 
                 if (labTasksToAdd.length) {
