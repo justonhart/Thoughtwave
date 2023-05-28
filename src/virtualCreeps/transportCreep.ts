@@ -28,6 +28,9 @@ export class TransportCreep extends WaveCreep {
     private runTransporterTasks() {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (!target && !this.memory.labNeeds?.length) {
+            if(this.memory.debug){
+                this.debugLog(`looking for target`);
+            }
             this.memory.targetId = this.findTarget();
             target = Game.getObjectById(this.memory.targetId);
         }
@@ -233,15 +236,19 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findRefillTarget(): Id<Structure> {
-        const ROOM_STRUCTURES = this.homeroom.structures.filter((s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_WALL);
+        const ROOM_STRUCTURES = this.homeroom.structures.filter((s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART);
         const towers = ROOM_STRUCTURES.filter(
             (structure) => structure.structureType === STRUCTURE_TOWER && this.previousTargetId !== structure.id && structure.store.energy < 900
         ) as StructureTower[];
         if (towers.some((tower) => tower.store.energy < 300)) {
-            return this.pos.findClosestByPath(
+            const towerToRefill = this.pos.findClosestByPath(
                 towers.filter((tower) => tower.store.energy < 300),
                 { ignoreCreeps: true }
-            ).id;
+            );
+
+            if(this.memory.debug){
+                this.debugLog(`found tower to refill: ${towerToRefill.pos.toMemSafe()}`);
+            }
         }
 
         let labs = ROOM_STRUCTURES.filter(
@@ -251,102 +258,80 @@ export class TransportCreep extends WaveCreep {
                 structure.store.energy < structure.store.getCapacity(RESOURCE_ENERGY)
         );
         if (labs.length) {
-            return this.pos.findClosestByPath(labs, { ignoreCreeps: true }).id;
+            const labToRefill = this.pos.findClosestByPath(labs, { ignoreCreeps: true });
+            if(this.memory.debug){
+                this.debugLog(`found lab to refill: ${labToRefill.pos.toMemSafe()}`);
+            }
+            return labToRefill.id;
         }
 
-        if (this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable || this.homeroom.controller.level < 5) {
-            let targetStructureTypes: string[] = [STRUCTURE_EXTENSION, STRUCTURE_SPAWN];
+        const managerLinksBuilt = this.room.controller.level >= 5 && this.room.memory.stampLayout.link.reduce((result, nextStamp) => (nextStamp.rcl === 5 ? nextStamp.pos.toRoomPos().lookFor(LOOK_STRUCTURES).some(s => s.structureType === STRUCTURE_LINK) : true) && result , true)
 
-            const numberOfManagers = this.homeroom.myCreepsByMemory.reduce(
-                (sum: number, nextCreep: Creep) =>
-                    nextCreep.memory.role === Role.MANAGER &&
-                    this.homeroom.memory.stampLayout.managers.some((stamp) => stamp.type === 'center' && stamp.pos === nextCreep.memory.destination)
-                        ? sum + 1
-                        : sum,
-                0
-            );
-            const managersExpected = this.homeroom.memory.stampLayout.managers.reduce(
-                (sum: number, nextStamp) => (nextStamp.type === 'center' && nextStamp.rcl <= this.homeroom.controller.level ? sum + 1 : sum),
-                0
-            );
-            const numberOfContainers = ROOM_STRUCTURES.reduce(
-                (sum, nextStructure) =>
-                    nextStructure.structureType === STRUCTURE_CONTAINER &&
-                    this.homeroom.memory.stampLayout.container.some((stamp) => stamp.type === 'center' && stamp.pos === nextStructure.pos.toMemSafe())
-                        ? sum + 1
-                        : sum,
-                0
-            );
-            const expectedContainers = this.homeroom.memory.stampLayout.container.reduce(
-                (sum, nextStamp) => (nextStamp.type === 'center' && nextStamp.rcl <= this.homeroom.controller.level ? sum + 1 : sum),
-                0
-            );
-            const hasMissingManagersOrContainers =
-                this.homeroom.controller.level > 1 && (numberOfManagers < managersExpected || numberOfContainers < expectedContainers);
+        // if manager links aren't built, the distributor needs to continue filling up containers even if spawn energy is at full capacity
+        if (this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable || !managerLinksBuilt) {
+            const structuresToRefill: Structure[] = [];
+            const misplacedSpawns = this.room.spawns.filter(spawn => !this.room.memory.stampLayout.spawn.some(stamp => stamp.pos === spawn.pos.toMemSafe()));
+            structuresToRefill.push(...misplacedSpawns);
 
-            const firstSpawnMispositioned = !this.room
-                .find(FIND_MY_SPAWNS)
-                .every((spawn) => this.room.memory.stampLayout?.spawn.some((stamp) => stamp.pos === spawn.pos.toMemSafe()));
-
-            // Do not refill spawn when all containers/managers are present
-            if (!hasMissingManagersOrContainers && !firstSpawnMispositioned) {
-                targetStructureTypes = [STRUCTURE_EXTENSION];
-            }
-            // If no center link is present in Stamp rooms then fill up containers
-            if (
-                this.homeroom.controller.level < 5 ||
-                !ROOM_STRUCTURES.some(
-                    (structure) =>
-                        structure.structureType === STRUCTURE_LINK &&
-                        this.homeroom.memory.stampLayout.link.some(
-                            (linkStamp) => linkStamp.type === 'center' && linkStamp.pos === structure.pos.toMemSafe()
-                        )
-                )
-            ) {
-                targetStructureTypes.push(STRUCTURE_CONTAINER);
-            }
+            const centerLinkPos = this.room.memory.stampLayout.link.find(stamp => stamp.type === 'center').pos.toRoomPos();
+            const centerExtensions = this.room.memory.stampLayout.extension
+                .filter(stamp => stamp.rcl <= this.room.controller.level && stamp.type === 'center')
+                .map(stamp => stamp.pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTENSION))
+                .filter((s: StructureExtension) => s?.store.getFreeCapacity(RESOURCE_ENERGY));
+            const containersToRefill: StructureContainer[] = [];
             
-            if(this.memory.debug){
-                console.log(`${this.name} - target structures types: ${targetStructureTypes}`)
+            const leftCenterContainer = this.room.memory.stampLayout.container.find(stamp => stamp.rcl === 2).pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
+            const missingManager = this.room.memory.stampLayout.managers.some(stamp => stamp.rcl <= this.room.controller.level && stamp.type === 'center' && !stamp.pos.toRoomPos().lookFor(LOOK_CREEPS).some(creep => creep.memory.destination === stamp.pos))
+            if(!leftCenterContainer || missingManager){
+                const leftCenterExtensions = centerExtensions.filter(extension => extension.pos.x < centerLinkPos.x);
+                structuresToRefill.push(...leftCenterExtensions);
+                const leftSpawn = this.room.memory.stampLayout.spawn.find(stamp => stamp.rcl === 1).pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
+                if(leftSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)){
+                    structuresToRefill.push(leftSpawn);
+                } 
+            } else if(leftCenterContainer.store.getFreeCapacity()){
+                containersToRefill.push(leftCenterContainer)
             }
 
-            let spawnStructures = ROOM_STRUCTURES.filter(
-                (structure) =>
-                    // @ts-ignore
-                    targetStructureTypes.includes(structure.structureType) &&
-                    this.previousTargetId !== structure.id &&
-                    // @ts-ignore
-                    structure.store[RESOURCE_ENERGY] < structure.store.getCapacity(RESOURCE_ENERGY) &&
-                    // Remove center extensions if there are missing containers/extensions
-                    (structure.structureType !== STRUCTURE_EXTENSION ||
-                        hasMissingManagersOrContainers ||
-                        !this.homeroom.memory.stampLayout.extension.some(
-                            (extensionStamp) =>
-                                extensionStamp.pos === structure.pos.toMemSafe() &&
-                                (extensionStamp.type === 'center' || extensionStamp.type?.includes('source'))
-                        )) &&
-                    // Fill up center containers
-                    (structure.structureType !== (STRUCTURE_CONTAINER as StructureConstant) ||
-                        (this.homeroom.energyAvailable === this.homeroom.energyCapacityAvailable &&
-                        this.homeroom.memory.stampLayout.container.some(
-                            (containerStamp) => containerStamp.pos === structure.pos.toMemSafe() && containerStamp.type === 'center'
-                        )))
-            ) as AnyStructure[];
+            const rightCenterContainer = this.room.memory.stampLayout.container.find(stamp => stamp.rcl === 3 && stamp.type === 'center').pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
+            if(!rightCenterContainer || missingManager){
+                const rightCenterExtensions = centerExtensions.filter(extension => extension.pos.x > centerLinkPos.x);
+                structuresToRefill.push(...rightCenterExtensions);
+                const rightSpawn = this.room.memory.stampLayout.spawn.find(stamp => stamp.rcl === 7).pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
+                if(rightSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)){
+                    structuresToRefill.push(rightSpawn);
+                } 
+            } else if(rightCenterContainer.store.getFreeCapacity()){
+                containersToRefill.push(rightCenterContainer)
+            }
 
-            if (spawnStructures.length) {
-                // Switch between containers which is important in early rcl
-                if (this.homeroom.controller.level < 5 && !hasMissingManagersOrContainers) {
-                    if (
-                        spawnStructures.length > 1 &&
-                        spawnStructures.every((structure) => structure.structureType === STRUCTURE_CONTAINER) &&
-                        spawnStructures.some((structure: StructureContainer) => structure.store.energy)
-                    ) {
-                        return spawnStructures.reduce((lowestContainer: StructureContainer, nextContainer: StructureContainer) =>
-                            lowestContainer.store.energy < nextContainer.store.energy ? lowestContainer : nextContainer
-                        ).id;
-                    }
+            if(!rightCenterContainer && !leftCenterContainer || missingManager){
+                const centerCenterExtensions = centerExtensions.filter(extension => extension.pos.x === centerLinkPos.x);
+                structuresToRefill.push(...centerCenterExtensions);
+                const centerSpawn = this.room.memory.stampLayout.spawn.find(stamp => stamp.rcl === 8).pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
+                if(centerSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)){
+                    structuresToRefill.push(centerSpawn);
                 }
-                return this.pos.findClosestByPath(spawnStructures, { ignoreCreeps: true }).id;
+            }
+
+            const nonCenterExtensions = this.room.memory.stampLayout.extension
+                .filter(stamp => stamp.rcl <= this.room.controller.level && stamp.type !== 'center')
+                .map(stamp => stamp.pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTENSION))
+                .filter((s: StructureExtension) => s?.store.getFreeCapacity(RESOURCE_ENERGY));
+            structuresToRefill.push(...nonCenterExtensions);
+
+            if(structuresToRefill.length){
+                const structureToRefill = this.pos.findClosestByRange(structuresToRefill);
+                if(this.memory.debug){
+                    this.debugLog(`found structure to refill: ${structureToRefill.structureType} (${structureToRefill.pos.toMemSafe()})`)
+                }
+                return structureToRefill.id; 
+            } else if(containersToRefill.length){
+                const containerToRefill = containersToRefill.reduce((lowest, nextContainer) => nextContainer.store.energy < lowest.store.energy ? nextContainer : lowest);
+                if(this.memory.debug){
+                    this.debugLog(`found container to refill: ${containerToRefill.pos.toMemSafe()}`)
+                }
+                return containerToRefill.id;
             }
         }
 
@@ -719,7 +704,7 @@ export class TransportCreep extends WaveCreep {
                             }
                         }
                     } else {
-                        console.log(`${Game.time} - ${this.homeroom.name} distributor hit error working lab task: ${result}`);
+                        this.debugLog(`hit error working lab task: ${result}`);
                         switch (result) {
                             case ERR_FULL:
                                 const needIndex = this.homeroom.memory.labTasks[targetLab.taskId].needs.findIndex((need) => need.resource === targetLab.mineralType && need.lab === targetLab.id);
@@ -734,7 +719,7 @@ export class TransportCreep extends WaveCreep {
                                 delete this.homeroom.memory.labTasks[labTaskId];
                                 delete this.memory.labNeeds;
                                 delete this.memory.gatheringLabResources;
-                                console.log(`Clearing lab task ${labTaskId} in ${this.homeroom.name}`);
+                                this.debugLog(`clearing lab task ${labTaskId} in ${this.homeroom.name}`);
                                 break;
                         }
                     }

@@ -48,6 +48,10 @@ Object.defineProperty(Creep.prototype, 'operation', {
     configurable: true,
 });
 
+Creep.prototype.debugLog = function(this: Creep, string: string){
+    console.log(`[${Game.time}] ${this.name} - ${string}`);
+}
+
 // -------------------------------------------- POWER CREEPS -------------------------------------------- //
 PowerCreep.prototype.travelTo = function (destination, opts) {
     return Pathing.travelTo(this, destination, opts);

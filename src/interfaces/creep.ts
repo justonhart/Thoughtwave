@@ -44,6 +44,7 @@ interface Creep {
     onEdge(): boolean;
     addTaskToPriorityQueue(priority: Priority, actionCallback: () => void): void;
     runPriorityQueueTask(): void;
+    debugLog(string: string): void;
 }
 
 interface PriorityQueue {
