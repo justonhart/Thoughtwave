@@ -283,7 +283,9 @@ export class TransportCreep extends WaveCreep {
         if (this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable || !managerLinksBuilt) {
             const structuresToRefill: Structure[] = [];
             const misplacedSpawns = this.room.spawns.filter(
-                (spawn) => spawn.store.getFreeCapacity(RESOURCE_ENERGY) && !this.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === spawn.pos.toMemSafe())
+                (spawn) =>
+                    spawn.store.getFreeCapacity(RESOURCE_ENERGY) &&
+                    !this.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === spawn.pos.toMemSafe())
             );
             structuresToRefill.push(...misplacedSpawns);
 
@@ -296,7 +298,7 @@ export class TransportCreep extends WaveCreep {
                         .lookFor(LOOK_STRUCTURES)
                         .find((s) => s.structureType === STRUCTURE_EXTENSION)
                 )
-                .filter((s: StructureExtension) => s?.store.getFreeCapacity(RESOURCE_ENERGY));
+                .filter((s: StructureExtension) => s?.store.getFreeCapacity(RESOURCE_ENERGY) && this.previousTargetId !== s.id);
             const containersToRefill: StructureContainer[] = [];
 
             const leftCenterContainer = this.room.memory.stampLayout.container
@@ -321,10 +323,10 @@ export class TransportCreep extends WaveCreep {
                     .pos.toRoomPos()
                     .lookFor(LOOK_STRUCTURES)
                     .find((s) => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
-                if (leftSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)) {
+                if (leftSpawn?.store.getFreeCapacity(RESOURCE_ENERGY) && leftSpawn.id !== this.previousTargetId) {
                     structuresToRefill.push(leftSpawn);
                 }
-            } else if (leftCenterContainer.store.getFreeCapacity()) {
+            } else if (leftCenterContainer.store.getFreeCapacity() && leftCenterContainer.id !== this.previousTargetId) {
                 containersToRefill.push(leftCenterContainer);
             }
 
@@ -341,10 +343,10 @@ export class TransportCreep extends WaveCreep {
                     .pos.toRoomPos()
                     .lookFor(LOOK_STRUCTURES)
                     .find((s) => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
-                if (rightSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)) {
+                if (rightSpawn?.store.getFreeCapacity(RESOURCE_ENERGY) && rightSpawn.id !== this.previousTargetId) {
                     structuresToRefill.push(rightSpawn);
                 }
-            } else if (rightCenterContainer.store.getFreeCapacity()) {
+            } else if (rightCenterContainer.store.getFreeCapacity() && rightCenterContainer.id !== this.previousTargetId) {
                 containersToRefill.push(rightCenterContainer);
             }
 
@@ -356,7 +358,7 @@ export class TransportCreep extends WaveCreep {
                     .pos.toRoomPos()
                     .lookFor(LOOK_STRUCTURES)
                     .find((s) => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
-                if (centerSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)) {
+                if (centerSpawn?.store.getFreeCapacity(RESOURCE_ENERGY) && centerSpawn.id !== this.previousTargetId) {
                     structuresToRefill.push(centerSpawn);
                 }
             }
@@ -369,7 +371,7 @@ export class TransportCreep extends WaveCreep {
                         .lookFor(LOOK_STRUCTURES)
                         .find((s) => s.structureType === STRUCTURE_EXTENSION)
                 )
-                .filter((s: StructureExtension) => s?.store.getFreeCapacity(RESOURCE_ENERGY));
+                .filter((s: StructureExtension) => s?.store.getFreeCapacity(RESOURCE_ENERGY) && s.id !== this.previousTargetId);
             structuresToRefill.push(...nonCenterExtensions);
 
             if (structuresToRefill.length) {
