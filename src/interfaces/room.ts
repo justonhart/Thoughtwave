@@ -12,7 +12,6 @@ interface RoomMemory {
     repairQueue?: Id<Structure<StructureConstant>>[];
     miningAssignments?: { [posString: string]: string };
     mineralMiningAssignments?: { [posString: string]: string };
-    reservedEnergy?: number;
     labTasks?: { [id: number]: LabTask };
     dontCheckConstructionsBefore?: number;
     shipments?: number[]; //stores IDs for shipments to be referenced from Memory.shipments
@@ -29,11 +28,14 @@ interface RoomMemory {
     /**
      * Tracks the amount of resources the manager is moving between storage structures. Used to include manager inventory in need calculation
      */
-    transferBuffer?: { [resource: string]: number };
+    transferBuffer?: { [resource: string]: { amount: number; creepName: string } };
     colonizationInProgress?: boolean;
     roomType: RoomType;
     lastScout?: number;
-    threatLevel?: HomeRoomThreatLevel;
+    /**
+     * Id of the operation controlling this room
+     */
+    controllingOperation?: string;
 }
 
 /**
@@ -70,6 +72,8 @@ interface RemoteData {
     sourceKeeperLairs?: { [sourcePos: string]: { id: Id<Structure<StructureConstant>>; pos: string } }; // keeperId: closestSourceId
     shouldCheckStructures?: boolean;
     clearStructures?: boolean;
+    evacuate?: boolean;
+    threatReset?: number;
 }
 
 interface RoomData {
@@ -125,6 +129,7 @@ interface Room {
     structures: AnyStructure[];
     myConstructionSites: ConstructionSite[];
     defenseData: RoomDefenseData;
+    reservedEnergy: number;
 
     // Caching - Only used in roomPrototypes
     _myCreepsByMemory: Creep[];
@@ -202,6 +207,7 @@ interface Room {
 }
 
 interface RoomPosition {
+    findClosestCreepByRange: (this: RoomPosition, forHostile: boolean) => void;
     toMemSafe(): string;
     neighbors(includeDiagonal?: boolean, includeCenter?: boolean): RoomPosition[];
 }

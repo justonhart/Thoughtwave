@@ -13,7 +13,7 @@ export function manageMemory() {
     // Cleanup dead rooms
     if (Game.time % 100 === 0) {
         Object.keys(Memory.rooms)
-            .filter((roomName) => !Game.rooms[roomName]) // Owned rooms always have vision
+            .filter((roomName) => !Game.rooms[roomName]?.controller?.my) // Owned rooms always have vision
             .forEach((roomName) => delete Memory.rooms[roomName]);
     }
 
@@ -92,16 +92,14 @@ function handleDeadCreep(deadCreepName: string) {
     let deadCreepMemory = Memory.creeps[deadCreepName];
 
     if (Game.rooms[deadCreepMemory.room]?.controller?.my && Memory.rooms[deadCreepMemory.room]) {
-        if (deadCreepMemory.role === Role.MINER) {
+        if (deadCreepMemory.role === Role.MINER && Memory.rooms[deadCreepMemory.room].miningAssignments[(deadCreepMemory as MinerMemory).assignment] === deadCreepName) {
             Memory.rooms[deadCreepMemory.room].miningAssignments[(deadCreepMemory as MinerMemory).assignment] = AssignmentStatus.UNASSIGNED;
-        }
-        if (
+        } else if (
             deadCreepMemory.role === Role.REMOTE_MINER &&
             Memory.rooms[deadCreepMemory.room].remoteSources[(deadCreepMemory as RemoteMinerMemory).assignment]?.miner === deadCreepName
         ) {
             Memory.rooms[deadCreepMemory.room].remoteSources[(deadCreepMemory as RemoteMinerMemory).assignment].miner = AssignmentStatus.UNASSIGNED;
-        }
-        if (deadCreepMemory.role === Role.GATHERER) {
+        } else if (deadCreepMemory.role === Role.GATHERER) {
             let source = Object.entries(Memory.rooms[deadCreepMemory.room].remoteSources).find(([source, data]) =>
                 data.gatherers.includes(deadCreepName)
             )?.[0];
@@ -111,22 +109,24 @@ function handleDeadCreep(deadCreepName: string) {
             if (gathererIndex !== -1 && gathererIndex !== undefined) {
                 Memory.rooms[deadCreepMemory.room].remoteSources[source].gatherers[gathererIndex] = AssignmentStatus.UNASSIGNED;
             }
-        }
-        if (deadCreepMemory.role === Role.RESERVER && Memory.remoteData[(deadCreepMemory as ReserverMemory).assignment]) {
+        } else if (deadCreepMemory.role === Role.RESERVER && Memory.remoteData[(deadCreepMemory as ReserverMemory).assignment]) {
             Memory.remoteData[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;
-        }
-        if (deadCreepMemory.role === Role.MINERAL_MINER) {
+        } else if (deadCreepMemory.role === Role.MINERAL_MINER) {
             Memory.rooms[deadCreepMemory.room].mineralMiningAssignments[(deadCreepMemory as MineralMinerMemory).assignment] =
                 AssignmentStatus.UNASSIGNED;
-        }
-        if (
+        } else if (
             deadCreepMemory.role === Role.KEEPER_EXTERMINATOR &&
             Memory.remoteData[(deadCreepMemory as KeeperExterminatorMemory).assignment]?.keeperExterminator === deadCreepName
         ) {
             Memory.remoteData[(deadCreepMemory as KeeperExterminatorMemory).assignment].keeperExterminator = AssignmentStatus.UNASSIGNED;
-        }
-        if (deadCreepMemory.role === Role.REMOTE_MINERAL_MINER && Memory.remoteData[deadCreepMemory.assignment]) {
+        } else if (deadCreepMemory.role === Role.REMOTE_MINERAL_MINER && Memory.remoteData[deadCreepMemory.assignment]) {
             Memory.remoteData[(deadCreepMemory as RemoteMineralMinerMemory).assignment].mineralMiner = AssignmentStatus.UNASSIGNED;
+        } else if (deadCreepMemory.role === Role.MANAGER && Memory.rooms[deadCreepMemory.room].transferBuffer) {
+            // Edge case to remove any potential leftover entries in the transferBuffer
+            const filteredTransferBuffer = Object.entries(Memory.rooms[deadCreepMemory.room].transferBuffer)
+                .filter(([_, { creepName }]) => creepName !== deadCreepName)
+                .reduce((acc, [resource, { amount, creepName }]) => Object.assign(acc, { [resource]: { amount, creepName } }), {});
+            Memory.rooms[deadCreepMemory.room].transferBuffer = filteredTransferBuffer;
         }
     }
 

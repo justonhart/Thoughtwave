@@ -4,7 +4,30 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
     memory: GathererMemory;
-    protected run() {
+    protected run(){
+        if(this.memory.early){
+            this.runEarly();
+        } else {
+            this.runFull();
+        }
+    }
+
+    private runEarly() {
+        if(this.store.getUsedCapacity()){
+            this.dropCargoEarly()
+        } else {
+            if(!this.pos.isNearTo(this.getMiningPosition())){
+                this.travelTo(this.getMiningPosition(), {range: 1});
+            } else {
+                let resource = this.getMiningPosition().lookFor(LOOK_RESOURCES).find(res => res.resourceType === RESOURCE_ENERGY);
+                if(resource){
+                    this.pickup(resource);
+                }
+            }
+        }
+    }
+
+    private runFull() {
         if (
             this.memory?.spawnReplacementAt >= Game.time &&
             this.homeroom.memory.remoteSources[this.memory.assignment].gatherers.includes(this.name)
@@ -14,7 +37,7 @@ export class Gatherer extends TransportCreep {
 
         if (
             this.damaged() ||
-            (Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+            (Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.evacuate &&
                 !this.store.getUsedCapacity())
         ) {
             delete this.memory.targetId;
@@ -95,6 +118,16 @@ export class Gatherer extends TransportCreep {
                 delete Memory.rooms[this.memory.room].remoteSources[this.memory.assignment].setupStatus;
                 this.manageLifecycle();
                 break;
+        }
+    }
+
+    private dropCargoEarly() {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
+        let dropPos = this.homeroom.memory.stampLayout.container.find(stamp => stamp.type === 'center').pos.toRoomPos();
+        if(this.pos.isEqualTo(dropPos)){
+            this.drop(RESOURCE_ENERGY);
+        } else {
+            this.travelTo(dropPos);
         }
     }
 

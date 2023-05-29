@@ -3,7 +3,7 @@ import { computeRoomNameFromDiff } from './data';
 import { runLabs } from './labManagement';
 import { PopulationManagement } from './populationManagement';
 import { assignRemoteSource, findSuitableRemoteSource, removeSourceAssignment } from './remoteMining';
-import { manageRemoteRoom } from './remoteRoomManagement';
+import { manageEarlyRemoteRoom, manageRemoteRoom } from './remoteRoomManagement';
 import { shipmentReady } from './resourceManagement';
 import { deleteRoad } from './roads';
 import { roomNeedsCoreStructures, findStampLocation } from './roomDesign';
@@ -28,6 +28,7 @@ export function driveRoom(room: Room) {
             driveRemoteMiningRoom(room);
             break;
         case RoomType.OPERATION_CONTROLLED:
+            driveOperationControlledRoom(room);
             break;
         case RoomType.HOMEROOM:
         default:
@@ -53,13 +54,12 @@ function driveHomeRoom(room: Room) {
     if (!room.canSpawn()) {
         // fail state - if a room has unexpectedly lost all spawns
     } else {
-        room.memory.reservedEnergy = 0;
+        room.reservedEnergy = 0;
         
-        runRoomMaintenance(room);
-        runStructureManagement(room);
+        manageMaintenance(room);
+        manageStructures(room);
         runRemoteSourceManagement(room); 
         runObserver(room);
-        
 
         if (room.powerSpawn?.store.power >= 1 && room.powerSpawn?.store.energy >= 50 && room.energyStatus >= EnergyStatus.STABLE) {
             try {
@@ -97,9 +97,9 @@ function driveHomeRoom(room: Room) {
             }
         }
 
-        runRemoteRooms(room);
-
-        delete room.memory.reservedEnergy;
+        if (!isHomeUnderAttack) {
+            runRemoteRooms(room);
+        }
     }
 }
 
@@ -157,10 +157,12 @@ function runTowers(room: Room) {
                 const hostileCreepInfo = CombatIntel.getCreepCombatData(room, true, creep.pos);
                 const myCreepInfo = CombatIntel.getCreepCombatData(room, false, creep.pos);
                 const myTowerInfo = CombatIntel.getTowerCombatData(room, false, creep.pos);
-                return CombatIntel.getPredictedDamage(
-                    myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
-                    hostileCreepInfo.highestDmgMultiplier,
-                    hostileCreepInfo.highestToughHits
+                return (
+                    CombatIntel.getPredictedDamage(
+                        myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
+                        hostileCreepInfo.highestDmgMultiplier,
+                        hostileCreepInfo.highestToughHits
+                    ) > hostileCreepInfo.totalHeal
                 );
             });
         if (hostileCreep) {
@@ -209,6 +211,9 @@ function runHomeSecurity(homeRoom: Room): boolean {
     if (hostileCreepData.creeps.length && homeRoom.controller.level < 4) {
         const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
         if (!currentNumProtectors) {
+            Game.notify(
+                `Room ${homeRoom.name} is under attack by ${homeRoom.hostileCreeps[0].owner.username} at ${Game.time}! Active Defense initiated.`
+            );
             Memory.spawnAssignments.push({
                 designee: homeRoom.name,
                 body: [RANGED_ATTACK, MOVE, MOVE, HEAL],
@@ -233,7 +238,9 @@ function runHomeSecurity(homeRoom: Room): boolean {
             (hostileCreepData.creeps.length >= 4 &&
                 currentNumProtectors + (hostileCreepData.creeps.length > 12 ? 1 : -1) - Math.floor(hostileCreepData.creeps.length / 4) < 0)
         ) {
-            console.log(`Enemy Squad in homeRoom ${homeRoom.name}`);
+            Game.notify(
+                `Room ${homeRoom.name} is under attack by ${homeRoom.hostileCreeps[0].owner.username} at ${Game.time}! Active Defense initiated.`
+            );
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
             const attackerBody = PopulationManagement.createPartsArray([ATTACK, ATTACK, ATTACK, ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10);
             if (attackerBody.length) {
@@ -329,7 +336,7 @@ export function initHomeRoom(room: Room) {
     }
 }
 
-function runSpawning(room: Room) {
+function runSpawning(room: Room){
     const spawns = room.mySpawns;
     const busySpawns = spawns.filter((spawn) => spawn.spawning);
 
@@ -370,7 +377,7 @@ function runSpawning(room: Room) {
     } else if (distributor.ticksToLive < 100) {
         //reserve energy & spawn for distributor
         availableSpawns.pop();
-        room.memory.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
+        room.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
             .map((part) => BODYPART_COST[part])
             .reduce((sum, next) => sum + next);
     }
@@ -478,6 +485,18 @@ function runSpawning(room: Room) {
                 const spawn = availableSpawns.pop();
                 spawn?.spawnRemoteMineralMiner(remoteMineralMinerNeed);
             }
+        } else if (!room.storage?.my && room.remoteSources.length && !roomUnderAttack){
+            let earlyRemoteMinerNeed = PopulationManagement.findRemoteMinerNeed(room);
+            if(earlyRemoteMinerNeed) {
+                let spawn = availableSpawns.pop();
+                PopulationManagement.spawnEarlyRemoteMiner(spawn, earlyRemoteMinerNeed);
+            }
+
+            let earlyGathererNeed = PopulationManagement.findGathererNeed(room);
+            if(earlyGathererNeed){
+                let spawn = availableSpawns.pop();
+                PopulationManagement.spawnEarlyGatherer(spawn, earlyGathererNeed);
+            }
         }
     }
 
@@ -560,7 +579,11 @@ function runRemoteRooms(room: Room) {
     let remoteRooms = room.remoteMiningRooms;
     remoteRooms?.forEach((remoteRoomName) => {
         try {
-            manageRemoteRoom(room.name, remoteRoomName);
+            if(!room.storage?.my){
+                manageEarlyRemoteRoom(room.name, remoteRoomName);
+            } else {
+                manageRemoteRoom(room.name, remoteRoomName);
+            }
         } catch (e) {
             console.log(`Error caught running remote room ${remoteRoomName}: \n${e}`);
         }
@@ -764,7 +787,7 @@ export function destructiveReset(roomName: string) {
  * @param enemyUsername enemy player
  */
 function sendEmailOnAttack(room: Room, enemyUsername: string) {
-    if (room.memory.threatLevel <= HomeRoomThreatLevel.MODERATE) {
+    if (Memory.debug.earlyNotify && room.memory.threatLevel <= HomeRoomThreatLevel.ENEMY_INVADERS) {
         Game.notify(`Room ${room.name} is under attack by ${enemyUsername} at ${Game.time}!`);
     }
 }
@@ -993,10 +1016,7 @@ function runShipments(room: Room) {
     });
 }
 
-/**
- * Tracks room structure statuses and maintains repair queue 
- */
-function runRoomMaintenance(room: Room){
+export function manageMaintenance(room: Room) {
     if (room.memory.repairSearchCooldown > 0) {
         room.memory.repairSearchCooldown--;
     }
@@ -1041,7 +1061,7 @@ function manageIncomingNukes(room: Room): void{
     });
 }
 
-function runStructureManagement(room: Room): void {
+function manageStructures(room: Room) {
     if (
         !global.roomConstructionsChecked &&
         (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
@@ -1218,3 +1238,7 @@ function setThreatLevel(room: Room) {
         
     }
 
+
+function driveOperationControlledRoom(room: Room) {
+    
+}

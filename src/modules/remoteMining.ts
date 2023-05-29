@@ -220,6 +220,9 @@ export function removeSourceAssignment(source: string) {
 export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolean): { source: string; stats: RemoteStats }[] {
     let exits = getExitDirections(roomName);
     let safeRoomsDepthOne: string[] = []; //rooms we can pass through for mining
+    let safeRoomsDepthTwo: string[] = [];
+    let safeRoomsDepthThree: string[] = [];
+
     for (let exit of exits) {
         let nextRoomName =
             exit === LEFT || exit === RIGHT
@@ -235,49 +238,49 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
         }
     }
 
-    let safeRoomsDepthTwo: string[] = [];
-    for (let depthOneRoomName of safeRoomsDepthOne.filter((room) => !isKeeperRoom(room) || Memory.remoteData[room])) {
-        let depthOneExits = getExitDirections(depthOneRoomName);
-        for (let exit of depthOneExits) {
-            let nextRoomName =
-                exit === LEFT || exit === RIGHT
-                    ? computeRoomNameFromDiff(depthOneRoomName, exit === LEFT ? -1 : 1, 0)
-                    : computeRoomNameFromDiff(depthOneRoomName, 0, exit === BOTTOM ? -1 : 1);
-            if (
-                [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
-                    Memory.roomData[nextRoomName]?.roomStatus
-                ) &&
-                !safeRoomsDepthOne.includes(nextRoomName) &&
-                (noKeeperRooms ? !isKeeperRoom(nextRoomName) && !isCenterRoom(nextRoomName) : true)
-            ) {
-                safeRoomsDepthTwo.push(nextRoomName);
+    if(Game.rooms[roomName].storage?.my){
+        for (let depthOneRoomName of safeRoomsDepthOne.filter((room) => !isKeeperRoom(room) || Memory.remoteData[room])) {
+            let depthOneExits = getExitDirections(depthOneRoomName);
+            for (let exit of depthOneExits) {
+                let nextRoomName =
+                    exit === LEFT || exit === RIGHT
+                        ? computeRoomNameFromDiff(depthOneRoomName, exit === LEFT ? -1 : 1, 0)
+                        : computeRoomNameFromDiff(depthOneRoomName, 0, exit === BOTTOM ? -1 : 1);
+                if (
+                    [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
+                        Memory.roomData[nextRoomName]?.roomStatus
+                    ) &&
+                    !safeRoomsDepthOne.includes(nextRoomName) &&
+                    (noKeeperRooms ? !isKeeperRoom(nextRoomName) && !isCenterRoom(nextRoomName) : true)
+                ) {
+                    safeRoomsDepthTwo.push(nextRoomName);
+                }
+            }
+        }
+
+        for (let depthTwoRoomName of safeRoomsDepthTwo.filter((room) => !isKeeperRoom(room) || Memory.remoteData[room])) {
+            let depthTwoExits = getExitDirections(depthTwoRoomName);
+            for (let exit of depthTwoExits) {
+                let nextRoomName =
+                    exit === LEFT || exit === RIGHT
+                        ? computeRoomNameFromDiff(depthTwoRoomName, exit === LEFT ? -1 : 1, 0)
+                        : computeRoomNameFromDiff(depthTwoRoomName, 0, exit === BOTTOM ? -1 : 1);
+                if (
+                    [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
+                        Memory.roomData[nextRoomName]?.roomStatus
+                    ) &&
+                    !safeRoomsDepthOne.includes(nextRoomName) &&
+                    !safeRoomsDepthTwo.includes(nextRoomName) &&
+                    !isKeeperRoom(nextRoomName) &&
+                    !isCenterRoom(nextRoomName)
+                ) {
+                    safeRoomsDepthThree.push(nextRoomName);
+                }
             }
         }
     }
 
-    let safeRoomsDepthThree: string[] = [];
-    for (let depthTwoRoomName of safeRoomsDepthTwo.filter((room) => !isKeeperRoom(room) || Memory.remoteData[room])) {
-        let depthTwoExits = getExitDirections(depthTwoRoomName);
-        for (let exit of depthTwoExits) {
-            let nextRoomName =
-                exit === LEFT || exit === RIGHT
-                    ? computeRoomNameFromDiff(depthTwoRoomName, exit === LEFT ? -1 : 1, 0)
-                    : computeRoomNameFromDiff(depthTwoRoomName, 0, exit === BOTTOM ? -1 : 1);
-            if (
-                [RoomMemoryStatus.VACANT, RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.RESERVED_INVADER].includes(
-                    Memory.roomData[nextRoomName]?.roomStatus
-                ) &&
-                !safeRoomsDepthOne.includes(nextRoomName) &&
-                !safeRoomsDepthTwo.includes(nextRoomName) &&
-                !isKeeperRoom(nextRoomName) &&
-                !isCenterRoom(nextRoomName)
-            ) {
-                safeRoomsDepthThree.push(nextRoomName);
-            }
-        }
-    }
-
-    let openSources: { source: string; stats: RemoteStats }[] = [
+        let openSources: { source: string; stats: RemoteStats }[] = [
         ..._.flatten(safeRoomsDepthOne.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
         ..._.flatten(safeRoomsDepthTwo.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
         ..._.flatten(safeRoomsDepthThree.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
