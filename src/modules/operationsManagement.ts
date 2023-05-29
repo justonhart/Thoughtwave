@@ -154,7 +154,16 @@ function manageColonizeOperation(opId: string) {
                     });
                 }
             } else {
-                //user observer to confirm path
+                //use observer to confirm path
+                const nextRoomToObserve = OPERATION.pathRooms.find((pathRoomName) => !Memory.roomData[pathRoomName]?.asOf);
+                if (nextRoomToObserve && !OPERATION.visionRequests.some((req) => Memory.visionRequests[req]?.completed === false)) {
+                    const visionRequestId = addVisionRequest({
+                        targetRoom: nextRoomToObserve,
+                    } as VisionRequest);
+                    OPERATION.visionRequests.push(visionRequestId);
+                } else {
+                    OPERATION.routeConfirmed = true;
+                }
             }
 
             if (OPERATION.pathRooms.some((roomName) => Memory.roomData[roomName]?.hostile)) {
@@ -248,7 +257,7 @@ function manageColonizeOperation(opId: string) {
             }
 
             //room management
-            if(!Memory.rooms[OPERATION.targetRoom]?.stampLayout){
+            if (!Memory.rooms[OPERATION.targetRoom]?.stampLayout) {
                 Memory.rooms[OPERATION.targetRoom] = {
                     roomType: RoomType.OPERATION_CONTROLLED,
                     threatLevel: HomeRoomThreatLevel.SAFE,
@@ -260,10 +269,10 @@ function manageColonizeOperation(opId: string) {
                     remoteSources: {},
                     towerRepairMap: {},
                     transferBuffer: {},
-                    controllingOperation: opId
+                    controllingOperation: opId,
                 };
                 let stampResult = findStampLocation(room);
-                if(!stampResult){
+                if (!stampResult) {
                     break;
                 }
             }
@@ -271,7 +280,11 @@ function manageColonizeOperation(opId: string) {
             //structure cleanup
             room.hostileStructures
                 .filter(
-                    (s) => s.structureType !== STRUCTURE_STORAGE && s.structureType !== STRUCTURE_TERMINAL && s.structureType !== STRUCTURE_EXTRACTOR && s.structureType !== STRUCTURE_INVADER_CORE
+                    (s) =>
+                        s.structureType !== STRUCTURE_STORAGE &&
+                        s.structureType !== STRUCTURE_TERMINAL &&
+                        s.structureType !== STRUCTURE_EXTRACTOR &&
+                        s.structureType !== STRUCTURE_INVADER_CORE
                 )
                 .forEach((s) => s.destroy());
 
@@ -279,7 +292,7 @@ function manageColonizeOperation(opId: string) {
             switch (room.controller.level) {
                 case 6:
                     if (!room.terminal?.my) {
-                        if(room.terminal?.my === false){
+                        if (room.terminal?.my === false) {
                             room.terminal.destroy();
                         } else {
                             room.memory.stampLayout.terminal.shift()?.pos.toRoomPos().createConstructionSite(STRUCTURE_TERMINAL);
@@ -287,18 +300,29 @@ function manageColonizeOperation(opId: string) {
                     }
                 case 4:
                     if (!room.storage?.my) {
-                        if(room.storage?.my === false){
+                        if (room.storage?.my === false) {
                             room.storage.destroy();
                         } else {
                             room.memory.stampLayout.storage.shift()?.pos.toRoomPos().createConstructionSite(STRUCTURE_STORAGE);
                         }
                     }
                 case 2:
-                    room.memory.stampLayout.extension.filter(stamp => stamp.rcl === 2).forEach(stamp => {
-                        if(!stamp.pos.toRoomPos().look().some(look => (look.type === LOOK_STRUCTURES && look.structure.structureType === STRUCTURE_EXTENSION) || (look.type === LOOK_CONSTRUCTION_SITES && look.constructionSite.structureType === STRUCTURE_EXTENSION))){
-                            stamp.pos.toRoomPos().createConstructionSite(STRUCTURE_EXTENSION);
-                        }
-                    });
+                    room.memory.stampLayout.extension
+                        .filter((stamp) => stamp.rcl === 2)
+                        .forEach((stamp) => {
+                            if (
+                                !stamp.pos
+                                    .toRoomPos()
+                                    .look()
+                                    .some(
+                                        (look) =>
+                                            (look.type === LOOK_STRUCTURES && look.structure.structureType === STRUCTURE_EXTENSION) ||
+                                            (look.type === LOOK_CONSTRUCTION_SITES && look.constructionSite.structureType === STRUCTURE_EXTENSION)
+                                    )
+                            ) {
+                                stamp.pos.toRoomPos().createConstructionSite(STRUCTURE_EXTENSION);
+                            }
+                        });
                 default:
                     const spawnPos = room.memory.stampLayout.spawn.find((stamp) => stamp.rcl === 1)?.pos.toRoomPos();
                     if (!room.canSpawn()) {
@@ -322,14 +346,14 @@ function manageColonizeOperation(opId: string) {
             }
 
             //in-room spawning
-            let spawn = room.spawns.find(spawn => !spawn.spawning);
-            if(spawn){
-                if(PopulationManagement.needsManager(room)){
+            let spawn = room.spawns.find((spawn) => !spawn.spawning);
+            if (spawn) {
+                if (PopulationManagement.needsManager(room)) {
                     spawn.spawnManager();
                 }
-                if(!room.myCreeps.some(c => c.memory.role === Role.DISTRIBUTOR)){
+                if (!room.myCreeps.some((c) => c.memory.role === Role.DISTRIBUTOR)) {
                     spawn.spawnDistributor();
-                } else if(PopulationManagement.needsMiner(room)){
+                } else if (PopulationManagement.needsMiner(room)) {
                     spawn.spawnMiner();
                 }
             }
@@ -349,10 +373,13 @@ function manageColonizeOperation(opId: string) {
                         OPERATION.subOperations.push(result);
                     }
                 } else {
-                    if(Game.rooms[OPERATION.originRoom].getResourceAmount(RESOURCE_ENERGY) < 100000){
+                    if (Game.rooms[OPERATION.originRoom].getResourceAmount(RESOURCE_ENERGY) < 100000) {
                         Memory.operations[transferOperationId].stage = OperationStage.SUSPEND;
-                    } else if(Memory.operations[transferOperationId].stage !== OperationStage.ACTIVE && Game.rooms[OPERATION.originRoom].getResourceAmount(RESOURCE_ENERGY) > 150000) {
-                        Memory.operations[transferOperationId].stage = OperationStage.ACTIVE
+                    } else if (
+                        Memory.operations[transferOperationId].stage !== OperationStage.ACTIVE &&
+                        Game.rooms[OPERATION.originRoom].getResourceAmount(RESOURCE_ENERGY) > 150000
+                    ) {
+                        Memory.operations[transferOperationId].stage = OperationStage.ACTIVE;
                     }
                 }
             }
@@ -387,7 +414,7 @@ function manageColonizeOperation(opId: string) {
             if (originRoomLevel >= 6 ? room.controller.level >= 6 && room.terminal : room.controller.level >= 3) {
                 OPERATION.stage = OperationStage.COMPLETE;
                 room.memory.roomType = RoomType.HOMEROOM;
-                OPERATION.subOperations.forEach(opId => Memory.operations[opId].stage = OperationStage.COMPLETE);
+                OPERATION.subOperations.forEach((opId) => (Memory.operations[opId].stage = OperationStage.COMPLETE));
             }
 
             break;
