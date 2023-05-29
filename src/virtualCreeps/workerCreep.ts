@@ -109,10 +109,11 @@ export class WorkerCreep extends WaveCreep {
             (str) =>
                 str.structureType === STRUCTURE_CONTAINER &&
                 str.store.energy >= this.store.getCapacity() &&
+                (!this.room.storage || 
                 !this.room.memory.stampLayout.container.some(
                     (containerStamp) =>
                         str.pos.toMemSafe() === containerStamp.pos && (containerStamp.type === 'center' || containerStamp.type === 'rm')
-                )
+                ))
         );
 
         nonStorageSources = [...tombstones, ...ruins, ...looseEnergyStacks, ...containers];

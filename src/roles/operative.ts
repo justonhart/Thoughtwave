@@ -2,7 +2,9 @@ import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
 export class Operative extends WorkerCreep {
     memory: OperativeMemory;
+    operation: ResourceOperation;
     protected run() {
+        this.memory.currentTaskPriority = Priority.MEDIUM;
         if (!this.operation) {
             this.memory.recycle = true;
             if (this.room.controller?.my) {
@@ -43,6 +45,9 @@ export class Operative extends WorkerCreep {
                     this.memory.room = destinationRoom.name;
                     this.memory.recycle = true;
                 }
+                else {
+                    this.travelTo(destinationRoom.storage);
+                }
             } else {
                 const spawnPos = Memory.rooms[this.operation.targetRoom].stampLayout.spawn.find((stamp) => stamp.rcl === 1).pos.toRoomPos();
                 const destinationPos = new RoomPosition(spawnPos.x, spawnPos.y + 1, spawnPos.roomName);
@@ -56,7 +61,7 @@ export class Operative extends WorkerCreep {
                         this.suicide();
                     }
                 } else {
-                    this.travelTo(destinationPos, {avoidHostileRooms: true});
+                    this.travelTo(destinationPos, { avoidHostileRooms: true });
                 }
             }
         } else {
@@ -104,7 +109,7 @@ export class Operative extends WorkerCreep {
                     }
                 }
             } else {
-                this.travelToRoom(this.operation.targetRoom, {avoidHostileRooms: true});
+                this.travelToRoom(this.operation.targetRoom, { avoidHostileRooms: true });
             }
         } else {
             this.gatherEnergy();
@@ -297,7 +302,10 @@ export class Operative extends WorkerCreep {
         if (!this.pos.isNearTo(origin.storage)) {
             this.travelTo(origin.storage);
         } else {
-            this.withdraw(origin.storage, resource);
+            let result = this.withdraw(origin.storage, resource);
+            if(result === OK && this.operation.type === OperationType.TRANSFER){
+                (Memory.operations[this.memory.operationId] as ResourceOperation).currentAmount += this.store.getCapacity();
+            }
         }
     }
 
@@ -320,6 +328,13 @@ export class Operative extends WorkerCreep {
             return nonRampartSites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
         } else if (sites.length) {
             return sites.reduce((mostProgressed, next) => (next.progress > mostProgressed.progress ? next : mostProgressed))?.id;
+        }
+
+        if(this.room.controller?.my){
+            const structureToRepair = room?.structures.find(s => (s.structureType === STRUCTURE_ROAD || s.structureType === STRUCTURE_CONTAINER) && s.hits < s.hitsMax)
+            if(structureToRepair){
+                return structureToRepair.id;
+            }
         }
 
         const ramparts = room?.find(FIND_MY_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_RAMPART });

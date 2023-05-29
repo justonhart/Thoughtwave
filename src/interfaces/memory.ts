@@ -51,66 +51,6 @@ interface HostileRoom {
     expireAt: number; // Game Tick at which the room is no longer considered hostile
 }
 
-interface Operation {
-    targetRoom: string;
-    originRoom: string;
-    stage: OperationStage;
-    type: OperationType;
-    operativeCount?: number;
-    targetPos?: string;
-    resource?: ResourceConstant;
-    expireAt?: number;
-    waypoints?: string[];
-    pathCost?: number;
-    toughHitsRequired?: number;
-    visionRequests?: string[];
-    subOperations?: string[];
-    parentId?: string;
-    roomContainsStarterEnergy?: boolean;
-}
-
-interface OperationOpts {
-    originRoom?: string;
-    operativeCount?: number;
-    originOpts?: OriginOpts;
-    targetPos?: string;
-    resource?: ResourceConstant;
-    expireAt?: number;
-    waypoints?: string[];
-    forcedDestinations?: string[];
-    pathCost?: number;
-    disableLogging?: boolean;
-    parentId?: string;
-}
-
-interface OriginOpts {
-    maxThreatLevel?: HomeRoomThreatLevel;
-    minEnergyStatus?: EnergyStatus;
-    maxLinearDistance?: number;
-    minSpawnCount?: number;
-    needsBoost?: boolean;
-    selectionCriteria?: OriginCriteria;
-    operationCriteria?: OperationCriteria;
-    ignoreTerrain?: boolean;
-    ignoreRoomData?: boolean; // TODO: implement this to set highways to 1?
-}
-
-interface OperationCriteria {
-    type: OperationType;
-    maxCount: number;
-    stage?: OperationStage;
-}
-
-interface OriginResult {
-    roomName: string;
-    cost: number;
-}
-
-const enum OriginCriteria {
-    HIGHEST_LEVEL,
-    CLOSEST,
-}
-
 interface Squad {
     squadType: SquadType;
     members?: SquadMembers;
@@ -164,32 +104,6 @@ interface FactoryNeed {
 const enum SquadType {
     DUO,
     QUAD,
-}
-
-const enum OperationType {
-    COLONIZE = 1,
-    STERILIZE,
-    COLLECTION,
-    SECURE,
-    ROOM_RECOVERY,
-    ATTACK,
-    QUAD_ATTACK,
-    UPGRADE_BOOST,
-    REMOTE_BUILD,
-    CLEAN,
-    ADD_REMOTE_MINING,
-    POWER_BANK,
-    TRANSFER,
-}
-
-const enum OperationStage {
-    FAILED = -1,
-    SUSPEND,
-    PREPARE = 1,
-    ACTIVE,
-    CLAIM,
-    BUILD,
-    COMPLETE,
 }
 
 interface VisionRequest {
