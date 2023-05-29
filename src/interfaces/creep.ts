@@ -44,7 +44,12 @@ interface Creep {
     onEdge(): boolean;
     addTaskToPriorityQueue(priority: Priority, actionCallback: () => void): void;
     runPriorityQueueTask(): void;
-    debugLog(string: string): void;
+    /**
+     * Logs a message to console formatted: [Game.time] Creep.name - string
+     * @param contents the message to print
+     * @param force bypass the Creep.memory.debug bool check when printing
+     */
+    debugLog(contents: any, force?: boolean): void;
 }
 
 interface PriorityQueue {

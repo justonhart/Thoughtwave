@@ -28,9 +28,7 @@ export class TransportCreep extends WaveCreep {
     private runTransporterTasks() {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (!target && !this.memory.labNeeds?.length) {
-            if(this.memory.debug){
-                this.debugLog(`looking for target`);
-            }
+            this.debugLog(`looking for target`);
             this.memory.targetId = this.findTarget();
             target = Game.getObjectById(this.memory.targetId);
         }
@@ -44,6 +42,9 @@ export class TransportCreep extends WaveCreep {
 
             //round 2
             if (!stop && !this.memory.targetId) {
+                if (this.memory.debug) {
+                    this.debugLog('finding next target');
+                }
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
 
@@ -54,6 +55,7 @@ export class TransportCreep extends WaveCreep {
                 }
             } else if (stop) {
                 if (this.body.length >= PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], this.room.energyCapacityAvailable, 10).length) {
+                    this.debugLog('renewing');
                     this.renewCreep();
                 }
             }
@@ -69,7 +71,8 @@ export class TransportCreep extends WaveCreep {
             target instanceof StructureContainer &&
             this.homeroom.memory.stampLayout.container.some(
                 (containerStamp) => containerStamp.type === 'center' && containerStamp.pos === target.pos.toMemSafe()
-            ) && Object.keys(target.store).length <= 1
+            ) &&
+            Object.keys(target.store).length <= 1
         ) {
             this.runRefillJob(target);
             return false;
@@ -236,7 +239,9 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected findRefillTarget(): Id<Structure> {
-        const ROOM_STRUCTURES = this.homeroom.structures.filter((s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART);
+        const ROOM_STRUCTURES = this.homeroom.structures.filter(
+            (s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_WALL && s.structureType !== STRUCTURE_RAMPART
+        );
         const towers = ROOM_STRUCTURES.filter(
             (structure) => structure.structureType === STRUCTURE_TOWER && this.previousTargetId !== structure.id && structure.store.energy < 900
         ) as StructureTower[];
@@ -246,9 +251,7 @@ export class TransportCreep extends WaveCreep {
                 { ignoreCreeps: true }
             );
 
-            if(this.memory.debug){
-                this.debugLog(`found tower to refill: ${towerToRefill.pos.toMemSafe()}`);
-            }
+            this.debugLog(`found tower to refill: ${towerToRefill.pos.toMemSafe()}`);
         }
 
         let labs = ROOM_STRUCTURES.filter(
@@ -259,85 +262,134 @@ export class TransportCreep extends WaveCreep {
         );
         if (labs.length) {
             const labToRefill = this.pos.findClosestByPath(labs, { ignoreCreeps: true });
-            if(this.memory.debug){
-                this.debugLog(`found lab to refill: ${labToRefill.pos.toMemSafe()}`);
-            }
+            this.debugLog(`found lab to refill: ${labToRefill.pos.toMemSafe()}`);
             return labToRefill.id;
         }
 
-        const managerLinksBuilt = this.room.controller.level >= 5 && this.room.memory.stampLayout.link.reduce((result, nextStamp) => (nextStamp.rcl === 5 ? nextStamp.pos.toRoomPos().lookFor(LOOK_STRUCTURES).some(s => s.structureType === STRUCTURE_LINK) : true) && result , true)
+        const managerLinksBuilt =
+            this.room.controller.level >= 5 &&
+            this.room.memory.stampLayout.link.reduce(
+                (result, nextStamp) =>
+                    (nextStamp.rcl === 5
+                        ? nextStamp.pos
+                              .toRoomPos()
+                              .lookFor(LOOK_STRUCTURES)
+                              .some((s) => s.structureType === STRUCTURE_LINK)
+                        : true) && result,
+                true
+            );
 
         // if manager links aren't built, the distributor needs to continue filling up containers even if spawn energy is at full capacity
         if (this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable || !managerLinksBuilt) {
             const structuresToRefill: Structure[] = [];
-            const misplacedSpawns = this.room.spawns.filter(spawn => !this.room.memory.stampLayout.spawn.some(stamp => stamp.pos === spawn.pos.toMemSafe()));
+            const misplacedSpawns = this.room.spawns.filter(
+                (spawn) => !this.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === spawn.pos.toMemSafe())
+            );
             structuresToRefill.push(...misplacedSpawns);
 
-            const centerLinkPos = this.room.memory.stampLayout.link.find(stamp => stamp.type === 'center').pos.toRoomPos();
+            const centerLinkPos = this.room.memory.stampLayout.link.find((stamp) => stamp.type === 'center').pos.toRoomPos();
             const centerExtensions = this.room.memory.stampLayout.extension
-                .filter(stamp => stamp.rcl <= this.room.controller.level && stamp.type === 'center')
-                .map(stamp => stamp.pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTENSION))
+                .filter((stamp) => stamp.rcl <= this.room.controller.level && stamp.type === 'center')
+                .map((stamp) =>
+                    stamp.pos
+                        .toRoomPos()
+                        .lookFor(LOOK_STRUCTURES)
+                        .find((s) => s.structureType === STRUCTURE_EXTENSION)
+                )
                 .filter((s: StructureExtension) => s?.store.getFreeCapacity(RESOURCE_ENERGY));
             const containersToRefill: StructureContainer[] = [];
-            
-            const leftCenterContainer = this.room.memory.stampLayout.container.find(stamp => stamp.rcl === 2).pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
-            const missingManager = this.room.memory.stampLayout.managers.some(stamp => stamp.rcl <= this.room.controller.level && stamp.type === 'center' && !stamp.pos.toRoomPos().lookFor(LOOK_CREEPS).some(creep => creep.memory.destination === stamp.pos))
-            if(!leftCenterContainer || missingManager){
-                const leftCenterExtensions = centerExtensions.filter(extension => extension.pos.x < centerLinkPos.x);
+
+            const leftCenterContainer = this.room.memory.stampLayout.container
+                .find((stamp) => stamp.rcl === 2)
+                .pos.toRoomPos()
+                .lookFor(LOOK_STRUCTURES)
+                .find((s) => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
+            const missingManager = this.room.memory.stampLayout.managers.some(
+                (stamp) =>
+                    stamp.rcl <= this.room.controller.level &&
+                    stamp.type === 'center' &&
+                    !stamp.pos
+                        .toRoomPos()
+                        .lookFor(LOOK_CREEPS)
+                        .some((creep) => creep.memory.destination === stamp.pos)
+            );
+            if (!leftCenterContainer || missingManager) {
+                const leftCenterExtensions = centerExtensions.filter((extension) => extension.pos.x < centerLinkPos.x);
                 structuresToRefill.push(...leftCenterExtensions);
-                const leftSpawn = this.room.memory.stampLayout.spawn.find(stamp => stamp.rcl === 1).pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
-                if(leftSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)){
+                const leftSpawn = this.room.memory.stampLayout.spawn
+                    .find((stamp) => stamp.rcl === 1)
+                    .pos.toRoomPos()
+                    .lookFor(LOOK_STRUCTURES)
+                    .find((s) => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
+                if (leftSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)) {
                     structuresToRefill.push(leftSpawn);
-                } 
-            } else if(leftCenterContainer.store.getFreeCapacity()){
-                containersToRefill.push(leftCenterContainer)
+                }
+            } else if (leftCenterContainer.store.getFreeCapacity()) {
+                containersToRefill.push(leftCenterContainer);
             }
 
-            const rightCenterContainer = this.room.memory.stampLayout.container.find(stamp => stamp.rcl === 3 && stamp.type === 'center').pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
-            if(!rightCenterContainer || missingManager){
-                const rightCenterExtensions = centerExtensions.filter(extension => extension.pos.x > centerLinkPos.x);
+            const rightCenterContainer = this.room.memory.stampLayout.container
+                .find((stamp) => stamp.rcl === 3 && stamp.type === 'center')
+                .pos.toRoomPos()
+                .lookFor(LOOK_STRUCTURES)
+                .find((s) => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
+            if (!rightCenterContainer || missingManager) {
+                const rightCenterExtensions = centerExtensions.filter((extension) => extension.pos.x > centerLinkPos.x);
                 structuresToRefill.push(...rightCenterExtensions);
-                const rightSpawn = this.room.memory.stampLayout.spawn.find(stamp => stamp.rcl === 7).pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
-                if(rightSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)){
+                const rightSpawn = this.room.memory.stampLayout.spawn
+                    .find((stamp) => stamp.rcl === 7)
+                    .pos.toRoomPos()
+                    .lookFor(LOOK_STRUCTURES)
+                    .find((s) => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
+                if (rightSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)) {
                     structuresToRefill.push(rightSpawn);
-                } 
-            } else if(rightCenterContainer.store.getFreeCapacity()){
-                containersToRefill.push(rightCenterContainer)
+                }
+            } else if (rightCenterContainer.store.getFreeCapacity()) {
+                containersToRefill.push(rightCenterContainer);
             }
 
-            if(!rightCenterContainer && !leftCenterContainer || missingManager){
-                const centerCenterExtensions = centerExtensions.filter(extension => extension.pos.x === centerLinkPos.x);
+            if ((!rightCenterContainer && !leftCenterContainer) || missingManager) {
+                const centerCenterExtensions = centerExtensions.filter((extension) => extension.pos.x === centerLinkPos.x);
                 structuresToRefill.push(...centerCenterExtensions);
-                const centerSpawn = this.room.memory.stampLayout.spawn.find(stamp => stamp.rcl === 8).pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
-                if(centerSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)){
+                const centerSpawn = this.room.memory.stampLayout.spawn
+                    .find((stamp) => stamp.rcl === 8)
+                    .pos.toRoomPos()
+                    .lookFor(LOOK_STRUCTURES)
+                    .find((s) => s.structureType === STRUCTURE_SPAWN) as StructureSpawn;
+                if (centerSpawn?.store.getFreeCapacity(RESOURCE_ENERGY)) {
                     structuresToRefill.push(centerSpawn);
                 }
             }
 
             const nonCenterExtensions = this.room.memory.stampLayout.extension
-                .filter(stamp => stamp.rcl <= this.room.controller.level && stamp.type !== 'center')
-                .map(stamp => stamp.pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_EXTENSION))
+                .filter((stamp) => stamp.rcl <= this.room.controller.level && stamp.type !== 'center')
+                .map((stamp) =>
+                    stamp.pos
+                        .toRoomPos()
+                        .lookFor(LOOK_STRUCTURES)
+                        .find((s) => s.structureType === STRUCTURE_EXTENSION)
+                )
                 .filter((s: StructureExtension) => s?.store.getFreeCapacity(RESOURCE_ENERGY));
             structuresToRefill.push(...nonCenterExtensions);
 
-            if(structuresToRefill.length){
+            if (structuresToRefill.length) {
                 const structureToRefill = this.pos.findClosestByRange(structuresToRefill);
-                if(this.memory.debug){
-                    this.debugLog(`found structure to refill: ${structureToRefill.structureType} (${structureToRefill.pos.toMemSafe()})`)
-                }
-                return structureToRefill.id; 
-            } else if(containersToRefill.length){
-                const containerToRefill = containersToRefill.reduce((lowest, nextContainer) => nextContainer.store.energy < lowest.store.energy ? nextContainer : lowest);
-                if(this.memory.debug){
-                    this.debugLog(`found container to refill: ${containerToRefill.pos.toMemSafe()}`)
-                }
+                this.debugLog(`found structure to refill: ${structureToRefill.structureType} (${structureToRefill.pos.toMemSafe()})`);
+                return structureToRefill.id;
+            } else if (containersToRefill.length) {
+                const containerToRefill = containersToRefill.reduce((lowest, nextContainer) =>
+                    nextContainer.store.energy < lowest.store.energy ? nextContainer : lowest
+                );
+                this.debugLog(`found center container to refill: ${containerToRefill.pos.toMemSafe()}`);
                 return containerToRefill.id;
             }
         }
 
         // Now fill them completely
         if (towers.length) {
-            return this.pos.findClosestByPath(towers, { ignoreCreeps: true }).id;
+            const towerToRefill = this.pos.findClosestByPath(towers, { ignoreCreeps: true });
+            this.debugLog(`found tower to refill: ${towerToRefill.pos.toMemSafe()}`);
+            return towerToRefill.id;
         }
 
         if (this.homeroom.controller.level === 8) {
@@ -353,6 +405,7 @@ export class TransportCreep extends WaveCreep {
                             )))
             ) as StructurePowerSpawn[];
             if (powerSpawnInNeed.length) {
+                this.debugLog(`refilling powerspawn`);
                 return powerSpawnInNeed[0].id;
             }
         }
@@ -374,7 +427,9 @@ export class TransportCreep extends WaveCreep {
         if (this.room.storage) {
             const labsNeedingEmptied = this.room.labs?.filter((lab) => lab.status === LabStatus.NEEDS_EMPTYING);
             if (labsNeedingEmptied.length) {
-                return this.pos.findClosestByRange(labsNeedingEmptied).id;
+                const lab = this.pos.findClosestByRange(labsNeedingEmptied);
+                this.debugLog(`found lab to empty: ${lab.pos.toMemSafe()}`);
+                return lab.id;
             }
         }
 
@@ -382,20 +437,27 @@ export class TransportCreep extends WaveCreep {
             filter: (ruin) => (this.room.storage ? ruin.store.getUsedCapacity() > 1000 : ruin.store[RESOURCE_ENERGY]),
         });
         if (ruinsWithResources.length) {
-            return this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 })?.id;
+            const ruin = this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 });
+            this.debugLog(`found ruin to empty: ${ruin.pos.toMemSafe()}`);
+            return ruin.id;
         }
 
-        if(this.room.storage){
+        if (this.room.storage) {
             const centerContainerWithNonEnergyResources = this.room.memory.stampLayout.container
-                .filter(stamp => stamp.type === 'center')
-                .map(stamp => stamp.pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER))
-                .find((s: StructureContainer) => !!s && Object.keys(s.store).some(resource => resource !== RESOURCE_ENERGY));
-            
-            if(centerContainerWithNonEnergyResources){
+                .filter((stamp) => stamp.type === 'center')
+                .map((stamp) =>
+                    stamp.pos
+                        .toRoomPos()
+                        .lookFor(LOOK_STRUCTURES)
+                        .find((s) => s.structureType === STRUCTURE_CONTAINER)
+                )
+                .find((s: StructureContainer) => !!s && Object.keys(s.store).some((resource) => resource !== RESOURCE_ENERGY));
+
+            if (centerContainerWithNonEnergyResources) {
                 this.debugLog(`found center container to clean: ${centerContainerWithNonEnergyResources.pos.toMemSafe()}`);
                 return centerContainerWithNonEnergyResources.id;
             }
-        } 
+        }
 
         // For Stamps it only allows containers at miners when they are too full (should be emptied through link) or there isnt a link yet
         const containers: StructureContainer[] = room.structures.filter(
@@ -415,18 +477,24 @@ export class TransportCreep extends WaveCreep {
         ) as StructureContainer[];
         const fillingContainers = containers.filter((container) => container.store.getUsedCapacity() >= container.store.getCapacity() / 2);
         if (fillingContainers.length) {
-            return fillingContainers.reduce((fullestContainer, nextContainer) =>
+            const container = fillingContainers.reduce((fullestContainer, nextContainer) =>
                 fullestContainer.store.getUsedCapacity() > nextContainer.store.getUsedCapacity() ? fullestContainer : nextContainer
-            ).id;
+            );
+
+            this.debugLog(`found filling container to empty at ${container.pos.toMemSafe()}`);
+            return container.id;
         }
 
         const looseResources = room.find(FIND_DROPPED_RESOURCES);
         if (looseResources.filter((r) => r.amount > 100 && (room.storage || r.resourceType === RESOURCE_ENERGY)).length) {
-            return looseResources
+            const resource = looseResources
                 .filter((r) => r.amount > 100 && (room.storage || r.resourceType === RESOURCE_ENERGY))
                 .reduce((biggestResource, resourceToCompare) =>
                     biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
-                ).id;
+                );
+
+            this.debugLog(`found ${resource.resourceType} to pick up at ${resource.pos.toMemSafe()}`);
+            return resource.id;
         }
 
         const tombstonesWithResources =
@@ -434,18 +502,25 @@ export class TransportCreep extends WaveCreep {
                 ? room.find(FIND_TOMBSTONES).filter((t) => t.store[RESOURCE_ENERGY])
                 : room.find(FIND_TOMBSTONES).filter((t) => t.store.getUsedCapacity() > this.store.getCapacity() / 2);
         if (tombstonesWithResources.length) {
-            return this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 }).id;
+            const tombstone = this.pos.findClosestByPath(tombstonesWithResources, { ignoreCreeps: true, range: 1 });
+            this.debugLog(`found tombstone to empty at ${tombstone.pos.toMemSafe()}`);
+            return tombstone.id;
         }
 
         if (containers.length) {
-            return containers.reduce((fullestContainer, nextContainer) =>
+            const container = containers.reduce((fullestContainer, nextContainer) =>
                 fullestContainer.store.getUsedCapacity() > nextContainer.store.getUsedCapacity() ? fullestContainer : nextContainer
-            ).id;
+            );
+            this.debugLog(`found container to empty at ${container.pos.toMemSafe()}`);
+            return container.id;
         }
         if (looseResources.filter((r) => room.storage || r.resourceType === RESOURCE_ENERGY).length) {
-            return looseResources
+            const resource = looseResources
                 .filter((r) => room.storage || r.resourceType === RESOURCE_ENERGY)
-                .reduce((most, next) => (most.amount > next.amount ? most : next)).id;
+                .reduce((most, next) => (most.amount > next.amount ? most : next));
+
+            this.debugLog(`found ${resource.resourceType} to pick up at ${resource.pos.toMemSafe()}`);
+            return resource.id;
         }
 
         this.memory.sleepCollectTil = Game.time + 10;
@@ -559,12 +634,20 @@ export class TransportCreep extends WaveCreep {
         if (!this.pos.isNearTo(target)) {
             this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
         } else if (!this.actionTaken) {
-            let nextResource: ResourceConstant = target instanceof StructureContainer && this.room.memory.stampLayout.container.some(stamp => stamp.pos === target.pos.toMemSafe() && stamp.type === 'center') ? resourcesToWithdraw.filter(res => res !== RESOURCE_ENERGY).shift() : resourcesToWithdraw.shift();
+            let nextResource: ResourceConstant =
+                target instanceof StructureContainer &&
+                this.room.memory.stampLayout.container.some((stamp) => stamp.pos === target.pos.toMemSafe() && stamp.type === 'center')
+                    ? resourcesToWithdraw.filter((res) => res !== RESOURCE_ENERGY).shift()
+                    : resourcesToWithdraw.shift();
             let result = this.withdraw(target, nextResource);
             switch (result) {
                 case 0:
                     this.actionTaken = true;
-                    if (target.store[nextResource] >= this.store.getFreeCapacity() || target instanceof StructureLab) {
+                    if (
+                        target.store[nextResource] >= this.store.getFreeCapacity() ||
+                        resourcesToWithdraw.length === 0 ||
+                        target instanceof StructureLab
+                    ) {
                         this.onTaskFinished();
                     }
                     if (nextResource === RESOURCE_ENERGY) {
@@ -719,13 +802,15 @@ export class TransportCreep extends WaveCreep {
                         this.debugLog(`hit error working lab task: ${result}`);
                         switch (result) {
                             case ERR_FULL:
-                                const needIndex = this.homeroom.memory.labTasks[targetLab.taskId].needs.findIndex((need) => need.resource === targetLab.mineralType && need.lab === targetLab.id);
-                                if(needIndex > -1){
+                                const needIndex = this.homeroom.memory.labTasks[targetLab.taskId].needs.findIndex(
+                                    (need) => need.resource === targetLab.mineralType && need.lab === targetLab.id
+                                );
+                                if (needIndex > -1) {
                                     this.homeroom.memory.labTasks[targetLab.taskId].needs[needIndex].amount = 0;
                                     this.memory.labNeeds[0].amount = 0;
                                     this.memory.labNeeds.shift();
                                     break;
-                                } 
+                                }
                             default:
                                 let labTaskId = targetLab.taskId;
                                 delete this.homeroom.memory.labTasks[labTaskId];
@@ -763,6 +848,7 @@ export class TransportCreep extends WaveCreep {
     }
 
     protected onTaskFinished(): void {
+        this.debugLog(`task finished`);
         this.previousTargetId = this.memory.targetId;
         delete this.memory.currentTaskPriority;
         delete this.memory.targetId;

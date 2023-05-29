@@ -48,8 +48,10 @@ Object.defineProperty(Creep.prototype, 'operation', {
     configurable: true,
 });
 
-Creep.prototype.debugLog = function(this: Creep, string: string){
-    console.log(`[${Game.time}] ${this.name} - ${string}`);
+Creep.prototype.debugLog = function(this: Creep, contents: any, force?: boolean){
+    if(this.memory.debug || force){
+        console.log(`[${Game.time}] ${this.name} - ${contents}`);
+    }
 }
 
 // -------------------------------------------- POWER CREEPS -------------------------------------------- //
