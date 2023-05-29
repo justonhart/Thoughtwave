@@ -69,7 +69,7 @@ export class TransportCreep extends WaveCreep {
             target instanceof StructureContainer &&
             this.homeroom.memory.stampLayout.container.some(
                 (containerStamp) => containerStamp.type === 'center' && containerStamp.pos === target.pos.toMemSafe()
-            )
+            ) && Object.keys(target.store).length <= 1
         ) {
             this.runRefillJob(target);
             return false;
@@ -385,6 +385,18 @@ export class TransportCreep extends WaveCreep {
             return this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 })?.id;
         }
 
+        if(this.room.storage){
+            const centerContainerWithNonEnergyResources = this.room.memory.stampLayout.container
+                .filter(stamp => stamp.type === 'center')
+                .map(stamp => stamp.pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER))
+                .find((s: StructureContainer) => !!s && Object.keys(s.store).some(resource => resource !== RESOURCE_ENERGY));
+            
+            if(centerContainerWithNonEnergyResources){
+                this.debugLog(`found center container to clean: ${centerContainerWithNonEnergyResources.pos.toMemSafe()}`);
+                return centerContainerWithNonEnergyResources.id;
+            }
+        } 
+
         // For Stamps it only allows containers at miners when they are too full (should be emptied through link) or there isnt a link yet
         const containers: StructureContainer[] = room.structures.filter(
             (structure) =>
@@ -544,10 +556,10 @@ export class TransportCreep extends WaveCreep {
                 ? [target.mineralType]
                 : (Object.keys(target.store) as ResourceConstant[])
             : [RESOURCE_ENERGY];
-        let nextResource: ResourceConstant = resourcesToWithdraw.shift();
         if (!this.pos.isNearTo(target)) {
             this.travelTo(target, { range: 1, currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount });
         } else if (!this.actionTaken) {
+            let nextResource: ResourceConstant = target instanceof StructureContainer && this.room.memory.stampLayout.container.some(stamp => stamp.pos === target.pos.toMemSafe() && stamp.type === 'center') ? resourcesToWithdraw.filter(res => res !== RESOURCE_ENERGY).shift() : resourcesToWithdraw.shift();
             let result = this.withdraw(target, nextResource);
             switch (result) {
                 case 0:

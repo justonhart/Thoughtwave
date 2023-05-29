@@ -741,11 +741,11 @@ export class PopulationManagement {
             opts.energyStructures = spawn.room.myStructures
                 .filter((structure) => structure.structureType === STRUCTURE_SPAWN || structure.structureType === STRUCTURE_EXTENSION)
                 .sort((structA, structB) => {
-                    if (structA.structureType === STRUCTURE_SPAWN) {
+                    if (structA.structureType === STRUCTURE_SPAWN && spawn.room.memory.stampLayout.spawn.some(stamp => stamp.pos === structA.pos.toMemSafe())) {
                         return -1;
                     }
 
-                    if (structB.structureType === STRUCTURE_SPAWN) {
+                    if (structB.structureType === STRUCTURE_SPAWN && spawn.room.memory.stampLayout.spawn.some(stamp => stamp.pos === structB.pos.toMemSafe())) {
                         return 1;
                     }
 
