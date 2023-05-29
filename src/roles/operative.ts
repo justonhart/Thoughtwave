@@ -45,6 +45,9 @@ export class Operative extends WorkerCreep {
                     this.memory.room = destinationRoom.name;
                     this.memory.recycle = true;
                 }
+                else {
+                    this.travelTo(destinationRoom.storage);
+                }
             } else {
                 const spawnPos = Memory.rooms[this.operation.targetRoom].stampLayout.spawn.find((stamp) => stamp.rcl === 1).pos.toRoomPos();
                 const destinationPos = new RoomPosition(spawnPos.x, spawnPos.y + 1, spawnPos.roomName);
@@ -299,7 +302,10 @@ export class Operative extends WorkerCreep {
         if (!this.pos.isNearTo(origin.storage)) {
             this.travelTo(origin.storage);
         } else {
-            this.withdraw(origin.storage, resource);
+            let result = this.withdraw(origin.storage, resource);
+            if(result === OK && this.operation.type === OperationType.TRANSFER){
+                (Memory.operations[this.memory.operationId] as ResourceOperation).currentAmount += this.store.getCapacity();
+            }
         }
     }
 

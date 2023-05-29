@@ -501,6 +501,11 @@ function manageSimpleOperation(opId: string) {
         OPERATION.originRoom = findOperationOrigin(OPERATION.targetRoom)?.roomName;
     }
 
+    if(OPERATION.type === OperationType.TRANSFER && (OPERATION as ResourceOperation).targetAmount === undefined){
+        (OPERATION as ResourceOperation).targetAmount = 200000;
+        (OPERATION as ResourceOperation).currentAmount = 0;
+    }
+
     const operativeCount =
         Object.values(Game.creeps).reduce((sum, nextCreep) => ((nextCreep.memory as OperativeMemory).operationId === opId ? sum + 1 : sum), 0) +
         Object.values(Memory.spawnAssignments).reduce(
@@ -525,7 +530,8 @@ function manageSimpleOperation(opId: string) {
         });
     }
 
-    if (OPERATION.expireAt <= Game.time) {
+    if (OPERATION.expireAt <= Game.time || (OPERATION.type === OperationType.TRANSFER && (OPERATION as ResourceOperation).currentAmount >= (OPERATION as ResourceOperation).targetAmount)) {
+        console.log((OPERATION as ResourceOperation).currentAmount + " | " + (OPERATION as ResourceOperation).targetAmount);
         OPERATION.stage = OperationStage.COMPLETE;
     }
     Memory.operations[opId] = OPERATION;

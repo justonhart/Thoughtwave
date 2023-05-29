@@ -119,5 +119,6 @@ interface PowerBankOperation extends Operation {
 
 interface ResourceOperation extends Operation {
     resource?: ResourceConstant;
-    amount?: number;
+    targetAmount?: number;
+    currentAmount?: number;
 }
