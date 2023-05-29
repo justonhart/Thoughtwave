@@ -206,6 +206,10 @@ interface GathererMemory extends CreepMemory {
      * The time at which a replacement should be spawned
      */
     spawnReplacementAt?: number;
+    /**
+     * Flag for early-remote creeps
+     */
+    early?: boolean;
 }
 
 interface RemoteMinerMemory extends CreepMemory {
@@ -225,6 +229,10 @@ interface RemoteMinerMemory extends CreepMemory {
      * Id of problem structure to dismantle
      */
     targetId2?: Id<Structure>;
+    /**
+     * Flag for early-remote creeps
+     */
+    early?: boolean;
 }
 
 interface KeeperExterminatorMemory extends CreepMemory {

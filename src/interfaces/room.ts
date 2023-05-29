@@ -73,6 +73,8 @@ interface RemoteData {
     sourceKeeperLairs?: { [sourcePos: string]: { id: Id<Structure<StructureConstant>>; pos: string } }; // keeperId: closestSourceId
     shouldCheckStructures?: boolean;
     clearStructures?: boolean;
+    evacuate?: boolean;
+    threatReset?: number;
 }
 
 interface RoomData {

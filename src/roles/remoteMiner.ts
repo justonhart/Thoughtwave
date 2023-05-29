@@ -2,7 +2,30 @@ import { isKeeperRoom } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class RemoteMiner extends WaveCreep {
     memory: RemoteMinerMemory;
+
     protected run() {
+        if(this.memory.early){
+            this.runEarly();
+        } else {
+            this.runFull();
+        }
+    }
+
+    private runEarly() {
+        if(this.damaged() || Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.evacuate){
+            this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
+            return; 
+        }
+
+        if(!this.pos.isEqualTo(this.getMiningPosition())){
+            this.travelTo(this.getMiningPosition());
+        } else {
+            let source = Game.getObjectById(this.getSourceId());
+            this.harvest(source);
+        }
+    }
+
+    private runFull() {
         if (Game.time === this.memory.spawnReplacementAt) {
             this.homeroom.memory.remoteSources[this.memory.assignment].miner = AssignmentStatus.UNASSIGNED;
         }
@@ -11,7 +34,7 @@ export class RemoteMiner extends WaveCreep {
                 (!isKeeperRoom(this.memory.assignment.toRoomPos().roomName) ||
                     this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER ||
                     !this.keeperPresentOrSpawning())) ||
-            Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.threatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
+            Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.evacuate
         ) {
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
@@ -20,7 +43,7 @@ export class RemoteMiner extends WaveCreep {
         // Clear out left over containers
         if (this.memory.targetId2) {
             const structure = Game.getObjectById(this.memory.targetId2) as StructureContainer;
-            if (!structure) {
+        if (!structure) {
                 delete this.memory.targetId2;
             } else {
                 const dismantleStatus = this.dismantle(structure);

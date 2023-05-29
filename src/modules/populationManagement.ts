@@ -298,6 +298,28 @@ export class PopulationManagement {
         );
     }
 
+    static spawnEarlyRemoteMiner(spawn: StructureSpawn, source: string): ScreepsReturnCode {
+        let options: SpawnOptions = {
+            memory: {
+                assignment: source,
+                room: spawn.room.name,
+                role: Role.REMOTE_MINER,
+                currentTaskPriority: Priority.HIGH,
+                early: true
+            } as RemoteMinerMemory,
+        };
+        
+        const body = PopulationManagement.createPartsArray([WORK,MOVE], spawn.room.energyCapacityAvailable, 3);
+        let name = this.generateName(options.memory.role, spawn.name);
+
+        let result = spawn.smartSpawn(body, name, options);
+        if (result === OK) {
+            spawn.room.memory.remoteSources[source].miner = name;
+        }
+
+        return result;
+    }
+
     static spawnRemoteMiner(spawn: StructureSpawn, source: string): ScreepsReturnCode {
         let options: SpawnOptions = {
             memory: {
@@ -341,10 +363,34 @@ export class PopulationManagement {
                 Memory.roomData[s.toRoomPos().roomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY &&
-                room.memory.remoteSources[s].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER &&
+                (!room.storage || room.memory.remoteSources[s].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER) &&
                 room.memory.remoteSources[s].gatherers.some((g) => g === AssignmentStatus.UNASSIGNED) &&
                 roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`)
         );
+    }
+
+    static spawnEarlyGatherer(spawn: StructureSpawn, source: string): ScreepsReturnCode {
+        let options: SpawnOptions = {
+            memory: {
+                assignment: source,
+                room: spawn.room.name,
+                role: Role.GATHERER,
+                early: true
+            } as GathererMemory,
+        };
+
+        const name = this.generateName(options.memory.role, spawn.name); 
+        const body = PopulationManagement.createPartsArray([CARRY,MOVE], spawn.room.energyCapacityAvailable, 10);
+        let result = spawn.smartSpawn(body, name, options);
+
+        if (result === OK) {
+            let unassignedIndex = spawn.room.memory.remoteSources[source].gatherers.findIndex((g) => g === AssignmentStatus.UNASSIGNED);
+            if (unassignedIndex !== -1) {
+                spawn.room.memory.remoteSources[source].gatherers[unassignedIndex] = name;
+            }
+        }
+
+        return result;
     }
 
     static spawnGatherer(spawn: StructureSpawn, source: string): ScreepsReturnCode {

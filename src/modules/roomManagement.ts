@@ -3,7 +3,7 @@ import { computeRoomNameFromDiff } from './data';
 import { runLabs } from './labManagement';
 import { PopulationManagement } from './populationManagement';
 import { assignRemoteSource, findSuitableRemoteSource, removeSourceAssignment } from './remoteMining';
-import { manageRemoteRoom } from './remoteRoomManagement';
+import { manageEarlyRemoteRoom, manageRemoteRoom } from './remoteRoomManagement';
 import { shipmentReady } from './resourceManagement';
 import { deleteRoad } from './roads';
 import { roomNeedsCoreStructures, findStampLocation } from './roomDesign';
@@ -97,36 +97,34 @@ function driveHomeRoom(room: Room) {
             room.controller.activateSafeMode();
         }
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING) {
-            //if this room doesn't have any outstanding claims
-            if (
-                Game.time % 1000 === 0 &&
-                !room.memory.outstandingClaim &&
-                !global.remoteSourcesChecked &&
-                Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000 &&
-                canSupportRemoteRoom(room)
-            ) {
-                try {
-                    addRemoteSourceClaim(room);
-                    room.memory.lastRemoteSourceCheck = Game.time;
-                    global.remoteSourcesChecked = true;
-                } catch (e) {
-                    console.log(`Error caught running addRemoteSourceClaim in ${room.name}: \n${e}`);
-                }
+        //if this room doesn't have any outstanding claims
+        if (
+            Game.time % 1000 === 0 &&
+            !room.memory.outstandingClaim &&
+            !global.remoteSourcesChecked &&
+            Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000 &&
+            canSupportRemoteRoom(room)
+        ) {
+            try {
+                addRemoteSourceClaim(room);
+                room.memory.lastRemoteSourceCheck = Game.time;
+                global.remoteSourcesChecked = true;
+            } catch (e) {
+                console.log(`Error caught running addRemoteSourceClaim in ${room.name}: \n${e}`);
             }
+        }
 
-            if (room.memory.outstandingClaim && Game.time % 1000 === 0) {
-                try {
-                    let result = executeRemoteSourceClaim(room);
-                    if (result === OK) {
-                        delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
-                        delete room.memory.outstandingClaim;
-                    } else {
-                        console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
-                    }
-                } catch (e) {
-                    console.log(`Error caught running executeRemoteSourceClaim in ${room.name}: \n${e}`);
+        if (room.memory.outstandingClaim) {
+            try {
+                let result = executeRemoteSourceClaim(room);
+                if (result === OK) {
+                    delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
+                    delete room.memory.outstandingClaim;
+                } else {
+                    console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
                 }
+            } catch (e) {
+                console.log(`Error caught running executeRemoteSourceClaim in ${room.name}: \n${e}`);
             }
         }
 
@@ -590,6 +588,18 @@ function runSpawning(room: Room){
                 const spawn = availableSpawns.pop();
                 spawn?.spawnRemoteMineralMiner(remoteMineralMinerNeed);
             }
+        } else if (!room.storage?.my && room.remoteSources.length && !roomUnderAttack){
+            let earlyRemoteMinerNeed = PopulationManagement.findRemoteMinerNeed(room);
+            if(earlyRemoteMinerNeed) {
+                let spawn = availableSpawns.pop();
+                PopulationManagement.spawnEarlyRemoteMiner(spawn, earlyRemoteMinerNeed);
+            }
+
+            let earlyGathererNeed = PopulationManagement.findGathererNeed(room);
+            if(earlyGathererNeed){
+                let spawn = availableSpawns.pop();
+                PopulationManagement.spawnEarlyGatherer(spawn, earlyGathererNeed);
+            }
         }
     }
 
@@ -672,7 +682,11 @@ function runRemoteRooms(room: Room) {
     let remoteRooms = room.remoteMiningRooms;
     remoteRooms?.forEach((remoteRoomName) => {
         try {
-            manageRemoteRoom(room.name, remoteRoomName);
+            if(!room.storage?.my){
+                manageEarlyRemoteRoom(room.name, remoteRoomName);
+            } else {
+                manageRemoteRoom(room.name, remoteRoomName);
+            }
         } catch (e) {
             console.log(`Error caught running remote room ${remoteRoomName}: \n${e}`);
         }

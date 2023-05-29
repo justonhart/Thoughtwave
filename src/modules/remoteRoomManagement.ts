@@ -4,6 +4,34 @@ import { PopulationManagement } from './populationManagement';
 import { deleteRoad, getRoad, storeRoadInMemory } from './roads';
 import { getStoragePos } from './roomDesign';
 
+/**
+ * Operates similarly to regular remote room, but doesn't spawn reservers or protectors & uses half-sized miners, and consequently half gatherers that don't build roads
+ * @param controllingRoomName 
+ * @param remoteRoomName 
+ */
+export function manageEarlyRemoteRoom(controllingRoomName: string, remoteRoomName: string){
+    runEarlyThreatMonitoring(remoteRoomName);
+}
+
+function runEarlyThreatMonitoring(remoteRoomName: string){
+    let room = Game.rooms[remoteRoomName];
+    if(room){
+        if(room.hostileCreeps.some(c => c.body.some(part => part.type === ATTACK || part.type === RANGED_ATTACK))){
+            Memory.remoteData[remoteRoomName].threatLevel = RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS;
+            Memory.remoteData[remoteRoomName].threatReset = Game.time + 1500;
+            Memory.remoteData[remoteRoomName].evacuate = true;
+        } else {
+            Memory.remoteData[remoteRoomName].threatLevel = RemoteRoomThreatLevel.SAFE;
+            delete Memory.remoteData[remoteRoomName].threatReset;
+            delete Memory.remoteData[remoteRoomName].evacuate; 
+        } 
+    } else if(Memory.remoteData[remoteRoomName].threatReset <= Game.time){
+        Memory.remoteData[remoteRoomName].threatLevel = RemoteRoomThreatLevel.SAFE;
+        delete Memory.remoteData[remoteRoomName].threatReset;
+        delete Memory.remoteData[remoteRoomName].evacuate;
+    }
+}
+
 export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: string) {
     let remoteRoom = Game.rooms[remoteRoomName];
     if (remoteRoom) {
@@ -103,7 +131,7 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
                 const highestHP = remoteRoom.hostileCreeps
                     .filter((creep) => !Memory.playersToIgnore?.includes(creep.owner.username) && creep.owner.username !== 'Source Keeper')
                     .reduce((highestHP, nextCreep) => (highestHP < nextCreep.hitsMax ? nextCreep.hitsMax : highestHP), 0);
-                body = PopulationManagement.createDynamicCreepBody(Game.rooms[controllingRoomName], [ATTACK, MOVE], Math.ceil(highestHP / 10), 0);
+                body = PopulationManagement.createDynamicCreepBody(Game.rooms[controllingRoomName], [ATTACK, MOVE], Math.ceil(highestHP / 10), 1);
             } else {
                 const combatIntel = CombatIntel.getCreepCombatData(remoteRoom, true);
                 const dmgNeeded =
@@ -124,7 +152,7 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
                     Game.rooms[controllingRoomName],
                     [RANGED_ATTACK, HEAL, MOVE, TOUGH],
                     dmgNeeded,
-                    combatIntel.totalRanged,
+                    1 + combatIntel.totalRanged,
                     { boosts: boosts }
                 );
             }
@@ -164,10 +192,17 @@ export function calculateRemoteMinerWorkNeeded(roomName: string) {
 
 function monitorThreatLevel(room: Room) {
     const creeps = room.hostileCreeps.filter((c) => c.owner.username !== 'Source Keeper');
+    
+    const currentThreatLevel = Memory.remoteData[room.name].threatLevel;
 
-    const currentThreadLevel = Memory.remoteData[room.name].threatLevel;
-    let hasInvaderCore = currentThreadLevel === RemoteRoomThreatLevel.INVADER_CORE;
-    if (currentThreadLevel < RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS && Game.time % 3 === 0) {
+    if(currentThreatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS && room.getEventLog().some(e => e.event === EVENT_ATTACK && !Game.getObjectById(e.objectId as Id<Creep>)?.my)){
+        Memory.remoteData[room.name].evacuate = true;
+    } else if(currentThreatLevel < RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS && Memory.remoteData[room.name].evacuate){
+        Memory.remoteData[room.name].evacuate = false;
+    }
+
+    let hasInvaderCore = currentThreatLevel === RemoteRoomThreatLevel.INVADER_CORE;
+    if (currentThreatLevel < RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS && Game.time % 3 === 0) {
         // No need to check for this every tick in every remote room
         hasInvaderCore = !!room.hostileStructures.some((s) => s.structureType === STRUCTURE_INVADER_CORE);
     }
