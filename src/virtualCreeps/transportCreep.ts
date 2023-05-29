@@ -283,7 +283,7 @@ export class TransportCreep extends WaveCreep {
         if (this.homeroom.energyAvailable < this.homeroom.energyCapacityAvailable || !managerLinksBuilt) {
             const structuresToRefill: Structure[] = [];
             const misplacedSpawns = this.room.spawns.filter(
-                (spawn) => !this.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === spawn.pos.toMemSafe())
+                (spawn) => spawn.store.getFreeCapacity(RESOURCE_ENERGY) && !this.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === spawn.pos.toMemSafe())
             );
             structuresToRefill.push(...misplacedSpawns);
 
