@@ -414,7 +414,11 @@ export class SquadManagement {
         if (
             target &&
             (target.structureType !== STRUCTURE_POWER_BANK ||
-                !this.squadLeader.room.hostileCreeps.some((creep) => creep.getActiveBodyparts(ATTACK) && this.squadLeader.pos.getRangeTo(creep) <= 5))
+                !this.squadLeader.room.hostileCreeps.some(
+                    (creep) =>
+                        creep.body.some((bodyPart) => bodyPart.type === ATTACK || bodyPart.type === RANGED_ATTACK) &&
+                        this.squadLeader.pos.getRangeTo(creep) <= 5
+                ))
         ) {
             this.targetStructure = target?.id;
         } else {

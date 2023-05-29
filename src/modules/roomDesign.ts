@@ -94,7 +94,7 @@ export function roomNeedsCoreStructures(room: Room) {
 const debug = false; // debug cpu usage
 export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     logCpu('Start');
-    if (Game.cpu.bucket < 200) {
+    if (Game.cpu.bucket < Game.cpu.tickLimit - Game.cpu.limit) {
         console.log('CPU bucket is too low. Operation has been scheduled to run automatically once bucket is full enough.');
         global.nextTickFunctions = [
             () => {
@@ -243,7 +243,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
         addRoadToPois(room.controller.pos, stamps, 3, STRUCTURE_CONTROLLER, terrain, 3);
 
         // Add left over single structures
-        addSingleStructures(stamps, terrain);
+        addSingleStructures(stamps, terrain, findExitAvg(sections));
 
         // Visualize
         drawLayout(Game.rooms[room.name].visual, stamps);
@@ -255,6 +255,26 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     }
     logCpu('End');
     return valid;
+}
+
+/**
+ * Find the avg between all ramparts and put it outside of Boundary
+ * @param sections all rampart placements for each exit section
+ */
+function findExitAvg(sections: RoomPosition[][]): RoomPosition {
+    let exitSum = { x: 0, y: 0 };
+    let count = 0;
+    sections.forEach((section) => {
+        section.forEach((section) => {
+            exitSum.x += section.x;
+            exitSum.y += section.y;
+            count++;
+        });
+    });
+
+    const x = exitSum.x / count;
+    const y = exitSum.y / count;
+    return new RoomPosition(x < 5 ? 5 : x > 44 ? 44 : x, y < 5 ? 5 : y > 44 ? 44 : y, sections[0][0].roomName);
 }
 
 /**
@@ -779,7 +799,7 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
 
     visited = new Set();
     queue = [startPos];
-    while (queue.length > 0 && stamps.extension.length < 56 && Game.cpu.tickLimit - Game.cpu.getUsed() > 150) {
+    while (queue.length > 0 && stamps.extension.length < 56 && Game.cpu.tickLimit - Game.cpu.getUsed() > (Memory.cpuUsage.average ?? 150) + 100) {
         const pos: RoomPosition = queue.shift()!;
         // Mark the position as visited
         visited.add(pos.toMemSafe());
@@ -879,11 +899,11 @@ function findBestMiningPostitions(room: Room, terrain: RoomTerrain): { pos: Room
 /**
  * Places single structures such as towers, left over extensions, observers, etc. around already placed roads. It will prioritize roads around center/extensions/rm first
  */
-function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
+function addSingleStructures(stamps: Stamps, terrain: RoomTerrain, exitAvg: RoomPosition) {
     logCpu('Start addSingleStructures');
     const storagePos = stamps.storage[0].pos;
     // Sort roads ==> roads without type first as these are around stamps which the distributor has to go to anyway. Then sort the rest of the roads by range to storage so it will put stuff close to it
-    const roads = stamps.road
+    let roads = stamps.road
         .filter((roadDetail) => roadDetail.type !== 'notBuildable' && positionsInStampBoundary([roadDetail.pos.toRoomPos()]))
         .sort((a, b) => {
             if (a.type && !b.type) {
@@ -906,7 +926,7 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
         })
         .map((roadDetail) => roadDetail.pos);
 
-    while (roads.length > 0 && (stamps.extension.length < 60 || stamps.tower.length < 6 || !stamps.powerSpawn.length || !stamps.observer.length)) {
+    while (roads.length > 0 && (stamps.extension.length < 60 || !stamps.powerSpawn.length || !stamps.observer.length)) {
         let neighbors = roads
             .shift()
             .toRoomPos()
@@ -917,27 +937,10 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
                     positionsInStampBoundary([neighbor]) &&
                     terrain.get(neighbor.x, neighbor.y) !== TERRAIN_MASK_WALL
             );
-        while (
-            neighbors.length &&
-            (stamps.extension.length < 60 || stamps.tower.length < 6 || !stamps.powerSpawn.length || !stamps.observer.length)
-        ) {
+        while (neighbors.length && (stamps.extension.length < 60 || !stamps.powerSpawn.length || !stamps.observer.length)) {
             // Extensions
             if (stamps.extension.length < 60 && neighbors.length) {
                 stamps.extension.push({ rcl: 3 + Math.floor(stamps.extension.length / 10), pos: neighbors.pop().toMemSafe() });
-            }
-
-            // Towers
-            const towerCount = stamps.tower.length;
-            if (towerCount < 6 && neighbors.length) {
-                let rcl = 3;
-                if (towerCount === 1) {
-                    rcl = 5;
-                } else if (towerCount === 2) {
-                    rcl = 7;
-                } else if (towerCount > 2) {
-                    rcl = 8;
-                }
-                stamps.tower.push({ rcl: rcl, pos: neighbors.pop().toMemSafe() });
             }
 
             // PowerSpawner
@@ -946,9 +949,48 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain) {
             }
 
             // Observer - last since it doesnt need to be close to anything
-            if (neighbors.length && stamps.tower.length > 5 && stamps.extension.length > 59 && stamps.powerSpawn.length && !stamps.observer.length) {
+            if (neighbors.length && stamps.extension.length > 59 && stamps.powerSpawn.length && !stamps.observer.length) {
                 stamps.observer.push({ rcl: 8, pos: neighbors.pop().toMemSafe() });
             }
+        }
+    }
+
+    roads = roads.sort((a, b) => {
+        const rangeA = exitAvg.getRangeTo(a.toRoomPos());
+        const rangeB = exitAvg.getRangeTo(b.toRoomPos());
+        if (rangeA > rangeB) {
+            return 1;
+        } else if (rangeB > rangeA) {
+            return -1;
+        }
+        return 0;
+    });
+
+    // Put towers around the avg to all ramparts
+    while (roads.length > 0 && stamps.tower.length < 6) {
+        let neighbors = roads
+            .shift()
+            .toRoomPos()
+            .neighbors(true, false)
+            .filter(
+                (neighbor) =>
+                    positionsInStampBoundary([neighbor]) &&
+                    terrain.get(neighbor.x, neighbor.y) !== TERRAIN_MASK_WALL &&
+                    !containsStamp(stamps, [neighbor])
+            );
+
+        while (neighbors.length && stamps.tower.length < 6) {
+            // Towers
+            const towerCount = stamps.tower.length;
+            let rcl = 3;
+            if (towerCount === 1) {
+                rcl = 5;
+            } else if (towerCount === 2) {
+                rcl = 7;
+            } else if (towerCount > 2) {
+                rcl = 8;
+            }
+            stamps.tower.push({ rcl: rcl, pos: neighbors.pop().toMemSafe() });
         }
     }
 

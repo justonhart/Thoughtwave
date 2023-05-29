@@ -29,7 +29,7 @@ interface RoomMemory {
     /**
      * Tracks the amount of resources the manager is moving between storage structures. Used to include manager inventory in need calculation
      */
-    transferBuffer?: { [resource: string]: number };
+    transferBuffer?: { [resource: string]: { amount: number; creepName: string } };
     colonizationInProgress?: boolean;
     roomType: RoomType;
     lastScout?: number;

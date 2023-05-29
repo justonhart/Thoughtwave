@@ -56,7 +56,9 @@ RoomPosition.prototype.findClosestCreepByRange = function (this: RoomPosition, f
         return;
     }
     const target = forHostile ? targetRoom.hostileCreeps : targetRoom.myCreeps;
-    if (target.length === 1) {
+    if (!target.length) {
+        return;
+    } else if (target.length === 1) {
         return target[0];
     }
     return target.reduce((closestCreep, nextCreep) => (this.getRangeTo(closestCreep) < this.getRangeTo(nextCreep) ? closestCreep : nextCreep));
@@ -366,7 +368,7 @@ Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> 
 };
 
 Room.prototype.getResourceAmount = function (this: Room, resource: ResourceConstant): number {
-    return (this.storage?.store[resource] ?? 0) + (this.terminal?.store[resource] ?? 0) + (this.memory.transferBuffer[resource] ?? 0);
+    return (this.storage?.store[resource] ?? 0) + (this.terminal?.store[resource] ?? 0) + (this.memory.transferBuffer[resource]?.amount ?? 0);
 };
 
 Room.prototype.getCompressedResourceAmount = function (this: Room, resource: ResourceConstant): number {
