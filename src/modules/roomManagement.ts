@@ -558,7 +558,7 @@ function runSpawning(room: Room){
             }
         });
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING && room.remoteSources.length && !roomUnderAttack) {
+        if (room.storage?.my && room.remoteSources.length && !roomUnderAttack) {
             let exterminatorNeed = PopulationManagement.findExterminatorNeed(room);
             if (exterminatorNeed) {
                 let spawn = availableSpawns.pop();
