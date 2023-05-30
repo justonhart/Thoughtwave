@@ -167,6 +167,7 @@ export class Gatherer extends TransportCreep {
         //determine when to spawn replacement toward end of lifecycle
         if (TRIPS_REMAINING === 0) {
             this.memory.recycle = true;
+            delete this.memory.targetId;
         } else if (SPAWN_CYCLES_REMAINING <= 1 || TRIPS_REMAINING === 1) {
             this.memory.spawnReplacementAt = START_SPAWNING_REPLACEMENT_AT > Game.time ? START_SPAWNING_REPLACEMENT_AT : Game.time;
         }
