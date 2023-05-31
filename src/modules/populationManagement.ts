@@ -970,19 +970,17 @@ export class PopulationManagement {
             room.memory.mineralMiningAssignments = {};
         }
 
-        if (room.storage?.store.getFreeCapacity() < 100000 || room.storage?.store[room.mineral.mineralType] > 100000) {
+        if (room.storage?.store.getFreeCapacity() < 1000000) {
             return false;
         }
 
         let mineralMiningAssignments = room.memory.mineralMiningAssignments;
         return Object.keys(mineralMiningAssignments).some(
-            (k) =>
-                mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED &&
-                (Game.rooms[k.toRoomPos()?.roomName]
-                    ? room.structures.some(
-                          (struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.isActive() && k.toRoomPos().isNearTo(struct)
-                      ) && Game.rooms[k.toRoomPos()?.roomName].mineral.mineralAmount > 0
-                    : true)
+            (k) => {
+                const mineralMiningPos = k.toRoomPos();
+                const extractorBuilt = mineralMiningPos.findInRange(FIND_MY_STRUCTURES, 1, {filter: s => s.structureType === STRUCTURE_EXTRACTOR}).length > 0;
+                return mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED && extractorBuilt;
+            }
         );
     }
 
@@ -1010,7 +1008,7 @@ export class PopulationManagement {
 
     static findRemoteMineralMinerNeed(room: Room) {
         return false;
-        if (room.storage?.store.getFreeCapacity() < 100000 || room.storage?.store[room.mineral.mineralType] > 100000) {
+        if (room.storage?.store.getFreeCapacity() < 100000 ){
             return false;
         }
 

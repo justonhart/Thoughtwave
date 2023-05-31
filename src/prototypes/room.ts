@@ -147,12 +147,12 @@ Object.defineProperty(Room.prototype, 'hostileCreeps', {
     configurable: true,
 });
 
-Object.defineProperty(Room.prototype, 'mineral', {
+Object.defineProperty(Room.prototype, 'minerals', {
     get: function (this: Room) {
-        if (!this._mineral) {
-            this._mineral = this.find(FIND_MINERALS).pop();
+        if (!this._minerals) {
+            this._minerals = this.find(FIND_MINERALS);
         }
-        return this._mineral;
+        return this._minerals;
     },
     enumerable: false,
     configurable: true,
