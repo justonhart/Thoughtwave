@@ -116,6 +116,7 @@ interface TravelState {
     visibleRooms?: string[];
     allowedRooms?: string[];
     keepPath?: boolean;
+    onSegmentedPath?: boolean;
 }
 
 interface Destination {

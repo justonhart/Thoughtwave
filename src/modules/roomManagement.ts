@@ -3,7 +3,7 @@ import { computeRoomNameFromDiff } from './data';
 import { runLabs } from './labManagement';
 import { PopulationManagement } from './populationManagement';
 import { assignRemoteSource, findSuitableRemoteSource, removeSourceAssignment } from './remoteMining';
-import { manageRemoteRoom } from './remoteRoomManagement';
+import { manageEarlyRemoteRoom, manageRemoteRoom } from './remoteRoomManagement';
 import { shipmentReady } from './resourceManagement';
 import { deleteRoad } from './roads';
 import { roomNeedsCoreStructures, findStampLocation } from './roomDesign';
@@ -28,6 +28,7 @@ export function driveRoom(room: Room) {
             driveRemoteMiningRoom(room);
             break;
         case RoomType.OPERATION_CONTROLLED:
+            driveOperationControlledRoom(room);
             break;
         case RoomType.HOMEROOM:
         default:
@@ -53,7 +54,7 @@ function driveHomeRoom(room: Room) {
     if (!room.canSpawn()) {
         // fail state - if a room has unexpectedly lost all spawns
     } else {
-        room.memory.reservedEnergy = 0;
+        room.reservedEnergy = 0;
 
         let nukes = room.find(FIND_NUKES);
         if (room.controller.level >= 6 && nukes.length && getStructuresToProtect(nukes)?.length) {
@@ -70,117 +71,8 @@ function driveHomeRoom(room: Room) {
                 }
             });
         } else {
-            if (room.memory.repairSearchCooldown > 0) {
-                room.memory.repairSearchCooldown--;
-            }
-
-            if (Game.time % REPAIR_QUEUE_REFRESH_PERIOD === 0) {
-                room.memory.repairQueue = findRepairTargets(room);
-                room.memory.needsWallRepair = room.structures.some(
-                    (s) => (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < room.getDefenseHitpointTarget()
-                );
-            }
-
-            if (room.memory.repairQueue.length) {
-                room.memory.repairQueue.forEach((job) => {
-                    let pos = Game.getObjectById(job)?.pos;
-                    room.visual.text('🛠', pos);
-                });
-            }
-
-            if (
-                !global.roomConstructionsChecked &&
-                (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
-                (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
-                Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-                room.myConstructionSites.length < 15
-            ) {
-                let cpuUsed = Game.cpu.getUsed();
-                // Cleanup any leftover storage/terminal that is in the way
-                if (
-                    room.memory.stampLayout.spawn.some(
-                        (spawnStamp) =>
-                            spawnStamp.rcl <= room.controller.level &&
-                            !room
-                                .lookAt(spawnStamp.pos.toRoomPos())
-                                .some(
-                                    (lookObj) =>
-                                        lookObj.constructionSite?.structureType === spawnStamp.type ||
-                                        lookObj.structure?.structureType === spawnStamp.type
-                                )
-                    )
-                ) {
-                    if (room.storage) {
-                        const destroyStorage = Object.values(room.memory.stampLayout).some((stamps: StampDetail[]) =>
-                            stamps.some((stamp) => stamp.rcl < 4 && stamp.pos === room.storage.pos.toMemSafe())
-                        );
-                        if (destroyStorage) {
-                            room.storage.destroy();
-                        }
-                    }
-                    if (room.terminal) {
-                        const destroyTerminal = Object.values(room.memory.stampLayout).some((stamps: StampDetail[]) =>
-                            stamps.some((stamp) => stamp.rcl < 4 && stamp.pos === room.terminal.pos.toMemSafe())
-                        );
-                        if (destroyTerminal) {
-                            room.terminal.destroy();
-                        }
-                    }
-                }
-
-                // Cleanup left over storage/terminal
-                if (room.controller.level > 3 && room.storage && !room.storage?.my) {
-                    room.storage.destroy();
-                }
-                if (room.controller.level > 3 && room.terminal && !room.terminal?.my) {
-                    room.terminal.destroy();
-                }
-
-                // Check for any missing structures and add them
-                const constructionSites = room.myConstructionSites;
-                let constructionSitesCount = constructionSites.length;
-                if (constructionSitesCount < 15) {
-                    const structures = room.structures;
-                    const constructionStamps: { pos: RoomPosition; key: StructureConstant }[] = [];
-                    // Check against all structures and construction sites currently in the room. If a stamp is not in either then add it as a construction site
-                    Object.entries(room.memory.stampLayout)
-                        .filter(([key, stamps]: [string, StampDetail[]]) => key !== 'managers')
-                        .forEach(([key, stamps]: [string, StampDetail[]]) => {
-                            stamps
-                                .filter(
-                                    (stamp) =>
-                                        stamp.rcl <= room.controller.level &&
-                                        !structures.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()) &&
-                                        !constructionSites.some(
-                                            (structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()
-                                        )
-                                )
-                                .forEach((stamp) => constructionStamps.push({ pos: stamp.pos.toRoomPos(), key: key as StructureConstant }));
-                        });
-                    constructionStamps.sort((a, b) => {
-                        return getStructurePriority(a.key) > getStructurePriority(b.key) ? 1 : -1;
-                    });
-                    while (constructionStamps?.length && constructionSitesCount < 15) {
-                        const nextConstructionSite = constructionStamps.pop();
-                        const result = room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
-                        if (result !== OK) {
-                            console.log(
-                                `Could not createConstruction for Stamp layout in room ${room.name}. Result: ${result}. Type: ${
-                                    nextConstructionSite.key
-                                }. Position: ${nextConstructionSite.pos.toMemSafe()}`
-                            );
-                        }
-                        constructionSitesCount++;
-                    }
-                }
-
-                global.roomConstructionsChecked = true;
-                room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
-                cpuUsed = Game.cpu.getUsed() - cpuUsed;
-                if (Memory.debug.logRoomPlacementCpu) {
-                    console.log(`CPU used on ${room.name} stamp layout: ${cpuUsed}`);
-                }
-            }
+            manageMaintenance(room);
+            manageStructures(room); 
         }
 
         let isHomeUnderAttack = false;
@@ -205,36 +97,34 @@ function driveHomeRoom(room: Room) {
             room.controller.activateSafeMode();
         }
 
-        if (room.energyStatus >= EnergyStatus.RECOVERING) {
-            //if this room doesn't have any outstanding claims
-            if (
-                Game.time % 1000 === 0 &&
-                !room.memory.outstandingClaim &&
-                !global.remoteSourcesChecked &&
-                Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000 &&
-                canSupportRemoteRoom(room)
-            ) {
-                try {
-                    addRemoteSourceClaim(room);
-                    room.memory.lastRemoteSourceCheck = Game.time;
-                    global.remoteSourcesChecked = true;
-                } catch (e) {
-                    console.log(`Error caught running addRemoteSourceClaim in ${room.name}: \n${e}`);
-                }
+        //if this room doesn't have any outstanding claims
+        if (
+            Game.time % 1000 === 0 &&
+            !room.memory.outstandingClaim &&
+            !global.remoteSourcesChecked &&
+            Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000 &&
+            canSupportRemoteRoom(room)
+        ) {
+            try {
+                addRemoteSourceClaim(room);
+                room.memory.lastRemoteSourceCheck = Game.time;
+                global.remoteSourcesChecked = true;
+            } catch (e) {
+                console.log(`Error caught running addRemoteSourceClaim in ${room.name}: \n${e}`);
             }
+        }
 
-            if (room.memory.outstandingClaim && Game.time % 1000 === 0) {
-                try {
-                    let result = executeRemoteSourceClaim(room);
-                    if (result === OK) {
-                        delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
-                        delete room.memory.outstandingClaim;
-                    } else {
-                        console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
-                    }
-                } catch (e) {
-                    console.log(`Error caught running executeRemoteSourceClaim in ${room.name}: \n${e}`);
+        if (room.memory.outstandingClaim) {
+            try {
+                let result = executeRemoteSourceClaim(room);
+                if (result === OK) {
+                    delete Memory.remoteSourceClaims[room.memory.outstandingClaim];
+                    delete room.memory.outstandingClaim;
+                } else {
+                    console.log(`Problem adding ${room.memory.outstandingClaim} as remote source assignment for ${room.name}`);
                 }
+            } catch (e) {
+                console.log(`Error caught running executeRemoteSourceClaim in ${room.name}: \n${e}`);
             }
         }
 
@@ -271,12 +161,10 @@ function driveHomeRoom(room: Room) {
             console.log(`Error caught running room ${room.name} for Labs: \n${e}`);
         }
 
-        if (!room.memory.colonizationInProgress) {
-            try {
-                runSpawning(room);
-            } catch (e) {
-                console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
-            }
+        try {
+            runSpawning(room);
+        } catch (e) {
+            console.log(`Error caught running room ${room.name} for Spawning: \n${e}`);
         }
 
         if (room.factory) {
@@ -298,8 +186,6 @@ function driveHomeRoom(room: Room) {
         if (!isHomeUnderAttack) {
             runRemoteRooms(room);
         }
-
-        delete room.memory.reservedEnergy;
     }
 }
 
@@ -537,7 +423,7 @@ export function initHomeRoom(room: Room) {
     }
 }
 
-function runSpawning(room: Room) {
+function runSpawning(room: Room){
     const spawns = room.mySpawns;
     const busySpawns = spawns.filter((spawn) => spawn.spawning);
 
@@ -578,7 +464,7 @@ function runSpawning(room: Room) {
     } else if (distributor.ticksToLive < 100) {
         //reserve energy & spawn for distributor
         availableSpawns.pop();
-        room.memory.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
+        room.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
             .map((part) => BODYPART_COST[part])
             .reduce((sum, next) => sum + next);
     }
@@ -702,6 +588,18 @@ function runSpawning(room: Room) {
                 const spawn = availableSpawns.pop();
                 spawn?.spawnRemoteMineralMiner(remoteMineralMinerNeed);
             }
+        } else if (!room.storage?.my && room.remoteSources.length && !roomUnderAttack){
+            let earlyRemoteMinerNeed = PopulationManagement.findRemoteMinerNeed(room);
+            if(earlyRemoteMinerNeed) {
+                let spawn = availableSpawns.pop();
+                PopulationManagement.spawnEarlyRemoteMiner(spawn, earlyRemoteMinerNeed);
+            }
+
+            let earlyGathererNeed = PopulationManagement.findGathererNeed(room);
+            if(earlyGathererNeed){
+                let spawn = availableSpawns.pop();
+                PopulationManagement.spawnEarlyGatherer(spawn, earlyGathererNeed);
+            }
         }
     }
 
@@ -784,7 +682,11 @@ function runRemoteRooms(room: Room) {
     let remoteRooms = room.remoteMiningRooms;
     remoteRooms?.forEach((remoteRoomName) => {
         try {
-            manageRemoteRoom(room.name, remoteRoomName);
+            if(!room.storage?.my){
+                manageEarlyRemoteRoom(room.name, remoteRoomName);
+            } else {
+                manageRemoteRoom(room.name, remoteRoomName);
+            }
         } catch (e) {
             console.log(`Error caught running remote room ${remoteRoomName}: \n${e}`);
         }
@@ -1237,4 +1139,124 @@ function runShipments(room: Room) {
             }
         }
     });
+}
+
+export function manageMaintenance(room: Room) {
+    if (room.memory.repairSearchCooldown > 0) {
+        room.memory.repairSearchCooldown--;
+    }
+
+    if (Game.time % REPAIR_QUEUE_REFRESH_PERIOD === 0) {
+        room.memory.repairQueue = findRepairTargets(room);
+        room.memory.needsWallRepair = room.structures.some(
+            (s) => (s.structureType === STRUCTURE_WALL || s.structureType === STRUCTURE_RAMPART) && s.hits < room.getDefenseHitpointTarget()
+        );
+    }
+
+    if (room.memory.repairQueue.length) {
+        room.memory.repairQueue.forEach((job) => {
+            let pos = Game.getObjectById(job)?.pos;
+            room.visual.text('🛠', pos);
+        });
+    }
+}
+
+function manageStructures(room: Room) {
+    if (
+        !global.roomConstructionsChecked &&
+        (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
+        (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
+        Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
+        room.myConstructionSites.length < 15
+    ) {
+        let cpuUsed = Game.cpu.getUsed();
+        // Cleanup any leftover storage/terminal that is in the way
+        if (
+            room.memory.stampLayout.spawn.some(
+                (spawnStamp) =>
+                    spawnStamp.rcl <= room.controller.level &&
+                    !room
+                        .lookAt(spawnStamp.pos.toRoomPos())
+                        .some(
+                            (lookObj) =>
+                                lookObj.constructionSite?.structureType === spawnStamp.type ||
+                                lookObj.structure?.structureType === spawnStamp.type
+                        )
+            )
+        ) {
+            if (room.storage) {
+                const destroyStorage = Object.values(room.memory.stampLayout).some((stamps: StampDetail[]) =>
+                    stamps.some((stamp) => stamp.rcl < 4 && stamp.pos === room.storage.pos.toMemSafe())
+                );
+                if (destroyStorage) {
+                    room.storage.destroy();
+                }
+            }
+            if (room.terminal) {
+                const destroyTerminal = Object.values(room.memory.stampLayout).some((stamps: StampDetail[]) =>
+                    stamps.some((stamp) => stamp.rcl < 4 && stamp.pos === room.terminal.pos.toMemSafe())
+                );
+                if (destroyTerminal) {
+                    room.terminal.destroy();
+                }
+            }
+        }
+
+        // Cleanup left over storage/terminal
+        if (room.controller.level > 3 && room.storage && !room.storage?.my) {
+            room.storage.destroy();
+        }
+        if (room.controller.level > 3 && room.terminal && !room.terminal?.my) {
+            room.terminal.destroy();
+        }
+
+        // Check for any missing structures and add them
+        const constructionSites = room.myConstructionSites;
+        let constructionSitesCount = constructionSites.length;
+        if (constructionSitesCount < 15) {
+            const structures = room.structures;
+            const constructionStamps: { pos: RoomPosition; key: StructureConstant }[] = [];
+            // Check against all structures and construction sites currently in the room. If a stamp is not in either then add it as a construction site
+            Object.entries(room.memory.stampLayout)
+                .filter(([key, stamps]: [string, StampDetail[]]) => key !== 'managers')
+                .forEach(([key, stamps]: [string, StampDetail[]]) => {
+                    stamps
+                        .filter(
+                            (stamp) =>
+                                stamp.rcl <= room.controller.level &&
+                                !structures.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()) &&
+                                !constructionSites.some(
+                                    (structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()
+                                )
+                        )
+                        .forEach((stamp) => constructionStamps.push({ pos: stamp.pos.toRoomPos(), key: key as StructureConstant }));
+                });
+            constructionStamps.sort((a, b) => {
+                return getStructurePriority(a.key) > getStructurePriority(b.key) ? 1 : -1;
+            });
+            while (constructionStamps?.length && constructionSitesCount < 15) {
+                const nextConstructionSite = constructionStamps.pop();
+                const result = room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
+                if (result !== OK) {
+                    console.log(
+                        `Could not createConstruction for Stamp layout in room ${room.name}. Result: ${result}. Type: ${
+                            nextConstructionSite.key
+                        }. Position: ${nextConstructionSite.pos.toMemSafe()}`
+                    );
+                }
+                constructionSitesCount++;
+            }
+        }
+
+        global.roomConstructionsChecked = true;
+        room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
+        cpuUsed = Game.cpu.getUsed() - cpuUsed;
+        if (Memory.debug.logRoomPlacementCpu) {
+            console.log(`CPU used on ${room.name} stamp layout: ${cpuUsed}`);
+        }
+    }
+}
+
+function driveOperationControlledRoom(room: Room) {
+    
 }

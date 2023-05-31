@@ -44,6 +44,12 @@ interface Creep {
     onEdge(): boolean;
     addTaskToPriorityQueue(priority: Priority, actionCallback: () => void): void;
     runPriorityQueueTask(): void;
+    /**
+     * Logs a message to console formatted: [Game.time] Creep.name - string
+     * @param contents the message to print
+     * @param force bypass the Creep.memory.debug bool check when printing
+     */
+    debugLog(contents: any, force?: boolean): void;
 }
 
 interface PriorityQueue {
@@ -77,6 +83,10 @@ interface ScoutMemory extends CreepMemory {
      * If true, the creep is done exploring this node's children and is returning to the previous node
      */
     returnToLastRoom?: boolean;
+    /**
+     * If set, scouting a route for an operation instead of normal behavior
+     */
+    operationId?: string;
 }
 
 interface CombatMemory {
@@ -196,6 +206,10 @@ interface GathererMemory extends CreepMemory {
      * The time at which a replacement should be spawned
      */
     spawnReplacementAt?: number;
+    /**
+     * Flag for early-remote creeps
+     */
+    early?: boolean;
 }
 
 interface RemoteMinerMemory extends CreepMemory {
@@ -215,6 +229,10 @@ interface RemoteMinerMemory extends CreepMemory {
      * Id of problem structure to dismantle
      */
     targetId2?: Id<Structure>;
+    /**
+     * Flag for early-remote creeps
+     */
+    early?: boolean;
 }
 
 interface KeeperExterminatorMemory extends CreepMemory {
@@ -253,7 +271,7 @@ interface MineralMinerMemory extends CreepMemory {
     assignment?: string;
 }
 
-interface ManagerMemory extends CreepMemory{
+interface ManagerMemory extends CreepMemory {
     /**
      * The manager position this manager is assigned to
      */
@@ -264,6 +282,6 @@ interface ManagerMemory extends CreepMemory{
     targetId?: Id<Structure>;
 }
 
-interface ClaimerMemory extends OperativeMemory { 
+interface ClaimerMemory extends OperativeMemory {
     claimRoomType: RoomType;
 }

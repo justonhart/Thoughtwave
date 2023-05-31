@@ -1,9 +1,36 @@
 import { Pathing } from '../modules/pathing';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
+interface ScoutingOperation extends Operation {
+    pathRooms: string[];
+    routeConfirmed: boolean;
+}
+
 export class Scout extends WaveCreep {
     memory: ScoutMemory;
+    operation: ScoutingOperation;
+
     protected run() {
+        if (this.operation) {
+            this.runOperationScouting();
+        } else {
+            this.runGeneralScouting();
+        }
+    }
+
+    private runOperationScouting() {
+        if (this.room.name !== this.operation.targetRoom) {
+            if (this.operation.pathRooms) {
+                this.travelToRoom(this.operation.targetRoom, { allowedRooms: this.operation.pathRooms });
+            } else {
+                this.travelToRoom(this.operation.targetRoom);
+            }
+        } else {
+            this.operation.routeConfirmed = true;
+        }
+    }
+
+    private runGeneralScouting() {
         if (this.memory.pathTree === undefined) {
             if (this.memory.debug) {
                 console.log('creating scout memory');
