@@ -36,14 +36,6 @@ export function manageMemory() {
 
     deleteExpiredRoomData();
 
-    let needToInitIntershard = !JSON.parse(InterShardMemory.getLocal())?.outboundCreeps;
-    if (needToInitIntershard) {
-        InterShardMemory.setLocal(JSON.stringify({ outboundCreeps: { shard0: {}, shard1: {}, shard2: {}, shard3: {} } }));
-    }
-
-    if (!Memory.priceMap || Game.time % 20000 === 0) {
-        Memory.priceMap = getPriceMap();
-    }
     mangeVisionRequests();
     cleanSpawnAssignments();
 }
