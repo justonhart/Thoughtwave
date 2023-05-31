@@ -107,17 +107,17 @@ export class Gatherer extends TransportCreep {
 
     protected storeCargo() {
         this.memory.currentTaskPriority = Priority.MEDIUM;
-        let resourceToStore: any = Object.keys(this.store).shift();
-        let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
-        let opts = { range: 1, useMemoryRoads: true, reusePath: 10000 } as TravelToOpts;
-        switch (storeResult) {
-            case ERR_NOT_IN_RANGE:
-                this.travelTo(this.homeroom.storage, opts);
-                break;
-            case 0:
+        if(this.pos.isNearTo(this.homeroom.storage)){
+            let resourceToStore: any = Object.keys(this.store).shift();
+            let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
+            if(storeResult === OK) {
                 delete Memory.rooms[this.memory.room].remoteSources[this.memory.assignment].setupStatus;
                 this.manageLifecycle();
-                break;
+                this.travelTo(this.getMiningPosition());
+            }
+        } else {
+            let opts = { range: 1, useMemoryRoads: true, reusePath: 10000 } as TravelToOpts;
+            this.travelTo(this.homeroom.storage, opts);
         }
     }
 
@@ -174,11 +174,7 @@ export class Gatherer extends TransportCreep {
     }
 
     private triggerReplacementSpawn() {
-        for (let i = 0; i < this.homeroom.memory.remoteSources[this.memory.assignment].gatherers.length; i++) {
-            if (this.homeroom.memory.remoteSources[this.memory.assignment].gatherers[i] === this.name) {
-                this.homeroom.memory.remoteSources[this.memory.assignment].gatherers[i] === AssignmentStatus.UNASSIGNED;
-            }
-        }
+        this.homeroom.memory.remoteSources[this.memory.assignment].gatherers = this.homeroom.memory.remoteSources[this.memory.assignment].gatherers.filter(gatherer => gatherer !== this.name);
     }
 
     private getMiningPosition(): RoomPosition {
