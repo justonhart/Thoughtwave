@@ -109,7 +109,7 @@ module.exports.loop = function () {
     });
 
     try {
-        // runVisuals();
+        runVisuals();
     } catch (e) {
         console.log(`Error caught running visuals: \n${e}`);
     }
