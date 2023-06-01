@@ -72,7 +72,7 @@ export class CombatCreep extends WaveCreep {
                     combatIntelMe.totalRanged > combatIntelEnemy.totalRanged)
             ) {
                 // More heal than enemy ranged dmg
-                range = 2;
+                range = 3;
                 shouldFlee = this.pos.getRangeTo(target) <= range;
             } else {
                 // Check combined Damage of all ranged creeps ==> Can be false if creeps are targeting different enemies
@@ -86,7 +86,7 @@ export class CombatCreep extends WaveCreep {
                     ) >= combatIntelEnemy.totalHeal &&
                     combatIntelMeTotal.totalRanged > combatIntelEnemy.totalRanged
                 ) {
-                    range = 2;
+                    range = 3;
                     shouldFlee = this.pos.getRangeTo(target) <= range;
                 }
             }
