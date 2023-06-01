@@ -160,9 +160,6 @@ export function assignRemoteSource(source: string, roomName: string) {
         }
 
         let gatherers = [];
-        for (let i = 0; i < stats.gathererCount; i++) {
-            gatherers.push(AssignmentStatus.UNASSIGNED);
-        }
 
         Memory.remoteSourceAssignments[source] = {
             controllingRoom: roomName,
