@@ -531,7 +531,7 @@ function runSpawning(room: Room){
         spawn?.spawnMineralMiner();
     }
 
-    if (availableSpawns && workerCount >= room.workerCapacity && !roomUnderAttack) {
+    if (availableSpawns && workerCount >= room.workerCapacity * 0.5 && !roomUnderAttack) {
         assignments.forEach((assignment) => {
             const assignmentCost = assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
             const canSpawnAssignment = room.energyAvailable >= assignmentCost;
@@ -591,13 +591,17 @@ function runSpawning(room: Room){
             let earlyRemoteMinerNeed = PopulationManagement.findRemoteMinerNeed(room);
             if(earlyRemoteMinerNeed) {
                 let spawn = availableSpawns.pop();
-                PopulationManagement.spawnEarlyRemoteMiner(spawn, earlyRemoteMinerNeed);
+                if(spawn){
+                    PopulationManagement.spawnEarlyRemoteMiner(spawn, earlyRemoteMinerNeed);
+                }
             }
 
             let earlyGathererNeed = PopulationManagement.findGathererNeed(room);
             if(earlyGathererNeed){
                 let spawn = availableSpawns.pop();
-                PopulationManagement.spawnEarlyGatherer(spawn, earlyGathererNeed);
+                if(spawn){
+                    PopulationManagement.spawnEarlyGatherer(spawn, earlyGathererNeed);
+                }
             }
         }
     }
