@@ -314,24 +314,25 @@ export class Pathing {
         origin = Pathing.normalizePos(origin);
         destination = Pathing.normalizePos(destination);
         const range = Pathing.ensureRangeIsInRoom(origin.roomName, destination, options.range);
+        let goals = [];
         if (origin.roomName !== destination.roomName && !options.allowedRooms) {
             const route = this.findRoute(origin.roomName, destination.roomName, options);
             if (route !== ERR_NO_PATH) {
                 options.allowedRooms = route;
             }
+            if (options.allowedRooms?.length >= 3) {
+                // Long Route so only find detailed path for the first 4 rooms. This also avoids issues with creeps getting stuck against 1 wide walls.
+                goals = [
+                    {
+                        pos: new RoomPosition(25, 25, options.allowedRooms[2]),
+                        range: 24,
+                    },
+                ];
+                creep.memory._m.onSegmentedPath = true; // Recalculate on every new room for the current/next room. This is done to optimize Pathing (knows the optimal exit to take)
+            }
         }
 
-        let goals = [];
-        if (options.allowedRooms?.length >= 3) {
-            // Long Route so only find detailed path for the first 4 rooms. This also avoids issues with creeps getting stuck against 1 wide walls.
-            goals = [
-                {
-                    pos: new RoomPosition(25, 25, options.allowedRooms[2]),
-                    range: 24,
-                },
-            ];
-            creep.memory._m.onSegmentedPath = true; // Recalculate on every new room for the current/next room. This is done to optimize Pathing (knows the optimal exit to take)
-        } else {
+        if(!goals.length) {
             goals = [
                 {
                     pos: destination,
