@@ -99,10 +99,9 @@ function driveHomeRoom(room: Room) {
 
         //if this room doesn't have any outstanding claims
         if (
-            Game.time % 1000 === 0 &&
             !room.memory.outstandingClaim &&
             !global.remoteSourcesChecked &&
-            Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000 &&
+            Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 200 &&
             canSupportRemoteRoom(room)
         ) {
             try {
@@ -519,7 +518,7 @@ function runSpawning(room: Room){
         }
     }
 
-    if (!room.observer && (room.memory.lastScout ?? 0) + 7500 <= Game.time) {
+    if (!room.observer && (room.memory.lastScout ?? 0) + 1000 <= Game.time) {
         let spawn = availableSpawns.pop();
         let result = spawn?.spawnScout();
         if (result === OK) {
@@ -757,7 +756,7 @@ function getStructurePriority(structureType: StructureConstant): number {
 }
 
 export function canSupportRemoteRoom(room: Room) {
-    return Object.keys(room.memory.remoteSources).length < room.mySpawns.length * 3 && !roomNeedsCoreStructures(room);
+    return Object.keys(room.memory.remoteSources).length < room.mySpawns.length * 3 ;
 }
 
 function initMissingMemoryValues(room: Room) {
