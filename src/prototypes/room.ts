@@ -83,11 +83,11 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
     get: function (this: Room) {
         if (!this.storage?.my || !this.storage.isActive()) {
             return undefined;
-        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 350000 && this.getResourceAmount(RESOURCE_BATTERY) >= 100000) {
+        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 150000 && this.getResourceAmount(RESOURCE_BATTERY) >= 25000) {
             return EnergyStatus.OVERFLOW;
-        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 350000) {
+        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 150000) {
             return EnergyStatus.SURPLUS;
-        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 200000) {
+        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 75000) {
             return EnergyStatus.STABLE;
         } else if (this.getResourceAmount(RESOURCE_ENERGY) >= Math.min(this.energyCapacityAvailable * 10, 25000)) {
             return EnergyStatus.RECOVERING;
@@ -340,7 +340,7 @@ Room.prototype.getBoostsAvailable = function (this: Room, boostTypes: BoostType[
 };
 
 Room.prototype.getDefenseHitpointTarget = function (this: Room): number {
-    return this.controller.level === 8 ? 300000000 : this.controller.level >= 6 ? this.controller.level * this.controller.level * 50000 : 200000;
+    return this.controller.level === 8 ? 300000000 : this.controller.level >= 6 ? this.controller.level * 50000 : 50000;
 };
 
 Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> | Id<ConstructionSite> {
