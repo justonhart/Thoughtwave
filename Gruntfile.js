@@ -7,8 +7,13 @@ module.exports = function (grunt) {
     grunt.initConfig({
         screeps: {
             options: {
+                server: {
+                    host: process.env.host,
+                    port: process.env.port,
+                    http: true
+                },
                 email: process.env.email,
-                token: process.env.token,
+                password: process.env.password,
                 branch: 'default',
             },
             dist: {
