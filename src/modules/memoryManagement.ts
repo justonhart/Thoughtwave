@@ -196,7 +196,7 @@ function cleanIntershardOutboundList() {
 //remove assignments to rooms that cannot spawn
 function cleanSpawnAssignments() {
     Memory.spawnAssignments = Memory.spawnAssignments.filter(
-        (assignment) => Game.rooms[assignment.designee] && Game.rooms[assignment.designee].canSpawn()
+        (assignment) => Game.rooms[assignment.designee] && Game.rooms[assignment.designee].canSpawn() && (!(assignment.spawnOpts.memory as OperativeMemory).operationId || !!Memory.operations[(assignment.spawnOpts.memory as OperativeMemory).operationId])
     );
 }
 
