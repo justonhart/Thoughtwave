@@ -285,216 +285,369 @@ function findExitAvg(sections: RoomPosition[][]): RoomPosition {
  * @returns
  */
 function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roomName: string): RoomPosition[][] {
-    // TOP
-    let rampartsPerSection: RoomPosition[][] = []; // add ramparts each array being its own section
-    let endSection = false;
-    let ramparts = [];
-    for (let i = 1; i < 49; i++) {
+    const leftExits = Game.rooms[roomName].find(FIND_EXIT_LEFT);
+    const bottomExits = Game.rooms[roomName].find(FIND_EXIT_BOTTOM);
+    const rightExits = Game.rooms[roomName].find(FIND_EXIT_RIGHT);
+    const topExits = Game.rooms[roomName].find(FIND_EXIT_TOP);
+    const rampartInfo = { ramparts: [], rampartsPerSection: [] };
+    const exitPosPerSection = {};
+
+    for (let i = 0; i < leftExits.length; i++) {
+        const prevExit = i === 0 ? undefined : leftExits[i - 1];
+        const currentExit = leftExits[i];
+        const nextExit = i === leftExits.length - 1 ? undefined : leftExits[i + 1];
+
+        // Opening Ramparts
+        if (!rampartInfo.ramparts.length && (!prevExit || !currentExit.isNearTo(prevExit))) {
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(1, currentExit.y - 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(2, currentExit.y - 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(2, currentExit.y - 1, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+        }
+
+        // Enclosing Ramparts
         if (
-            terrain.get(i, 2) !== TERRAIN_MASK_WALL &&
-            (terrain.get(i, 3) !== TERRAIN_MASK_WALL || terrain.get(i - 1, 3) !== TERRAIN_MASK_WALL || terrain.get(i + 1, 3) !== TERRAIN_MASK_WALL)
+            terrain.get(3, currentExit.y - 1) !== TERRAIN_MASK_WALL ||
+            terrain.get(3, currentExit.y) !== TERRAIN_MASK_WALL ||
+            terrain.get(3, currentExit.y + 1) !== TERRAIN_MASK_WALL
         ) {
-            if (terrain.get(i, 0) !== TERRAIN_MASK_WALL) {
-                ramparts.push(new RoomPosition(i, 2, roomName));
-            } else if (terrain.get(i + 1, 0) !== TERRAIN_MASK_WALL && i !== 1) {
-                ramparts.push(new RoomPosition(i, 2, roomName));
-                if (terrain.get(i - 1, 2) !== TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(i - 1, 2, roomName));
-                }
-                if (terrain.get(i - 1, 1) !== TERRAIN_MASK_WALL && terrain.get(i - 2, 0) === TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(i - 1, 1, roomName));
-                }
-            } else if (terrain.get(i - 1, 0) !== TERRAIN_MASK_WALL && i !== 48) {
-                ramparts.push(new RoomPosition(i, 2, roomName));
-                if (terrain.get(i + 1, 2) !== TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(i + 1, 2, roomName));
-                }
-                if (terrain.get(i + 1, 1) !== TERRAIN_MASK_WALL && terrain.get(i + 2, 0) === TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(i + 1, 1, roomName));
-                }
-            } else if (ramparts.length !== 0) {
-                endSection = true;
-            }
-        } else if (ramparts.length !== 0) {
-            endSection = true;
+            setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(2, currentExit.y, currentExit.roomName), exitPosPerSection, currentExit);
+        } else {
+            exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
+            rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
+            rampartInfo.ramparts = [];
         }
 
-        if (endSection) {
-            rampartsPerSection.push(ramparts);
-            ramparts = [];
-            endSection = false;
+        // Closing Ramparts
+        if (!nextExit || !currentExit.isNearTo(nextExit)) {
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(2, currentExit.y + 1, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(2, currentExit.y + 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(1, currentExit.y + 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
         }
     }
 
-    // BOTTOM
-    for (let i = 1; i < 49; i++) {
+    for (let i = 0; i < bottomExits.length; i++) {
+        const prevExit = i === 0 ? undefined : bottomExits[i - 1];
+        const currentExit = bottomExits[i];
+        const nextExit = i === bottomExits.length - 1 ? undefined : bottomExits[i + 1];
+
+        // Opening Ramparts
+        if (!rampartInfo.ramparts.length && (!prevExit || !currentExit.isNearTo(prevExit))) {
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x - 2, 48, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x - 2, 47, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x - 1, 47, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+        }
+
+        // Enclosing Ramparts
         if (
-            terrain.get(i, 47) !== TERRAIN_MASK_WALL &&
-            (terrain.get(i, 46) !== TERRAIN_MASK_WALL || terrain.get(i - 1, 46) !== TERRAIN_MASK_WALL || terrain.get(i + 1, 46) !== TERRAIN_MASK_WALL)
+            terrain.get(currentExit.x - 1, 46) !== TERRAIN_MASK_WALL ||
+            terrain.get(currentExit.x, 46) !== TERRAIN_MASK_WALL ||
+            terrain.get(currentExit.x + 1, 46) !== TERRAIN_MASK_WALL
         ) {
-            if (terrain.get(i, 49) !== TERRAIN_MASK_WALL) {
-                ramparts.push(new RoomPosition(i, 47, roomName));
-            } else if (terrain.get(i + 1, 49) !== TERRAIN_MASK_WALL && i !== 1) {
-                ramparts.push(new RoomPosition(i, 47, roomName));
-                if (terrain.get(i - 1, 47) !== TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(i - 1, 47, roomName));
-                }
-                if (terrain.get(i - 1, 48) !== TERRAIN_MASK_WALL && terrain.get(i - 2, 49) === TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(i - 1, 48, roomName));
-                }
-            } else if (terrain.get(i - 1, 49) !== TERRAIN_MASK_WALL && i !== 48) {
-                ramparts.push(new RoomPosition(i, 47, roomName));
-                if (terrain.get(i + 1, 47) !== TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(i + 1, 47, roomName));
-                }
-                if (terrain.get(i + 1, 48) !== TERRAIN_MASK_WALL && terrain.get(i + 2, 49) === TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(i + 1, 48, roomName));
-                }
-            } else if (ramparts.length !== 0) {
-                endSection = true;
-            }
-        } else if (ramparts.length !== 0) {
-            endSection = true;
+            setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(currentExit.x, 47, currentExit.roomName), exitPosPerSection, currentExit);
+        } else if (rampartInfo.ramparts.length) {
+            exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
+            rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
+            rampartInfo.ramparts = [];
         }
 
-        if (endSection) {
-            rampartsPerSection.push(ramparts);
-            ramparts = [];
-            endSection = false;
+        // Closing Ramparts
+        if (!nextExit || !currentExit.isNearTo(nextExit)) {
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x + 1, 47, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x + 2, 47, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x + 2, 48, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
         }
     }
 
-    // LEFT
-    for (let i = 1; i < 49; i++) {
+    for (let i = 0; i < topExits.length; i++) {
+        const prevExit = i === 0 ? undefined : topExits[i - 1];
+        const currentExit = topExits[i];
+        const nextExit = i === topExits.length - 1 ? undefined : topExits[i + 1];
+
+        // Opening Ramparts
+        if (!rampartInfo.ramparts.length && (!prevExit || !currentExit.isNearTo(prevExit))) {
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x - 2, 1, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x - 2, 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x - 1, 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+        }
+
+        // Enclosing Ramparts
         if (
-            terrain.get(2, i) !== TERRAIN_MASK_WALL &&
-            (terrain.get(3, i) !== TERRAIN_MASK_WALL || terrain.get(3, i - 1) !== TERRAIN_MASK_WALL || terrain.get(3, i + 1) !== TERRAIN_MASK_WALL)
+            terrain.get(currentExit.x - 1, 3) !== TERRAIN_MASK_WALL ||
+            terrain.get(currentExit.x, 3) !== TERRAIN_MASK_WALL ||
+            terrain.get(currentExit.x + 1, 3) !== TERRAIN_MASK_WALL
         ) {
-            if (terrain.get(0, i) !== TERRAIN_MASK_WALL) {
-                ramparts.push(new RoomPosition(2, i, roomName));
-            } else if (terrain.get(0, i + 1) !== TERRAIN_MASK_WALL && i !== 1) {
-                ramparts.push(new RoomPosition(2, i, roomName));
-                if (terrain.get(2, i - 1) !== TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(2, i - 1, roomName));
-                }
-                if (terrain.get(1, i - 1) !== TERRAIN_MASK_WALL && terrain.get(0, i - 2) === TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(1, i - 1, roomName));
-                }
-            } else if (terrain.get(0, i - 1) !== TERRAIN_MASK_WALL && i !== 48) {
-                ramparts.push(new RoomPosition(2, i, roomName));
-                if (terrain.get(2, i + 1) !== TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(2, i + 1, roomName));
-                }
-                if (terrain.get(1, i + 1) !== TERRAIN_MASK_WALL && terrain.get(0, i + 2) === TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(1, i + 1, roomName));
-                }
-            } else if (ramparts.length !== 0) {
-                endSection = true;
-            }
-        } else if (ramparts.length !== 0) {
-            endSection = true;
+            setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(currentExit.x, 2, currentExit.roomName), exitPosPerSection, currentExit);
+        } else if (rampartInfo.ramparts.length) {
+            exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
+            rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
+            rampartInfo.ramparts = [];
         }
 
-        if (endSection) {
-            rampartsPerSection.push(ramparts);
-            ramparts = [];
-            endSection = false;
+        // Closing Ramparts
+        if (!nextExit || !currentExit.isNearTo(nextExit)) {
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x + 1, 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x + 2, 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(currentExit.x + 2, 1, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
         }
     }
 
-    // RIGHT
-    for (let i = 1; i < 49; i++) {
+    for (let i = 0; i < rightExits.length; i++) {
+        const prevExit = i === 0 ? undefined : rightExits[i - 1];
+        const currentExit = rightExits[i];
+        const nextExit = i === rightExits.length - 1 ? undefined : rightExits[i + 1];
+
+        // Opening Ramparts
+        if (!rampartInfo.ramparts.length && (!prevExit || !currentExit.isNearTo(prevExit))) {
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(48, currentExit.y - 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(47, currentExit.y - 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(47, currentExit.y - 1, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+        }
+
+        // Enclosing Ramparts
         if (
-            terrain.get(47, i) !== TERRAIN_MASK_WALL &&
-            (terrain.get(46, i) !== TERRAIN_MASK_WALL || terrain.get(46, i - 1) !== TERRAIN_MASK_WALL || terrain.get(46, i + 1) !== TERRAIN_MASK_WALL)
+            terrain.get(46, currentExit.y - 1) !== TERRAIN_MASK_WALL ||
+            terrain.get(46, currentExit.y) !== TERRAIN_MASK_WALL ||
+            terrain.get(46, currentExit.y + 1) !== TERRAIN_MASK_WALL
         ) {
-            if (terrain.get(49, i) !== TERRAIN_MASK_WALL) {
-                ramparts.push(new RoomPosition(47, i, roomName));
-            } else if (terrain.get(49, i + 1) !== TERRAIN_MASK_WALL && i !== 1) {
-                ramparts.push(new RoomPosition(47, i, roomName));
-                if (terrain.get(47, i - 1) !== TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(47, i - 1, roomName));
-                }
-                if (terrain.get(48, i - 1) !== TERRAIN_MASK_WALL && terrain.get(49, i - 2) === TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(48, i - 1, roomName));
-                }
-            } else if (terrain.get(49, i - 1) !== TERRAIN_MASK_WALL && i !== 48) {
-                ramparts.push(new RoomPosition(47, i, roomName));
-                if (terrain.get(47, i + 1) !== TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(47, i + 1, roomName));
-                }
-                if (terrain.get(48, i + 1) !== TERRAIN_MASK_WALL && terrain.get(49, i + 2) === TERRAIN_MASK_WALL) {
-                    ramparts.push(new RoomPosition(48, i + 1, roomName));
-                }
-            } else if (ramparts.length !== 0) {
-                endSection = true;
-            }
-        } else if (ramparts.length !== 0) {
-            endSection = true;
+            setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(47, currentExit.y, currentExit.roomName), exitPosPerSection, currentExit);
+        } else if (rampartInfo.ramparts.length) {
+            exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
+            rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
+            rampartInfo.ramparts = [];
         }
 
-        if (endSection) {
-            rampartsPerSection.push(ramparts);
-            ramparts = [];
-            endSection = false;
+        // Closing Ramparts
+        if (!nextExit || !currentExit.isNearTo(nextExit)) {
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(47, currentExit.y + 1, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(47, currentExit.y + 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
+            storeEachRampartAsSeparateSection(
+                rampartInfo,
+                terrain,
+                new RoomPosition(48, currentExit.y + 2, currentExit.roomName),
+                exitPosPerSection,
+                currentExit
+            );
         }
     }
 
-    // Remove any closing ramparts if there are adjacent ones already from a different section
-    if (rampartsPerSection.length > 1) {
-        pairwise(rampartsPerSection, (currentSection: RoomPosition[], nextSection: RoomPosition[]) => {
-            currentSection
-                .filter((pos) => pos.x === 1 || pos.x === 48 || pos.y === 1 || pos.y === 48)
-                .forEach((pos) =>
-                    nextSection
-                        .filter((nextPos) => nextPos.x === 1 || nextPos.x === 48 || nextPos.y === 1 || nextPos.y === 48)
-                        .forEach((nextPos) => {
-                            if (
-                                (pos.x === nextPos.x && Math.abs(pos.y - nextPos.y) === 1) ||
-                                (pos.y === nextPos.y && Math.abs(pos.x - nextPos.x) === 1)
-                            ) {
-                                // remove
-                                currentSection.splice(currentSection.indexOf(pos), 1);
-                                nextSection.splice(nextSection.indexOf(nextPos), 1);
-                            }
-                        })
-                );
-        });
-    }
-
-    let index = 0;
-    return rampartsPerSection.filter((section) => {
-        let pos = new RoomPosition(section[0].x, section[0].y, section[0].roomName);
-        if (pos.x === 2 && section[1].x === 2) {
-            pos.x = 0;
-        } else if (pos.x === 47 && section[1].x === 47) {
-            pos.x = 49;
-        } else if (pos.y === 2 && section[1].y === 2) {
-            pos.y = 0;
-        } else if (pos.y === 47 && section[1].y === 47) {
-            pos.y = 49;
-        }
-        const path = PathFinder.search(pos, stamps.storage[0].pos.toRoomPos(), {
+    // Filter out unneeded sections
+    const unnededSections = [];
+    rampartInfo.rampartsPerSection = rampartInfo.rampartsPerSection.filter((_section, index) => {
+        const path = PathFinder.search(exitPosPerSection[index], stamps.storage[0].pos.toRoomPos(), {
             maxRooms: 1,
-
-            roomCallback: function (roomName) {
+            roomCallback: function (_roomName) {
                 const matrix = new PathFinder.CostMatrix();
-                rampartsPerSection.forEach((section, i) => {
-                    if (index !== i) {
-                        section.forEach((position) => matrix.set(position.x, position.y, 255));
+                rampartInfo.rampartsPerSection.forEach((section, i) => {
+                    if (index !== i && !unnededSections.some((unnededSection) => unnededSection === i)) {
+                        section.forEach((position: RoomPosition) => matrix.set(position.x, position.y, 255));
                     }
                 });
                 return matrix;
             },
         });
-        index++;
+        if (path.incomplete) {
+            unnededSections.push(index);
+        }
         return !path.incomplete;
     });
+
+    // Merge adjacent sections into one section
+    if (rampartInfo.rampartsPerSection.length > 1) {
+        const mergedArray = [];
+        let sectionArray = [];
+
+        for (let i = 0; i < rampartInfo.rampartsPerSection.length; i++) {
+            const section = rampartInfo.rampartsPerSection[i];
+            if (!sectionArray.length || sectionArray[sectionArray.length - 1].isNearTo(section[0])) {
+                sectionArray = sectionArray.concat(section);
+            } else {
+                mergedArray.push(sectionArray);
+                sectionArray = section;
+            }
+        }
+        if (sectionArray[sectionArray.length - 1].isNearTo(mergedArray[0][0])) {
+            // For last section also check if its part of the starter section
+            mergedArray[0] = mergedArray[0].concat(sectionArray);
+        } else {
+            // If not simply push it as a new section
+            mergedArray.push(sectionArray);
+        }
+        return mergedArray;
+    }
+    return rampartInfo.rampartsPerSection;
 }
 
-function pairwise(arr: any, func: any) {
-    for (let i = 0; i < arr.length - 1; i++) {
-        func(arr[i], arr[i + 1]);
+function setRampartIfNotWall(
+    rampartInfo: { ramparts: RoomPosition[]; rampartsPerSection: RoomPosition[][] },
+    terrain: RoomTerrain,
+    pos: RoomPosition,
+    exitPosPerSection: { [sectionIndex: number]: RoomPosition },
+    currentExit: RoomPosition
+) {
+    if (terrain.get(pos.x, pos.y) !== TERRAIN_MASK_WALL) {
+        rampartInfo.ramparts.push(pos);
+    } else if (rampartInfo.ramparts.length) {
+        exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
+        rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
+        rampartInfo.ramparts = [];
+    }
+}
+
+function storeEachRampartAsSeparateSection(
+    rampartInfo: { ramparts: RoomPosition[]; rampartsPerSection: RoomPosition[][] },
+    terrain: RoomTerrain,
+    pos: RoomPosition,
+    exitPosPerSection: { [sectionIndex: number]: RoomPosition },
+    currentExit: RoomPosition
+) {
+    if (rampartInfo.ramparts.length) {
+        exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
+        rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
+        rampartInfo.ramparts = [];
+    }
+    if (terrain.get(pos.x, pos.y) !== TERRAIN_MASK_WALL) {
+        exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
+        rampartInfo.ramparts.push(pos);
+        rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
+        rampartInfo.ramparts = [];
     }
 }
 

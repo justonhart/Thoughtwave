@@ -95,11 +95,8 @@ function handleDeadCreep(deadCreepName: string) {
             let source = Object.entries(Memory.rooms[deadCreepMemory.room].remoteSources).find(([source, data]) =>
                 data.gatherers.includes(deadCreepName)
             )?.[0];
-            let gathererIndex = Memory.rooms[deadCreepMemory.room].remoteSources[source]?.gatherers.findIndex(
-                (creepName) => creepName === deadCreepName
-            );
-            if (gathererIndex !== -1 && gathererIndex !== undefined) {
-                Memory.rooms[deadCreepMemory.room].remoteSources[source].gatherers[gathererIndex] = AssignmentStatus.UNASSIGNED;
+            if(source){
+                Memory.rooms[deadCreepMemory.room].remoteSources[source].gatherers = Memory.rooms[deadCreepMemory.room].remoteSources[source].gatherers.filter(name => name !== deadCreepName);
             }
         } else if (deadCreepMemory.role === Role.RESERVER && Memory.remoteData[(deadCreepMemory as ReserverMemory).assignment]) {
             Memory.remoteData[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;

@@ -357,15 +357,51 @@ export class PopulationManagement {
         return result;
     }
 
+    static getGathererBody(room: Room): BodyPartConstant[] {
+        const isEarlySpawning = !!room.storage?.my;
+
+        if(isEarlySpawning){
+            return PopulationManagement.createPartsArray([CARRY, MOVE], room.energyCapacityAvailable, 10);
+        } else {
+            return [WORK,WORK,CARRY,CARRY,MOVE,...PopulationManagement.createPartsArray([CARRY,CARRY,CARRY,CARRY,MOVE], room.energyCapacityAvailable - 350, 9)];
+        }
+    }
+
     static findGathererNeed(room: Room): string {
+        const isEarlySpawning = !!room.storage?.my;
+        const gathererBody = PopulationManagement.getGathererBody(room);
+        const gathererCarry = gathererBody.reduce((sum, nextPart) => nextPart === CARRY ? sum + CARRY_CAPACITY : sum , 0);
+        const gathererCostPerCycle = gathererBody.reduce((sum, nextPart) => sum + BODYPART_COST[nextPart], 0) / ENERGY_REGEN_TIME;
+
         return room.remoteSources.find(
-            (s) =>
-                Memory.roomData[s.toRoomPos().roomName].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-                Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY &&
-                (!room.storage || room.memory.remoteSources[s].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER) &&
-                room.memory.remoteSources[s].gatherers.some((g) => g === AssignmentStatus.UNASSIGNED) &&
-                roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`)
+            (s) => {
+                const sourceRoomName = s.split(".")[2];
+                const shouldSkip = 
+                    Memory.roomData[sourceRoomName].roomStatus === RoomMemoryStatus.OWNED_INVADER ||
+                    Memory.remoteData[sourceRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS ||
+                    Memory.remoteData[sourceRoomName].reservationState === RemoteRoomReservationStatus.ENEMY ||
+                    (!isEarlySpawning && room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) ||
+                    !roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`);
+
+                if(shouldSkip){
+                    return false;
+                } else {
+                    const sourceOutput = isEarlySpawning 
+                        ? SOURCE_ENERGY_NEUTRAL_CAPACITY 
+                        : isKeeperRoom(s.split(".")[2]) ? SOURCE_ENERGY_KEEPER_CAPACITY : SOURCE_ENERGY_CAPACITY;
+                    const distanceToSource = Memory.remoteSourceAssignments[s]?.roadLength;
+                    const gathererTripDuration = isEarlySpawning ? distanceToSource * 2 : distanceToSource * 3; //ticks to complete one round trip
+                    const tripsPerCycle = Math.floor(ENERGY_REGEN_TIME / gathererTripDuration);
+                    const energyTransferredPerCreep = tripsPerCycle * gathererCarry; // the amount of energy a gatherers transports home per cycle
+                    let gatherersNeeded = Math.floor(sourceOutput / energyTransferredPerCreep);
+                    if(sourceOutput - (gatherersNeeded * gathererCarry) > 300 + gathererCostPerCycle){ //if the remainder of energy is greater than the cost to spawn another gatherer, then do so
+                        gatherersNeeded  += 1;
+                    }
+
+                    const gathererNeeded = room.memory.remoteSources[s].gatherers.length < gatherersNeeded;
+                    return gathererNeeded;
+                }
+           }   
         );
     }
 
@@ -384,10 +420,7 @@ export class PopulationManagement {
         let result = spawn.smartSpawn(body, name, options);
 
         if (result === OK) {
-            let unassignedIndex = spawn.room.memory.remoteSources[source].gatherers.findIndex((g) => g === AssignmentStatus.UNASSIGNED);
-            if (unassignedIndex !== -1) {
-                spawn.room.memory.remoteSources[source].gatherers[unassignedIndex] = name;
-            }
+            spawn.room.memory.remoteSources[source].gatherers.push(name);
         }
 
         return result;
@@ -435,10 +468,7 @@ export class PopulationManagement {
         let result = spawn.smartSpawn(PARTS, name, options);
 
         if (result === OK) {
-            let unassignedIndex = spawn.room.memory.remoteSources[source].gatherers.findIndex((g) => g === AssignmentStatus.UNASSIGNED);
-            if (unassignedIndex !== -1) {
-                spawn.room.memory.remoteSources[source].gatherers[unassignedIndex] = name;
-            }
+            spawn.room.memory.remoteSources[source].gatherers.push(name);
         }
 
         return result;
