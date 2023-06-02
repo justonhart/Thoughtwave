@@ -126,6 +126,7 @@ export class Gatherer extends TransportCreep {
         let dropPos = this.homeroom.memory.stampLayout.container.find(stamp => stamp.type === 'center').pos.toRoomPos();
         if(this.pos.isEqualTo(dropPos)){
             this.drop(RESOURCE_ENERGY);
+            this.travelTo(this.getMiningPosition());
         } else {
             this.travelTo(dropPos);
         }

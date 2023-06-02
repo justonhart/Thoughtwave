@@ -368,7 +368,7 @@ export class PopulationManagement {
     }
 
     static findGathererNeed(room: Room): string {
-        const isEarlySpawning = !!room.storage?.my;
+        const isEarlySpawning = !room.storage?.my;
         const gathererBody = PopulationManagement.getGathererBody(room);
         const gathererCarry = gathererBody.reduce((sum, nextPart) => nextPart === CARRY ? sum + CARRY_CAPACITY : sum , 0);
         const gathererCostPerCycle = gathererBody.reduce((sum, nextPart) => sum + BODYPART_COST[nextPart], 0) / ENERGY_REGEN_TIME;
