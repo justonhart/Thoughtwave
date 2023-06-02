@@ -104,8 +104,15 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
         return;
     }
     const terrain = Game.map.getRoomTerrain(room.name);
-    const poiAvg = findPoiAverage(room);
-    let starCenter = new RoomPosition(poiAvg.x - 1, poiAvg.y + 1, room.name);
+    let starCenter;
+    if (room.mySpawns.length) {
+        const spawn = room.mySpawns[0];
+        starCenter = new RoomPosition(spawn.pos.x + 2, spawn.pos.y + 1, room.name);
+    } else {
+        const poiAvg = findPoiAverage(room);
+        starCenter = new RoomPosition(poiAvg.x - 1, poiAvg.y + 1, room.name);
+    }
+
     const stamps = {
         extension: [],
         lab: [],
@@ -700,6 +707,12 @@ function containsNonRoadStamp(stamps: Stamps, targetPositions: RoomPosition[]): 
                 currentStamps.some((stampDetail: StampDetail) => targetPositions.some((targetPos) => stampDetail.pos === targetPos.toMemSafe()))
             )
     );
+}
+
+export function drawLayoutFromMemory(roomName: string) {
+    const roomVisual = Game.rooms[roomName].visual;
+    const stamps = Memory.rooms[roomName].stampLayout;
+    drawLayout(roomVisual, stamps);
 }
 
 export function drawLayout(roomVisual: RoomVisual, stamps: Stamps) {
