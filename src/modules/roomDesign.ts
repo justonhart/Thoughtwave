@@ -336,10 +336,11 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
             terrain.get(3, currentExit.y + 1) !== TERRAIN_MASK_WALL
         ) {
             setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(2, currentExit.y, currentExit.roomName), exitPosPerSection, currentExit);
+            if (rampartInfo.ramparts.length && terrain.get(3, currentExit.y) !== TERRAIN_MASK_WALL) {
+                setSection(rampartInfo, exitPosPerSection, currentExit);
+            }
         } else {
-            exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
-            rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
-            rampartInfo.ramparts = [];
+            setSection(rampartInfo, exitPosPerSection, currentExit);
         }
 
         // Closing Ramparts
@@ -405,10 +406,11 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
             terrain.get(currentExit.x + 1, 46) !== TERRAIN_MASK_WALL
         ) {
             setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(currentExit.x, 47, currentExit.roomName), exitPosPerSection, currentExit);
+            if (rampartInfo.ramparts.length && terrain.get(currentExit.x, 46) !== TERRAIN_MASK_WALL) {
+                setSection(rampartInfo, exitPosPerSection, currentExit);
+            }
         } else if (rampartInfo.ramparts.length) {
-            exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
-            rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
-            rampartInfo.ramparts = [];
+            setSection(rampartInfo, exitPosPerSection, currentExit);
         }
 
         // Closing Ramparts
@@ -474,10 +476,11 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
             terrain.get(currentExit.x + 1, 3) !== TERRAIN_MASK_WALL
         ) {
             setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(currentExit.x, 2, currentExit.roomName), exitPosPerSection, currentExit);
+            if (rampartInfo.ramparts.length && terrain.get(currentExit.x, 3) !== TERRAIN_MASK_WALL) {
+                setSection(rampartInfo, exitPosPerSection, currentExit);
+            }
         } else if (rampartInfo.ramparts.length) {
-            exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
-            rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
-            rampartInfo.ramparts = [];
+            setSection(rampartInfo, exitPosPerSection, currentExit);
         }
 
         // Closing Ramparts
@@ -543,10 +546,11 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
             terrain.get(46, currentExit.y + 1) !== TERRAIN_MASK_WALL
         ) {
             setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(47, currentExit.y, currentExit.roomName), exitPosPerSection, currentExit);
+            if (rampartInfo.ramparts.length && terrain.get(46, currentExit.y) !== TERRAIN_MASK_WALL) {
+                setSection(rampartInfo, exitPosPerSection, currentExit);
+            }
         } else if (rampartInfo.ramparts.length) {
-            exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
-            rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
-            rampartInfo.ramparts = [];
+            setSection(rampartInfo, exitPosPerSection, currentExit);
         }
 
         // Closing Ramparts
@@ -684,6 +688,12 @@ function setCenterPositions(starCenter: RoomPosition, targetPositions: RoomPosit
             }
         }
     }
+}
+
+function setSection(rampartInfo, exitPosPerSection, currentExit) {
+    exitPosPerSection[rampartInfo.rampartsPerSection.length] = currentExit;
+    rampartInfo.rampartsPerSection.push(rampartInfo.ramparts);
+    rampartInfo.ramparts = [];
 }
 
 function hasWalls(terrain: RoomTerrain, positions: RoomPosition[]) {
