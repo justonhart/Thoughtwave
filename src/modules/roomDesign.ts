@@ -107,7 +107,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     let starCenter;
     if (room.mySpawns.length) {
         const spawn = room.mySpawns[0];
-        starCenter = new RoomPosition(spawn.pos.x + 2, spawn.pos.y + 1, room.name);
+        starCenter = new RoomPosition(spawn.pos.x, spawn.pos.y - 2, room.name);
     } else {
         const poiAvg = findPoiAverage(room);
         starCenter = new RoomPosition(poiAvg.x - 1, poiAvg.y + 1, room.name);
@@ -133,7 +133,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     } as Stamps;
     // 15 center extensions. If it goes above 20 then itll be in rcl 5
     let extensionCount = 15;
-    let linkRcl = 6;
+    let linkRcl = 7;
     // Block all available spots around sources for link and extension
     findBestMiningPostitions(room, terrain).forEach((bestSpot) => {
         addUniqueRoad(stamps, { type: `source${stamps.container.length}`, rcl: 3, pos: bestSpot.adjacentSpaces.shift().toMemSafe() });
@@ -825,7 +825,7 @@ function placeControllerLink(startPos: RoomPosition, stamps: Stamps, terrain: Ro
                 if (terrain.get(x, y) !== TERRAIN_MASK_WALL && !containsStamp(stamps, [position])) {
                     // If its a position already next to a road take it
                     if (stamps.road.some((roadDetail) => position.isNearTo(roadDetail.pos.toRoomPos()))) {
-                        stamps.link.push({ type: 'controller', rcl: 8, pos: position.toMemSafe() });
+                        stamps.link.push({ type: 'controller', rcl: 6, pos: position.toMemSafe() });
                         return;
                     }
                     availableSpots.push(position);
@@ -838,7 +838,7 @@ function placeControllerLink(startPos: RoomPosition, stamps: Stamps, terrain: Ro
     }
 
     const closest = stamps.storage[0].pos.toRoomPos().findClosestByPath(availableSpots); // Costly but since it only runs once its worth it
-    stamps.link.push({ type: 'controller', rcl: 8, pos: closest });
+    stamps.link.push({ type: 'controller', rcl: 6, pos: closest });
 }
 
 /**
@@ -1232,7 +1232,7 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
                     !containsStamp(stamps, [neighborPos])
             );
         if (freePos) {
-            stamps.link.push({ type: 'controller', rcl: 8, pos: freePos.toMemSafe() });
+            stamps.link.push({ type: 'controller', rcl: 6, pos: freePos.toMemSafe() });
         } else {
             placeControllerLink(poi, stamps, terrain);
             findPathToPoi(poi, stamps, type, terrain, range);
@@ -1328,7 +1328,7 @@ function addMissingRoads(starCenter: RoomPosition, sourcePos: RoomPosition, stam
 function setCenterExtensions(stamps: Stamps, starCenter: RoomPosition) {
     const type = 'center';
     // RCL 1
-    stamps.spawn.push({ type, rcl: 1, pos: new RoomPosition(starCenter.x - 2, starCenter.y - 1, starCenter.roomName).toMemSafe() });
+    stamps.spawn.push({ type, rcl: 1, pos: new RoomPosition(starCenter.x, starCenter.y + 2, starCenter.roomName).toMemSafe() });
 
     // RCL 2
     stamps.extension.push({ type, rcl: 2, pos: new RoomPosition(starCenter.x - 2, starCenter.y - 2, starCenter.roomName).toMemSafe() });
@@ -1356,7 +1356,7 @@ function setCenterExtensions(stamps: Stamps, starCenter: RoomPosition) {
     stamps.extension.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x + 2, starCenter.y - 2, starCenter.roomName).toMemSafe() });
     stamps.managers.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x - 1, starCenter.y + 1, starCenter.roomName).toMemSafe() });
     stamps.managers.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x + 1, starCenter.y - 1, starCenter.roomName).toMemSafe() });
-    stamps.rampart.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x - 2, starCenter.y - 1, starCenter.roomName).toMemSafe() });
+    stamps.rampart.push({ type, rcl: 4, pos: new RoomPosition(starCenter.x, starCenter.y + 2, starCenter.roomName).toMemSafe() });
 
     // RCL 5
     stamps.link.push({ type, rcl: 5, pos: new RoomPosition(starCenter.x, starCenter.y, starCenter.roomName).toMemSafe() });
@@ -1366,8 +1366,8 @@ function setCenterExtensions(stamps: Stamps, starCenter: RoomPosition) {
     stamps.rampart.push({ type, rcl: 7, pos: new RoomPosition(starCenter.x + 2, starCenter.y - 1, starCenter.roomName).toMemSafe() });
 
     // RCL 8
-    stamps.spawn.push({ type, rcl: 8, pos: new RoomPosition(starCenter.x, starCenter.y + 2, starCenter.roomName).toMemSafe() });
-    stamps.rampart.push({ type, rcl: 8, pos: new RoomPosition(starCenter.x, starCenter.y + 2, starCenter.roomName).toMemSafe() });
+    stamps.spawn.push({ type, rcl: 8, pos: new RoomPosition(starCenter.x - 2, starCenter.y - 1, starCenter.roomName).toMemSafe() });
+    stamps.rampart.push({ type, rcl: 8, pos: new RoomPosition(starCenter.x - 2, starCenter.y - 1, starCenter.roomName).toMemSafe() });
 }
 
 function addUniqueRoad(stamps: Stamps, roadDetail: StampDetail) {
