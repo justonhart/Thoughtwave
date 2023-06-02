@@ -368,7 +368,7 @@ export class PopulationManagement {
     }
 
     static findGathererNeed(room: Room): string {
-        const isEarlySpawning = !!room.storage?.my;
+        const isEarlySpawning = !room.storage?.my;
         const gathererBody = PopulationManagement.getGathererBody(room);
         const gathererCarry = gathererBody.reduce((sum, nextPart) => nextPart === CARRY ? sum + CARRY_CAPACITY : sum , 0);
         const gathererCost = gathererBody.reduce((sum, nextPart) => sum + BODYPART_COST[nextPart], 0);
@@ -997,9 +997,9 @@ export class PopulationManagement {
 
     static needsTransporter(room: Room) {
         let transporter = room.myCreepsByMemory.find((c) => c.memory.role === Role.TRANSPORTER);
-        let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 1000);
+        let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 500);
         let bigRuins = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 10000 });
-        return !transporter && !!room.storage && bigDroppedResources.length + bigRuins.length > 1;
+        return !transporter && !!room.storage && bigDroppedResources.length + bigRuins.length >= 1;
     }
 
     static needsMineralMiner(room: Room) {
