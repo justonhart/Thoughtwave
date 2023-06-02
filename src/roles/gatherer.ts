@@ -45,32 +45,15 @@ export class Gatherer extends TransportCreep {
             return;
         }
 
-        if (this.store.getUsedCapacity()) {
-            if (!this.onEdge() && posExistsOnRoad(this.pos) && this.getActiveBodyparts(WORK)) {
-                let road = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_ROAD) as StructureRoad;
-                if (road) {
-                    this.repairRoad(road);
-                    this.storeCargo();
-                } else {
-                    let site = this.pos.lookFor(LOOK_CONSTRUCTION_SITES).find((site) => site.my && site.structureType === STRUCTURE_ROAD);
-                    if (site) {
-                        this.build(site);
-                    } else {
-                        this.pos.createConstructionSite(STRUCTURE_ROAD);
-                    }
-                }
-            } else {
-                this.storeCargo();
-            }
+        if (this.store.getUsedCapacity() >= 50) {
+            this.runStoreProcedures();
         } else {
             this.memory.currentTaskPriority = Priority.MEDIUM;
             if (this.pos.isNearTo(this.getMiningPosition())) {
                 let container = Game.getObjectById(this.getContainerId()) as StructureContainer;
                 if (container && (container.store.getUsedCapacity() > 1000 || container.store.getUsedCapacity() >= this.store.getCapacity())) {
                     this.withdraw(container, Object.keys(container.store).shift() as ResourceConstant);
-                    let road = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_ROAD) as StructureRoad;
-                    this.repairRoad(road);
-                    this.storeCargo();
+                    this.runStoreProcedures();
                 } else if (isKeeperRoom(this.memory.assignment.split('.')[2]) && this.keeperPresentOrSpawning()) {
                     this.avoidLairs();
                 }
@@ -180,5 +163,24 @@ export class Gatherer extends TransportCreep {
     private getMiningPosition(): RoomPosition {
         if (!this.homeroom.memory.remoteSources[this.memory.assignment]) this.memory.recycle = true;
         return this.homeroom.memory.remoteSources[this.memory.assignment]?.miningPos.toRoomPos();
+    }
+
+    private runStoreProcedures() {
+        if (!this.onEdge() && posExistsOnRoad(this.pos) && this.getActiveBodyparts(WORK)) {
+            let road = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_ROAD) as StructureRoad;
+            if (road) {
+                this.repairRoad(road);
+                this.storeCargo();
+            } else {
+                let site = this.pos.lookFor(LOOK_CONSTRUCTION_SITES).find((site) => site.my && site.structureType === STRUCTURE_ROAD);
+                if (site) {
+                    this.build(site);
+                } else {
+                    this.pos.createConstructionSite(STRUCTURE_ROAD);
+                }
+            }
+        } else {
+            this.storeCargo();
+        }
     }
 }

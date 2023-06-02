@@ -371,7 +371,8 @@ export class PopulationManagement {
         const isEarlySpawning = !!room.storage?.my;
         const gathererBody = PopulationManagement.getGathererBody(room);
         const gathererCarry = gathererBody.reduce((sum, nextPart) => nextPart === CARRY ? sum + CARRY_CAPACITY : sum , 0);
-        const gathererCostPerCycle = gathererBody.reduce((sum, nextPart) => sum + BODYPART_COST[nextPart], 0) / ENERGY_REGEN_TIME;
+        const gathererCost = gathererBody.reduce((sum, nextPart) => sum + BODYPART_COST[nextPart], 0);
+        const gathererCostPerCycle = gathererCost / 5; //5 cycles in a gatherer's lifetime
 
         return room.remoteSources.find(
             (s) => {
@@ -386,16 +387,22 @@ export class PopulationManagement {
                 if(shouldSkip){
                     return false;
                 } else {
-                    const sourceOutput = isEarlySpawning 
-                        ? SOURCE_ENERGY_NEUTRAL_CAPACITY 
-                        : isKeeperRoom(s.split(".")[2]) ? SOURCE_ENERGY_KEEPER_CAPACITY : SOURCE_ENERGY_CAPACITY;
-                    const distanceToSource = Memory.remoteSourceAssignments[s]?.roadLength;
-                    const gathererTripDuration = isEarlySpawning ? distanceToSource * 2 : distanceToSource * 3; //ticks to complete one round trip
-                    const tripsPerCycle = Math.floor(ENERGY_REGEN_TIME / gathererTripDuration);
-                    const energyTransferredPerCreep = tripsPerCycle * gathererCarry; // the amount of energy a gatherers transports home per cycle
-                    let gatherersNeeded = Math.floor(sourceOutput / energyTransferredPerCreep);
-                    if(sourceOutput - (gatherersNeeded * gathererCarry) > 300 + gathererCostPerCycle){ //if the remainder of energy is greater than the cost to spawn another gatherer, then do so
-                        gatherersNeeded  += 1;
+
+                    let gatherersNeeded;
+                    if(room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD){
+                        gatherersNeeded = 2;
+                    } else {
+                        const sourceOutput = isEarlySpawning 
+                            ? SOURCE_ENERGY_NEUTRAL_CAPACITY 
+                            : (isKeeperRoom(sourceRoomName) || isCenterRoom(sourceRoomName)) ? SOURCE_ENERGY_KEEPER_CAPACITY : SOURCE_ENERGY_CAPACITY;
+                        const distanceToSource = Memory.remoteSourceAssignments[s]?.roadLength;
+                        const gathererTripDuration = isEarlySpawning ? distanceToSource * 2 : distanceToSource * 3; //ticks to complete one round trip
+                        const tripsPerCycle = Math.floor(ENERGY_REGEN_TIME / gathererTripDuration);
+                        const energyTransferredPerCreep = tripsPerCycle * gathererCarry; // the amount of energy a gatherers transports home per cycle
+                        gatherersNeeded = Math.floor(sourceOutput / energyTransferredPerCreep);
+                        if(sourceOutput - (gatherersNeeded * gathererCarry) > 300 + gathererCostPerCycle){ //if the remainder of energy is greater than the cost to spawn another gatherer, then do so
+                            gatherersNeeded  += 1;
+                        }
                     }
 
                     const gathererNeeded = room.memory.remoteSources[s].gatherers.length < gatherersNeeded;
