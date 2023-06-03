@@ -363,9 +363,13 @@ export class TransportCreep extends WaveCreep {
                 }
             }
 
-            const missingMiner = Object.values(this.room.memory.miningAssignments).some(miner => miner === AssignmentStatus.UNASSIGNED);
+            const missingMiner = Object.values(this.room.memory.miningAssignments).some((miner) => miner === AssignmentStatus.UNASSIGNED);
             const nonCenterExtensions = this.room.memory.stampLayout.extension
-                .filter((stamp) => stamp.rcl <= this.room.controller.level && stamp.type !== 'center' && (stamp.type.startsWith('source') ? missingMiner : false))
+                .filter(
+                    (stamp) =>
+                        stamp.rcl <= this.room.controller.level &&
+                        (!stamp.type || (stamp.type !== 'center' && (stamp.type.startsWith('source') ? missingMiner : false)))
+                )
                 .map((stamp) =>
                     stamp.pos
                         .toRoomPos()
