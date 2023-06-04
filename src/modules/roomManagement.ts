@@ -72,7 +72,7 @@ function driveHomeRoom(room: Room) {
             });
         } else {
             manageMaintenance(room);
-            manageStructures(room); 
+            manageStructures(room);
         }
 
         let isHomeUnderAttack = false;
@@ -423,7 +423,7 @@ export function initHomeRoom(room: Room) {
     }
 }
 
-function runSpawning(room: Room){
+function runSpawning(room: Room) {
     const spawns = room.mySpawns;
     const busySpawns = spawns.filter((spawn) => spawn.spawning);
 
@@ -496,7 +496,7 @@ function runSpawning(room: Room){
         spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
     }
 
-    if (availableSpawns && PopulationManagement.needsMiner(room) && !roomUnderAttack) {
+    if (availableSpawns && PopulationManagement.needsMiner(room)) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
     }
@@ -588,15 +588,15 @@ function runSpawning(room: Room){
                 const spawn = availableSpawns.pop();
                 spawn?.spawnRemoteMineralMiner(remoteMineralMinerNeed);
             }
-        } else if (!room.storage?.my && room.remoteSources.length && !roomUnderAttack){
+        } else if (!room.storage?.my && room.remoteSources.length && !roomUnderAttack) {
             let earlyRemoteMinerNeed = PopulationManagement.findRemoteMinerNeed(room);
-            if(earlyRemoteMinerNeed) {
+            if (earlyRemoteMinerNeed) {
                 let spawn = availableSpawns.pop();
                 PopulationManagement.spawnEarlyRemoteMiner(spawn, earlyRemoteMinerNeed);
             }
 
             let earlyGathererNeed = PopulationManagement.findGathererNeed(room);
-            if(earlyGathererNeed){
+            if (earlyGathererNeed) {
                 let spawn = availableSpawns.pop();
                 PopulationManagement.spawnEarlyGatherer(spawn, earlyGathererNeed);
             }
@@ -682,7 +682,7 @@ function runRemoteRooms(room: Room) {
     let remoteRooms = room.remoteMiningRooms;
     remoteRooms?.forEach((remoteRoomName) => {
         try {
-            if(!room.storage?.my){
+            if (!room.storage?.my) {
                 manageEarlyRemoteRoom(room.name, remoteRoomName);
             } else {
                 manageRemoteRoom(room.name, remoteRoomName);
@@ -1179,8 +1179,7 @@ function manageStructures(room: Room) {
                         .lookAt(spawnStamp.pos.toRoomPos())
                         .some(
                             (lookObj) =>
-                                lookObj.constructionSite?.structureType === spawnStamp.type ||
-                                lookObj.structure?.structureType === spawnStamp.type
+                                lookObj.constructionSite?.structureType === spawnStamp.type || lookObj.structure?.structureType === spawnStamp.type
                         )
             )
         ) {
@@ -1225,9 +1224,7 @@ function manageStructures(room: Room) {
                             (stamp) =>
                                 stamp.rcl <= room.controller.level &&
                                 !structures.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()) &&
-                                !constructionSites.some(
-                                    (structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()
-                                )
+                                !constructionSites.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe())
                         )
                         .forEach((stamp) => constructionStamps.push({ pos: stamp.pos.toRoomPos(), key: key as StructureConstant }));
                 });
@@ -1257,6 +1254,4 @@ function manageStructures(room: Room) {
     }
 }
 
-function driveOperationControlledRoom(room: Room) {
-    
-}
+function driveOperationControlledRoom(room: Room) {}
