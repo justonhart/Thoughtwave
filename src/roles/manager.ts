@@ -205,11 +205,22 @@ export class Manager extends WaveCreep {
         const extensions = structuresToManage.filter((structure) => structure.structureType === STRUCTURE_EXTENSION) as StructureExtension[];
         const container = structuresToManage.find((structure) => structure.structureType === STRUCTURE_CONTAINER) as StructureContainer;
         const spawn = structuresToManage.find((structure) => structure.structureType === STRUCTURE_SPAWN) as StructureSpawn;
+        const containerPos = this.room.memory.stampLayout.container
+            .find((stamp) => stamp.type === 'center' && stamp.pos.toRoomPos().isNearTo(this.pos))
+            .pos.toRoomPos();
+        const looseEnergy = containerPos.lookFor(LOOK_ENERGY).pop();
+        const tombstoneWithEnergy = containerPos.lookFor(LOOK_TOMBSTONES).find((tomb) => tomb.store[RESOURCE_ENERGY]);
 
         // Pull energy from container into spawn
-        if (spawn?.store.getFreeCapacity(RESOURCE_ENERGY) && (container?.store.energy || this.store.energy)) {
+        if (spawn?.store.getFreeCapacity(RESOURCE_ENERGY) && (looseEnergy || tombstoneWithEnergy || container?.store.energy || this.store.energy)) {
             if (!this.store.energy) {
-                this.withdraw(container, RESOURCE_ENERGY);
+                if (looseEnergy) {
+                    this.pickup(looseEnergy);
+                } else if (tombstoneWithEnergy) {
+                    this.withdraw(tombstoneWithEnergy, RESOURCE_ENERGY);
+                } else if (container) {
+                    this.withdraw(container, RESOURCE_ENERGY);
+                }
                 this.actionTaken = true;
             }
             this.memory.targetId = spawn.id;
@@ -224,7 +235,13 @@ export class Manager extends WaveCreep {
         );
         if (extensionInNeed && (container?.store.energy || this.store.energy)) {
             if (!this.store.energy) {
-                this.withdraw(container, RESOURCE_ENERGY);
+                if (looseEnergy) {
+                    this.pickup(looseEnergy);
+                } else if (tombstoneWithEnergy) {
+                    this.withdraw(tombstoneWithEnergy, RESOURCE_ENERGY);
+                } else if (container) {
+                    this.withdraw(container, RESOURCE_ENERGY);
+                }
                 this.actionTaken = true;
             }
             this.memory.targetId = extensionInNeed.id;
@@ -236,6 +253,17 @@ export class Manager extends WaveCreep {
             this.withdraw(managerLink, RESOURCE_ENERGY);
             this.memory.targetId = container.id;
             return;
+        }
+
+        // store loose energy
+        if (container?.store.energy < 2000 && (looseEnergy || tombstoneWithEnergy)) {
+            if (looseEnergy) {
+                this.pickup(looseEnergy);
+            } else if (tombstoneWithEnergy) {
+                this.withdraw(tombstoneWithEnergy, RESOURCE_ENERGY);
+            }
+            this.actionTaken = true;
+            this.memory.targetId = container.id;
         }
     }
 

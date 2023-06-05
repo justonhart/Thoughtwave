@@ -41,50 +41,57 @@ export function manageMemory() {
 }
 
 export function validateAssignments() {
-    Object.keys(Memory.rooms).forEach((roomName) => {
-        let miningAssignments = Object.keys(Memory.rooms[roomName].miningAssignments);
-        miningAssignments?.forEach((pos) => {
-            if (!Game.creeps[Memory.rooms[roomName].miningAssignments[pos]]) {
-                Memory.rooms[roomName].miningAssignments[pos] = AssignmentStatus.UNASSIGNED;
-            }
-        });
-
-        let mineralMiningAssignments = Object.keys(Memory.rooms[roomName].mineralMiningAssignments);
-        mineralMiningAssignments?.forEach((pos) => {
-            if (!Game.creeps[Memory.rooms[roomName].mineralMiningAssignments[pos]]) {
-                Memory.rooms[roomName].mineralMiningAssignments[pos] = AssignmentStatus.UNASSIGNED;
-            }
-        });
-
-        Object.keys(Memory.rooms[roomName].remoteSources).forEach((source) => {
-            let remoteRoomName = source.split('.')[2];
-
-            if (!Game.creeps[Memory.rooms[roomName].remoteSources[source].miner]) {
-                Memory.rooms[roomName].remoteSources[source].miner = AssignmentStatus.UNASSIGNED;
-            }
-
-            Memory.rooms[roomName].remoteSources[source].gatherers.forEach((gatherer, index) => {
-                if (!Game.creeps[gatherer]) {
-                    Memory.rooms[roomName].remoteSources[source].gatherers[index] = AssignmentStatus.UNASSIGNED;
+    Object.keys(Memory.rooms)
+        .filter((room) => Memory.rooms[room].remoteSources)
+        .forEach((roomName) => {
+            let miningAssignments = Object.keys(Memory.rooms[roomName].miningAssignments);
+            miningAssignments?.forEach((pos) => {
+                if (!Game.creeps[Memory.rooms[roomName].miningAssignments[pos]]) {
+                    Memory.rooms[roomName].miningAssignments[pos] = AssignmentStatus.UNASSIGNED;
                 }
             });
 
-            if (Memory.remoteData[remoteRoomName]?.reserver && !Game.creeps[Memory.remoteData[remoteRoomName].reserver]) {
-                Memory.remoteData[remoteRoomName].reserver = AssignmentStatus.UNASSIGNED;
-            }
+            let mineralMiningAssignments = Object.keys(Memory.rooms[roomName].mineralMiningAssignments);
+            mineralMiningAssignments?.forEach((pos) => {
+                if (!Game.creeps[Memory.rooms[roomName].mineralMiningAssignments[pos]]) {
+                    Memory.rooms[roomName].mineralMiningAssignments[pos] = AssignmentStatus.UNASSIGNED;
+                }
+            });
 
-            if (Memory.remoteData[remoteRoomName]?.keeperExterminator && !Game.creeps[Memory.remoteData[remoteRoomName].keeperExterminator]) {
-                Memory.remoteData[remoteRoomName].keeperExterminator = AssignmentStatus.UNASSIGNED;
-            }
+            Object.keys(Memory.rooms[roomName].remoteSources).forEach((source) => {
+                let remoteRoomName = source.split('.')[2];
+
+                if (!Game.creeps[Memory.rooms[roomName].remoteSources[source].miner]) {
+                    Memory.rooms[roomName].remoteSources[source].miner = AssignmentStatus.UNASSIGNED;
+                }
+
+                Memory.rooms[roomName].remoteSources[source].gatherers.forEach((gatherer, index) => {
+                    if (!Game.creeps[gatherer]) {
+                        Memory.rooms[roomName].remoteSources[source].gatherers = Memory.rooms[roomName].remoteSources[source].gatherers.filter(
+                            (name) => name !== gatherer
+                        );
+                    }
+                });
+
+                if (Memory.remoteData[remoteRoomName]?.reserver && !Game.creeps[Memory.remoteData[remoteRoomName].reserver]) {
+                    Memory.remoteData[remoteRoomName].reserver = AssignmentStatus.UNASSIGNED;
+                }
+
+                if (Memory.remoteData[remoteRoomName]?.keeperExterminator && !Game.creeps[Memory.remoteData[remoteRoomName].keeperExterminator]) {
+                    Memory.remoteData[remoteRoomName].keeperExterminator = AssignmentStatus.UNASSIGNED;
+                }
+            });
         });
-    });
 }
 
 function handleDeadCreep(deadCreepName: string) {
     let deadCreepMemory = Memory.creeps[deadCreepName];
 
     if (Game.rooms[deadCreepMemory.room]?.controller?.my && Memory.rooms[deadCreepMemory.room]) {
-        if (deadCreepMemory.role === Role.MINER && Memory.rooms[deadCreepMemory.room].miningAssignments[(deadCreepMemory as MinerMemory).assignment] === deadCreepName) {
+        if (
+            deadCreepMemory.role === Role.MINER &&
+            Memory.rooms[deadCreepMemory.room].miningAssignments[(deadCreepMemory as MinerMemory).assignment] === deadCreepName
+        ) {
             Memory.rooms[deadCreepMemory.room].miningAssignments[(deadCreepMemory as MinerMemory).assignment] = AssignmentStatus.UNASSIGNED;
         } else if (
             deadCreepMemory.role === Role.REMOTE_MINER &&
@@ -95,8 +102,10 @@ function handleDeadCreep(deadCreepName: string) {
             let source = Object.entries(Memory.rooms[deadCreepMemory.room].remoteSources).find(([source, data]) =>
                 data.gatherers.includes(deadCreepName)
             )?.[0];
-            if(source){
-                Memory.rooms[deadCreepMemory.room].remoteSources[source].gatherers = Memory.rooms[deadCreepMemory.room].remoteSources[source].gatherers.filter(name => name !== deadCreepName);
+            if (source) {
+                Memory.rooms[deadCreepMemory.room].remoteSources[source].gatherers = Memory.rooms[deadCreepMemory.room].remoteSources[
+                    source
+                ].gatherers.filter((name) => name !== deadCreepName);
             }
         } else if (deadCreepMemory.role === Role.RESERVER && Memory.remoteData[(deadCreepMemory as ReserverMemory).assignment]) {
             Memory.remoteData[deadCreepMemory.assignment].reserver = AssignmentStatus.UNASSIGNED;
@@ -188,7 +197,11 @@ function cleanIntershardOutboundList() {
 //remove assignments to rooms that cannot spawn
 function cleanSpawnAssignments() {
     Memory.spawnAssignments = Memory.spawnAssignments.filter(
-        (assignment) => Game.rooms[assignment.designee] && Game.rooms[assignment.designee].canSpawn() && (!(assignment.spawnOpts.memory as OperativeMemory).operationId || !!Memory.operations[(assignment.spawnOpts.memory as OperativeMemory).operationId])
+        (assignment) =>
+            Game.rooms[assignment.designee] &&
+            Game.rooms[assignment.designee].canSpawn() &&
+            (!(assignment.spawnOpts.memory as OperativeMemory).operationId ||
+                !!Memory.operations[(assignment.spawnOpts.memory as OperativeMemory).operationId])
     );
 }
 

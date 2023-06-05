@@ -83,7 +83,7 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
     get: function (this: Room) {
         if (!this.storage?.my || !this.storage.isActive()) {
             return undefined;
-        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 150000 && this.getResourceAmount(RESOURCE_BATTERY) >= 25000) {
+        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 300000) {
             return EnergyStatus.OVERFLOW;
         } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 150000) {
             return EnergyStatus.SURPLUS;
@@ -188,12 +188,23 @@ Object.defineProperty(Room.prototype, 'upgraderLink', {
     configurable: true,
 });
 
-Object.defineProperty(Room.prototype, 'workerCapacity', {
+Object.defineProperty(Room.prototype, 'baseWorkCapacity', {
     get: function (this: Room) {
-        if (!this._workerCapacity) {
-            this._workerCapacity = PopulationManagement.calculateWorkerCapacity(this);
+        if (!this._baseWorkCapacity) {
+            this._baseWorkCapacity = PopulationManagement.calculateWorkCapacity(this);
         }
-        return this._workerCapacity;
+        return this._baseWorkCapacity;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'modifiedWorkCapacity', {
+    get: function (this: Room) {
+        if (!this._modifiedWorkCapacity) {
+            this._modifiedWorkCapacity = PopulationManagement.calculateModifiedWorkCapacity(this);
+        }
+        return this._modifiedWorkCapacity;
     },
     enumerable: false,
     configurable: true,
@@ -458,4 +469,14 @@ Room.prototype.addShipment = function (this: Room, destination: string, resource
 
 Room.prototype.addMarketOrder = function (this: Room, marketId: string, amount: number) {
     return addMarketOrder(this.name, marketId, amount);
+};
+
+Room.prototype.addSpawnAssignment = function (this: Room, creepBody: BodyPartConstant[], opts: SpawnOptions): ScreepsReturnCode {
+    const assignment: SpawnAssignment = {
+        designee: this.name,
+        body: creepBody,
+        spawnOpts: opts,
+    };
+    Memory.spawnAssignments.push(assignment);
+    return OK;
 };

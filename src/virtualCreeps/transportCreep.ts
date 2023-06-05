@@ -25,7 +25,11 @@ export class TransportCreep extends WaveCreep {
         }
     }
 
-    private runTransporterTasks() {
+    protected findNextTask() {
+        this.debugLog('looking for task');
+    }
+
+    protected runTransporterTasks() {
         let target: any = Game.getObjectById(this.memory.targetId);
         if (!target && !this.memory.labNeeds?.length) {
             this.debugLog(`looking for target`);
@@ -53,7 +57,7 @@ export class TransportCreep extends WaveCreep {
                 } else {
                     this.runNonLabPrepTasks();
                 }
-            } else if (stop) {
+            } else if (stop && this.homeroom.controller.level >= 3) {
                 if (this.body.length >= PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], this.room.energyCapacityAvailable, 10).length) {
                     this.debugLog('renewing');
                     this.renewCreep();
@@ -128,6 +132,7 @@ export class TransportCreep extends WaveCreep {
                         this.incomingEnergyAmount += Math.min(this.store.getFreeCapacity(), target.store.energy);
                         this.actionTaken = true;
                     case ERR_FULL:
+                    default:
                         this.stopGathering();
                         break;
                 }
@@ -149,6 +154,7 @@ export class TransportCreep extends WaveCreep {
                         }
                         this.actionTaken = true;
                     case ERR_FULL:
+                    default:
                         this.stopGathering();
                         break;
                 }
@@ -209,17 +215,18 @@ export class TransportCreep extends WaveCreep {
         delete this.memory.energySource;
     }
 
-    protected storeCargo() {
+    protected storeCargo(targetStruct?: Structure) {
+        let target = targetStruct ?? this.room.storage;
         this.memory.currentTaskPriority = Priority.HIGH;
         let resourceToStore: any = Object.keys(this.store).shift();
-        if (!this.pos.isNearTo(this.homeroom.storage)) {
-            this.travelTo(this.homeroom.storage, {
+        if (!this.pos.isNearTo(target)) {
+            this.travelTo(target, {
                 ignoreCreeps: true,
                 range: 1,
                 currentTickEnergy: this.incomingEnergyAmount + this.incomingMineralAmount,
             });
         } else if (!this.actionTaken) {
-            let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
+            let storeResult = this.transfer(target, resourceToStore);
             switch (storeResult) {
                 case ERR_NOT_IN_RANGE:
                     break;
@@ -493,9 +500,15 @@ export class TransportCreep extends WaveCreep {
         }
 
         const looseResources = room.find(FIND_DROPPED_RESOURCES);
-        if (looseResources.filter((r) => r.amount > 100 && (room.storage || r.resourceType === RESOURCE_ENERGY)).length) {
+        const bigLooseResources = looseResources.filter((r) => r.amount > 100 && (room.storage || r.resourceType === RESOURCE_ENERGY));
+        if (bigLooseResources.length) {
             const resource = looseResources
-                .filter((r) => r.amount > 100 && (room.storage || r.resourceType === RESOURCE_ENERGY))
+                .filter(
+                    (r) =>
+                        r.amount > 100 &&
+                        (room.storage || r.resourceType === RESOURCE_ENERGY) &&
+                        !this.room.memory.stampLayout.container.some((stamp) => stamp.type === 'center' && stamp.pos.toRoomPos().isEqualTo(r.pos))
+                )
                 .reduce((biggestResource, resourceToCompare) =>
                     biggestResource.amount > resourceToCompare.amount ? biggestResource : resourceToCompare
                 );
@@ -858,6 +871,48 @@ export class TransportCreep extends WaveCreep {
         this.debugLog(`task finished`);
         this.previousTargetId = this.memory.targetId;
         delete this.memory.currentTaskPriority;
+        delete this.memory.task;
         delete this.memory.targetId;
+        delete this.memory.dropPos;
+    }
+
+    protected findCargoStorage(): Id<Structure> | RoomPosition {
+        if (this.room.storage) {
+            return this.room.storage.id;
+        } else if (this.room.spawns.some((spawn) => spawn.store.getFreeCapacity(RESOURCE_ENERGY))) {
+            return this.room.spawns.find((spawn) => spawn.store.getFreeCapacity(RESOURCE_ENERGY)).id;
+        } else {
+            const centerContainerStamps = this.room.memory.stampLayout.container.filter((stamp) => stamp.type === 'center');
+            const containerToFill = centerContainerStamps
+                .map((stamp) =>
+                    stamp.pos
+                        .toRoomPos()
+                        .lookFor(LOOK_STRUCTURES)
+                        .find((s: StructureContainer) => s.structureType === STRUCTURE_CONTAINER && s.store.getFreeCapacity())
+                )
+                .find((s) => !!s);
+            if (containerToFill) {
+                return containerToFill.id;
+            } else {
+                return centerContainerStamps.pop()?.pos.toRoomPos();
+            }
+        }
+    }
+
+    protected runDropoff() {
+        this.memory.currentTaskPriority = Priority.HIGH;
+        const dropPos = this.memory.dropPos?.toRoomPos();
+        if (!dropPos) {
+            this.onTaskFinished();
+        }
+        if (!dropPos.isEqualTo(this.pos)) {
+            this.travelTo(dropPos);
+        } else {
+            let resourceToDrop = Object.keys(this.store).pop() as ResourceConstant;
+            if (resourceToDrop) {
+                this.drop(resourceToDrop);
+            }
+            this.onTaskFinished();
+        }
     }
 }

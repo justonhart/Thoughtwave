@@ -484,17 +484,6 @@ function runSpawning(room: Room) {
         });
     }
 
-    if (availableSpawns && PopulationManagement.needsTransporter(room) && !roomUnderAttack) {
-        let options: SpawnOptions = {
-            memory: {
-                room: room.name,
-                role: Role.TRANSPORTER,
-            },
-        };
-        let spawn = availableSpawns.pop();
-        spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
-    }
-
     if (availableSpawns && PopulationManagement.needsMiner(room) && !roomUnderAttack) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
@@ -531,7 +520,7 @@ function runSpawning(room: Room) {
         spawn?.spawnMineralMiner();
     }
 
-    if (availableSpawns && workerCount >= room.workerCapacity * 0.5 && !roomUnderAttack) {
+    if (availableSpawns && !roomUnderAttack) {
         assignments.forEach((assignment) => {
             const assignmentCost = assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
             const canSpawnAssignment = room.energyAvailable >= assignmentCost;
@@ -1166,11 +1155,9 @@ export function manageMaintenance(room: Room) {
 
 function manageStructures(room: Room) {
     if (
-        !global.roomConstructionsChecked &&
-        (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
-        (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
-        Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-        room.myConstructionSites.length < 15
+        room.getEventLog().some((log) => log.event === EVENT_OBJECT_DESTROYED && log.data.type !== 'creep') ||
+        ((!room.memory.finishedConstructionAtRcl || room.memory.finishedConstructionAtRcl < room.controller.level) &&
+            !room.myConstructionSites.length)
     ) {
         let cpuUsed = Game.cpu.getUsed();
         // Cleanup any leftover storage/terminal that is in the way
@@ -1212,14 +1199,13 @@ function manageStructures(room: Room) {
             room.terminal.destroy();
         }
 
+        // Check if room still has thorium
         let thorium;
         if (room.controller.level > 5 && Object.keys(room.memory.stampLayout.extractor).length > 1) {
-            // Still has thorium
             //@ts-ignore
-            thorium = room.minerals.find((mineral) => mineral.mineralType === RESOURCE_THORIUM);
-            if (!thorium) {
-                const container = room.structures.find((struct) => struct.structureType === STRUCTURE_CONTAINER && struct.pos.isNearTo(thorium));
-                const extractor = room.myStructures.find((struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.pos.isEqualTo(thorium));
+            if (!room.minerals.some((mineral) => mineral.mineralType === RESOURCE_THORIUM)) {
+                const extractor = room.myStructures.find((struct) => struct.structureType === STRUCTURE_EXTRACTOR);
+                const container = room.structures.find((struct) => struct.structureType === STRUCTURE_CONTAINER && struct.pos.isNearTo(extractor));
 
                 // Remove from roomDesign
                 for (let i = 0; i < room.memory.stampLayout.extractor.length; i++) {
@@ -1236,6 +1222,31 @@ function manageStructures(room: Room) {
                 // Remove from room
                 container.destroy();
                 extractor.destroy();
+            }
+        }
+
+        // Swap Container with Link
+        if (room.controller.level === 6) {
+            const controllerContainerStamp = Object.values(room.memory.stampLayout.container).find(
+                (containerStamp) => containerStamp.type === STRUCTURE_CONTROLLER
+            );
+            if (controllerContainerStamp) {
+                const container = room.structures.find((struct) => struct.pos.isEqualTo(controllerContainerStamp.pos.toRoomPos()));
+
+                // Remove Container from Stamps
+                for (let i = 0; i < room.memory.stampLayout.container.length; i++) {
+                    if (room.memory.stampLayout.container[i].pos.toRoomPos().isEqualTo(container)) {
+                        delete room.memory.stampLayout.container[i];
+                    }
+                }
+
+                // Add Link to Stamps
+                room.memory.stampLayout.link.push({ type: STRUCTURE_CONTROLLER, rcl: 6, pos: container.pos.toMemSafe() });
+
+                // Remove Container
+                if (container) {
+                    container.destroy();
+                }
             }
         }
 
@@ -1265,6 +1276,9 @@ function manageStructures(room: Room) {
             constructionStamps.sort((a, b) => {
                 return getStructurePriority(a.key) > getStructurePriority(b.key) ? 1 : -1;
             });
+            if (!constructionStamps.length) {
+                room.memory.finishedConstructionAtRcl = room.controller.level;
+            }
             while (constructionStamps?.length && constructionSitesCount < 15) {
                 const nextConstructionSite = constructionStamps.pop();
                 const result = room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
@@ -1280,7 +1294,6 @@ function manageStructures(room: Room) {
         }
 
         global.roomConstructionsChecked = true;
-        room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
         cpuUsed = Game.cpu.getUsed() - cpuUsed;
         if (Memory.debug.logRoomPlacementCpu) {
             console.log(`CPU used on ${room.name} stamp layout: ${cpuUsed}`);

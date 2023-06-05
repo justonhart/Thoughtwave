@@ -1,7 +1,7 @@
 import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { getBoostsAvailable } from './labManagement';
 import { getResourceAvailability } from './resourceManagement';
-import { roadIsPaved, roadIsSafe } from './roads';
+import { getFullRoad, getRoad, roadIsPaved, roadIsSafe } from './roads';
 import { getStoragePos, roomNeedsCoreStructures } from './roomDesign';
 
 const BODY_TO_BOOST_MAP: { [key in BoostType]: BodyPartConstant } = {
@@ -56,140 +56,99 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
 
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn, roomUnderAttack?: boolean): ScreepsReturnCode {
-        const INCOMING_NUKE = spawn.room.find(FIND_NUKES).length > 0;
-        let workers = spawn.room.myCreepsByMemory.filter((creep) => creep.memory.role === Role.WORKER);
-        let hasUpgrader = spawn.room.myCreepsByMemory.some((c) => c.memory.role === Role.UPGRADER);
-        let roomNeedsConstruction =
-            spawn.room.memory.repairQueue.length + spawn.room.myConstructionSites.length > 0 || spawn.room.memory.needsWallRepair;
+        const currentWork = spawn.room.myCreeps
+            .filter((c) => c.memory.role === Role.WORKER || c.memory.role == Role.UPGRADER)
+            .reduce((workSum, nextCreep) => workSum + nextCreep.getActiveBodyparts(WORK), 0);
+        const modifiedWorkCapacity = spawn.room.modifiedWorkCapacity;
+        if ((roomNeedsCoreStructures(spawn.room) ? modifiedWorkCapacity / 5 : modifiedWorkCapacity) > currentWork) {
+            const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
+            const workNeeded = modifiedWorkCapacity - currentWork;
+            const workerWorkCount = spawn.room.myCreeps.reduce(
+                (workerWorkSum, nextCreep) =>
+                    nextCreep.memory.role === Role.WORKER ? workerWorkSum + nextCreep.getActiveBodyparts(WORK) : workerWorkSum,
+                0
+            );
 
-        let workerCount = workers.length + (hasUpgrader ? 1 : 0);
+            //since build costs 5* as much as work, we want to limit the number of building creeps
+            const roleNeeded = workerWorkCount < modifiedWorkCapacity / 5 ? Role.WORKER : Role.UPGRADER;
 
-        let options: SpawnOptions = {
-            boosts: roomUnderAttack || INCOMING_NUKE ? [BoostType.BUILD] : [],
-            memory: {
-                room: spawn.room.name,
-                role: Role.WORKER,
-            },
-        };
+            const options: SpawnOptions = {
+                boosts: !roomNeedsCoreStructures(spawn.room) && spawn.room.controller.level < 8 ? [BoostType.UPGRADE] : [],
+                memory: {
+                    role: roleNeeded,
+                    room: spawn.room.name,
+                } as WorkerCreepMemory,
+            };
 
-        // Increase during siege for more repair creeps
-        let canSupportAnotherWorker =
-            workerCount < spawn.room.workerCapacity + ((roomUnderAttack || INCOMING_NUKE) && spawn.room.workerCapacity < 3 ? 1 : 0);
-
-        let spawnUpgrader =
-            !roomUnderAttack &&
-            canSupportAnotherWorker &&
-            !INCOMING_NUKE &&
-            !hasUpgrader &&
-            !roomNeedsConstruction &&
-            !roomNeedsCoreStructures(spawn.room);
-
-        const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
-        let creepLevelCap = 16;
-        if (spawnUpgrader) {
-            options.memory.role = Role.UPGRADER;
-            options.boosts = spawn.room.controller.level < 8 ? [BoostType.UPGRADE] : [];
-            let result: ScreepsReturnCode;
-
-            if (spawn.room.upgraderLink) {
-                let body = this.createPartsArray([WORK, WORK, WORK, CARRY, MOVE, MOVE], spawn.room.energyCapacityAvailable, 5);
-                result = spawn.smartSpawn(body, this.generateName(options.memory.role, spawn.name), options);
-            } else {
-                result = spawn.spawnMax([WORK, CARRY, MOVE], this.generateName(options.memory.role, spawn.name), options);
-            }
-
+            const name = this.generateName(options.memory.role, spawn.name);
+            let result = spawn.spawnMax(WORKER_PART_BLOCK, name, options, workNeeded);
             return result;
-        } else if (canSupportAnotherWorker) {
-            let result = spawn.spawnMax(WORKER_PART_BLOCK, this.generateName(options.memory.role, spawn.name), options, creepLevelCap);
-            return result;
-        } else {
-            //check to see if there are any creeps to replace w/ stronger models
-            let maxSize = this.createPartsArray(WORKER_PART_BLOCK, spawn.room.energyCapacityAvailable, creepLevelCap).length;
-            let creepToReplace = workers.find((creep) => creep.getActiveBodyparts(WORK) < maxSize / 3);
-            if (creepToReplace) {
-                let result = spawn.spawnMax(WORKER_PART_BLOCK, this.generateName(options.memory.role, spawn.name), options, creepLevelCap);
-                if (result === OK) {
-                    creepToReplace.suicide();
-                }
-                return result;
-            }
         }
+
+        return ERR_NOT_FOUND;
     }
 
-    //find the number of workers a phase-two room can support
-    static calculateWorkerCapacity(room: Room): number {
-        //a "cycle" is 300 ticks - the amount of time a source takes to recharge
-        const CYCLE_LENGTH = 300;
-
-        //base values
-        const sourceCount = room.find(FIND_SOURCES).length;
-        const energyCapacity = room.energyCapacityAvailable;
-
-        // avg distance from storagepos to sources
-        let energySourceDistance = room.memory.energyDistance ?? 25;
-
-        // distance from storagepos to controller
-        let controllerDistance = room.memory.controllerDistance ?? 25;
-
-        let travelDistance = room.storage ? controllerDistance : controllerDistance + energySourceDistance;
-
-        let sourceIncomePerCycle = sourceCount * 3000;
-        let remoteIncomePerCycle = 0; //define this once we get remote harvesting working
+    //find the base number of work parts a room can support during UPGRADING - building is 5x as expensive as upgrading
+    static calculateWorkCapacity(room: Room): number {
+        const sourceCount = Object.keys(room.memory.miningAssignments).length;
+        let sourceIncomePerCycle = sourceCount * SOURCE_ENERGY_CAPACITY;
+        let remoteIncomePerCycle = room.remoteSources.reduce((incomeTotal, nextSource) => {
+            const sourceRoom = nextSource.split('.')[2];
+            return (
+                incomeTotal +
+                (!room.storage?.my
+                    ? SOURCE_ENERGY_NEUTRAL_CAPACITY
+                    : isKeeperRoom(sourceRoom) || isCenterRoom(sourceRoom)
+                    ? SOURCE_ENERGY_KEEPER_CAPACITY
+                    : SOURCE_ENERGY_CAPACITY)
+            );
+        }, 0);
 
         let totalIncomePerCycle = sourceIncomePerCycle + remoteIncomePerCycle;
-
-        //cost to create [WORK, CARRY, MOVE] is 200 energy - the largest a creep can be is 50 parts - stop at 45
-        let maxPartsBlockPerCreep = Math.min(Math.floor(energyCapacity / 200), 15);
-
-        let energyConsumedPerTrip = 50 * maxPartsBlockPerCreep;
-
-        // 50 carry : 1 work
-        let ticksTakenPerTrip = 50 + travelDistance;
-        let tripsPerCycle = CYCLE_LENGTH / ticksTakenPerTrip;
-
-        //assuming there are no construction / maintenance jobs, all workers should be upgrading
-        let upgadeWorkCostPerCyclePerCreep = energyConsumedPerTrip * tripsPerCycle;
-
-        let spawnCost = maxPartsBlockPerCreep * 200;
+        const spawnCostPerWorkerSegment = BODYPART_COST[WORK] + BODYPART_COST[MOVE] + BODYPART_COST[CARRY];
 
         //creeps live for 1500 ticks -> 5 cycles
-        let spawnCostPerCyclePerCreep = spawnCost / 5;
-        let energyExpenditurePerCyclePerCreep = spawnCostPerCyclePerCreep + upgadeWorkCostPerCyclePerCreep;
+        const spawnCostPerCyclePerCreep = spawnCostPerWorkerSegment / (CREEP_LIFE_TIME / ENERGY_REGEN_TIME);
+        const upgradeWorkPerSegmentPerCycle = UPGRADE_CONTROLLER_POWER * ENERGY_REGEN_TIME;
+        const workNeeded = totalIncomePerCycle / upgradeWorkPerSegmentPerCycle;
 
-        let creepCapacity = Math.max(Math.floor(totalIncomePerCycle / energyExpenditurePerCyclePerCreep), 1);
+        return workNeeded;
+    }
 
+    static calculateModifiedWorkCapacity(room: Room): number {
+        const workCapacity = room.baseWorkCapacity;
+        let modifiedWorkCapacity;
         switch (room.energyStatus) {
             case EnergyStatus.CRITICAL:
-                return 0;
+                modifiedWorkCapacity = 0;
+                break;
             case EnergyStatus.RECOVERING:
-                creepCapacity = Math.ceil(creepCapacity / 2);
+                modifiedWorkCapacity = 0.5 * workCapacity;
                 break;
             case EnergyStatus.STABLE:
+                modifiedWorkCapacity = workCapacity;
                 break;
             case EnergyStatus.SURPLUS:
-                creepCapacity *= 2;
+                modifiedWorkCapacity = 1.5 * workCapacity;
                 break;
             case EnergyStatus.OVERFLOW:
-                creepCapacity *= 4;
+                modifiedWorkCapacity = 3 * workCapacity;
                 break;
-            //room has no storage
             default:
-                let hasStartupEnergy = room.structures.some(
-                    (struct) =>
-                        (struct.structureType === STRUCTURE_STORAGE || struct.structureType === STRUCTURE_TERMINAL) && struct.store.energy > 200000
-                );
-                if (hasStartupEnergy) {
-                    creepCapacity *= 4;
-                }
+                modifiedWorkCapacity = workCapacity;
         }
 
-        return creepCapacity;
+        return modifiedWorkCapacity;
     }
 
     static needsMiner(room: Room): boolean {
         let roomNeedsMiner = Object.values(room.memory.miningAssignments).some((assignment) => assignment === AssignmentStatus.UNASSIGNED);
-        if(!roomNeedsMiner){
-            let undersizedMiner = Object.keys(room.memory.miningAssignments).some(assignment => Game.creeps[room.memory.miningAssignments[assignment]].body.length  < PopulationManagement.getMinerBody(assignment.toRoomPos(), room.energyCapacityAvailable).length);
+        if (!roomNeedsMiner) {
+            let undersizedMiner = Object.keys(room.memory.miningAssignments).some(
+                (assignment) =>
+                    Game.creeps[room.memory.miningAssignments[assignment]].body.length <
+                    PopulationManagement.getMinerBody(assignment.toRoomPos(), room.energyCapacityAvailable).length
+            );
             return undersizedMiner;
         }
         return roomNeedsMiner;
@@ -238,9 +197,13 @@ export class PopulationManagement {
     static spawnMiner(spawn: StructureSpawn): ScreepsReturnCode {
         const assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
         let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
-        if(!assigment) {
+        if (!assigment) {
             //if no empty assignment, then an undersized miner needs to be replaced;
-            assigment = assigmentKeys.find(pos => Game.creeps[spawn.room.memory.miningAssignments[pos]].body.length < PopulationManagement.getMinerBody(pos.toRoomPos(), spawn.room.energyCapacityAvailable).length)
+            assigment = assigmentKeys.find(
+                (pos) =>
+                    Game.creeps[spawn.room.memory.miningAssignments[pos]].body.length <
+                    PopulationManagement.getMinerBody(pos.toRoomPos(), spawn.room.energyCapacityAvailable).length
+            );
         }
         const assigmentPos = assigment.toRoomPos();
         const minerMemory: MinerMemory = {
@@ -305,11 +268,11 @@ export class PopulationManagement {
                 room: spawn.room.name,
                 role: Role.REMOTE_MINER,
                 currentTaskPriority: Priority.HIGH,
-                early: true
+                early: true,
             } as RemoteMinerMemory,
         };
-        
-        const body = PopulationManagement.createPartsArray([WORK,MOVE], spawn.room.energyCapacityAvailable, 3);
+
+        const body = PopulationManagement.createPartsArray([WORK, MOVE], spawn.room.energyCapacityAvailable, 3);
         let name = this.generateName(options.memory.role, spawn.name);
 
         let result = spawn.smartSpawn(body, name, options);
@@ -360,49 +323,58 @@ export class PopulationManagement {
     static getGathererBody(room: Room): BodyPartConstant[] {
         const isEarlySpawning = !!room.storage?.my;
 
-        if(isEarlySpawning){
+        if (isEarlySpawning) {
             return PopulationManagement.createPartsArray([CARRY, MOVE], room.energyCapacityAvailable, 10);
         } else {
-            return [WORK,WORK,CARRY,CARRY,MOVE,...PopulationManagement.createPartsArray([CARRY,CARRY,CARRY,CARRY,MOVE], room.energyCapacityAvailable - 350, 9)];
+            return [
+                WORK,
+                WORK,
+                CARRY,
+                CARRY,
+                MOVE,
+                ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], room.energyCapacityAvailable - 350, 9),
+            ];
         }
     }
 
     static findGathererNeed(room: Room): string {
         const isEarlySpawning = !room.storage?.my;
-        const gathererBody = PopulationManagement.getGathererBody(room);
-        const gathererCarry = gathererBody.reduce((sum, nextPart) => nextPart === CARRY ? sum + CARRY_CAPACITY : sum , 0);
-        const gathererCostPerCycle = gathererBody.reduce((sum, nextPart) => sum + BODYPART_COST[nextPart], 0) / ENERGY_REGEN_TIME;
+        return room.remoteSources.find((s) => {
+            const sourceRoomName = s.split('.')[2];
+            const shouldSkip =
+                Memory.roomData[sourceRoomName].roomStatus === RoomMemoryStatus.OWNED_INVADER ||
+                Memory.remoteData[sourceRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS ||
+                Memory.remoteData[sourceRoomName].reservationState === RemoteRoomReservationStatus.ENEMY ||
+                (!isEarlySpawning && room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) ||
+                (room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD &&
+                    room.memory.remoteSources[s].gatherers.length >= 2) ||
+                !roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`);
+            if (shouldSkip) {
+                return false;
+            } else {
+                return this.calculateCarryNeedForRemoteSource(room, s) >= 1;
+            }
+        });
+    }
 
-        return room.remoteSources.find(
-            (s) => {
-                const sourceRoomName = s.split(".")[2];
-                const shouldSkip = 
-                    Memory.roomData[sourceRoomName].roomStatus === RoomMemoryStatus.OWNED_INVADER ||
-                    Memory.remoteData[sourceRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS ||
-                    Memory.remoteData[sourceRoomName].reservationState === RemoteRoomReservationStatus.ENEMY ||
-                    (!isEarlySpawning && room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) ||
-                    !roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`);
+    static calculateCarryNeedForRemoteSource(room: Room, source: string): number {
+        const isEarlySpawning = !room.storage?.my;
+        const sourceRoom = source.split('.')[2];
+        const sourceOutputPerCycle = isEarlySpawning
+            ? SOURCE_ENERGY_NEUTRAL_CAPACITY
+            : isKeeperRoom(sourceRoom) || isCenterRoom(sourceRoom)
+            ? SOURCE_ENERGY_KEEPER_CAPACITY
+            : SOURCE_ENERGY_CAPACITY;
+        const gathererTripDuration = Memory.remoteSourceAssignments[source].roadLength * (isEarlySpawning ? 2 : 3);
+        const tripsPerCycle = ENERGY_REGEN_TIME / gathererTripDuration;
+        const energyTransferredPerCarryPerCycle = CARRY_CAPACITY * tripsPerCycle;
+        const carryNeeded = Math.ceil(sourceOutputPerCycle / energyTransferredPerCarryPerCycle);
 
-                if(shouldSkip){
-                    return false;
-                } else {
-                    const sourceOutput = isEarlySpawning 
-                        ? SOURCE_ENERGY_NEUTRAL_CAPACITY 
-                        : isKeeperRoom(s.split(".")[2]) ? SOURCE_ENERGY_KEEPER_CAPACITY : SOURCE_ENERGY_CAPACITY;
-                    const distanceToSource = Memory.remoteSourceAssignments[s]?.roadLength;
-                    const gathererTripDuration = isEarlySpawning ? distanceToSource * 2 : distanceToSource * 3; //ticks to complete one round trip
-                    const tripsPerCycle = Math.floor(ENERGY_REGEN_TIME / gathererTripDuration);
-                    const energyTransferredPerCreep = tripsPerCycle * gathererCarry; // the amount of energy a gatherers transports home per cycle
-                    let gatherersNeeded = Math.floor(sourceOutput / energyTransferredPerCreep);
-                    if(sourceOutput - (gatherersNeeded * gathererCarry) > 300 + gathererCostPerCycle){ //if the remainder of energy is greater than the cost to spawn another gatherer, then do so
-                        gatherersNeeded  += 1;
-                    }
-
-                    const gathererNeeded = room.memory.remoteSources[s].gatherers.length < gatherersNeeded;
-                    return gathererNeeded;
-                }
-           }   
+        const currentCarry = room.memory.remoteSources[source].gatherers.reduce(
+            (carrySum, nextCreep) => carrySum + Game.creeps[nextCreep].getActiveBodyparts(CARRY),
+            0
         );
+        return carryNeeded - currentCarry;
     }
 
     static spawnEarlyGatherer(spawn: StructureSpawn, source: string): ScreepsReturnCode {
@@ -411,13 +383,13 @@ export class PopulationManagement {
                 assignment: source,
                 room: spawn.room.name,
                 role: Role.GATHERER,
-                early: true
+                early: true,
             } as GathererMemory,
         };
 
-        const name = this.generateName(options.memory.role, spawn.name); 
-        const body = PopulationManagement.createPartsArray([CARRY,MOVE], spawn.room.energyCapacityAvailable, 10);
-        let result = spawn.smartSpawn(body, name, options);
+        const carryNeed = this.calculateCarryNeedForRemoteSource(spawn.room, source);
+        const name = this.generateName(options.memory.role, spawn.name);
+        const result = spawn.spawnFirst([CARRY, MOVE], name, options, carryNeed);
 
         if (result === OK) {
             spawn.room.memory.remoteSources[source].gatherers.push(name);
@@ -445,16 +417,22 @@ export class PopulationManagement {
             }
         }
 
+        const carryNeed = this.calculateCarryNeedForRemoteSource(spawn.room, source);
+
         let PARTS =
             spawn.room.memory.remoteSources[source].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD
                 ? PopulationManagement.createPartsArray([WORK, CARRY, MOVE], spawn.room.energyCapacityAvailable, 10)
                 : [
                       WORK,
-                      WORK,
+                      CARRY,
                       CARRY,
                       CARRY,
                       MOVE,
-                      ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9),
+                      ...PopulationManagement.createPartsArray(
+                          [CARRY, CARRY, CARRY, CARRY, MOVE],
+                          spawn.room.energyCapacityAvailable - 300,
+                          Math.floor(carryNeed / 4)
+                      ),
                   ];
 
         // let PARTS = [
@@ -515,7 +493,7 @@ export class PopulationManagement {
         const scoutMemory: ScoutMemory = {
             role: Role.SCOUT,
             room: spawn.room.name,
-            maxDepth: 5,
+            maxDepth: Math.min(spawn.room.controller.level, 5),
         };
 
         const options: SpawnOptions = {
@@ -817,11 +795,17 @@ export class PopulationManagement {
             opts.energyStructures = spawn.room.myStructures
                 .filter((structure) => structure.structureType === STRUCTURE_SPAWN || structure.structureType === STRUCTURE_EXTENSION)
                 .sort((structA, structB) => {
-                    if (structA.structureType === STRUCTURE_SPAWN && spawn.room.memory.stampLayout.spawn.some(stamp => stamp.pos === structA.pos.toMemSafe())) {
+                    if (
+                        structA.structureType === STRUCTURE_SPAWN &&
+                        spawn.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === structA.pos.toMemSafe())
+                    ) {
                         return -1;
                     }
 
-                    if (structB.structureType === STRUCTURE_SPAWN && spawn.room.memory.stampLayout.spawn.some(stamp => stamp.pos === structB.pos.toMemSafe())) {
+                    if (
+                        structB.structureType === STRUCTURE_SPAWN &&
+                        spawn.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === structB.pos.toMemSafe())
+                    ) {
                         return 1;
                     }
 
@@ -850,9 +834,7 @@ export class PopulationManagement {
             if (result !== OK) {
                 console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
             } else {
-                spawn.room.reservedEnergy != undefined
-                    ? (spawn.room.reservedEnergy += partsArrayCost)
-                    : (spawn.room.reservedEnergy = partsArrayCost);
+                spawn.room.reservedEnergy != undefined ? (spawn.room.reservedEnergy += partsArrayCost) : (spawn.room.reservedEnergy = partsArrayCost);
                 requestsToAdd.forEach((request) => {
                     spawn.room.addRequest(request.resource, request.amount);
                 });
@@ -898,10 +880,10 @@ export class PopulationManagement {
                         }
                         boostsAvailableInRoom += boostsToImport;
                     }
-                    
+
                     const boostResourceAmount = Math.min(boostsRequested, boostsAvailableInRoom) * 30;
 
-                    if(boostResourceAmount > 0){
+                    if (boostResourceAmount > 0) {
                         labTasksToAdd.push({
                             type: LabTaskType.BOOST,
                             needs: [
@@ -989,10 +971,14 @@ export class PopulationManagement {
     }
 
     static needsTransporter(room: Room) {
-        let transporter = room.myCreepsByMemory.find((c) => c.memory.role === Role.TRANSPORTER);
+        let transporterCount = room.myCreepsByMemory.filter((c) => c.memory.role === Role.TRANSPORTER).length;
+        if (room.controller.level < 3 && transporterCount < 2) {
+            return true;
+        }
+
         let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 500);
         let bigRuins = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 10000 });
-        return !transporter && !!room.storage && bigDroppedResources.length + bigRuins.length >= 1;
+        return !transporterCount && !!room.storage && bigDroppedResources.length + bigRuins.length >= 1;
     }
 
     static needsMineralMiner(room: Room) {

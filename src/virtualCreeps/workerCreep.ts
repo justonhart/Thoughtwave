@@ -1,3 +1,4 @@
+import { roomNeedsCoreStructures } from '../modules/roomDesign';
 import { WaveCreep } from './waveCreep';
 
 export class WorkerCreep extends WaveCreep {
@@ -14,7 +15,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected gatherEnergy() {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
+        this.memory.currentTaskPriority = Priority.LOW;
 
         let target = Game.getObjectById(this.memory.energySource);
         if (!target) {
@@ -76,6 +77,7 @@ export class WorkerCreep extends WaveCreep {
                     this.travelTo(target, { ignoreCreeps: true, range: 1, maxRooms: 1 });
                     break;
                 case 0:
+                default:
                     this.stopGathering();
                     break;
             }
@@ -85,13 +87,12 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
+        this.debugLog('looking for energy source');
         if (this.room.storage?.store[RESOURCE_ENERGY]) {
             return this.room.storage.id;
         } else if (!this.room.storage && this.room.terminal?.store.energy) {
             return this.room.terminal.id;
         }
-
-        let nonStorageSources: (Ruin | Resource | Structure | Tombstone)[];
 
         let ruins = this.room.find(FIND_RUINS, {
             filter: (r) => {
@@ -101,28 +102,47 @@ export class WorkerCreep extends WaveCreep {
 
         let tombstones = this.room.find(FIND_TOMBSTONES, { filter: (t) => t.store[RESOURCE_ENERGY] });
 
-        let looseEnergyStacks = this.room
-            .find(FIND_DROPPED_RESOURCES)
-            .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
+        let miscSources = [...ruins, ...tombstones];
+        if (miscSources.length) {
+            return this.pos.findClosestByRange(miscSources)?.id;
+        }
 
-        let containers = this.room.structures.filter(
-            (str) =>
-                str.structureType === STRUCTURE_CONTAINER &&
-                str.store.energy >= this.store.getCapacity() &&
-                (!this.room.storage || 
-                !this.room.memory.stampLayout.container.some(
-                    (containerStamp) =>
-                        str.pos.toMemSafe() === containerStamp.pos && (containerStamp.type === 'center' || containerStamp.type === 'rm')
-                ))
-        );
+        if (!roomNeedsCoreStructures(this.homeroom)) {
+            const upgradeContainer = this.homeroom.memory.stampLayout.container
+                .find((stamp) => stamp.type === STRUCTURE_CONTROLLER)
+                ?.pos.toRoomPos()
+                .look()
+                .find(
+                    (lookObj) =>
+                        lookObj.energy ||
+                        (lookObj.structure?.structureType === STRUCTURE_CONTAINER && (lookObj.structure as StructureContainer).store.energy)
+                );
+            if (upgradeContainer) {
+                return upgradeContainer.energy ? upgradeContainer.energy.id : upgradeContainer.structure.id;
+            }
+        }
 
-        nonStorageSources = [...tombstones, ...ruins, ...looseEnergyStacks, ...containers];
-        if (nonStorageSources.length) {
-            return this.pos.findClosestByRange(nonStorageSources).id;
+        let centerContainerStamps = this.room.memory.stampLayout.container.filter((stamp) => stamp.type === 'center');
+        let centerContainers = centerContainerStamps
+            .map((stamp) =>
+                stamp.pos
+                    .toRoomPos()
+                    .lookFor(LOOK_STRUCTURES)
+                    .find((s: StructureContainer) => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(RESOURCE_ENERGY) > 750)
+            )
+            .filter((s) => !!s);
+        if (centerContainers.length) {
+            return this.pos.findClosestByRange(centerContainers)?.id;
+        }
+
+        let centerResources = centerContainerStamps.map((stamp) => stamp.pos.toRoomPos().lookFor(LOOK_ENERGY).pop()).filter((r) => !!r);
+        if (centerResources.length) {
+            return this.pos.findClosestByRange(centerResources)?.id;
         }
     }
 
     protected runBuildJob(target: ConstructionSite) {
+        this.debugLog('running build job');
         this.memory.currentTaskPriority = Priority.LOW;
         let jobCost = BUILD_POWER * this.getActiveBodyparts(WORK);
         let buildSuccess = this.build(target);
@@ -151,6 +171,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected runUpgradeJob() {
+        this.debugLog('running upgrade job');
         this.memory.currentTaskPriority = Priority.LOW;
         let jobCost = UPGRADE_CONTROLLER_POWER * this.getActiveBodyparts(WORK);
         switch (this.upgradeController(this.homeroom.controller)) {
@@ -177,6 +198,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected runRepairJob(target: Structure) {
+        this.debugLog('running repair job');
         this.memory.currentTaskPriority = Priority.LOW;
         if (target.hits < target.hitsMax) {
             let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);

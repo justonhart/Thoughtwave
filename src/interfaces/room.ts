@@ -13,7 +13,7 @@ interface RoomMemory {
     miningAssignments?: { [posString: string]: string };
     mineralMiningAssignments?: { [posString: string]: string };
     labTasks?: { [id: number]: LabTask };
-    dontCheckConstructionsBefore?: number;
+    finishedConstructionAtRcl?: number;
     shipments?: number[]; //stores IDs for shipments to be referenced from Memory.shipments
     factoryTask?: FactoryTask;
     scanProgress?: string;
@@ -113,7 +113,14 @@ interface Room {
     upgraderLink: StructureLink;
     getRepairTarget(): Id<Structure>;
     canSpawn(): boolean;
-    workerCapacity: number;
+    /**
+     * The number of work parts a room can sustain
+     */
+    baseWorkCapacity: number;
+    /**
+     * The number of work parts a room can sustain, modified by economic factors (energy in storage)
+     */
+    modifiedWorkCapacity: number;
     spawns: StructureSpawn[];
     mySpawns: StructureSpawn[];
     labs: StructureLab[];
@@ -131,6 +138,7 @@ interface Room {
     structures: AnyStructure[];
     myConstructionSites: ConstructionSite[];
     reservedEnergy: number;
+    addSpawnAssignment(creepBody: BodyPartConstant[], opts: SpawnOptions): ScreepsReturnCode;
 
     // Caching - Only used in roomPrototypes
     _myCreepsByMemory: Creep[];
@@ -148,7 +156,8 @@ interface Room {
     _labs: StructureLab[];
     _spawns: StructureSpawn[];
     _mySpawns: StructureSpawn[];
-    _workerCapacity: number;
+    _baseWorkCapacity: number;
+    _modifiedWorkCapacity: number;
     _myStructures: AnyOwnedStructure[];
     _hostileStructures: AnyOwnedStructure[];
     _structures: Structure[];

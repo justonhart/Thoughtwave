@@ -180,19 +180,19 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
                     if (valid) {
                         starCenter = lookPos;
                         setCenterExtensions(stamps, starCenter);
-                        roadPositions.forEach((pos: RoomPosition) => addUniqueRoad(stamps, { rcl: 3, pos: pos.toMemSafe() }));
+                        roadPositions.forEach((pos: RoomPosition) => addUniqueRoad(stamps, { rcl: 2, pos: pos.toMemSafe() }));
                     }
                 }
             }
         }
     } else {
         setCenterExtensions(stamps, starCenter);
-        roadPositions.forEach((pos: RoomPosition) => addUniqueRoad(stamps, { rcl: 3, pos: pos.toMemSafe() }));
+        roadPositions.forEach((pos: RoomPosition) => addUniqueRoad(stamps, { rcl: 2, pos: pos.toMemSafe() }));
     }
 
     if (valid) {
         logCpu('Start bfs');
-        valid = bfs(starCenter, stamps, terrain);
+        valid = bfs(starCenter, stamps, terrain, room);
         logCpu('End bfs');
         if (!valid) {
             console.log('No proper placements found.');
@@ -202,7 +202,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
         stamps.container
             .filter((stampDetail) => stampDetail.type?.includes('source'))
             .forEach((minerPoi) => addRoadToPois(minerPoi.pos.toRoomPos(), stamps, 3, minerPoi.type, terrain));
-        room.minerals.forEach(mineral => {
+        room.minerals.forEach((mineral) => {
             stamps.extractor.push({ type: 'mineral', rcl: 6, pos: mineral.pos.toMemSafe() });
             addRoadToPois(mineral.pos, stamps, 6, 'mineral', terrain);
         });
@@ -248,9 +248,15 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
             )
             .forEach((minerContainer) => stamps.rampart.push({ rcl: 4, type: 'miner', pos: minerContainer.pos }));
 
-        addRoadToPois(room.controller.pos, stamps, 3, STRUCTURE_CONTROLLER, terrain, 3);
+        const controllerStamp = stamps.container.find((containerStamp) => containerStamp.type === STRUCTURE_CONTROLLER).pos.toRoomPos();
+        if (controllerStamp) {
+            addRoadToPois(controllerStamp, stamps, 2, STRUCTURE_CONTROLLER, terrain);
+        } else {
+            // Since we saved a link we can get the miner links earlier
+            stamps.link.filter((linkStamp) => linkStamp.type?.includes('source')).forEach((minerLinkStamp) => minerLinkStamp.rcl--);
+        }
 
-        addSingleStructures(stamps, terrain, room.name === 'sim' ? new RoomPosition(25,25,'sim') : findExitAvg(sections));
+        addSingleStructures(stamps, terrain, room.name === 'sim' ? new RoomPosition(25, 25, 'sim') : findExitAvg(sections));
 
         // Visualize
         drawLayout(Game.rooms[room.name].visual, stamps);
@@ -336,7 +342,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
             terrain.get(3, currentExit.y + 1) !== TERRAIN_MASK_WALL
         ) {
             setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(2, currentExit.y, currentExit.roomName), exitPosPerSection, currentExit);
-            if (rampartInfo.ramparts.length && terrain.get(3, currentExit.y) !== TERRAIN_MASK_WALL) {
+            if (rampartInfo.ramparts.length && terrain.get(3, currentExit.y) === TERRAIN_MASK_WALL) {
                 setSection(rampartInfo, exitPosPerSection, currentExit);
             }
         } else {
@@ -406,7 +412,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
             terrain.get(currentExit.x + 1, 46) !== TERRAIN_MASK_WALL
         ) {
             setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(currentExit.x, 47, currentExit.roomName), exitPosPerSection, currentExit);
-            if (rampartInfo.ramparts.length && terrain.get(currentExit.x, 46) !== TERRAIN_MASK_WALL) {
+            if (rampartInfo.ramparts.length && terrain.get(currentExit.x, 46) === TERRAIN_MASK_WALL) {
                 setSection(rampartInfo, exitPosPerSection, currentExit);
             }
         } else if (rampartInfo.ramparts.length) {
@@ -476,7 +482,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
             terrain.get(currentExit.x + 1, 3) !== TERRAIN_MASK_WALL
         ) {
             setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(currentExit.x, 2, currentExit.roomName), exitPosPerSection, currentExit);
-            if (rampartInfo.ramparts.length && terrain.get(currentExit.x, 3) !== TERRAIN_MASK_WALL) {
+            if (rampartInfo.ramparts.length && terrain.get(currentExit.x, 3) === TERRAIN_MASK_WALL) {
                 setSection(rampartInfo, exitPosPerSection, currentExit);
             }
         } else if (rampartInfo.ramparts.length) {
@@ -546,7 +552,7 @@ function getRampartSectionsAroundExits(stamps: Stamps, terrain: RoomTerrain, roo
             terrain.get(46, currentExit.y + 1) !== TERRAIN_MASK_WALL
         ) {
             setRampartIfNotWall(rampartInfo, terrain, new RoomPosition(47, currentExit.y, currentExit.roomName), exitPosPerSection, currentExit);
-            if (rampartInfo.ramparts.length && terrain.get(46, currentExit.y) !== TERRAIN_MASK_WALL) {
+            if (rampartInfo.ramparts.length && terrain.get(46, currentExit.y) === TERRAIN_MASK_WALL) {
                 setSection(rampartInfo, exitPosPerSection, currentExit);
             }
         } else if (rampartInfo.ramparts.length) {
@@ -803,42 +809,49 @@ function isCloseToEdge(pos: RoomPosition): boolean {
     return pos.x < 2 || pos.y < 2 || pos.x > 47 || pos.y > 47;
 }
 
-function placeControllerLink(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): void {
-    const gridSize = 9;
-    // Define layer width and starting layer index
-    let layer_width = Math.floor(gridSize / 2);
+// Find best position for controller container/link. This should be the one with the most empty spaces around it to allow the maximum number of upgraders
+function getClosestControllerLinkPos(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): RoomPosition {
+    // Close enough to the storage to where it is not worth it
+    if (startPos.getRangeTo(stamps.storage[0].pos.toRoomPos()) < 5) {
+        return;
+    }
+    const possiblePositions = [] as { pos: RoomPosition; spots: number }[];
 
-    const availableSpots = [];
-    // Loop through the layers
-    while (layer_width >= 0) {
-        // Define the boundaries of the current layer
-        const x_min = startPos.x - layer_width < 2 ? 2 : startPos.x - layer_width;
-        const y_min = startPos.y - layer_width < 2 ? 2 : startPos.y - layer_width;
-        const x_max = startPos.x + layer_width > 47 ? 47 : startPos.x + layer_width;
-        const y_max = startPos.y + layer_width > 47 ? 47 : startPos.y + layer_width;
-
-        // Loop through the cells in the current layer
-        for (let x = x_min; x <= x_max; x++) {
-            for (let y = y_min; y <= y_max; y++) {
-                // Do something with the current cell, e.g. set it to 1
-                const position = new RoomPosition(x, y, startPos.roomName);
-                if (terrain.get(x, y) !== TERRAIN_MASK_WALL && !containsStamp(stamps, [position])) {
-                    // If its a position already next to a road take it
-                    if (stamps.road.some((roadDetail) => position.isNearTo(roadDetail.pos.toRoomPos()))) {
-                        stamps.link.push({ type: 'controller', rcl: 6, pos: position.toMemSafe() });
-                        return;
-                    }
-                    availableSpots.push(position);
+    for (let dx = -2; dx <= 2; dx++) {
+        for (let dy = -2; dy <= 2; dy++) {
+            if (dx !== 0 || dy !== 0) {
+                const position = new RoomPosition(startPos.x + dx, startPos.y + dy, startPos.roomName);
+                if (!containsStamp(stamps, [position])) {
+                    const nonWallCount = position
+                        .neighbors(true, false)
+                        .filter(
+                            (neighborPos) =>
+                                terrain.get(neighborPos.x, neighborPos.y) !== TERRAIN_MASK_WALL && !containsNonRoadStamp(stamps, [neighborPos])
+                        ).length;
+                    possiblePositions.push({ pos: position, spots: nonWallCount });
                 }
             }
         }
-
-        // Move to the next layer
-        layer_width--;
     }
 
-    const closest = stamps.storage[0].pos.toRoomPos().findClosestByPath(availableSpots); // Costly but since it only runs once its worth it
-    stamps.link.push({ type: 'controller', rcl: 6, pos: closest });
+    if (possiblePositions.length) {
+        const maxPositions = possiblePositions.reduce(
+            (max, current) => {
+                if (current.spots > max[0].spots) {
+                    return [current];
+                } else if (current.spots === max[0].spots) {
+                    max.push(current);
+                }
+                return max;
+            },
+            [possiblePositions[0]]
+        );
+
+        if (maxPositions.length > 1) {
+            return stamps.storage[0].pos.toRoomPos().findClosestByPath(maxPositions.map((maxPos) => maxPos.pos));
+        }
+        return maxPositions[0].pos;
+    }
 }
 
 /**
@@ -850,7 +863,7 @@ function placeControllerLink(startPos: RoomPosition, stamps: Stamps, terrain: Ro
  * @param terrain
  * @returns
  */
-function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): boolean {
+function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain, room: Room): boolean {
     let visited: Set<string> = new Set();
     let queue: RoomPosition[] = [startPos];
 
@@ -973,6 +986,15 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
         }
     }
 
+    // Place Controller stamps to avoid placing extensions around it
+    const bestControllerPos = getClosestControllerLinkPos(room.controller.pos, stamps, terrain);
+    let avoidPositions = [];
+    if (bestControllerPos) {
+        stamps.container.push({ type: STRUCTURE_CONTROLLER, rcl: 2, pos: bestControllerPos.toMemSafe() });
+        stamps.link.push({ type: STRUCTURE_CONTROLLER, rcl: 6, pos: bestControllerPos.toMemSafe() });
+        avoidPositions = new RoomPosition(bestControllerPos.x, bestControllerPos.y, room.name).neighbors(true, true);
+    }
+
     visited = new Set();
     queue = [startPos];
     while (queue.length > 0 && stamps.extension.length < 56 && Game.cpu.tickLimit - Game.cpu.getUsed() > (Memory.cpuUsage.average ?? 150) + 100) {
@@ -993,7 +1015,7 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
                 queue.push(neighborPos);
             });
         // skip if it already has a structure on it
-        if (containsStamp(stamps, [pos])) {
+        if (avoidPositions.some((avoidPos) => avoidPos.isEqualTo(pos)) || containsStamp(stamps, [pos])) {
             continue;
         }
 
@@ -1021,7 +1043,8 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain): bool
             !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
             positionsInStampBoundary(targetPositions) &&
             !containsStamp(stamps, targetPositions) &&
-            !containsNonRoadStamp(stamps, roadPositions)
+            !containsNonRoadStamp(stamps, roadPositions) &&
+            !avoidPositions.some((avoidPos) => targetPositions.some((targetPos) => targetPos.isEqualTo(avoidPos)))
         ) {
             const rcl = 3 + Math.floor(stamps.extension.length / 10);
             targetPositions.forEach((extensionPos) => {
@@ -1173,8 +1196,8 @@ function addSingleStructures(stamps: Stamps, terrain: RoomTerrain, exitAvg: Room
     logCpu('End addSingleStructures');
 }
 
-function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: string, terrain: RoomTerrain, range: number = 1) {
-    const path = findPathToPoi(poi, stamps, type, terrain, range);
+function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: string, terrain: RoomTerrain) {
+    let path = findPathToPoi(poi, stamps, type, terrain, 1);
 
     if (type === 'mineral') {
         const lastStep = path.pop();
@@ -1218,25 +1241,6 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
             }
             road.pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.toRoomPos().roomName).toMemSafe();
         }
-    } else if (type === STRUCTURE_CONTROLLER && path.length > 1) {
-        const lastStep = path[path.length - 1];
-        const avoidStep = path[path.length - 2];
-        const pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.toRoomPos().roomName);
-        const freePos = pos
-            .neighbors(false, true)
-            .find(
-                (neighborPos) =>
-                    (pos.x !== neighborPos.x || pos.y !== neighborPos.y) &&
-                    (avoidStep.x !== neighborPos.x || avoidStep.y !== neighborPos.y) &&
-                    !hasWalls(terrain, [neighborPos]) &&
-                    !containsStamp(stamps, [neighborPos])
-            );
-        if (freePos) {
-            stamps.link.push({ type: 'controller', rcl: 6, pos: freePos.toMemSafe() });
-        } else {
-            placeControllerLink(poi, stamps, terrain);
-            findPathToPoi(poi, stamps, type, terrain, range);
-        }
     }
 
     //add unique road positions for next cost_matrix
@@ -1244,6 +1248,7 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
         const road = stamps.road.find((roadDetail) => roadDetail.pos.toRoomPos().x === step.x && roadDetail.pos.toRoomPos().y === step.y);
         if (!road) {
             if (type === STRUCTURE_CONTROLLER && index === path.length - 1) {
+                // Do not allow building around controller
                 addUniqueRoad(stamps, {
                     type: 'notBuildable',
                     rcl,
@@ -1253,7 +1258,7 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
                 addUniqueRoad(stamps, { type, rcl, pos: new RoomPosition(step.x, step.y, stamps.storage[0].pos.toRoomPos().roomName).toMemSafe() });
             }
         } else if (road.rcl > rcl) {
-            // Override rcl
+            // Override lower rcl
             road.rcl = rcl;
         }
     });
