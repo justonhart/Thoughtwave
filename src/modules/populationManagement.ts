@@ -431,7 +431,7 @@ export class PopulationManagement {
                       ...PopulationManagement.createPartsArray(
                           [CARRY, CARRY, CARRY, CARRY, MOVE],
                           spawn.room.energyCapacityAvailable - 300,
-                          Math.floor(carryNeed / 4)
+                          Math.min(Math.floor(carryNeed / 4), 9)
                       ),
                   ];
 
