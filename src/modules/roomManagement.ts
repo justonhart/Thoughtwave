@@ -1228,6 +1228,31 @@ function manageStructures(room: Room) {
             }
         }
 
+        // Swap Container with Link
+        if (room.controller.level === 6) {
+            const controllerContainerStamp = Object.values(room.memory.stampLayout.container).find(
+                (containerStamp) => containerStamp.type === STRUCTURE_CONTROLLER
+            );
+            if (controllerContainerStamp) {
+                const container = room.structures.find((struct) => struct.pos.isEqualTo(controllerContainerStamp.pos.toRoomPos()));
+
+                // Remove Container from Stamps
+                for (let i = 0; i < room.memory.stampLayout.container.length; i++) {
+                    if (room.memory.stampLayout.container[i].pos.toRoomPos().isEqualTo(container)) {
+                        delete room.memory.stampLayout.container[i];
+                    }
+                }
+
+                // Add Link to Stamps
+                room.memory.stampLayout.link.push({ type: STRUCTURE_CONTROLLER, rcl: 6, pos: container.pos.toMemSafe() });
+
+                // Remove Container
+                if (container) {
+                    container.destroy();
+                }
+            }
+        }
+
         // Check for any missing structures and add them
         const constructionSites = room.myConstructionSites;
         let constructionSitesCount = constructionSites.length;
