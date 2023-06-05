@@ -1221,12 +1221,12 @@ function manageStructures(room: Room) {
                 // Remove from roomDesign
                 for (let i = 0; i < room.memory.stampLayout.extractor.length; i++) {
                     if (room.memory.stampLayout.extractor[i].pos.toRoomPos().isEqualTo(extractor)) {
-                        delete room.memory.stampLayout.extractor[i];
+                        room.memory.stampLayout.extractor.splice(i, 1);
                     }
                 }
                 for (let i = 0; i < room.memory.stampLayout.container.length; i++) {
                     if (room.memory.stampLayout.container[i].pos.toRoomPos().isEqualTo(container)) {
-                        delete room.memory.stampLayout.container[i];
+                        room.memory.stampLayout.extractor.splice(i, 1);
                     }
                 }
 
