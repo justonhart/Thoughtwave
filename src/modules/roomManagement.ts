@@ -1229,6 +1229,7 @@ function manageStructures(room: Room) {
                         room.memory.stampLayout.extractor.splice(i, 1);
                     }
                 }
+                delete room.memory.mineralMiningAssignments[container.pos.toMemSafe()];
 
                 // Remove from room
                 container.destroy();
