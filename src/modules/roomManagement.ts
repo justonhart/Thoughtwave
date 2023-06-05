@@ -1199,14 +1199,13 @@ function manageStructures(room: Room) {
             room.terminal.destroy();
         }
 
+        // Check if room still has thorium
         let thorium;
         if (room.controller.level > 5 && Object.keys(room.memory.stampLayout.extractor).length > 1) {
-            // Still has thorium
             //@ts-ignore
-            thorium = room.minerals.find((mineral) => mineral.mineralType === RESOURCE_THORIUM);
-            if (!thorium) {
-                const container = room.structures.find((struct) => struct.structureType === STRUCTURE_CONTAINER && struct.pos.isNearTo(thorium));
-                const extractor = room.myStructures.find((struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.pos.isEqualTo(thorium));
+            if (!room.minerals.some((mineral) => mineral.mineralType === RESOURCE_THORIUM)) {
+                const extractor = room.myStructures.find((struct) => struct.structureType === STRUCTURE_EXTRACTOR);
+                const container = room.structures.find((struct) => struct.structureType === STRUCTURE_CONTAINER && struct.pos.isNearTo(extractor));
 
                 // Remove from roomDesign
                 for (let i = 0; i < room.memory.stampLayout.extractor.length; i++) {
