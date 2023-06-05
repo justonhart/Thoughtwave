@@ -1247,7 +1247,7 @@ function manageStructures(room: Room) {
                 // Remove Container from Stamps
                 for (let i = 0; i < room.memory.stampLayout.container.length; i++) {
                     if (room.memory.stampLayout.container[i].pos.toRoomPos().isEqualTo(container)) {
-                        delete room.memory.stampLayout.container[i];
+                        room.memory.stampLayout.container.splice(i, 1);
                     }
                 }
 
