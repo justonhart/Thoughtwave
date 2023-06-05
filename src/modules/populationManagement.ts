@@ -435,14 +435,6 @@ export class PopulationManagement {
                       ),
                   ];
 
-        // let PARTS = [
-        //     WORK,
-        //     WORK,
-        //     CARRY,
-        //     CARRY,
-        //     MOVE,
-        //     ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], spawn.room.energyCapacityAvailable - 350, 9),
-        // ];
         let result = spawn.smartSpawn(PARTS, name, options);
 
         if (result === OK) {

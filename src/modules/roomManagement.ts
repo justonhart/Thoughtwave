@@ -484,9 +484,20 @@ function runSpawning(room: Room) {
         });
     }
 
-    if (availableSpawns && PopulationManagement.needsMiner(room) && !roomUnderAttack) {
+    if (availableSpawns && PopulationManagement.needsMiner(room)) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
+    }
+
+    if (availableSpawns && PopulationManagement.needsTransporter(room) && !roomUnderAttack) {
+        let options: SpawnOptions = {
+            memory: {
+                room: room.name,
+                role: Role.TRANSPORTER,
+            },
+        };
+        let spawn = availableSpawns.pop();
+        spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
     }
 
     if (PopulationManagement.needsManager(room)) {
@@ -1210,14 +1221,15 @@ function manageStructures(room: Room) {
                 // Remove from roomDesign
                 for (let i = 0; i < room.memory.stampLayout.extractor.length; i++) {
                     if (room.memory.stampLayout.extractor[i].pos.toRoomPos().isEqualTo(extractor)) {
-                        delete room.memory.stampLayout.extractor[i];
+                        room.memory.stampLayout.extractor.splice(i, 1);
                     }
                 }
                 for (let i = 0; i < room.memory.stampLayout.container.length; i++) {
                     if (room.memory.stampLayout.container[i].pos.toRoomPos().isEqualTo(container)) {
-                        delete room.memory.stampLayout.container[i];
+                        room.memory.stampLayout.extractor.splice(i, 1);
                     }
                 }
+                delete room.memory.mineralMiningAssignments[container.pos.toMemSafe()];
 
                 // Remove from room
                 container.destroy();
@@ -1236,7 +1248,7 @@ function manageStructures(room: Room) {
                 // Remove Container from Stamps
                 for (let i = 0; i < room.memory.stampLayout.container.length; i++) {
                     if (room.memory.stampLayout.container[i].pos.toRoomPos().isEqualTo(container)) {
-                        delete room.memory.stampLayout.container[i];
+                        room.memory.stampLayout.container.splice(i, 1);
                     }
                 }
 
