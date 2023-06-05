@@ -484,7 +484,18 @@ function runSpawning(room: Room) {
         });
     }
 
-    if (availableSpawns && PopulationManagement.needsMiner(room) && !roomUnderAttack) {
+    if (availableSpawns && PopulationManagement.needsTransporter(room) && !roomUnderAttack) {
+        let options: SpawnOptions = {
+            memory: {
+                room: room.name,
+                role: Role.TRANSPORTER,
+            },
+        };
+        let spawn = availableSpawns.pop();
+        spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
+    }
+
+    if (availableSpawns && PopulationManagement.needsMiner(room)) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
     }
