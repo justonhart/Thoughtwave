@@ -109,12 +109,16 @@ export class WorkerCreep extends WaveCreep {
 
         if (!roomNeedsCoreStructures(this.homeroom)) {
             const upgradeContainer = this.homeroom.memory.stampLayout.container
-                .find((stamp) => stamp.type === 'upgrade')
+                .find((stamp) => stamp.type === STRUCTURE_CONTROLLER)
                 ?.pos.toRoomPos()
-                .lookFor(LOOK_STRUCTURES)
-                .find((s: StructureContainer) => s.structureType === STRUCTURE_CONTAINER && s.store.energy);
+                .look()
+                .find(
+                    (lookObj) =>
+                        lookObj.energy ||
+                        (lookObj.structure?.structureType === STRUCTURE_CONTAINER && (lookObj.structure as StructureContainer).store.energy)
+                );
             if (upgradeContainer) {
-                return upgradeContainer.id;
+                return upgradeContainer.energy ? upgradeContainer.energy.id : upgradeContainer.structure.id;
             }
         }
 

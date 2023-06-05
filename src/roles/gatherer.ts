@@ -121,7 +121,7 @@ export class Gatherer extends TransportCreep {
 
     private findDropPos(): string {
         if (!roomNeedsCoreStructures(this.homeroom) && this.homeroom.controller.level < 6) {
-            const upgradeContainer = this.homeroom.memory.stampLayout.container.find((stamp) => stamp.type === 'upgrade')?.pos;
+            const upgradeContainer = this.homeroom.memory.stampLayout.container.find((stamp) => stamp.type === STRUCTURE_CONTROLLER)?.pos;
             if (upgradeContainer) {
                 return upgradeContainer;
             }
