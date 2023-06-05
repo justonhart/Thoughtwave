@@ -1000,7 +1000,7 @@ export class PopulationManagement {
             room.memory.mineralMiningAssignments = {};
         }
 
-        if (room.storage?.store.getFreeCapacity() < 1000000) {
+        if (room.controller.level < 6 || room.storage?.store.getFreeCapacity() < 100000) {
             return false;
         }
 
