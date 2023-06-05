@@ -1,11 +1,12 @@
 import { isKeeperRoom } from '../modules/data';
 import { posExistsOnRoad } from '../modules/roads';
+import { roomNeedsCoreStructures } from '../modules/roomDesign';
 import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
     memory: GathererMemory;
-    protected run(){
-        if(this.memory.early){
+    protected run() {
+        if (this.memory.early) {
             this.runEarly();
         } else {
             this.runFull();
@@ -13,14 +14,16 @@ export class Gatherer extends TransportCreep {
     }
 
     private runEarly() {
-        if(this.store.getUsedCapacity()){
-            this.dropCargoEarly()
+        if (this.store.getUsedCapacity()) {
+            this.dropCargoEarly();
         } else {
-            if(!this.pos.isNearTo(this.getMiningPosition())){
-                this.travelTo(this.getMiningPosition(), {range: 1});
+            if (!this.pos.isNearTo(this.getMiningPosition())) {
+                this.travelTo(this.getMiningPosition(), { range: 1 });
             } else {
-                let resource = this.getMiningPosition().lookFor(LOOK_RESOURCES).find(res => res.resourceType === RESOURCE_ENERGY);
-                if(resource){
+                let resource = this.getMiningPosition()
+                    .lookFor(LOOK_RESOURCES)
+                    .find((res) => res.resourceType === RESOURCE_ENERGY);
+                if (resource) {
                     this.pickup(resource);
                 }
             }
@@ -35,11 +38,7 @@ export class Gatherer extends TransportCreep {
             this.triggerReplacementSpawn();
         }
 
-        if (
-            this.damaged() ||
-            (Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.evacuate &&
-                !this.store.getUsedCapacity())
-        ) {
+        if (this.damaged() || (Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.evacuate && !this.store.getUsedCapacity())) {
             delete this.memory.targetId;
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
@@ -90,10 +89,10 @@ export class Gatherer extends TransportCreep {
 
     protected storeCargo() {
         this.memory.currentTaskPriority = Priority.MEDIUM;
-        if(this.pos.isNearTo(this.homeroom.storage)){
+        if (this.pos.isNearTo(this.homeroom.storage)) {
             let resourceToStore: any = Object.keys(this.store).shift();
             let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
-            if(storeResult === OK) {
+            if (storeResult === OK) {
                 delete Memory.rooms[this.memory.room].remoteSources[this.memory.assignment].setupStatus;
                 this.manageLifecycle();
                 this.travelTo(this.getMiningPosition());
@@ -106,12 +105,53 @@ export class Gatherer extends TransportCreep {
 
     private dropCargoEarly() {
         this.memory.currentTaskPriority = Priority.MEDIUM;
-        let dropPos = this.homeroom.memory.stampLayout.container.find(stamp => stamp.type === 'center').pos.toRoomPos();
-        if(this.pos.isEqualTo(dropPos)){
+        if (!this.memory.dropPos) {
+            this.memory.dropPos = this.findDropPos();
+        }
+        let dropPos = this.memory.dropPos?.toRoomPos();
+
+        if (this.pos.isEqualTo(dropPos)) {
             this.drop(RESOURCE_ENERGY);
+            delete this.memory.dropPos;
             this.travelTo(this.getMiningPosition());
         } else {
             this.travelTo(dropPos);
+        }
+    }
+
+    private findDropPos(): string {
+        if (!roomNeedsCoreStructures(this.homeroom) && this.homeroom.controller.level < 6) {
+            const upgradeContainer = this.homeroom.memory.stampLayout.container.find((stamp) => stamp.type === 'upgrade')?.pos;
+            if (upgradeContainer) {
+                return upgradeContainer;
+            }
+        }
+        const containerStampsAdjacentToManager = this.homeroom.memory.stampLayout.container.filter(
+            (stamp) =>
+                stamp.type === 'center' &&
+                stamp.pos.toRoomPos().findInRange(FIND_MY_CREEPS, 1, { filter: (c) => c.memory.role === Role.MANAGER }).length
+        );
+        if (containerStampsAdjacentToManager.length) {
+            const stampsEnergy = containerStampsAdjacentToManager.map((stamp) => {
+                return {
+                    pos: stamp.pos,
+                    energy: stamp.pos
+                        .toRoomPos()
+                        .look()
+                        .reduce(
+                            (energySum, nextLook) =>
+                                nextLook.structure?.structureType === STRUCTURE_CONTAINER
+                                    ? energySum + (nextLook.structure as StructureContainer).store.energy
+                                    : nextLook.resource?.resourceType === RESOURCE_ENERGY
+                                    ? energySum + nextLook.resource.amount
+                                    : energySum,
+                            0
+                        ),
+                };
+            });
+            return stampsEnergy.reduce((lowest, next) => (next.energy < lowest.energy ? next : lowest)).pos;
+        } else {
+            return this.homeroom.memory.stampLayout.container.find((stamp) => stamp.type === 'center')?.pos;
         }
     }
 
@@ -158,7 +198,9 @@ export class Gatherer extends TransportCreep {
     }
 
     private triggerReplacementSpawn() {
-        this.homeroom.memory.remoteSources[this.memory.assignment].gatherers = this.homeroom.memory.remoteSources[this.memory.assignment].gatherers.filter(gatherer => gatherer !== this.name);
+        this.homeroom.memory.remoteSources[this.memory.assignment].gatherers = this.homeroom.memory.remoteSources[
+            this.memory.assignment
+        ].gatherers.filter((gatherer) => gatherer !== this.name);
     }
 
     private getMiningPosition(): RoomPosition {

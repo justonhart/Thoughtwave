@@ -181,14 +181,14 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
                     if (valid) {
                         starCenter = lookPos;
                         setCenterExtensions(stamps, starCenter);
-                        roadPositions.forEach((pos: RoomPosition) => addUniqueRoad(stamps, { rcl: 3, pos: pos.toMemSafe() }));
+                        roadPositions.forEach((pos: RoomPosition) => addUniqueRoad(stamps, { rcl: 2, pos: pos.toMemSafe() }));
                     }
                 }
             }
         }
     } else {
         setCenterExtensions(stamps, starCenter);
-        roadPositions.forEach((pos: RoomPosition) => addUniqueRoad(stamps, { rcl: 3, pos: pos.toMemSafe() }));
+        roadPositions.forEach((pos: RoomPosition) => addUniqueRoad(stamps, { rcl: 2, pos: pos.toMemSafe() }));
     }
 
     if (valid) {
@@ -247,7 +247,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
             )
             .forEach((minerContainer) => stamps.rampart.push({ rcl: 4, type: 'miner', pos: minerContainer.pos }));
 
-        addRoadToPois(room.controller.pos, stamps, 3, STRUCTURE_CONTROLLER, terrain, 3);
+        addRoadToPois(room.controller.pos, stamps, 2, STRUCTURE_CONTROLLER, terrain, 3);
 
         // Add left over single structures
         addSingleStructures(stamps, terrain, findExitAvg(sections));

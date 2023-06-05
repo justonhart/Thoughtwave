@@ -72,7 +72,7 @@ function driveHomeRoom(room: Room) {
             });
         } else {
             manageMaintenance(room);
-            manageStructures(room); 
+            manageStructures(room);
         }
 
         let isHomeUnderAttack = false;
@@ -99,10 +99,9 @@ function driveHomeRoom(room: Room) {
 
         //if this room doesn't have any outstanding claims
         if (
-            Game.time % 1000 === 0 &&
             !room.memory.outstandingClaim &&
             !global.remoteSourcesChecked &&
-            Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 1000 &&
+            Game.time - (room.memory.lastRemoteSourceCheck ?? 0) > 200 &&
             canSupportRemoteRoom(room)
         ) {
             try {
@@ -423,7 +422,7 @@ export function initHomeRoom(room: Room) {
     }
 }
 
-function runSpawning(room: Room){
+function runSpawning(room: Room) {
     const spawns = room.mySpawns;
     const busySpawns = spawns.filter((spawn) => spawn.spawning);
 
@@ -485,17 +484,6 @@ function runSpawning(room: Room){
         });
     }
 
-    if (availableSpawns && PopulationManagement.needsTransporter(room) && !roomUnderAttack) {
-        let options: SpawnOptions = {
-            memory: {
-                room: room.name,
-                role: Role.TRANSPORTER,
-            },
-        };
-        let spawn = availableSpawns.pop();
-        spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
-    }
-
     if (availableSpawns && PopulationManagement.needsMiner(room) && !roomUnderAttack) {
         let spawn = availableSpawns.pop();
         spawn?.spawnMiner();
@@ -519,7 +507,18 @@ function runSpawning(room: Room){
         }
     }
 
-    if (!room.observer && (room.memory.lastScout ?? 0) + 7500 <= Game.time) {
+    if (availableSpawns && PopulationManagement.needsTransporter(room) && !roomUnderAttack) {
+        let options: SpawnOptions = {
+            memory: {
+                room: room.name,
+                role: Role.TRANSPORTER,
+            },
+        };
+        let spawn = availableSpawns.pop();
+        spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
+    }
+
+    if (!room.observer && (!room.memory.lastScout || Game.time - room.memory.lastScout >= 3000)) {
         let spawn = availableSpawns.pop();
         let result = spawn?.spawnScout();
         if (result === OK) {
@@ -532,7 +531,7 @@ function runSpawning(room: Room){
         spawn?.spawnMineralMiner();
     }
 
-    if (availableSpawns && workerCount >= room.workerCapacity && !roomUnderAttack) {
+    if (availableSpawns && !roomUnderAttack) {
         assignments.forEach((assignment) => {
             const assignmentCost = assignment.body.map((part) => BODYPART_COST[part]).reduce((sum, cost) => sum + cost);
             const canSpawnAssignment = room.energyAvailable >= assignmentCost;
@@ -588,15 +587,15 @@ function runSpawning(room: Room){
                 const spawn = availableSpawns.pop();
                 spawn?.spawnRemoteMineralMiner(remoteMineralMinerNeed);
             }
-        } else if (!room.storage?.my && room.remoteSources.length && !roomUnderAttack){
+        } else if (!room.storage?.my && room.remoteSources.length && !roomUnderAttack) {
             let earlyRemoteMinerNeed = PopulationManagement.findRemoteMinerNeed(room);
-            if(earlyRemoteMinerNeed) {
+            if (earlyRemoteMinerNeed) {
                 let spawn = availableSpawns.pop();
                 PopulationManagement.spawnEarlyRemoteMiner(spawn, earlyRemoteMinerNeed);
             }
 
             let earlyGathererNeed = PopulationManagement.findGathererNeed(room);
-            if(earlyGathererNeed){
+            if (earlyGathererNeed) {
                 let spawn = availableSpawns.pop();
                 PopulationManagement.spawnEarlyGatherer(spawn, earlyGathererNeed);
             }
@@ -682,7 +681,7 @@ function runRemoteRooms(room: Room) {
     let remoteRooms = room.remoteMiningRooms;
     remoteRooms?.forEach((remoteRoomName) => {
         try {
-            if(!room.storage?.my){
+            if (!room.storage?.my) {
                 manageEarlyRemoteRoom(room.name, remoteRoomName);
             } else {
                 manageRemoteRoom(room.name, remoteRoomName);
@@ -757,7 +756,7 @@ function getStructurePriority(structureType: StructureConstant): number {
 }
 
 export function canSupportRemoteRoom(room: Room) {
-    return Object.keys(room.memory.remoteSources).length < room.mySpawns.length * 4 ;
+    return Object.keys(room.memory.remoteSources).length < room.mySpawns.length * 3;
 }
 
 function initMissingMemoryValues(room: Room) {
@@ -1179,8 +1178,7 @@ function manageStructures(room: Room) {
                         .lookAt(spawnStamp.pos.toRoomPos())
                         .some(
                             (lookObj) =>
-                                lookObj.constructionSite?.structureType === spawnStamp.type ||
-                                lookObj.structure?.structureType === spawnStamp.type
+                                lookObj.constructionSite?.structureType === spawnStamp.type || lookObj.structure?.structureType === spawnStamp.type
                         )
             )
         ) {
@@ -1225,9 +1223,7 @@ function manageStructures(room: Room) {
                             (stamp) =>
                                 stamp.rcl <= room.controller.level &&
                                 !structures.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()) &&
-                                !constructionSites.some(
-                                    (structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()
-                                )
+                                !constructionSites.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe())
                         )
                         .forEach((stamp) => constructionStamps.push({ pos: stamp.pos.toRoomPos(), key: key as StructureConstant }));
                 });
@@ -1257,6 +1253,4 @@ function manageStructures(room: Room) {
     }
 }
 
-function driveOperationControlledRoom(room: Room) {
-    
-}
+function driveOperationControlledRoom(room: Room) {}
