@@ -13,7 +13,7 @@ interface RoomMemory {
     miningAssignments?: { [posString: string]: string };
     mineralMiningAssignments?: { [posString: string]: string };
     labTasks?: { [id: number]: LabTask };
-    dontCheckConstructionsBefore?: number;
+    finishedConstructionAtRcl?: number;
     shipments?: number[]; //stores IDs for shipments to be referenced from Memory.shipments
     factoryTask?: FactoryTask;
     scanProgress?: string;

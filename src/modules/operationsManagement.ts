@@ -501,7 +501,7 @@ function manageSimpleOperation(opId: string) {
         OPERATION.originRoom = findOperationOrigin(OPERATION.targetRoom)?.roomName;
     }
 
-    if(OPERATION.type === OperationType.TRANSFER && (OPERATION as ResourceOperation).targetAmount === undefined){
+    if (OPERATION.type === OperationType.TRANSFER && (OPERATION as ResourceOperation).targetAmount === undefined) {
         (OPERATION as ResourceOperation).targetAmount = 200000;
         (OPERATION as ResourceOperation).currentAmount = 0;
     }
@@ -530,8 +530,11 @@ function manageSimpleOperation(opId: string) {
         });
     }
 
-    if (OPERATION.expireAt <= Game.time || (OPERATION.type === OperationType.TRANSFER && (OPERATION as ResourceOperation).currentAmount >= (OPERATION as ResourceOperation).targetAmount)) {
-        console.log((OPERATION as ResourceOperation).currentAmount + " | " + (OPERATION as ResourceOperation).targetAmount);
+    if (
+        OPERATION.expireAt <= Game.time ||
+        (OPERATION.type === OperationType.TRANSFER && (OPERATION as ResourceOperation).currentAmount >= (OPERATION as ResourceOperation).targetAmount)
+    ) {
+        console.log((OPERATION as ResourceOperation).currentAmount + ' | ' + (OPERATION as ResourceOperation).targetAmount);
         OPERATION.stage = OperationStage.COMPLETE;
     }
     Memory.operations[opId] = OPERATION;
@@ -679,7 +682,7 @@ function manageRoomRecoveryOperation(opId: string) {
     }
 
     // Simply send one recovery squad
-    targetRoom.memory.dontCheckConstructionsBefore = targetRoom.memory.dontCheckConstructionsBefore - 1000;
+    delete targetRoom.memory.finishedConstructionAtRcl;
     OPERATION.stage = OperationStage.COMPLETE;
     Memory.operations[opId] = OPERATION;
 }

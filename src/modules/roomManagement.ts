@@ -1155,11 +1155,9 @@ export function manageMaintenance(room: Room) {
 
 function manageStructures(room: Room) {
     if (
-        !global.roomConstructionsChecked &&
-        (room.memory.dontCheckConstructionsBefore ?? 0) < Game.time &&
-        (room.energyStatus >= EnergyStatus.RECOVERING || room.energyStatus === undefined) &&
-        Object.keys(Game.constructionSites).length < MAX_CONSTRUCTION_SITES &&
-        room.myConstructionSites.length < 15
+        room.getEventLog().some((log) => log.event === EVENT_OBJECT_DESTROYED && log.data.type !== 'creep') ||
+        ((!room.memory.finishedConstructionAtRcl || room.memory.finishedConstructionAtRcl < room.controller.level) &&
+            !room.myConstructionSites.length)
     ) {
         let cpuUsed = Game.cpu.getUsed();
         // Cleanup any leftover storage/terminal that is in the way
@@ -1279,6 +1277,9 @@ function manageStructures(room: Room) {
             constructionStamps.sort((a, b) => {
                 return getStructurePriority(a.key) > getStructurePriority(b.key) ? 1 : -1;
             });
+            if (!constructionStamps.length) {
+                room.memory.finishedConstructionAtRcl = room.controller.level;
+            }
             while (constructionStamps?.length && constructionSitesCount < 15) {
                 const nextConstructionSite = constructionStamps.pop();
                 const result = room.createConstructionSite(nextConstructionSite.pos, nextConstructionSite.key);
@@ -1294,7 +1295,6 @@ function manageStructures(room: Room) {
         }
 
         global.roomConstructionsChecked = true;
-        room.memory.dontCheckConstructionsBefore = Game.time + BUILD_CHECK_PERIOD;
         cpuUsed = Game.cpu.getUsed() - cpuUsed;
         if (Memory.debug.logRoomPlacementCpu) {
             console.log(`CPU used on ${room.name} stamp layout: ${cpuUsed}`);
