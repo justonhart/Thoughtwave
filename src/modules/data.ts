@@ -1,7 +1,7 @@
 export function addRoomData(room: Room) {
     let data: RoomData = {
         sources: room.find(FIND_SOURCES).map((source) => `${source.pos.x}.${source.pos.y}`),
-        mineralType: room.mineral?.mineralType,
+        mineralTypes: room.minerals?.map(mineral => mineral.mineralType),
         asOf: Game.time,
     };
 

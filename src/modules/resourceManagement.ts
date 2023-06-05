@@ -318,11 +318,14 @@ export function generateEmpireResourceData(): EmpireResourceData {
     let data: EmpireResourceData = { producers: {}, inventory: {} };
 
     roomsToCheck.forEach((room) => {
-        if (data.producers[room.mineral.mineralType]) {
-            data.producers[room.mineral.mineralType].push(room.name);
-        } else {
-            data.producers[room.mineral.mineralType] = [room.name];
-        }
+        room.minerals.forEach(mineral => {
+            if (data.producers[mineral.mineralType]) {
+                data.producers[mineral.mineralType].push(room.name);
+            } else {
+                data.producers[mineral.mineralType] = [room.name];
+            }
+        });
+        
 
         if (room.storage) {
             Object.keys(room.storage.store).forEach((resource) => {

@@ -80,7 +80,7 @@ interface RemoteData {
 interface RoomData {
     asOf: number;
     sources?: string[];
-    mineralType?: MineralConstant;
+    mineralTypes?: MineralConstant[];
     roomStatus?: RoomMemoryStatus;
     owner?: string;
     hostile?: boolean;
@@ -108,7 +108,7 @@ interface Room {
     myPowerCreeps: PowerCreep[];
     hostileCreeps: Creep[];
     energyStatus: EnergyStatus;
-    mineral: Mineral;
+    minerals: Mineral[];
     managerLink: StructureLink;
     upgraderLink: StructureLink;
     getRepairTarget(): Id<Structure>;
@@ -145,7 +145,7 @@ interface Room {
     _myCreeps: Creep[];
     _myPowerCreeps: PowerCreep[];
     _hostileCreeps: Creep[];
-    _mineral: Mineral;
+    _minerals: Mineral[];
     _managerLink: StructureLink;
     _upgraderLink: StructureLink;
     _remoteMiningRooms: string[];

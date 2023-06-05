@@ -507,18 +507,7 @@ function runSpawning(room: Room) {
         }
     }
 
-    if (availableSpawns && PopulationManagement.needsTransporter(room) && !roomUnderAttack) {
-        let options: SpawnOptions = {
-            memory: {
-                room: room.name,
-                role: Role.TRANSPORTER,
-            },
-        };
-        let spawn = availableSpawns.pop();
-        spawn?.spawnMax([CARRY, CARRY, MOVE], PopulationManagement.generateName(options.memory.role, spawn.name), options, 10);
-    }
-
-    if (!room.observer && (!room.memory.lastScout || Game.time - room.memory.lastScout >= 3000)) {
+    if (!room.observer && (room.memory.lastScout ?? 0) + 1000 <= Game.time) {
         let spawn = availableSpawns.pop();
         let result = spawn?.spawnScout();
         if (result === OK) {
@@ -591,13 +580,17 @@ function runSpawning(room: Room) {
             let earlyRemoteMinerNeed = PopulationManagement.findRemoteMinerNeed(room);
             if (earlyRemoteMinerNeed) {
                 let spawn = availableSpawns.pop();
-                PopulationManagement.spawnEarlyRemoteMiner(spawn, earlyRemoteMinerNeed);
+                if (spawn) {
+                    PopulationManagement.spawnEarlyRemoteMiner(spawn, earlyRemoteMinerNeed);
+                }
             }
 
             let earlyGathererNeed = PopulationManagement.findGathererNeed(room);
             if (earlyGathererNeed) {
                 let spawn = availableSpawns.pop();
-                PopulationManagement.spawnEarlyGatherer(spawn, earlyGathererNeed);
+                if (spawn) {
+                    PopulationManagement.spawnEarlyGatherer(spawn, earlyGathererNeed);
+                }
             }
         }
     }
@@ -1208,6 +1201,33 @@ function manageStructures(room: Room) {
             room.terminal.destroy();
         }
 
+        let thorium;
+        if (room.controller.level > 5 && Object.keys(room.memory.stampLayout.extractor).length > 1) {
+            // Still has thorium
+            //@ts-ignore
+            thorium = room.minerals.find((mineral) => mineral.mineralType === RESOURCE_THORIUM);
+            if (!thorium) {
+                const container = room.structures.find((struct) => struct.structureType === STRUCTURE_CONTAINER && struct.pos.isNearTo(thorium));
+                const extractor = room.myStructures.find((struct) => struct.structureType === STRUCTURE_EXTRACTOR && struct.pos.isEqualTo(thorium));
+
+                // Remove from roomDesign
+                for (let i = 0; i < room.memory.stampLayout.extractor.length; i++) {
+                    if (room.memory.stampLayout.extractor[i].pos.toRoomPos().isEqualTo(extractor)) {
+                        delete room.memory.stampLayout.extractor[i];
+                    }
+                }
+                for (let i = 0; i < room.memory.stampLayout.container.length; i++) {
+                    if (room.memory.stampLayout.container[i].pos.toRoomPos().isEqualTo(container)) {
+                        delete room.memory.stampLayout.container[i];
+                    }
+                }
+
+                // Remove from room
+                container.destroy();
+                extractor.destroy();
+            }
+        }
+
         // Check for any missing structures and add them
         const constructionSites = room.myConstructionSites;
         let constructionSitesCount = constructionSites.length;
@@ -1223,7 +1243,11 @@ function manageStructures(room: Room) {
                             (stamp) =>
                                 stamp.rcl <= room.controller.level &&
                                 !structures.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()) &&
-                                !constructionSites.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe())
+                                !constructionSites.some((structure) => key === structure.structureType && stamp.pos === structure.pos.toMemSafe()) &&
+                                (!thorium ||
+                                    (key !== STRUCTURE_EXTRACTOR && key !== STRUCTURE_CONTAINER) ||
+                                    (key === STRUCTURE_EXTRACTOR && stamp.pos.toRoomPos().isEqualTo(thorium)) ||
+                                    (key === STRUCTURE_CONTAINER && (stamp.rcl < 6 || stamp.pos.toRoomPos().isNearTo(thorium)))) // Filter out non-thorium extractor/container until fully mined
                         )
                         .forEach((stamp) => constructionStamps.push({ pos: stamp.pos.toRoomPos(), key: key as StructureConstant }));
                 });

@@ -155,7 +155,6 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
         !hasWalls(terrain, targetPositions.concat(roadPositions)) &&
         !containsStamp(stamps, targetPositions) &&
         !containsNonRoadStamp(stamps, roadPositions);
-
     if (!valid) {
         for (let lookDistance = 1; lookDistance < 50; lookDistance++) {
             let lookPos: RoomPosition;
@@ -203,11 +202,13 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
         stamps.container
             .filter((stampDetail) => stampDetail.type?.includes('source'))
             .forEach((minerPoi) => addRoadToPois(minerPoi.pos.toRoomPos(), stamps, 3, minerPoi.type, terrain));
-        stamps.extractor.push({ type: 'mineral', rcl: 6, pos: room.mineral.pos.toMemSafe() });
-        addRoadToPois(room.mineral.pos, stamps, 6, 'mineral', terrain);
+        room.minerals.forEach(mineral => {
+            stamps.extractor.push({ type: 'mineral', rcl: 6, pos: mineral.pos.toMemSafe() });
+            addRoadToPois(mineral.pos, stamps, 6, 'mineral', terrain);
+        });
 
         // Add Ramparts
-        const sections = getRampartSectionsAroundExits(stamps, terrain, room.name);
+        const sections = room.name === 'sim' ? [] : getRampartSectionsAroundExits(stamps, terrain, room.name);
         sections.forEach((section) => {
             section.forEach((section) => {
                 if (!containsNonRoadStamp(stamps, [section])) {
@@ -249,8 +250,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
 
         addRoadToPois(room.controller.pos, stamps, 2, STRUCTURE_CONTROLLER, terrain, 3);
 
-        // Add left over single structures
-        addSingleStructures(stamps, terrain, findExitAvg(sections));
+        addSingleStructures(stamps, terrain, room.name === 'sim' ? new RoomPosition(25,25,'sim') : findExitAvg(sections));
 
         // Visualize
         drawLayout(Game.rooms[room.name].visual, stamps);

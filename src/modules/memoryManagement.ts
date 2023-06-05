@@ -36,9 +36,6 @@ export function manageMemory() {
 
     deleteExpiredRoomData();
 
-    if (!Memory.priceMap || Game.time % 20000 === 0) {
-        Memory.priceMap = getPriceMap();
-    }
     mangeVisionRequests();
     cleanSpawnAssignments();
 }

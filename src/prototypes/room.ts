@@ -85,9 +85,9 @@ Object.defineProperty(Room.prototype, 'energyStatus', {
             return undefined;
         } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 300000) {
             return EnergyStatus.OVERFLOW;
-        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 350000) {
+        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 150000) {
             return EnergyStatus.SURPLUS;
-        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 200000) {
+        } else if (this.getResourceAmount(RESOURCE_ENERGY) >= 75000) {
             return EnergyStatus.STABLE;
         } else if (this.getResourceAmount(RESOURCE_ENERGY) >= Math.min(this.energyCapacityAvailable * 10, 25000)) {
             return EnergyStatus.RECOVERING;
@@ -147,12 +147,12 @@ Object.defineProperty(Room.prototype, 'hostileCreeps', {
     configurable: true,
 });
 
-Object.defineProperty(Room.prototype, 'mineral', {
+Object.defineProperty(Room.prototype, 'minerals', {
     get: function (this: Room) {
-        if (!this._mineral) {
-            this._mineral = this.find(FIND_MINERALS).pop();
+        if (!this._minerals) {
+            this._minerals = this.find(FIND_MINERALS);
         }
-        return this._mineral;
+        return this._minerals;
     },
     enumerable: false,
     configurable: true,
@@ -351,7 +351,7 @@ Room.prototype.getBoostsAvailable = function (this: Room, boostTypes: BoostType[
 };
 
 Room.prototype.getDefenseHitpointTarget = function (this: Room): number {
-    return this.controller.level === 8 ? 300000000 : this.controller.level >= 6 ? this.controller.level * this.controller.level * 50000 : 200000;
+    return this.controller.level === 8 ? 300000000 : this.controller.level >= 6 ? this.controller.level * 50000 : 50000;
 };
 
 Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> | Id<ConstructionSite> {

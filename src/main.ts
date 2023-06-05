@@ -11,8 +11,6 @@ import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
-    let cpuUsed = 0;
-    let cpuUsageString = `${Game.time}:   `;
 
     try {
         if (global.nextTickFunctions?.length) {
@@ -30,12 +28,8 @@ module.exports.loop = function () {
         console.log(`Error caught in memory management: \n${e}`);
     }
 
-    cpuUsageString += `memory CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
-    cpuUsed = Game.cpu.getUsed();
 
     manageOperations();
-    cpuUsageString += `operation CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}      `;
-    cpuUsed = Game.cpu.getUsed();
 
     try {
         manageFlags();
@@ -43,8 +37,6 @@ module.exports.loop = function () {
         console.log(`Error caught in flag management: \n${e}`);
     }
 
-    let roomCpuUsed = cpuUsed;
-    let cpuRoomUsageString = '';
     Object.values(Game.rooms).forEach((room) => {
         if (!Memory.roomData[room.name]) {
             try {
@@ -61,33 +53,21 @@ module.exports.loop = function () {
         if (room.controller?.my) {
             try {
                 driveRoom(room);
-                cpuRoomUsageString += `${room.name}: ${(Game.cpu.getUsed() - roomCpuUsed).toFixed(2)}  `;
-                roomCpuUsed = Game.cpu.getUsed();
             } catch (e) {
                 console.log(`Error caught in ${room.name}: \n${e}`);
             }
         }
     });
 
-    cpuUsageString += `rooms CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
-    cpuUsed = Game.cpu.getUsed();
-
-    let creepCpuUsed = cpuUsed;
-    let creepCpuUsage = {};
     Object.values(Game.creeps).forEach((creep) => {
         if (!creep.spawning) {
             try {
                 driveCreep(creep);
-                creepCpuUsage[creep.memory.role] = (creepCpuUsage[creep.memory.role] ?? 0) + (Game.cpu.getUsed() - creepCpuUsed);
-                creepCpuUsed = Game.cpu.getUsed();
             } catch (e) {
                 console.log(`Error caught in creep: ${creep.name}, room: ${creep.pos.roomName}: \n${e}`);
             }
         }
     });
-
-    cpuUsageString += `creeps CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
-    cpuUsed = Game.cpu.getUsed();
 
     try {
         manageEmpireResources();
@@ -95,36 +75,33 @@ module.exports.loop = function () {
         console.log(`Error caught in resource management: \n${e}`);
     }
 
-    cpuUsageString += `resource cpu: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
-    cpuUsed = Game.cpu.getUsed();
-
-    // Start PowerBank operations (no need to check every tick since powerspawns decay every 5000 ticks)
-    // Limited to only 3 powerbank operations at the same time initially (can be removed later)
-    if (Game.time % 99 === 0 && Object.values(Memory.operations).filter((operation) => operation.type === OperationType.POWER_BANK).length <= 3) {
-        Object.entries(Memory.roomData)
-            .filter(
-                ([roomName, roomData]) =>
-                    roomData.powerBank === true &&
-                    Math.abs(Game.time - roomData.asOf) < 500 &&
-                    !Object.values(Memory.operations).some(
-                        (operation) => operation.type === OperationType.POWER_BANK && operation.targetRoom === roomName
-                    )
-            )
-            .forEach(([roomName, roomData]) => {
-                addOperation(OperationType.POWER_BANK, roomName, {
-                    disableLogging: true,
-                    resource: RESOURCE_POWER,
-                    originOpts: {
-                        minEnergyStatus: EnergyStatus.SURPLUS,
-                        minSpawnCount: 3,
-                        selectionCriteria: OriginCriteria.CLOSEST,
-                        maxThreatLevel: HomeRoomThreatLevel.ENEMY_INVADERS,
-                        maxLinearDistance: 5,
-                        operationCriteria: { type: OperationType.POWER_BANK, maxCount: 1, stage: OperationStage.PREPARE },
-                    },
-                });
-            });
-    }
+    // // Start PowerBank operations (no need to check every tick since powerspawns decay every 5000 ticks)
+    // // Limited to only 3 powerbank operations at the same time initially (can be removed later)
+    // if (Game.time % 99 === 0 && Object.values(Memory.operations).filter((operation) => operation.type === OperationType.POWER_BANK).length <= 3) {
+    //     Object.entries(Memory.roomData)
+    //         .filter(
+    //             ([roomName, roomData]) =>
+    //                 roomData.powerBank === true &&
+    //                 Math.abs(Game.time - roomData.asOf) < 500 &&
+    //                 !Object.values(Memory.operations).some(
+    //                     (operation) => operation.type === OperationType.POWER_BANK && operation.targetRoom === roomName
+    //                 )
+    //         )
+    //         .forEach(([roomName, roomData]) => {
+    //             addOperation(OperationType.POWER_BANK, roomName, {
+    //                 disableLogging: true,
+    //                 resource: RESOURCE_POWER,
+    //                 originOpts: {
+    //                     minEnergyStatus: EnergyStatus.SURPLUS,
+    //                     minSpawnCount: 3,
+    //                     selectionCriteria: OriginCriteria.CLOSEST,
+    //                     maxThreatLevel: HomeRoomThreatLevel.ENEMY_INVADERS,
+    //                     maxLinearDistance: 5,
+    //                     operationCriteria: { type: OperationType.POWER_BANK, maxCount: 1, stage: OperationStage.PREPARE },
+    //                 },
+    //             });
+    //         });
+    // }
 
     // Run PriorityQueue
     WaveCreep.getCreepsWithPriorityTask().forEach((creepName) => {
@@ -135,39 +112,6 @@ module.exports.loop = function () {
         runVisuals();
     } catch (e) {
         console.log(`Error caught running visuals: \n${e}`);
-    }
-
-    cpuUsageString += `visuals cpu: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
-    cpuUsed = Game.cpu.getUsed();
-
-    if (Memory.debug?.logCpu) {
-        console.log(cpuUsageString + `total: ${Game.cpu.getUsed().toFixed(2)}`);
-    }
-
-    if (Memory.debug?.logRoomCpu) {
-        console.log(cpuRoomUsageString);
-    }
-
-    if (Memory.debug?.logCreepCpu) {
-        console.log(
-            Object.entries(creepCpuUsage).reduce(
-                (creepUsageString, [role, cpuUsage]: [Role, number]) => (creepUsageString += `${role}: ${cpuUsage.toFixed(2)}  `),
-                ''
-            )
-        );
-    }
-
-    Memory.cpuUsage.totalOverTime += parseInt(cpuUsed.toFixed(2));
-    if (Game.time % 100 === 0) {
-        Memory.cpuUsage.average = parseInt((Memory.cpuUsage.totalOverTime / 100).toFixed(2));
-        Memory.cpuUsage.totalOverTime = 0;
-    }
-
-    // Disable all structure notifications (rerun every 1k ticks for whenever new structures are added)
-    if (Game.time % 999 === 0) {
-        Object.values(Game.structures).forEach((struct) => {
-            struct.notifyWhenAttacked(false);
-        });
     }
 
     if (Game.gpl.level) {
