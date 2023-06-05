@@ -233,7 +233,7 @@ export class Manager extends WaveCreep {
                 extension.store.getFreeCapacity(RESOURCE_ENERGY) &&
                 this.room.myCreepsByMemory.some((creep) => creep.memory.role === Role.MANAGER && creep.memory.targetId !== extension.id)
         );
-        if (extensionInNeed && (container?.store.energy || this.store.energy)) {
+        if (extensionInNeed && (looseEnergy || tombstoneWithEnergy || container?.store.energy || this.store.energy)) {
             if (!this.store.energy) {
                 if (looseEnergy) {
                     this.pickup(looseEnergy);
