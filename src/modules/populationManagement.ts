@@ -986,8 +986,9 @@ export class PopulationManagement {
         return Object.keys(mineralMiningAssignments).some(
             (k) => {
                 const mineralMiningPos = k.toRoomPos();
+                const mineralNotEmpty = mineralMiningPos.findInRange(FIND_MINERALS, 1).pop()?.mineralAmount > 0;
                 const extractorBuilt = mineralMiningPos.findInRange(FIND_MY_STRUCTURES, 1, {filter: s => s.structureType === STRUCTURE_EXTRACTOR}).length > 0;
-                return mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED && extractorBuilt;
+                return mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED && extractorBuilt && mineralNotEmpty;
             }
         );
     }
