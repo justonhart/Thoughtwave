@@ -471,11 +471,12 @@ Room.prototype.addMarketOrder = function (this: Room, marketId: string, amount: 
     return addMarketOrder(this.name, marketId, amount);
 };
 
-Room.prototype.addSpawnAssignment = function (this: Room, creepBody: BodyPartConstant[], opts: SpawnOptions): ScreepsReturnCode {
+Room.prototype.addSpawnAssignment = function (this: Room, creepBody: BodyPartConstant[], opts: SpawnOptions, name?: string): ScreepsReturnCode {
     const assignment: SpawnAssignment = {
         designee: this.name,
         body: creepBody,
         spawnOpts: opts,
+        name: name
     };
     Memory.spawnAssignments.push(assignment);
     return OK;

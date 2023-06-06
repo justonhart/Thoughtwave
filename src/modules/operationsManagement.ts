@@ -1,3 +1,4 @@
+import { Operative } from '../roles/operative';
 import { CombatIntel } from './combatIntel';
 import { addVisionRequest, observerInRange } from './data';
 import { Pathing } from './pathing';
@@ -17,6 +18,7 @@ const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } 
     [OperationType.CLEAN]: OperationStage.ACTIVE,
     [OperationType.POWER_BANK]: OperationStage.PREPARE,
     [OperationType.TRANSFER]: OperationStage.ACTIVE,
+    [OperationType.THORIUM]: OperationStage.ACTIVE
 };
 
 const OPERATOR_PARTS_MAP: { [key in OperationType]?: BodyPartConstant[] } = {
@@ -76,6 +78,9 @@ export function manageOperations() {
                         break;
                     case OperationType.POWER_BANK:
                         manageAddPowerBankOperation(operationId);
+                        break;
+                    case OperationType.THORIUM:
+                        manageThoriumOperation(operationId);
                         break;
                     case OperationType.COLLECTION:
                     case OperationType.UPGRADE_BOOST:
@@ -1167,4 +1172,89 @@ function createSquad(
         Memory.squads = {};
     }
     Memory.squads[squadId] = { squadType: SquadType.DUO, forcedDestinations: op.waypoints, assignment: op.targetRoom };
+}
+
+function manageThoriumOperation(opId: string){
+    const OPERATION = Memory.operations[opId] as ThoriumOperation;
+    const originRoom = Game.rooms[OPERATION.originRoom];
+    const targetRoom = Game.rooms[OPERATION.targetRoom];
+
+    if(!OPERATION.reactor && targetRoom){
+        //@ts-ignore
+        OPERATION.reactor = targetRoom.find(FIND_REACTORS).pop()?.id;
+    }
+
+    const reactor = Game.getObjectById(OPERATION.reactor) as Reactor;
+
+    switch(OPERATION.stage){
+        case OperationStage.ACTIVE:
+            if(!targetRoom || !reactor?.my){
+                OPERATION.stage = OperationStage.CLAIM;
+                return;
+            }
+
+            const hostilesInReactorRoom = targetRoom?.hostileCreeps;
+
+            if(hostilesInReactorRoom?.length === 0){
+                //@ts-ignore
+                if(reactor.store[RESOURCE_THORIUM] < 750 && originRoom.getResourceAmount(RESOURCE_THORIUM)){
+                    if(OPERATION.transporter){
+                        const valid = Game.creeps[OPERATION.transporter] || Memory.spawnAssignments.some(a => a.name === OPERATION.transporter);
+                        if(!valid){
+                            delete OPERATION.transporter;
+                        }
+                    }
+
+                    if(!OPERATION.transporter){
+                        const spawnOptions: SpawnOptions = {
+                            memory: {
+                                role: Role.THORIUM_TRANSPORTER,
+                                operationId: opId,
+                                room: OPERATION.originRoom
+                            } as OperativeMemory
+                        }
+                        const name = `tt${Game.time.toString().slice(-4)}`;
+                        const thoriumNeeded = 1000 - reactor.store[RESOURCE_THORIUM];
+                        const partBlocksNeeded = Math.min(Math.floor(thoriumNeeded / 50), 25);
+                        const body = PopulationManagement.createPartsArray([CARRY,MOVE], originRoom.energyCapacityAvailable, partBlocksNeeded);
+                        let result = originRoom.addSpawnAssignment(body, spawnOptions, name);
+                        if(result === OK){
+                            OPERATION.transporter = name;
+                        }
+                    }
+                }
+            } else {
+                if(hostilesInReactorRoom.some(c => c.owner.username !== 'Invader' && c.body.some(part => part.type === ATTACK || part.type === CLAIM || part.type === RANGED_ATTACK))){
+                    OPERATION.stage = OperationStage.SUSPEND;
+                }
+            }
+            break;
+        case OperationStage.CLAIM:
+            if(OPERATION.claimer){
+                const valid = Game.creeps[OPERATION.claimer] || Memory.spawnAssignments.some(a => a.name === OPERATION.claimer);
+                if(!valid){
+                    delete OPERATION.claimer;
+                }
+            }
+
+            if(!OPERATION.claimer){
+                const spawnOptions: SpawnOptions = {
+                    memory: {
+                        role: Role.REACTOR_CLAIMER,
+                        operationId: opId,
+                        room: OPERATION.originRoom
+                    } as OperativeMemory
+                };
+                const claimerName = `oc99${Game.time.toString().slice(-4)}`;
+                let result = originRoom.addSpawnAssignment([CLAIM, MOVE], spawnOptions, claimerName);
+                if(result === OK){
+                    OPERATION.claimer = claimerName;
+                }
+            }
+
+            if(reactor?.my){
+                OPERATION.stage = OperationStage.ACTIVE;
+            }
+            break;
+    }
 }

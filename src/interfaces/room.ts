@@ -138,7 +138,7 @@ interface Room {
     structures: AnyStructure[];
     myConstructionSites: ConstructionSite[];
     reservedEnergy: number;
-    addSpawnAssignment(creepBody: BodyPartConstant[], opts: SpawnOptions): ScreepsReturnCode;
+    addSpawnAssignment(creepBody: BodyPartConstant[], opts: SpawnOptions, name?: string): ScreepsReturnCode;
 
     // Caching - Only used in roomPrototypes
     _myCreepsByMemory: Creep[];

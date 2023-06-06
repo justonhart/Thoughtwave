@@ -66,6 +66,7 @@ const enum OperationType {
     ADD_REMOTE_MINING,
     POWER_BANK,
     TRANSFER,
+    THORIUM = 99
 }
 
 const enum OperationStage {
@@ -121,4 +122,10 @@ interface ResourceOperation extends Operation {
     resource?: ResourceConstant;
     targetAmount?: number;
     currentAmount?: number;
+}
+
+interface ThoriumOperation extends Operation {
+    claimer?: string;
+    transporter?: string;
+    reactor?: string;
 }

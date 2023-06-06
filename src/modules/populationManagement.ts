@@ -52,6 +52,8 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
     [Role.REMOTE_MINER]: 'rm',
     [Role.KEEPER_EXTERMINATOR]: 'e',
     [Role.REMOTE_MINERAL_MINER]: 'rmm',
+    [Role.REACTOR_CLAIMER]: "rc",
+    [Role.THORIUM_TRANSPORTER]: "tt"
 };
 
 export class PopulationManagement {
@@ -653,7 +655,7 @@ export class PopulationManagement {
             ...assignment.spawnOpts,
         };
 
-        let result = spawn.smartSpawn(assignment.body, this.generateName(options.memory.role, spawn.name), options);
+        let result = spawn.smartSpawn(assignment.body, assignment.name ?? this.generateName(options.memory.role, spawn.name), options);
         if (result === OK) {
             const ASSIGNMENT_INDEX = Memory.spawnAssignments.findIndex((a) => a === assignment);
             Memory.spawnAssignments.splice(ASSIGNMENT_INDEX, 1);

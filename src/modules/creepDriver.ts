@@ -19,6 +19,8 @@ import { IntershardTraveler } from '../roles/intershardTraveller';
 import { Upgrader } from '../roles/upgrader';
 import { KeeperExterminator } from '../roles/keeperExterminator';
 import { RemoteMineralMiner } from '../roles/remoteMineralMiner';
+import { ReactorClaimer } from '../roles/reactorClaimer';
+import { ThoriumTransporter } from '../roles/thoriumTransporter';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -87,6 +89,12 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.REMOTE_MINERAL_MINER:
             waveCreep = new RemoteMineralMiner(creep.id);
+            break;
+        case Role.REACTOR_CLAIMER:
+            waveCreep = new ReactorClaimer(creep.id);
+            break;
+        case Role.THORIUM_TRANSPORTER:
+            waveCreep = new ThoriumTransporter(creep.id);
             break;
         default:
             waveCreep = new WaveCreep(creep.id);

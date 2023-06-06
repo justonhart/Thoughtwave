@@ -3,7 +3,7 @@ type RESOURCE_THORIUM = "T";
 
 declare const FIND_REACTORS: 10051;
 
-interface Reactor {
+interface Reactor extends RoomObject {
     continuousWork: number;
     store: GenericStore;
     my: boolean;
