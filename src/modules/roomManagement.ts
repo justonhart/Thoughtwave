@@ -1214,7 +1214,8 @@ function manageStructures(room: Room) {
         let thorium;
         if (room.controller.level > 5 && Object.keys(room.memory.stampLayout.extractor).length > 1) {
             //@ts-ignore
-            if (!room.minerals.some((mineral) => mineral.mineralType === RESOURCE_THORIUM)) {
+            thorium = room.minerals.find((mineral) => mineral.mineralType === RESOURCE_THORIUM);
+            if (!thorium) {
                 const extractor = room.myStructures.find((struct) => struct.structureType === STRUCTURE_EXTRACTOR);
                 const container = room.structures.find((struct) => struct.structureType === STRUCTURE_CONTAINER && struct.pos.isNearTo(extractor));
 
