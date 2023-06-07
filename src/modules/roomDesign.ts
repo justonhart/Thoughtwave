@@ -248,7 +248,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
             )
             .forEach((minerContainer) => stamps.rampart.push({ rcl: 4, type: 'miner', pos: minerContainer.pos }));
 
-        const controllerStamp = stamps.container.find((containerStamp) => containerStamp.type === STRUCTURE_CONTROLLER).pos.toRoomPos();
+        const controllerStamp = stamps.container.find((containerStamp) => containerStamp.type === STRUCTURE_CONTROLLER)?.pos?.toRoomPos();
         if (controllerStamp) {
             addRoadToPois(controllerStamp, stamps, 2, STRUCTURE_CONTROLLER, terrain);
         } else {
