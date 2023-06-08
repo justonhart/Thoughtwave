@@ -1167,7 +1167,11 @@ export function manageMaintenance(room: Room) {
 function manageStructures(room: Room) {
     if (
         room.getEventLog().some((log) => log.event === EVENT_OBJECT_DESTROYED && log.data.type !== 'creep') ||
-        ((!room.memory.finishedConstructionAtRcl || room.memory.finishedConstructionAtRcl < room.controller.level) &&
+        !room.memory.finishedConstructionAtRcl ||
+        room.memory.finishedConstructionAtRcl < room.controller.level ||
+        (room.controller.level === 6 &&
+            Game.time % 100 === 0 &&
+            Object.keys(room.memory.stampLayout.extractor).length > 1 &&
             !room.myConstructionSites.length)
     ) {
         let cpuUsed = Game.cpu.getUsed();
@@ -1222,7 +1226,7 @@ function manageStructures(room: Room) {
                 // Remove from roomDesign
                 for (let i = 0; i < room.memory.stampLayout.extractor.length; i++) {
                     if (room.memory.stampLayout.extractor[i].pos.toRoomPos().isEqualTo(extractor)) {
-                        room.memory.stampLayout.extractor.splice(i, 1);
+                        room.memory.stampLayout.container.splice(i, 1);
                     }
                 }
                 for (let i = 0; i < room.memory.stampLayout.container.length; i++) {
@@ -1231,6 +1235,10 @@ function manageStructures(room: Room) {
                     }
                 }
                 delete room.memory.mineralMiningAssignments[container.pos.toMemSafe()];
+
+                // Rerun next tick to place new mineral structures
+                delete room.memory.finishedConstructionAtRcl;
+                return;
 
                 // Remove from room
                 container.destroy();
