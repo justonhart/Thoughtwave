@@ -12,7 +12,7 @@ export class Claimer extends WaveCreep {
             if (controller) {
                 if (!controller.my) {
                     if (!this.pos.isNearTo(controller)) {
-                        this.travelTo(controller);
+                        this.travelTo(controller, { range: 1 });
                     } else {
                         if (controller?.reservation) {
                             this.attackController(controller);
