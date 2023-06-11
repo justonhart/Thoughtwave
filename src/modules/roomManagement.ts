@@ -460,7 +460,7 @@ function runSpawning(room: Room) {
     if (distributor === undefined) {
         let spawn = availableSpawns.pop();
         spawn?.spawnDistributor();
-    } else if (distributor.ticksToLive < 100) {
+    } else if (distributor.ticksToLive < 50) {
         //reserve energy & spawn for distributor
         availableSpawns.pop();
         room.reservedEnergy += PopulationManagement.createPartsArray([CARRY, CARRY, MOVE], room.energyCapacityAvailable, 10)
@@ -1238,7 +1238,6 @@ function manageStructures(room: Room) {
 
                 // Rerun next tick to place new mineral structures
                 delete room.memory.finishedConstructionAtRcl;
-                return;
 
                 // Remove from room
                 container.destroy();
