@@ -1,10 +1,13 @@
+import { CombatCreep } from '../virtualCreeps/combatCreep';
 import { CombatIntel } from './combatIntel';
 import { PopulationManagement } from './populationManagement';
 
 export class CombatPlanner {
     private detectedEarlyThreat: boolean;
     private numRampartProtectors: number;
+    private currentRampartProtectors: Creep[];
     private room: Room;
+    private turretTarget: Creep;
 
     public constructor(room: Room) {
         try {
@@ -13,13 +16,9 @@ export class CombatPlanner {
                 case RoomType.HOMEROOM:
                     this.numRampartProtectors = PopulationManagement.currentNumRampartProtectors(room.name);
                     this.detectedEarlyThreat = this.hasEarlyDetectionThreat(room.name);
+                    this.currentRampartProtectors = room.myCreeps.filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR);
                     this.defendHomeRoom();
                     break;
-            }
-            if (room.memory.roomType === RoomType.HOMEROOM) {
-                this.numRampartProtectors = PopulationManagement.currentNumRampartProtectors(room.name);
-                this.detectedEarlyThreat = this.hasEarlyDetectionThreat(room.name);
-                this.defendHomeRoom();
             }
         } catch (e) {
             console.log(`Error caught for CombatPlanner in ${room.name}: \n${e}`);
@@ -70,11 +69,7 @@ export class CombatPlanner {
      * @returns
      */
     private spawnActiveDefense(): void {
-        let numNeededProtectors =
-            this.room.hostileCreeps.filter(
-                (hostileCreep) =>
-                    hostileCreep.getActiveBodyparts(WORK) || hostileCreep.getActiveBodyparts(RANGED_ATTACK) || hostileCreep.getActiveBodyparts(ATTACK)
-            ).length - this.numRampartProtectors;
+        let numNeededProtectors = this.getAggressiveHostileCreeps().length - this.numRampartProtectors;
         while (numNeededProtectors > 0) {
             this.createRampartProtector();
             numNeededProtectors--;
@@ -102,7 +97,7 @@ export class CombatPlanner {
     }
 
     private recycleRampartProtectors(): void {
-        this.room.myCreepsByMemory.filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR).forEach((creep) => (creep.memory.recycle = true));
+        this.currentRampartProtectors.forEach((creep) => (creep.memory.recycle = true));
         Memory.spawnAssignments = Memory.spawnAssignments.filter(
             (creep) => creep.spawnOpts.memory.role !== Role.RAMPART_PROTECTOR || creep.spawnOpts.memory.room !== this.room.name
         );
@@ -153,6 +148,7 @@ export class CombatPlanner {
                 }
             });
         if (targetCreepInfo.creep) {
+            this.turretTarget = targetCreepInfo.creep;
             towers.forEach((tower) => tower.attack(targetCreepInfo.creep));
         }
         return needActiveDefense;
@@ -189,6 +185,13 @@ export class CombatPlanner {
         return towers;
     }
 
+    private getAggressiveHostileCreeps(): Creep[] {
+        return this.room.hostileCreeps.filter(
+            (hostileCreep) =>
+                hostileCreep.getActiveBodyparts(WORK) || hostileCreep.getActiveBodyparts(RANGED_ATTACK) || hostileCreep.getActiveBodyparts(ATTACK)
+        );
+    }
+
     /**
      * Create vision operation which sends scouts to all exit rooms. These Scouts will flee from all enemies to try and stay alive.
      */
@@ -202,5 +205,79 @@ export class CombatPlanner {
     /**
      * Set Rampart Protectors pathing target
      */
-    private runDefensePositions(): void {}
+    private runDefensePositions(): void {
+        const availableProtectors = this.currentRampartProtectors;
+        // TODO: make it so roomDesign does not put any structures on the defense line
+        let availableRamparts = this.room.myStructures.filter(
+            (structure) =>
+                structure.structureType === STRUCTURE_RAMPART && this.room.memory.miningAssignments[structure.pos.toMemSafe()] === undefined
+        ) as StructureRampart[];
+
+        if (!availableRamparts.length) {
+            //this.setCreepTarget(); TODO: enable nonrampart combat
+        } else {
+            // TODO: look at exit rooms for placements
+            this.getAggressiveHostileCreeps().forEach((hostileCreep) => {
+                const closestRampart = this.getClosestRampart(hostileCreep, availableRamparts);
+                const closestProtector = closestRampart.pos.findClosestByRange(availableProtectors);
+                (closestProtector.memory as RampartProtectorMemory).targetPos = closestRampart.pos.toMemSafe();
+
+                // If this rampart is near a tower targeted creep then ensure rampart protector attacks that creep as well
+                if (closestProtector.pos.isNearTo(hostileCreep)) {
+                    closestProtector.memory.targetId = hostileCreep.id;
+                }
+
+                // Remove protector/rampart from being used again
+                availableProtectors.splice(
+                    this.currentRampartProtectors.findIndex((protector) => protector.id === closestProtector.id),
+                    1
+                );
+                availableRamparts.splice(
+                    availableRamparts.findIndex((rampart) => rampart.id === closestRampart.id),
+                    1
+                );
+            });
+        }
+
+        // Assign all left over protectors to help already covered areas
+    }
+
+    private getClosestRampart(hostileCreep: Creep, availableRamparts: StructureRampart[]): StructureRampart {
+        return availableRamparts.reduce((closestRampart, nextRampart) => {
+            const range = closestRampart.pos.getRangeTo(hostileCreep) - nextRampart.pos.getRangeTo(hostileCreep);
+            if (range < 0) {
+                return closestRampart;
+            }
+            if (range > 0) {
+                return nextRampart;
+            }
+
+            // We want the creep to be in an odd direction (directly opposite of the enemy creep)
+            if (nextRampart.pos.getDirectionTo(hostileCreep) % 2 === 1) {
+                return nextRampart;
+            }
+
+            return closestRampart;
+        });
+    }
+
+    /**
+     * Find and set the target for all creeps in the room. Combat Pathing in Creep To Creep combat is still done in the individual creep for now.
+     * @param target
+     * @returns
+     */
+    private setCreepTarget(myCreeps: CombatCreep[]) {
+        const target = this.findCombatTarget();
+
+        myCreeps.forEach((creep) => {
+            creep.memory.targetId = target?.id;
+        });
+    }
+
+    /**
+     * Find enemy combat target in creep to creep battle.
+     */
+    private findCombatTarget(): Creep {
+        return undefined;
+    }
 }

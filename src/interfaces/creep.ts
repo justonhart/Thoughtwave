@@ -285,3 +285,8 @@ interface ManagerMemory extends CreepMemory {
 interface ClaimerMemory extends OperativeMemory {
     claimRoomType: RoomType;
 }
+
+interface RampartProtectorMemory extends CreepMemory {
+    targetId?: Id<Creep>;
+    targetPos?: string;
+}
