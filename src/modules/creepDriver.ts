@@ -19,6 +19,7 @@ import { IntershardTraveler } from '../roles/intershardTraveller';
 import { Upgrader } from '../roles/upgrader';
 import { KeeperExterminator } from '../roles/keeperExterminator';
 import { RemoteMineralMiner } from '../roles/remoteMineralMiner';
+import { Sentry } from '../roles/sentry';
 
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
@@ -88,6 +89,8 @@ export default function driveCreep(creep: Creep) {
         case Role.REMOTE_MINERAL_MINER:
             waveCreep = new RemoteMineralMiner(creep.id);
             break;
+        case Role.SENTRY:
+            waveCreep = new Sentry(creep.id);
         default:
             waveCreep = new WaveCreep(creep.id);
     }

@@ -35,14 +35,13 @@ export class CombatPlanner {
         ) {
             this.runTowersForHeal();
             this.recycleRampartProtectors();
-            this.removeVisionOperation();
             return;
         }
 
         // Threat detected around the homeroom
         if (this.detectedEarlyThreat) {
             this.handleEarlyThreatDetection();
-            this.createVisionOperation();
+            this.createSentries();
         }
 
         // Run Towers
@@ -198,14 +197,32 @@ export class CombatPlanner {
     }
 
     /**
-     * Create vision operation which sends scouts to all exit rooms. These Scouts will flee from all enemies to try and stay alive.
+     * Send sentries to adjacent rooms to keep vision
      */
-    private createVisionOperation(): void {}
-
-    /**
-     * Threat is over so remove currently running vision operation
-     */
-    private removeVisionOperation(): void {}
+    private createSentries(): void {
+        this.exitRooms.forEach((exitRoom) => {
+            if (
+                !this.room.myCreepsByMemory.some(
+                    (creep) => creep.memory.role === Role.SENTRY && creep.memory.assignment === exitRoom && creep.ticksToLive > 50
+                ) &&
+                !Memory.spawnAssignments.some(
+                    (assignment) => assignment.spawnOpts.memory.role === Role.SENTRY && assignment.spawnOpts.memory.assignment === exitRoom
+                )
+            ) {
+                Memory.spawnAssignments.push({
+                    designee: this.room.name,
+                    spawnOpts: {
+                        memory: {
+                            role: Role.SENTRY,
+                            assignment: exitRoom,
+                            room: this.room.name,
+                        },
+                    },
+                    body: [MOVE],
+                });
+            }
+        });
+    }
 
     /**
      * Set Rampart Protectors pathing target
@@ -294,25 +311,6 @@ export class CombatPlanner {
             targetPos = this.convertEdgePosition(closestExit, targetExit);
         }
 
-        return availableRamparts.reduce((closestRampart, nextRampart) => {
-            const range = closestRampart.pos.getRangeTo(targetPos) - nextRampart.pos.getRangeTo(targetPos);
-            if (range < 0) {
-                return closestRampart;
-            }
-            if (range > 0) {
-                return nextRampart;
-            }
-
-            // We want the creep to be in an odd direction (directly opposite of the enemy creep)
-            if (nextRampart.pos.getDirectionTo(targetPos) % 2 === 1) {
-                return nextRampart;
-            }
-
-            return closestRampart;
-        });
-    }
-
-    private findRampart(targetPos: RoomPosition, availableRamparts: StructureRampart[]) {
         return availableRamparts.reduce((closestRampart, nextRampart) => {
             const range = closestRampart.pos.getRangeTo(targetPos) - nextRampart.pos.getRangeTo(targetPos);
             if (range < 0) {
