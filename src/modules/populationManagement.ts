@@ -52,6 +52,7 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
     [Role.REMOTE_MINER]: 'rm',
     [Role.KEEPER_EXTERMINATOR]: 'e',
     [Role.REMOTE_MINERAL_MINER]: 'rmm',
+    [Role.SENTRY]: 'se',
 };
 
 export class PopulationManagement {
