@@ -75,12 +75,10 @@ function driveHomeRoom(room: Room) {
             manageStructures(room);
         }
 
-        let isHomeUnderAttack = false;
         try {
-            isHomeUnderAttack = runHomeSecurity(room);
-            runTowers(room);
+            runTowersForRepair(room);
         } catch (e) {
-            console.log(`Error caught running runHomeSecurity/runTowers in ${room.name}: \n${e}`);
+            console.log(`Error caught running runTowers in ${room.name}: \n${e}`);
         }
 
         if (
@@ -183,7 +181,7 @@ function driveHomeRoom(room: Room) {
             }
         }
 
-        if (!isHomeUnderAttack) {
+        if (room.memory.threatLevel <= HomeRoomThreatLevel.ENEMY_INVADERS) {
             runRemoteRooms(room);
         }
     }
@@ -206,56 +204,14 @@ function driveRemoteMiningRoom(room: Room) {
     }
 }
 
-function runTowers(room: Room) {
+/**
+ * Runs all towers for repair queues (tower intent may be overwritten by the CombatPlanner)
+ * @param room
+ */
+function runTowersForRepair(room: Room) {
     let towers = room.myStructures.filter((structure) => structure.structureType === STRUCTURE_TOWER) as StructureTower[];
 
-    const myHurtCreeps = room.myCreeps.filter((creep) => creep.hits < creep.hitsMax);
-    if (myHurtCreeps.length) {
-        for (let i = 0; i < myHurtCreeps.length && towers.length; i++) {
-            let healNeeded = myHurtCreeps[i].hitsMax - myHurtCreeps[i].hits;
-            for (let j = 0; j < towers.length; j++) {
-                if (healNeeded <= 0) {
-                    towers.splice(0, j); // N Towers have been used to heal creep so remove them from further actions
-                    break;
-                }
-
-                const tower = towers[j];
-                healNeeded -= CombatIntel.calculateTotal([tower], myHurtCreeps[i].pos, CombatIntel.towerMinHeal, CombatIntel.towerMaxHeal);
-                tower.heal(myHurtCreeps[i]);
-                if (j === towers.length - 1) {
-                    towers = []; // All towers were needed to heal creep so remove all towers from further actions
-                    break;
-                }
-            }
-        }
-    }
-
-    // All towers are busy
-    if (!towers.length) {
-        return;
-    }
-
-    // TODO: recognize patterns to avoid shooting creeps that are going in and out of the room every tick and cant be killed in one shot
-    if (!room.controller.safeMode && room.memory.threatLevel > HomeRoomThreatLevel.SAFE) {
-        const hostileCreep = room.hostileCreeps
-            .filter((creep) => !Memory.playersToIgnore?.includes(creep.owner.username))
-            .find((creep) => {
-                const hostileCreepInfo = CombatIntel.getCreepCombatData(room, true, creep.pos);
-                const myCreepInfo = CombatIntel.getCreepCombatData(room, false, creep.pos);
-                const myTowerInfo = CombatIntel.getTowerCombatData(room, false, creep.pos);
-                return (
-                    CombatIntel.getPredictedDamage(
-                        myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
-                        hostileCreepInfo.highestDmgMultiplier,
-                        hostileCreepInfo.highestToughHits
-                    ) > hostileCreepInfo.totalHeal
-                );
-            });
-        if (hostileCreep) {
-            towers.forEach((tower) => tower.attack(hostileCreep));
-            towers = [];
-        }
-    } else if (room.memory.repairQueue) {
+    if (room.memory.repairQueue) {
         //if no defensive use for towers, repair roads
         towers.forEach((tower) => {
             let repairQueue = room.memory.repairQueue;
@@ -279,118 +235,6 @@ function runTowers(room: Room) {
             }
         });
     }
-}
-
-function runHomeSecurity(homeRoom: Room): boolean {
-    if (homeRoom.controller.safeMode) {
-        return false;
-    }
-
-    const towerData = CombatIntel.getTowerCombatData(homeRoom, false);
-    const hostileCreepData = CombatIntel.getCreepCombatData(homeRoom, true);
-
-    if (hostileCreepData.totalHeal < towerData.minDmg * hostileCreepData.highestDmgMultiplier) {
-        return false; // Towers can handle it for sure
-    }
-
-    // No Towers and/or ramparts yet so spawn a minimum protector with heal which can then kite the invader around
-    if (hostileCreepData.creeps.length && homeRoom.controller.level < 4) {
-        const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
-        if (!currentNumProtectors) {
-            Game.notify(
-                `Room ${homeRoom.name} is under attack by ${homeRoom.hostileCreeps[0].owner.username} at ${Game.time}! Active Defense initiated.`
-            );
-            Memory.spawnAssignments.push({
-                designee: homeRoom.name,
-                body: [RANGED_ATTACK, MOVE, MOVE, HEAL],
-                spawnOpts: {
-                    memory: {
-                        role: Role.RAMPART_PROTECTOR,
-                        room: homeRoom.name,
-                        currentTaskPriority: Priority.MEDIUM,
-                        combat: { flee: false },
-                    },
-                },
-            });
-        }
-        return false;
-    }
-
-    const currentNumProtectors = PopulationManagement.currentNumRampartProtectors(homeRoom.name);
-    if (hostileCreepData.creeps.length >= 1) {
-        // Spawn multiple rampartProtectors based on the number of enemy hostiles
-        if (
-            !currentNumProtectors ||
-            (hostileCreepData.creeps.length >= 4 &&
-                currentNumProtectors + (hostileCreepData.creeps.length > 12 ? 1 : -1) - Math.floor(hostileCreepData.creeps.length / 4) < 0)
-        ) {
-            Game.notify(
-                `Room ${homeRoom.name} is under attack by ${homeRoom.hostileCreeps[0].owner.username} at ${Game.time}! Active Defense initiated.`
-            );
-            // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
-            const attackerBody = PopulationManagement.createPartsArray([ATTACK, ATTACK, ATTACK, ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10);
-            if (attackerBody.length) {
-                Memory.spawnAssignments.push({
-                    designee: homeRoom.name,
-                    body: attackerBody,
-                    spawnOpts: {
-                        boosts: [BoostType.ATTACK],
-                        memory: {
-                            role: Role.RAMPART_PROTECTOR,
-                            room: homeRoom.name,
-                            assignment: homeRoom.name,
-                            currentTaskPriority: Priority.HIGH,
-                            combat: { flee: false },
-                        },
-                    },
-                });
-            }
-        } else if (currentNumProtectors) {
-            Memory.spawnAssignments
-                .filter(
-                    (creep) =>
-                        creep.spawnOpts.memory.role === Role.RAMPART_PROTECTOR &&
-                        creep.spawnOpts.memory.room === homeRoom.name &&
-                        !creep.spawnOpts.memory.needsBoosted
-                )
-                .forEach((spawnAssignment) => {
-                    spawnAssignment.spawnOpts.memory.needsBoosted = true;
-                    spawnAssignment.spawnOpts.boosts = [BoostType.ATTACK, BoostType.MOVE];
-                });
-        }
-        return true;
-    } else if (!currentNumProtectors && hasEarlyDetectionThreat(homeRoom.name)) {
-        // Spawn in early rampart protectors
-        Game.notify(`Early detection system for Room ${homeRoom.name} detected at ${Game.time}!`);
-        const attackerBody = PopulationManagement.createPartsArray([ATTACK, ATTACK, ATTACK, ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10);
-        Memory.spawnAssignments.push({
-            designee: homeRoom.name,
-            body: attackerBody,
-            spawnOpts: {
-                memory: {
-                    role: Role.RAMPART_PROTECTOR,
-                    room: homeRoom.name,
-                    assignment: homeRoom.name,
-                    currentTaskPriority: Priority.HIGH,
-                    combat: { flee: false },
-                },
-            },
-        });
-    } else if (currentNumProtectors && !hasEarlyDetectionThreat(homeRoom.name)) {
-        // Cleanup
-        // Recycle unneeded creeps spawned in from early detection or any left over spawnAssignments
-        Object.values(Game.creeps)
-            .filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR && creep.pos.roomName === homeRoom.name)
-            .forEach((creep) => (creep.memory.recycle = true));
-        Memory.spawnAssignments = Memory.spawnAssignments.filter(
-            (creep) => creep.spawnOpts.memory.role !== Role.RAMPART_PROTECTOR || creep.spawnOpts.memory.room !== homeRoom.name
-        );
-    }
-    return false;
-}
-
-function hasEarlyDetectionThreat(roomName: string) {
-    return Object.values(Game.map.describeExits(roomName)).some((exitRoomName) => Memory.roomData[exitRoomName]?.threatDetected);
 }
 
 export function initHomeRoom(room: Room) {

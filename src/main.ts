@@ -1,4 +1,4 @@
-import { defendHomeRoom } from './modules/combatPlanner';
+import { CombatPlanner } from './modules/combatPlanner';
 import driveCreep from './modules/creepDriver';
 import { addRoomData, updateRoomData } from './modules/data';
 import manageFlags from './modules/flagsManagement';
@@ -74,12 +74,11 @@ module.exports.loop = function () {
     cpuUsed = Game.cpu.getUsed();
 
     // Combat Planner (for now only for homeRooms) separate from running the room in case of errors in room it should at least run defense
-    // TODO: Use Game.rooms in the future when using combatPlanner for remoteMining/operations/etc.
-    Object.keys(Memory.rooms)
-        .filter((room) => Game.rooms[room]?.memory?.threatLevel > HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS)
+    Object.values(Game.rooms)
+        .filter((room) => room.memory.roomType === RoomType.HOMEROOM)
         .forEach((homeRoom) => {
             try {
-                defendHomeRoom(Game.rooms[homeRoom]);
+                new CombatPlanner(homeRoom);
             } catch (e) {
                 console.log(`Error caught defending ${homeRoom}: \n${e}`);
             }

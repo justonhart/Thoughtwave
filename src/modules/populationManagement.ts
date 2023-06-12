@@ -188,8 +188,12 @@ export class PopulationManagement {
 
     static needsMiner(room: Room): boolean {
         let roomNeedsMiner = Object.values(room.memory.miningAssignments).some((assignment) => assignment === AssignmentStatus.UNASSIGNED);
-        if(!roomNeedsMiner){
-            let undersizedMiner = Object.keys(room.memory.miningAssignments).some(assignment => Game.creeps[room.memory.miningAssignments[assignment]].body.length  < PopulationManagement.getMinerBody(assignment.toRoomPos(), room.energyCapacityAvailable).length);
+        if (!roomNeedsMiner) {
+            let undersizedMiner = Object.keys(room.memory.miningAssignments).some(
+                (assignment) =>
+                    Game.creeps[room.memory.miningAssignments[assignment]].body.length <
+                    PopulationManagement.getMinerBody(assignment.toRoomPos(), room.energyCapacityAvailable).length
+            );
             return undersizedMiner;
         }
         return roomNeedsMiner;
@@ -238,9 +242,13 @@ export class PopulationManagement {
     static spawnMiner(spawn: StructureSpawn): ScreepsReturnCode {
         const assigmentKeys = Object.keys(spawn.room.memory.miningAssignments);
         let assigment = assigmentKeys.find((pos) => spawn.room.memory.miningAssignments[pos] === AssignmentStatus.UNASSIGNED);
-        if(!assigment) {
+        if (!assigment) {
             //if no empty assignment, then an undersized miner needs to be replaced;
-            assigment = assigmentKeys.find(pos => Game.creeps[spawn.room.memory.miningAssignments[pos]].body.length < PopulationManagement.getMinerBody(pos.toRoomPos(), spawn.room.energyCapacityAvailable).length)
+            assigment = assigmentKeys.find(
+                (pos) =>
+                    Game.creeps[spawn.room.memory.miningAssignments[pos]].body.length <
+                    PopulationManagement.getMinerBody(pos.toRoomPos(), spawn.room.energyCapacityAvailable).length
+            );
         }
         const assigmentPos = assigment.toRoomPos();
         const minerMemory: MinerMemory = {
@@ -305,11 +313,11 @@ export class PopulationManagement {
                 room: spawn.room.name,
                 role: Role.REMOTE_MINER,
                 currentTaskPriority: Priority.HIGH,
-                early: true
+                early: true,
             } as RemoteMinerMemory,
         };
-        
-        const body = PopulationManagement.createPartsArray([WORK,MOVE], spawn.room.energyCapacityAvailable, 3);
+
+        const body = PopulationManagement.createPartsArray([WORK, MOVE], spawn.room.energyCapacityAvailable, 3);
         let name = this.generateName(options.memory.role, spawn.name);
 
         let result = spawn.smartSpawn(body, name, options);
@@ -360,49 +368,57 @@ export class PopulationManagement {
     static getGathererBody(room: Room): BodyPartConstant[] {
         const isEarlySpawning = !!room.storage?.my;
 
-        if(isEarlySpawning){
+        if (isEarlySpawning) {
             return PopulationManagement.createPartsArray([CARRY, MOVE], room.energyCapacityAvailable, 10);
         } else {
-            return [WORK,WORK,CARRY,CARRY,MOVE,...PopulationManagement.createPartsArray([CARRY,CARRY,CARRY,CARRY,MOVE], room.energyCapacityAvailable - 350, 9)];
+            return [
+                WORK,
+                WORK,
+                CARRY,
+                CARRY,
+                MOVE,
+                ...PopulationManagement.createPartsArray([CARRY, CARRY, CARRY, CARRY, MOVE], room.energyCapacityAvailable - 350, 9),
+            ];
         }
     }
 
     static findGathererNeed(room: Room): string {
         const isEarlySpawning = !room.storage?.my;
         const gathererBody = PopulationManagement.getGathererBody(room);
-        const gathererCarry = gathererBody.reduce((sum, nextPart) => nextPart === CARRY ? sum + CARRY_CAPACITY : sum , 0);
+        const gathererCarry = gathererBody.reduce((sum, nextPart) => (nextPart === CARRY ? sum + CARRY_CAPACITY : sum), 0);
         const gathererCostPerCycle = gathererBody.reduce((sum, nextPart) => sum + BODYPART_COST[nextPart], 0) / ENERGY_REGEN_TIME;
 
-        return room.remoteSources.find(
-            (s) => {
-                const sourceRoomName = s.split(".")[2];
-                const shouldSkip = 
-                    Memory.roomData[sourceRoomName].roomStatus === RoomMemoryStatus.OWNED_INVADER ||
-                    Memory.remoteData[sourceRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS ||
-                    Memory.remoteData[sourceRoomName].reservationState === RemoteRoomReservationStatus.ENEMY ||
-                    (!isEarlySpawning && room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) ||
-                    !roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`);
+        return room.remoteSources.find((s) => {
+            const sourceRoomName = s.split('.')[2];
+            const shouldSkip =
+                Memory.roomData[sourceRoomName].roomStatus === RoomMemoryStatus.OWNED_INVADER ||
+                Memory.remoteData[sourceRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS ||
+                Memory.remoteData[sourceRoomName].reservationState === RemoteRoomReservationStatus.ENEMY ||
+                (!isEarlySpawning && room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) ||
+                !roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`);
 
-                if(shouldSkip){
-                    return false;
-                } else {
-                    const sourceOutput = isEarlySpawning 
-                        ? SOURCE_ENERGY_NEUTRAL_CAPACITY 
-                        : isKeeperRoom(s.split(".")[2]) ? SOURCE_ENERGY_KEEPER_CAPACITY : SOURCE_ENERGY_CAPACITY;
-                    const distanceToSource = Memory.remoteSourceAssignments[s]?.roadLength;
-                    const gathererTripDuration = isEarlySpawning ? distanceToSource * 2 : distanceToSource * 3; //ticks to complete one round trip
-                    const tripsPerCycle = Math.floor(ENERGY_REGEN_TIME / gathererTripDuration);
-                    const energyTransferredPerCreep = tripsPerCycle * gathererCarry; // the amount of energy a gatherers transports home per cycle
-                    let gatherersNeeded = Math.floor(sourceOutput / energyTransferredPerCreep);
-                    if(sourceOutput - (gatherersNeeded * gathererCarry) > 300 + gathererCostPerCycle){ //if the remainder of energy is greater than the cost to spawn another gatherer, then do so
-                        gatherersNeeded  += 1;
-                    }
-
-                    const gathererNeeded = room.memory.remoteSources[s].gatherers.length < gatherersNeeded;
-                    return gathererNeeded;
+            if (shouldSkip) {
+                return false;
+            } else {
+                const sourceOutput = isEarlySpawning
+                    ? SOURCE_ENERGY_NEUTRAL_CAPACITY
+                    : isKeeperRoom(s.split('.')[2])
+                    ? SOURCE_ENERGY_KEEPER_CAPACITY
+                    : SOURCE_ENERGY_CAPACITY;
+                const distanceToSource = Memory.remoteSourceAssignments[s]?.roadLength;
+                const gathererTripDuration = isEarlySpawning ? distanceToSource * 2 : distanceToSource * 3; //ticks to complete one round trip
+                const tripsPerCycle = Math.floor(ENERGY_REGEN_TIME / gathererTripDuration);
+                const energyTransferredPerCreep = tripsPerCycle * gathererCarry; // the amount of energy a gatherers transports home per cycle
+                let gatherersNeeded = Math.floor(sourceOutput / energyTransferredPerCreep);
+                if (sourceOutput - gatherersNeeded * gathererCarry > 300 + gathererCostPerCycle) {
+                    //if the remainder of energy is greater than the cost to spawn another gatherer, then do so
+                    gatherersNeeded += 1;
                 }
-           }   
-        );
+
+                const gathererNeeded = room.memory.remoteSources[s].gatherers.length < gatherersNeeded;
+                return gathererNeeded;
+            }
+        });
     }
 
     static spawnEarlyGatherer(spawn: StructureSpawn, source: string): ScreepsReturnCode {
@@ -411,12 +427,12 @@ export class PopulationManagement {
                 assignment: source,
                 room: spawn.room.name,
                 role: Role.GATHERER,
-                early: true
+                early: true,
             } as GathererMemory,
         };
 
-        const name = this.generateName(options.memory.role, spawn.name); 
-        const body = PopulationManagement.createPartsArray([CARRY,MOVE], spawn.room.energyCapacityAvailable, 10);
+        const name = this.generateName(options.memory.role, spawn.name);
+        const body = PopulationManagement.createPartsArray([CARRY, MOVE], spawn.room.energyCapacityAvailable, 10);
         let result = spawn.smartSpawn(body, name, options);
 
         if (result === OK) {
@@ -570,10 +586,6 @@ export class PopulationManagement {
         // ToughNeeded is calculated after knowing which boost is used
         if (parts.some((part) => part === TOUGH) && healNeeded > 0) {
             needed.tough = 1;
-        }
-
-        if (opts?.boosts) {
-            var boostMap = getBoostsAvailable(room, Array.from(opts.boosts));
         }
 
         while (hasEnergyLeft && partsArray.length < 50 && (needed.damage > 0 || needed.heal > 0 || needed.tough > 0 || needed.move > 0)) {
@@ -817,11 +829,17 @@ export class PopulationManagement {
             opts.energyStructures = spawn.room.myStructures
                 .filter((structure) => structure.structureType === STRUCTURE_SPAWN || structure.structureType === STRUCTURE_EXTENSION)
                 .sort((structA, structB) => {
-                    if (structA.structureType === STRUCTURE_SPAWN && spawn.room.memory.stampLayout.spawn.some(stamp => stamp.pos === structA.pos.toMemSafe())) {
+                    if (
+                        structA.structureType === STRUCTURE_SPAWN &&
+                        spawn.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === structA.pos.toMemSafe())
+                    ) {
                         return -1;
                     }
 
-                    if (structB.structureType === STRUCTURE_SPAWN && spawn.room.memory.stampLayout.spawn.some(stamp => stamp.pos === structB.pos.toMemSafe())) {
+                    if (
+                        structB.structureType === STRUCTURE_SPAWN &&
+                        spawn.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === structB.pos.toMemSafe())
+                    ) {
                         return 1;
                     }
 
@@ -850,9 +868,7 @@ export class PopulationManagement {
             if (result !== OK) {
                 console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
             } else {
-                spawn.room.reservedEnergy != undefined
-                    ? (spawn.room.reservedEnergy += partsArrayCost)
-                    : (spawn.room.reservedEnergy = partsArrayCost);
+                spawn.room.reservedEnergy != undefined ? (spawn.room.reservedEnergy += partsArrayCost) : (spawn.room.reservedEnergy = partsArrayCost);
                 requestsToAdd.forEach((request) => {
                     spawn.room.addRequest(request.resource, request.amount);
                 });
@@ -898,10 +914,10 @@ export class PopulationManagement {
                         }
                         boostsAvailableInRoom += boostsToImport;
                     }
-                    
+
                     const boostResourceAmount = Math.min(boostsRequested, boostsAvailableInRoom) * 30;
 
-                    if(boostResourceAmount > 0){
+                    if (boostResourceAmount > 0) {
                         labTasksToAdd.push({
                             type: LabTaskType.BOOST,
                             needs: [
