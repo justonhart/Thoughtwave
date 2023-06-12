@@ -8,6 +8,7 @@ export class CombatPlanner {
     private currentRampartProtectors: Creep[];
     private room: Room;
     private turretTarget: Creep;
+    private exitRooms: string[];
 
     public constructor(room: Room) {
         try {
@@ -15,8 +16,9 @@ export class CombatPlanner {
             switch (room.memory.roomType) {
                 case RoomType.HOMEROOM:
                     this.numRampartProtectors = PopulationManagement.currentNumRampartProtectors(room.name);
-                    this.detectedEarlyThreat = this.hasEarlyDetectionThreat(room.name);
                     this.currentRampartProtectors = room.myCreeps.filter((creep) => creep.memory.role === Role.RAMPART_PROTECTOR);
+                    this.exitRooms = Object.values(Game.map.describeExits(room.name));
+                    this.detectedEarlyThreat = this.hasEarlyDetectionThreat();
                     this.defendHomeRoom();
                     break;
             }
@@ -69,7 +71,7 @@ export class CombatPlanner {
      * @returns
      */
     private spawnActiveDefense(): void {
-        let numNeededProtectors = this.getAggressiveHostileCreeps().length - this.numRampartProtectors;
+        let numNeededProtectors = this.getAggressiveHostileCreeps(this.room).length - this.numRampartProtectors;
         while (numNeededProtectors > 0) {
             this.createRampartProtector();
             numNeededProtectors--;
@@ -103,8 +105,8 @@ export class CombatPlanner {
         );
     }
 
-    private hasEarlyDetectionThreat(roomName: string) {
-        return Object.values(Game.map.describeExits(roomName)).some((exitRoomName) => Memory.roomData[exitRoomName]?.threatDetected);
+    private hasEarlyDetectionThreat() {
+        return this.exitRooms.some((exitRoomName) => Memory.roomData[exitRoomName]?.threatDetected);
     }
 
     /**
@@ -185,8 +187,11 @@ export class CombatPlanner {
         return towers;
     }
 
-    private getAggressiveHostileCreeps(): Creep[] {
-        return this.room.hostileCreeps.filter(
+    private getAggressiveHostileCreeps(targetRoom?: Room): Creep[] {
+        if (!targetRoom) {
+            targetRoom = this.room;
+        }
+        return targetRoom.hostileCreeps.filter(
             (hostileCreep) =>
                 hostileCreep.getActiveBodyparts(WORK) || hostileCreep.getActiveBodyparts(RANGED_ATTACK) || hostileCreep.getActiveBodyparts(ATTACK)
         );
@@ -213,17 +218,20 @@ export class CombatPlanner {
                 structure.structureType === STRUCTURE_RAMPART && this.room.memory.miningAssignments[structure.pos.toMemSafe()] === undefined
         ) as StructureRampart[];
 
+        // Check homeroom
         if (!availableRamparts.length) {
             //this.setCreepTarget(); TODO: enable nonrampart combat
         } else {
-            // TODO: look at exit rooms for placements
             this.getAggressiveHostileCreeps().forEach((hostileCreep) => {
+                if (!availableProtectors.length || !availableRamparts.length) {
+                    return;
+                }
                 const closestRampart = this.getClosestRampart(hostileCreep, availableRamparts);
                 const closestProtector = closestRampart.pos.findClosestByRange(availableProtectors);
                 (closestProtector.memory as RampartProtectorMemory).targetPos = closestRampart.pos.toMemSafe();
 
                 // If this rampart is near a tower targeted creep then ensure rampart protector attacks that creep as well
-                if (closestProtector.pos.isNearTo(hostileCreep)) {
+                if (hostileCreep.id === this.turretTarget?.id && closestProtector.pos.isNearTo(hostileCreep)) {
                     closestProtector.memory.targetId = hostileCreep.id;
                 }
 
@@ -239,12 +247,55 @@ export class CombatPlanner {
             });
         }
 
-        // Assign all left over protectors to help already covered areas
+        // Check Exit Rooms
+        this.exitRooms
+            .filter((exitRoom) => Game.rooms[exitRoom])
+            .forEach((visibleExitRoom) => {
+                const room = Game.rooms[visibleExitRoom];
+                this.getAggressiveHostileCreeps(room).forEach((hostileCreep) => {
+                    if (!availableProtectors.length || !availableRamparts.length) {
+                        return;
+                    }
+                    const closestRampart = this.getClosestRampart(hostileCreep, availableRamparts);
+                    const closestProtector = closestRampart.pos.findClosestByRange(availableProtectors);
+                    (closestProtector.memory as RampartProtectorMemory).targetPos = closestRampart.pos.toMemSafe();
+
+                    // If this rampart is near a tower targeted creep then ensure rampart protector attacks that creep as well
+                    if (hostileCreep.id === this.turretTarget?.id && closestProtector.pos.isNearTo(hostileCreep)) {
+                        closestProtector.memory.targetId = hostileCreep.id;
+                    }
+
+                    // Remove protector/rampart from being used again
+                    availableProtectors.splice(
+                        this.currentRampartProtectors.findIndex((protector) => protector.id === closestProtector.id),
+                        1
+                    );
+                    availableRamparts.splice(
+                        availableRamparts.findIndex((rampart) => rampart.id === closestRampart.id),
+                        1
+                    );
+                });
+            });
+
+        // TODO: Assign all left over protectors to help already covered areas
     }
 
+    /**
+     * Return closest rampart to the hostile Creep. Also works across rooms.
+     * @param hostileCreep
+     * @param availableRamparts
+     * @returns
+     */
     private getClosestRampart(hostileCreep: Creep, availableRamparts: StructureRampart[]): StructureRampart {
+        let targetPos = hostileCreep.pos;
+        if (hostileCreep.pos.roomName !== this.room.name) {
+            const targetExit = Game.map.findExit(hostileCreep.room, this.room) as ExitConstant;
+            const closestExit = hostileCreep.pos.findClosestByRange(hostileCreep.room.find(targetExit));
+            targetPos = this.convertEdgePosition(closestExit, targetExit);
+        }
+
         return availableRamparts.reduce((closestRampart, nextRampart) => {
-            const range = closestRampart.pos.getRangeTo(hostileCreep) - nextRampart.pos.getRangeTo(hostileCreep);
+            const range = closestRampart.pos.getRangeTo(targetPos) - nextRampart.pos.getRangeTo(targetPos);
             if (range < 0) {
                 return closestRampart;
             }
@@ -253,7 +304,26 @@ export class CombatPlanner {
             }
 
             // We want the creep to be in an odd direction (directly opposite of the enemy creep)
-            if (nextRampart.pos.getDirectionTo(hostileCreep) % 2 === 1) {
+            if (nextRampart.pos.getDirectionTo(targetPos) % 2 === 1) {
+                return nextRampart;
+            }
+
+            return closestRampart;
+        });
+    }
+
+    private findRampart(targetPos: RoomPosition, availableRamparts: StructureRampart[]) {
+        return availableRamparts.reduce((closestRampart, nextRampart) => {
+            const range = closestRampart.pos.getRangeTo(targetPos) - nextRampart.pos.getRangeTo(targetPos);
+            if (range < 0) {
+                return closestRampart;
+            }
+            if (range > 0) {
+                return nextRampart;
+            }
+
+            // We want the creep to be in an odd direction (directly opposite of the enemy creep)
+            if (nextRampart.pos.getDirectionTo(targetPos) % 2 === 1) {
                 return nextRampart;
             }
 
@@ -262,7 +332,8 @@ export class CombatPlanner {
     }
 
     /**
-     * Find and set the target for all creeps in the room. Combat Pathing in Creep To Creep combat is still done in the individual creep for now.
+     * Creeps vs Creep combat without ramparts.
+     * TODO: Instead of target set targetPos? If target is set currently the rampartProtector does not attack any other creep than the target even if it is out of range.
      * @param target
      * @returns
      */
@@ -279,5 +350,51 @@ export class CombatPlanner {
      */
     private findCombatTarget(): Creep {
         return undefined;
+    }
+
+    /**
+     * Convert this exit position to the corresponding one in the next room
+     * @param pos
+     */
+    private convertEdgePosition(pos: RoomPosition, direction: ExitConstant) {
+        const { x, y, roomName } = pos;
+
+        let newX = x;
+        let newY = y;
+        let newRoomName = roomName;
+
+        // Handle different directions
+        if (direction === TOP) {
+            newY = 49;
+            newRoomName = this.getAdjacentRoom(roomName, TOP);
+        } else if (direction === LEFT) {
+            newX = 49;
+            newRoomName = this.getAdjacentRoom(roomName, LEFT);
+        } else if (direction === RIGHT) {
+            newX = 0;
+            newRoomName = this.getAdjacentRoom(roomName, RIGHT);
+        } else if (direction === BOTTOM) {
+            newY = 0;
+            newRoomName = this.getAdjacentRoom(roomName, BOTTOM);
+        }
+
+        return new RoomPosition(newX, newY, newRoomName);
+    }
+
+    private getAdjacentRoom(roomName: string, direction: ExitConstant) {
+        const [x, y] = roomName.match(/\d+/g).map(Number);
+
+        // Calculate adjacent room coordinates based on direction
+        if (direction === TOP) {
+            return `${x},${y - 1}`;
+        } else if (direction === LEFT) {
+            return `${x - 1},${y}`;
+        } else if (direction === RIGHT) {
+            return `${x + 1},${y}`;
+        } else if (direction === BOTTOM) {
+            return `${x},${y + 1}`;
+        }
+
+        return roomName; // Default to the same room name if direction is not recognized
     }
 }
