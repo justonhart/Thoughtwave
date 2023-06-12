@@ -1,3 +1,4 @@
+import { defendHomeRoom } from './modules/combatPlanner';
 import driveCreep from './modules/creepDriver';
 import { addRoomData, updateRoomData } from './modules/data';
 import manageFlags from './modules/flagsManagement';
@@ -46,10 +47,9 @@ module.exports.loop = function () {
     let roomCpuUsed = cpuUsed;
     let cpuRoomUsageString = '';
     Object.values(Game.rooms).forEach((room) => {
+        // Set RoomData
         if (!Memory.roomData[room.name]) {
             try {
-                // TODO: store powerBank: boolean in roomData
-                // Check every "n" ticks for powerBank: true and not already running Operation. Then find closest room to send DUO squads out. Amount of squads should equal to open spaces around power bank. Make quadManagement not ignore allied creeps. Suitable rooms should only be lvl 8 in a 9 range distance. Get closest also store distance. Send collectors when powerbank is about to die. Amount of collectors depends on amount in bank
                 addRoomData(room);
             } catch (e) {
                 console.log(`Error caught adding data for ${room.name}: \n${e}`);
@@ -58,6 +58,7 @@ module.exports.loop = function () {
             updateRoomData(room);
         }
 
+        // Run HomeRooms
         if (room.controller?.my) {
             try {
                 driveRoom(room);
@@ -71,6 +72,18 @@ module.exports.loop = function () {
 
     cpuUsageString += `rooms CPU: ${(Game.cpu.getUsed() - cpuUsed).toFixed(2)}     `;
     cpuUsed = Game.cpu.getUsed();
+
+    // Combat Planner (for now only for homeRooms) separate from running the room in case of errors in room it should at least run defense
+    // TODO: Use Game.rooms in the future when using combatPlanner for remoteMining/operations/etc.
+    Object.keys(Memory.rooms)
+        .filter((room) => Game.rooms[room]?.memory?.threatLevel > HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS)
+        .forEach((homeRoom) => {
+            try {
+                defendHomeRoom(Game.rooms[homeRoom]);
+            } catch (e) {
+                console.log(`Error caught defending ${homeRoom}: \n${e}`);
+            }
+        });
 
     let creepCpuUsed = cpuUsed;
     let creepCpuUsage = {};
