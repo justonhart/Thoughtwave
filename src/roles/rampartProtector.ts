@@ -19,7 +19,9 @@ export class RampartProtector extends CombatCreep {
         } else {
             targetCreep = this.findWeakestCreepInRange();
             if (targetCreep) {
-                this.attack(targetCreep);
+                this.attackCreep(targetCreep);
+            } else {
+                targetCreep = this.pos.findClosestByRange(this.room.hostileCreeps);
             }
         }
 
@@ -30,7 +32,7 @@ export class RampartProtector extends CombatCreep {
             if (!this.pos.isEqualTo(target)) {
                 this.travelTo(target);
             }
-        } else {
+        } else if (targetCreep) {
             this.combatPathing(targetCreep);
         }
     }
@@ -40,7 +42,8 @@ export class RampartProtector extends CombatCreep {
      * @returns
      */
     private findWeakestCreepInRange(): Creep {
-        const hostileCreepsInRange = this.room.hostileCreeps.filter((hostileCreep) => this.pos.isNearTo(hostileCreep));
+        const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
+        const hostileCreepsInRange = this.room.hostileCreeps.filter((hostileCreep) => this.pos.getRangeTo(hostileCreep) <= range);
         if (hostileCreepsInRange?.length === 1) {
             return hostileCreepsInRange[0];
         } else if (hostileCreepsInRange?.length > 1) {
