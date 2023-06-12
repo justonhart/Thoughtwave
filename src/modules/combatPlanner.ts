@@ -141,7 +141,7 @@ export class CombatPlanner {
                     hostileCreepInfo.highestDmgMultiplier,
                     hostileCreepInfo.highestToughHits
                 );
-                if (!needActiveDefense && predictedDamage < hostileCreepInfo.totalHeal) {
+                if (!needActiveDefense && (!predictedDamage || predictedDamage < hostileCreepInfo.totalHeal)) {
                     needActiveDefense = true;
                 }
                 if (!targetCreepInfo.creep || targetCreepInfo.predictedDamage < predictedDamage) {
@@ -262,39 +262,39 @@ export class CombatPlanner {
                     1
                 );
             });
-        }
 
-        // Check Exit Rooms
-        this.exitRooms
-            .filter((exitRoom) => Game.rooms[exitRoom])
-            .forEach((visibleExitRoom) => {
-                const room = Game.rooms[visibleExitRoom];
-                this.getAggressiveHostileCreeps(room).forEach((hostileCreep) => {
-                    if (!availableProtectors.length || !availableRamparts.length) {
-                        return;
-                    }
-                    const closestRampart = this.getClosestRampart(hostileCreep, availableRamparts);
-                    const closestProtector = closestRampart.pos.findClosestByRange(availableProtectors);
-                    (closestProtector.memory as RampartProtectorMemory).targetPos = closestRampart.pos.toMemSafe();
+            // Check Exit Rooms
+            this.exitRooms
+                .filter((exitRoom) => Game.rooms[exitRoom])
+                .forEach((visibleExitRoom) => {
+                    const room = Game.rooms[visibleExitRoom];
+                    this.getAggressiveHostileCreeps(room).forEach((hostileCreep) => {
+                        if (!availableProtectors.length || !availableRamparts.length) {
+                            return;
+                        }
+                        const closestRampart = this.getClosestRampart(hostileCreep, availableRamparts);
+                        const closestProtector = closestRampart.pos.findClosestByRange(availableProtectors);
+                        (closestProtector.memory as RampartProtectorMemory).targetPos = closestRampart.pos.toMemSafe();
 
-                    // If this rampart is near a tower targeted creep then ensure rampart protector attacks that creep as well
-                    if (hostileCreep.id === this.turretTarget?.id && closestProtector.pos.isNearTo(hostileCreep)) {
-                        closestProtector.memory.targetId = hostileCreep.id;
-                    }
+                        // If this rampart is near a tower targeted creep then ensure rampart protector attacks that creep as well
+                        if (hostileCreep.id === this.turretTarget?.id && closestProtector.pos.isNearTo(hostileCreep)) {
+                            closestProtector.memory.targetId = hostileCreep.id;
+                        }
 
-                    // Remove protector/rampart from being used again
-                    availableProtectors.splice(
-                        this.currentRampartProtectors.findIndex((protector) => protector.id === closestProtector.id),
-                        1
-                    );
-                    availableRamparts.splice(
-                        availableRamparts.findIndex((rampart) => rampart.id === closestRampart.id),
-                        1
-                    );
+                        // Remove protector/rampart from being used again
+                        availableProtectors.splice(
+                            this.currentRampartProtectors.findIndex((protector) => protector.id === closestProtector.id),
+                            1
+                        );
+                        availableRamparts.splice(
+                            availableRamparts.findIndex((rampart) => rampart.id === closestRampart.id),
+                            1
+                        );
+                    });
                 });
-            });
 
-        // TODO: Assign all left over protectors to help already covered areas
+            // TODO: Assign all left over protectors to help already covered areas
+        }
     }
 
     /**
