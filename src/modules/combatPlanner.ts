@@ -28,7 +28,7 @@ export class CombatPlanner {
     }
 
     public defendHomeRoom() {
-        // No Defense needed
+        // No Defense needed if safeMode is on or no more enemy creeps are in or around the room
         if (
             this.room.controller.safeMode > 150 ||
             (this.room.memory.threatLevel <= HomeRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS && !this.detectedEarlyThreat)
@@ -38,10 +38,12 @@ export class CombatPlanner {
             return;
         }
 
+        // Create vision in surrounding rooms
+        this.createSentries();
+
         // Threat detected around the homeroom
         if (this.detectedEarlyThreat) {
             this.handleEarlyThreatDetection();
-            this.createSentries();
         }
 
         // Run Towers
@@ -78,9 +80,9 @@ export class CombatPlanner {
     }
 
     private createRampartProtector(): void {
-        const parts = this.room.controller.level < 4 ? [RANGED_ATTACK, MOVE] : [ATTACK, MOVE];
+        const parts = this.room.controller.level < 4 ? [RANGED_ATTACK, HEAL, MOVE] : [ATTACK, MOVE];
         const boostParts = [BoostType.ATTACK, BoostType.MOVE];
-        const body = PopulationManagement.createDynamicCreepBody(this.room, parts, 9999, 0, { boosts: boostParts });
+        const body = PopulationManagement.createDynamicCreepBody(this.room, parts, 9999, 1, { boosts: boostParts });
         Memory.spawnAssignments.push({
             designee: this.room.name,
             body: body,
