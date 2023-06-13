@@ -91,6 +91,7 @@ export default function driveCreep(creep: Creep) {
             break;
         case Role.SENTRY:
             waveCreep = new Sentry(creep.id);
+            break;
         default:
             waveCreep = new WaveCreep(creep.id);
     }
