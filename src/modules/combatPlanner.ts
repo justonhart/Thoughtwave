@@ -38,12 +38,11 @@ export class CombatPlanner {
             return;
         }
 
-        // Create vision in surrounding rooms
-        this.createSentries();
-
         // Threat detected around the homeroom
         if (this.detectedEarlyThreat) {
             this.handleEarlyThreatDetection();
+            // Create vision in surrounding rooms
+            this.createSentries();
         }
 
         // Run Towers
@@ -52,10 +51,19 @@ export class CombatPlanner {
         // Spawn in Rampart Protectors and send scouts to keep vision of surrounding rooms
         if (needActiveDefense) {
             this.spawnActiveDefense();
+            // Create vision in surrounding rooms
+            this.createSentries();
         }
 
         // Set defense positions (should run even when activeDefense is no longer needed)
         this.runDefensePositions();
+
+        // If turrets are attacking a creep then ensure all ramparts in range also attack the same creep
+        if (this.turretTarget) {
+            this.currentRampartProtectors
+                .filter((protector) => protector.pos.isNearTo(this.turretTarget))
+                .forEach((protectInRange) => (protectInRange.memory.targetId = this.turretTarget.id));
+        }
     }
 
     public defendRemoteMiningRoom(room: Room) {
@@ -143,10 +151,12 @@ export class CombatPlanner {
                     hostileCreepInfo.highestDmgMultiplier,
                     hostileCreepInfo.highestToughHits
                 );
-                if (!needActiveDefense && (!predictedDamage || predictedDamage < hostileCreepInfo.totalHeal)) {
+                // If there is a creep that cannot be killed then spawn a protector
+                if (!predictedDamage || predictedDamage <= hostileCreepInfo.totalHeal) {
                     needActiveDefense = true;
                 }
-                if (!targetCreepInfo.creep || targetCreepInfo.predictedDamage < predictedDamage) {
+                // Attack the creep that can be killed and takes the most damage
+                if (predictedDamage > hostileCreepInfo.totalHeal && (!targetCreepInfo.creep || targetCreepInfo.predictedDamage < predictedDamage)) {
                     targetCreepInfo = { creep: creep, predictedDamage: predictedDamage };
                 }
             });
@@ -227,7 +237,11 @@ export class CombatPlanner {
     }
 
     /**
-     * Set Rampart Protectors pathing target
+     * Set Rampart Protectors pathing target.
+     * Prioritization:
+     *  1. keeping aggressive creeps from the ramparts
+     *  2. attacking healers that are near ramparts
+     *  3. having a protector close to aggressive units from adjacent rooms (so if they enter a protector is already there)
      */
     private runDefensePositions(): void {
         const availableProtectors = this.currentRampartProtectors;
@@ -241,62 +255,44 @@ export class CombatPlanner {
         if (!availableRamparts.length) {
             //this.setCreepTarget(); TODO: enable nonrampart combat
         } else {
-            this.getAggressiveHostileCreeps().forEach((hostileCreep) => {
-                if (!availableProtectors.length || !availableRamparts.length) {
-                    return;
-                }
-                const closestRampart = this.getClosestRampart(hostileCreep, availableRamparts);
-                const closestProtector = closestRampart.pos.findClosestByRange(availableProtectors);
-                (closestProtector.memory as RampartProtectorMemory).targetPos = closestRampart.pos.toMemSafe();
+            this.getAggressiveHostileCreeps().forEach((hostileCreep) => this.setProtectorPos(availableProtectors, availableRamparts, hostileCreep));
 
-                // If this rampart is near a tower targeted creep then ensure rampart protector attacks that creep as well
-                if (hostileCreep.id === this.turretTarget?.id && closestProtector.pos.isNearTo(hostileCreep)) {
-                    closestProtector.memory.targetId = hostileCreep.id;
-                }
-
-                // Remove protector/rampart from being used again
-                availableProtectors.splice(
-                    this.currentRampartProtectors.findIndex((protector) => protector.id === closestProtector.id),
-                    1
-                );
-                availableRamparts.splice(
-                    availableRamparts.findIndex((rampart) => rampart.id === closestRampart.id),
-                    1
-                );
-            });
+            // Get any creep that is next to a rampart ()
+            this.room.hostileCreeps
+                .filter((hostileCreep) => hostileCreep.getActiveBodyparts(HEAL))
+                .forEach((hostileHealerCreep) => this.setProtectorPos(availableProtectors, availableRamparts, hostileHealerCreep));
 
             // Check Exit Rooms
             this.exitRooms
                 .filter((exitRoom) => Game.rooms[exitRoom])
                 .forEach((visibleExitRoom) => {
                     const room = Game.rooms[visibleExitRoom];
-                    this.getAggressiveHostileCreeps(room).forEach((hostileCreep) => {
-                        if (!availableProtectors.length || !availableRamparts.length) {
-                            return;
-                        }
-                        const closestRampart = this.getClosestRampart(hostileCreep, availableRamparts);
-                        const closestProtector = closestRampart.pos.findClosestByRange(availableProtectors);
-                        (closestProtector.memory as RampartProtectorMemory).targetPos = closestRampart.pos.toMemSafe();
-
-                        // If this rampart is near a tower targeted creep then ensure rampart protector attacks that creep as well
-                        if (hostileCreep.id === this.turretTarget?.id && closestProtector.pos.isNearTo(hostileCreep)) {
-                            closestProtector.memory.targetId = hostileCreep.id;
-                        }
-
-                        // Remove protector/rampart from being used again
-                        availableProtectors.splice(
-                            this.currentRampartProtectors.findIndex((protector) => protector.id === closestProtector.id),
-                            1
-                        );
-                        availableRamparts.splice(
-                            availableRamparts.findIndex((rampart) => rampart.id === closestRampart.id),
-                            1
-                        );
-                    });
+                    this.getAggressiveHostileCreeps(room).forEach((hostileCreep) =>
+                        this.setProtectorPos(availableProtectors, availableRamparts, hostileCreep)
+                    );
                 });
 
             // TODO: Assign all left over protectors to help already covered areas
         }
+    }
+
+    private setProtectorPos(availableProtectors: Creep[], availableRamparts: StructureRampart[], hostileCreep: Creep) {
+        if (!availableProtectors.length || !availableRamparts.length) {
+            return;
+        }
+        const closestRampart = this.getClosestRampart(hostileCreep, availableRamparts);
+        const closestProtector = closestRampart.pos.findClosestByRange(availableProtectors);
+        (closestProtector.memory as RampartProtectorMemory).targetPos = closestRampart.pos.toMemSafe();
+
+        // Remove protector/rampart from being used again
+        availableProtectors.splice(
+            this.currentRampartProtectors.findIndex((protector) => protector.id === closestProtector.id),
+            1
+        );
+        availableRamparts.splice(
+            availableRamparts.findIndex((rampart) => rampart.id === closestRampart.id),
+            1
+        );
     }
 
     /**
