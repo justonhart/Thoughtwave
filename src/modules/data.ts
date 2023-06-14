@@ -186,7 +186,7 @@ export function unclaimRoom(roomName: string) {
     }
 
     Object.entries(Memory.operations)
-        .filter(([id, operation]) => operation.targetRoom !== roomName)
+        .filter(([id, operation]) => operation.targetRoom === roomName)
         .forEach(([id, op]) => delete Memory.operations[id]);
     Memory.spawnAssignments = Memory.spawnAssignments.filter(
         (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
