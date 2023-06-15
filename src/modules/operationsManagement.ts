@@ -372,7 +372,7 @@ function manageColonizeOperation(opId: string) {
                     if (result) {
                         OPERATION.subOperations.push(result);
                     }
-                } else {
+                } else if(transferOperationId) {
                     if (Game.rooms[OPERATION.originRoom].getResourceAmount(RESOURCE_ENERGY) < 100000) {
                         Memory.operations[transferOperationId].stage = OperationStage.SUSPEND;
                     } else if (
