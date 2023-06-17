@@ -1224,16 +1224,8 @@ function manageStructures(room: Room) {
                 const container = room.structures.find((struct) => struct.structureType === STRUCTURE_CONTAINER && struct.pos.isNearTo(extractor));
 
                 // Remove from roomDesign
-                for (let i = 0; i < room.memory.stampLayout.extractor.length; i++) {
-                    if (room.memory.stampLayout.extractor[i].pos.toRoomPos().isEqualTo(extractor)) {
-                        room.memory.stampLayout.container.splice(i, 1);
-                    }
-                }
-                for (let i = 0; i < room.memory.stampLayout.container.length; i++) {
-                    if (room.memory.stampLayout.container[i].pos.toRoomPos().isEqualTo(container)) {
-                        room.memory.stampLayout.extractor.splice(i, 1);
-                    }
-                }
+                room.memory.stampLayout.container = room.memory.stampLayout.container.filter((co) => co.pos !== container.pos.toMemSafe());
+                room.memory.stampLayout.extractor = room.memory.stampLayout.extractor.filter((ex) => ex.pos !== extractor.pos.toMemSafe());
                 delete room.memory.mineralMiningAssignments[container.pos.toMemSafe()];
 
                 // Rerun next tick to place new mineral structures
