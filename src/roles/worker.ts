@@ -3,6 +3,12 @@ import { WorkerCreep } from '../virtualCreeps/workerCreep';
 export class Worker extends WorkerCreep {
     memory: WorkerCreepMemory;
     protected performDuties() {
+
+        if(this.room.name !== this.homeroom.name){
+            this.travelToRoom(this.memory.room, {maxOps: 20000});
+            return;
+        }
+
         let target = Game.getObjectById(this.memory.targetId);
 
         if (!this.memory.targetId || !target) {

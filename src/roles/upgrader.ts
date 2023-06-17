@@ -1,8 +1,14 @@
+import { roomNeedsCoreStructures } from '../modules/roomDesign';
 import { WorkerCreep } from '../virtualCreeps/workerCreep';
 
 export class Upgrader extends WorkerCreep {
     memory: WorkerCreepMemory;
     protected run() {
+        //focus all energy into building room in early rooms
+        if (!this.homeroom.storage && roomNeedsCoreStructures(this.homeroom)) {
+            this.memory.recycle = true;
+        }
+
         if (!this.room.upgraderLink) {
             if (!this.store.energy) {
                 this.gatherEnergy();

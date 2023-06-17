@@ -73,10 +73,9 @@ export class Scout extends WaveCreep {
                     this.memory.returnToLastRoom = true;
                 } else {
                     //scouting completed
-                    if (this.memory.debug) {
-                        console.log('scouting completed');
-                    }
+                    this.debugLog('scouting completed');
                     this.memory.recycle = true;
+                    delete this.homeroom.memory.lastRemoteSourceCheck;
                     this.recycleCreep();
                     return;
                 }

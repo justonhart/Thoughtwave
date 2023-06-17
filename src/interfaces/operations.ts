@@ -101,6 +101,8 @@ interface ColonizeOperation extends Operation {
      * If the route is confirmed as safe, this is set
      */
     routeConfirmed: boolean;
+    workers: string[];
+    transporter: string;
 }
 
 interface SecureOperation extends Operation {
@@ -109,7 +111,8 @@ interface SecureOperation extends Operation {
 }
 
 interface RoomRecoveryOperation extends Operation {
-    workerCount: number;
+    workers: string[];
+    transporter: string;
 }
 
 interface PowerBankOperation extends Operation {

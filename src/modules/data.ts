@@ -1,7 +1,7 @@
 export function addRoomData(room: Room) {
     let data: RoomData = {
         sources: room.find(FIND_SOURCES).map((source) => `${source.pos.x}.${source.pos.y}`),
-        mineralType: room.mineral?.mineralType,
+        mineralTypes: room.minerals?.map(mineral => mineral.mineralType),
         asOf: Game.time,
     };
 
@@ -172,35 +172,6 @@ export function addHostileRoom(roomName: string) {
     }
     Memory.roomData[roomName].hostile = true;
     Memory.roomData[roomName].asOf = Game.time;
-}
-
-export function unclaimRoom(roomName: string) {
-    let room = Game.rooms[roomName];
-
-    if (room?.controller?.my) {
-        room.controller.unclaim();
-    }
-
-    if (room?.myConstructionSites.length) {
-        room.myConstructionSites.forEach((site) => site.remove());
-    }
-
-    Object.entries(Memory.operations)
-        .filter(([id, operation]) => operation.targetRoom !== roomName)
-        .forEach(([id, op]) => delete Memory.operations[id]);
-    Memory.spawnAssignments = Memory.spawnAssignments.filter(
-        (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
-    );
-
-    room.myCreepsByMemory.forEach((creep) => {
-        // delete creep memory to prevent automatic updates in memory management
-        delete Memory.creeps[creep.name];
-        creep.suicide();
-    });
-
-    Memory.rooms[roomName].unclaim = true;
-
-    return 'done';
 }
 
 export function observerInRange(roomName: string): boolean {
