@@ -174,35 +174,6 @@ export function addHostileRoom(roomName: string) {
     Memory.roomData[roomName].asOf = Game.time;
 }
 
-export function unclaimRoom(roomName: string) {
-    let room = Game.rooms[roomName];
-
-    if (room?.controller?.my) {
-        room.controller.unclaim();
-    }
-
-    if (room?.myConstructionSites.length) {
-        room.myConstructionSites.forEach((site) => site.remove());
-    }
-
-    Object.entries(Memory.operations)
-        .filter(([id, operation]) => operation.targetRoom === roomName)
-        .forEach(([id, op]) => delete Memory.operations[id]);
-    Memory.spawnAssignments = Memory.spawnAssignments.filter(
-        (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
-    );
-
-    room.myCreepsByMemory.forEach((creep) => {
-        // delete creep memory to prevent automatic updates in memory management
-        delete Memory.creeps[creep.name];
-        creep.suicide();
-    });
-
-    Memory.rooms[roomName].unclaim = true;
-
-    return 'done';
-}
-
 export function observerInRange(roomName: string): boolean {
     const observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room].observer);
     return observerRooms.some((room) => Game.map.getRoomLinearDistance(roomName, room) <= 10);

@@ -1,6 +1,7 @@
-import { addHostileRoom, addVisionRequest, observerInRange, unclaimRoom } from './data';
+import { addHostileRoom, addVisionRequest, observerInRange} from './data';
 import { addOperation } from './operationsManagement';
 import { findStampLocation } from './roomDesign';
+import { unclaimRoom } from './roomManagement';
 
 export default function manageFlags() {
     if (Game.flags.colonize) {

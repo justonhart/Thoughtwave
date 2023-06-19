@@ -3,7 +3,7 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class Miner extends WaveCreep {
     memory: MinerMemory;
     protected run() {
-        if(this.room.memory.miningAssignments[this.memory.assignment] !== this.name && !Game.creeps[this.room.memory.miningAssignments[this.memory.assignment]]?.spawning){
+        if(this.homeroom.memory.miningAssignments[this.memory.assignment] !== this.name && !Game.creeps[this.homeroom.memory.miningAssignments[this.memory.assignment]]?.spawning){
             this.memory.recycle = true;
         }
         this.memory.currentTaskPriority = Priority.HIGH;

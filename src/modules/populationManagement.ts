@@ -62,7 +62,7 @@ export class PopulationManagement {
             .filter((c) => c.memory.role === Role.WORKER || c.memory.role == Role.UPGRADER)
             .reduce((workSum, nextCreep) => workSum + nextCreep.getActiveBodyparts(WORK), 0);
         const modifiedWorkCapacity = spawn.room.modifiedWorkCapacity;
-        if ((roomNeedsCoreStructures(spawn.room) ? modifiedWorkCapacity / 5 : modifiedWorkCapacity) > currentWork) {
+        if ((roomNeedsCoreStructures(spawn.room) ? modifiedWorkCapacity / 5 * spawn.room.controller.level >= 4 ? 1.5 : 1 : modifiedWorkCapacity) > currentWork) {
             const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
             const workNeeded = modifiedWorkCapacity - currentWork;
             const workerWorkCount = spawn.room.myCreeps.reduce(
@@ -72,7 +72,11 @@ export class PopulationManagement {
             );
 
             //since build costs 5* as much as work, we want to limit the number of building creeps
-            const roleNeeded = workerWorkCount < modifiedWorkCapacity / 5 ? Role.WORKER : Role.UPGRADER;
+            const roleNeeded = spawn.room.controller.level < 8 
+                ? workerWorkCount < modifiedWorkCapacity / 5 
+                    ? Role.WORKER 
+                    : Role.UPGRADER 
+                : spawn.room.myCreepsByMemory.some(c => c.memory.role === Role.UPGRADER) ? Role.WORKER : Role.UPGRADER;
 
             const options: SpawnOptions = {
                 boosts: !roomNeedsCoreStructures(spawn.room) && spawn.room.controller.level < 8 ? [BoostType.UPGRADE] : [],
@@ -83,7 +87,7 @@ export class PopulationManagement {
             };
 
             const name = this.generateName(options.memory.role, spawn.name);
-            let result = spawn.spawnMax(WORKER_PART_BLOCK, name, options, workNeeded);
+            let result = spawn.spawnMax(WORKER_PART_BLOCK, name, options, spawn.room.controller.level === 8 && options.memory.role === Role.UPGRADER ? 15 : workNeeded);
             return result;
         }
 
@@ -98,11 +102,12 @@ export class PopulationManagement {
             const sourceRoom = nextSource.split('.')[2];
             return (
                 incomeTotal +
+                (((Memory.roomData[sourceRoom].roomStatus === RoomMemoryStatus.RESERVED_ME || Memory.roomData[sourceRoom].roomStatus === RoomMemoryStatus.VACANT) && Memory.remoteData[sourceRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) ? 
                 (!room.storage?.my
                     ? SOURCE_ENERGY_NEUTRAL_CAPACITY
                     : isKeeperRoom(sourceRoom) || isCenterRoom(sourceRoom)
                     ? SOURCE_ENERGY_KEEPER_CAPACITY
-                    : SOURCE_ENERGY_CAPACITY)
+                    : SOURCE_ENERGY_CAPACITY) : 0)
             );
         }, 0);
 
@@ -148,7 +153,7 @@ export class PopulationManagement {
         if (!roomNeedsMiner) {
             let undersizedMiner = Object.keys(room.memory.miningAssignments).some(
                 (assignment) =>
-                    Game.creeps[room.memory.miningAssignments[assignment]].body.length <
+                    Game.creeps[room.memory.miningAssignments[assignment]]?.body.length <
                     PopulationManagement.getMinerBody(assignment.toRoomPos(), room.energyCapacityAvailable).length
             );
             return undersizedMiner;
@@ -965,14 +970,8 @@ export class PopulationManagement {
     }
 
     static needsTransporter(room: Room) {
-        let transporterCount = room.myCreepsByMemory.filter((c) => c.memory.role === Role.TRANSPORTER).length;
-        if (room.controller.level < 3 && transporterCount < 2) {
-            return true;
-        }
-
-        let bigDroppedResources = room.find(FIND_DROPPED_RESOURCES).filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount > 500);
-        let bigRuins = room.find(FIND_RUINS, { filter: (ruin) => ruin.store.getUsedCapacity() > 10000 });
-        return !transporterCount && !!room.storage && bigDroppedResources.length + bigRuins.length >= 1;
+        let transportCarryCount = room.myCreeps.filter(c => c.memory.role === Role.DISTRIBUTOR || c.memory.role === Role.TRANSPORTER).reduce((carrySum, nextCreep) => nextCreep.getActiveBodyparts(CARRY) + carrySum , 0);
+        return transportCarryCount < Object.keys(room.memory.miningAssignments).length * 10;
     }
 
     static needsMineralMiner(room: Room) {

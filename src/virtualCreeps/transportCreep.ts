@@ -10,6 +10,12 @@ export class TransportCreep extends WaveCreep {
     protected labs: StructureLab[];
     memory: TransportCreepMemory;
     protected run() {
+
+        if(this.room.name !== this.homeroom.name){
+            this.travelToRoom(this.memory.room);
+            return;
+        }
+
         if (this.memory.gathering === true) {
             this.gatherEnergy();
 
@@ -74,7 +80,7 @@ export class TransportCreep extends WaveCreep {
         } else if (
             target instanceof StructureContainer &&
             this.homeroom.memory.stampLayout.container.some(
-                (containerStamp) => containerStamp.type === 'center' && containerStamp.pos === target.pos.toMemSafe()
+                (containerStamp) => (containerStamp.type === 'center' || containerStamp.type === 'controller') && containerStamp.pos === target.pos.toMemSafe()
             ) &&
             Object.keys(target.store).length <= 1
         ) {
@@ -385,6 +391,11 @@ export class TransportCreep extends WaveCreep {
                 )
                 .filter((s: StructureExtension) => s?.store.getFreeCapacity(RESOURCE_ENERGY) && s.id !== this.previousTargetId);
             structuresToRefill.push(...nonCenterExtensions);
+
+            const controllerContainer = this.homeroom.memory.stampLayout.container.find(stamp => stamp.type === 'controller')?.pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
+            if(!containersToRefill.some(c => c.store.getUsedCapacity(RESOURCE_ENERGY) < 1000) && controllerContainer?.store.getFreeCapacity(RESOURCE_ENERGY)){
+                containersToRefill.push(controllerContainer);
+            }
 
             if (structuresToRefill.length) {
                 const structureToRefill = this.pos.findClosestByRange(structuresToRefill);

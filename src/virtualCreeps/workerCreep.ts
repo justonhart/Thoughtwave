@@ -40,6 +40,10 @@ export class WorkerCreep extends WaveCreep {
         }
 
         if (target instanceof StructureContainer) {
+            if(!target.store[RESOURCE_ENERGY]){
+                this.stopGathering();
+                return;
+            }
             switch (this.withdraw(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1, maxRooms: 1 });
@@ -88,56 +92,87 @@ export class WorkerCreep extends WaveCreep {
 
     protected findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
         this.debugLog('looking for energy source');
-        if (this.room.storage?.store[RESOURCE_ENERGY]) {
-            return this.room.storage.id;
-        } else if (!this.room.storage && this.room.terminal?.store.energy) {
-            return this.room.terminal.id;
+
+        if(this.memory.role === Role.UPGRADER){
+            const upgradeContainer = this.homeroom.memory.stampLayout.container
+                .find((stamp) => stamp.type === STRUCTURE_CONTROLLER)
+                ?.pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store[RESOURCE_ENERGY]);
+            if(upgradeContainer){
+                return upgradeContainer.id;
+            }
         }
 
-        let ruins = this.room.find(FIND_RUINS, {
+        if (this.homeroom.storage?.store[RESOURCE_ENERGY]) {
+            return this.homeroom.storage.id;
+        } else if (!this.homeroom.storage && this.homeroom.terminal?.store.energy) {
+            return this.homeroom.terminal.id;
+        }
+
+        let ruins = this.homeroom.find(FIND_RUINS, {
             filter: (r) => {
                 return r.store[RESOURCE_ENERGY];
             },
         });
 
-        let tombstones = this.room.find(FIND_TOMBSTONES, { filter: (t) => t.store[RESOURCE_ENERGY] });
+        let tombstones = this.homeroom.find(FIND_TOMBSTONES, { filter: (t) => t.store[RESOURCE_ENERGY] });
 
         let miscSources = [...ruins, ...tombstones];
         if (miscSources.length) {
             return this.pos.findClosestByRange(miscSources)?.id;
         }
 
-        if (!roomNeedsCoreStructures(this.homeroom)) {
-            const upgradeContainer = this.homeroom.memory.stampLayout.container
-                .find((stamp) => stamp.type === STRUCTURE_CONTROLLER)
-                ?.pos.toRoomPos()
-                .look()
-                .find(
-                    (lookObj) =>
-                        lookObj.energy ||
-                        (lookObj.structure?.structureType === STRUCTURE_CONTAINER && (lookObj.structure as StructureContainer).store.energy)
-                );
-            if (upgradeContainer) {
-                return upgradeContainer.energy ? upgradeContainer.energy.id : upgradeContainer.structure.id;
-            }
-        }
+        //if no storage, check various centralized energy structures (center containers, upgrade containers)
+        let containerPositionsToCheck: string[] = [];
 
-        let centerContainerStamps = this.room.memory.stampLayout.container.filter((stamp) => stamp.type === 'center');
+
+        const upgradeContainer = this.homeroom.memory.stampLayout.container
+            .find((stamp) => stamp.type === STRUCTURE_CONTROLLER)
+            ?.pos;
+
+        containerPositionsToCheck.push(upgradeContainer);
+        
+        let centerContainerStamps = this.homeroom.memory.stampLayout.container.filter((stamp) => stamp.type === 'center');
         let centerContainers = centerContainerStamps
             .map((stamp) =>
                 stamp.pos
-                    .toRoomPos()
-                    .lookFor(LOOK_STRUCTURES)
-                    .find((s: StructureContainer) => s.structureType === STRUCTURE_CONTAINER && s.store.getUsedCapacity(RESOURCE_ENERGY) > 750)
-            )
-            .filter((s) => !!s);
-        if (centerContainers.length) {
-            return this.pos.findClosestByRange(centerContainers)?.id;
+            );
+
+        containerPositionsToCheck.push(...centerContainers);
+        let checkPositionEnergy = (pos: string):  {pos: string, energy: number} => {
+            return {
+                pos: pos,
+                energy: pos.toRoomPos()
+                    .look()
+                    .reduce(
+                        (energySum, nextLook) =>
+                            nextLook.structure?.structureType === STRUCTURE_CONTAINER
+                                ? energySum + (nextLook.structure as StructureContainer).store.energy
+                                : nextLook.resource?.resourceType === RESOURCE_ENERGY
+                                ? energySum + nextLook.resource.amount
+                                : energySum,
+                        0
+                    ),
+            }
+        };
+
+        //if there is a distributor, it gets priority access to miner sources
+        if(!this.homeroom.myCreeps.some(c => c.memory.role === Role.DISTRIBUTOR)){
+            containerPositionsToCheck.push(...Object.keys(this.homeroom.memory.miningAssignments));
         }
 
-        let centerResources = centerContainerStamps.map((stamp) => stamp.pos.toRoomPos().lookFor(LOOK_ENERGY).pop()).filter((r) => !!r);
-        if (centerResources.length) {
-            return this.pos.findClosestByRange(centerResources)?.id;
+        const positionsToConsider = containerPositionsToCheck.map(pos => checkPositionEnergy(pos)).filter(pos => pos.energy);
+        if(positionsToConsider.length){
+            const positionToGatherFrom = this.pos.findClosestByRange(positionsToConsider.map(pos => pos.pos.toRoomPos()));
+            const posLook = positionToGatherFrom.look();
+            const posEnergyResource = posLook.find(look => look.resource?.resourceType === RESOURCE_ENERGY)?.resource.id;
+            if(posEnergyResource){
+                return posEnergyResource;
+            }
+
+            const posContainer = posLook.find(look => look.structure?.structureType === STRUCTURE_CONTAINER && (look.structure as StructureContainer).store[RESOURCE_ENERGY] >= (this.homeroom.memory.stampLayout.container.some(s => s.pos === look.structure.pos.toMemSafe() && s.type === 'center') ? 750 : 0))?.structure.id;
+            if(posContainer){
+                return posContainer;
+            }
         }
     }
 

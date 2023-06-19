@@ -1314,3 +1314,34 @@ function manageStructures(room: Room) {
 }
 
 function driveOperationControlledRoom(room: Room) {}
+
+export function unclaimRoom(roomName: string) {
+    let room = Game.rooms[roomName];
+
+    if (room?.controller?.my) {
+        room.controller.unclaim();
+    }
+
+    if (room?.myConstructionSites.length) {
+        room.myConstructionSites.forEach((site) => site.remove());
+    }
+
+    Object.entries(Memory.operations)
+        .filter(([id, operation]) => operation.targetRoom === roomName)
+        .forEach(([id, op]) => delete Memory.operations[id]);
+    Memory.spawnAssignments = Memory.spawnAssignments.filter(
+        (asssignment) => asssignment.designee !== roomName && asssignment.spawnOpts.memory.destination !== roomName
+    );
+
+    room.myCreepsByMemory.forEach((creep) => {
+        // delete creep memory to prevent automatic updates in memory management
+        delete Memory.creeps[creep.name];
+        creep.suicide();
+    });
+
+    room.remoteSources.forEach(source => removeSourceAssignment(source));
+
+    Memory.rooms[roomName].unclaim = true;
+
+    return 'done';
+}

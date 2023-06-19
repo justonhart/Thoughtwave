@@ -120,39 +120,41 @@ export class Gatherer extends TransportCreep {
     }
 
     private findDropPos(): string {
+        let positionsToCompare: string[] = [];
         if (!roomNeedsCoreStructures(this.homeroom) && this.homeroom.controller.level < 6) {
             const upgradeContainer = this.homeroom.memory.stampLayout.container.find((stamp) => stamp.type === STRUCTURE_CONTROLLER)?.pos;
-            if (upgradeContainer) {
-                return upgradeContainer;
-            }
+            positionsToCompare.push(upgradeContainer);
         }
         const containerStampsAdjacentToManager = this.homeroom.memory.stampLayout.container.filter(
             (stamp) =>
                 stamp.type === 'center' &&
                 stamp.pos.toRoomPos().findInRange(FIND_MY_CREEPS, 1, { filter: (c) => c.memory.role === Role.MANAGER }).length
         );
-        if (containerStampsAdjacentToManager.length) {
-            const stampsEnergy = containerStampsAdjacentToManager.map((stamp) => {
-                return {
-                    pos: stamp.pos,
-                    energy: stamp.pos
-                        .toRoomPos()
-                        .look()
-                        .reduce(
-                            (energySum, nextLook) =>
-                                nextLook.structure?.structureType === STRUCTURE_CONTAINER
-                                    ? energySum + (nextLook.structure as StructureContainer).store.energy
-                                    : nextLook.resource?.resourceType === RESOURCE_ENERGY
-                                    ? energySum + nextLook.resource.amount
-                                    : energySum,
-                            0
-                        ),
-                };
-            });
-            return stampsEnergy.reduce((lowest, next) => (next.energy < lowest.energy ? next : lowest)).pos;
-        } else {
-            return this.homeroom.memory.stampLayout.container.find((stamp) => stamp.type === 'center')?.pos;
+
+        let checkPositionEnergy = (pos: string):  {pos: string, energy: number} => {
+            return {
+                pos: pos,
+                energy: pos.toRoomPos()
+                    .look()
+                    .reduce(
+                        (energySum, nextLook) =>
+                            nextLook.structure?.structureType === STRUCTURE_CONTAINER
+                                ? energySum + (nextLook.structure as StructureContainer).store.energy
+                                : nextLook.resource?.resourceType === RESOURCE_ENERGY
+                                ? energySum + nextLook.resource.amount
+                                : energySum,
+                        0
+                    ),
+            }
         }
+
+        if (containerStampsAdjacentToManager.length) {
+            positionsToCompare.push(...containerStampsAdjacentToManager.map(s => s.pos));
+        } else {
+            positionsToCompare.push(...this.homeroom.memory.stampLayout.container.filter((stamp) => stamp.type === 'center').map(s => s.pos));
+        }
+
+        return positionsToCompare.map(pos => checkPositionEnergy(pos)).reduce((leastEnergyPos, nextPos) => nextPos.energy < leastEnergyPos.energy ? nextPos : leastEnergyPos).pos;
     }
 
     private repairRoad(road: StructureRoad): void {
