@@ -332,7 +332,7 @@ export class Pathing {
             }
         }
 
-        if(!goals.length) {
+        if (!goals.length) {
             goals = [
                 {
                     pos: destination,
@@ -440,15 +440,8 @@ export class Pathing {
                     }
                 }
 
-                if (Memory.rooms[room.name]?.managerPos) {
-                    let managerPos = room.memory.managerPos?.toRoomPos();
-                    if (!Pathing.sameCoord(managerPos, destination)) {
-                        matrix.set(managerPos.x, managerPos.y, 50);
-                    }
-                }
-
                 room.memory.stampLayout?.managers.forEach((managerStamp) => {
-                    if (!Pathing.sameCoord(managerStamp.pos.toRoomPos(), destination)) {
+                    if (!Pathing.sameCoord(managerStamp.pos.toRoomPos(), destination) || Memory.creeps[creepName]?.role !== Role.MANAGER) {
                         matrix.set(managerStamp.pos.toRoomPos().x, managerStamp.pos.toRoomPos().y, 50);
                     }
                 });

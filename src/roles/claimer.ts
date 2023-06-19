@@ -1,3 +1,4 @@
+import { getUsername } from '../modules/data';
 import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class Claimer extends WaveCreep {
@@ -14,7 +15,7 @@ export class Claimer extends WaveCreep {
                     if (!this.pos.isNearTo(controller)) {
                         this.travelTo(controller, { range: 1 });
                     } else {
-                        if (controller?.reservation) {
+                        if (controller?.reservation && controller.reservation.username !== getUsername()) {
                             this.attackController(controller);
                         } else {
                             let result = this.claimController(controller);

@@ -44,6 +44,7 @@ interface SpawnAssignment {
     designee: string; //room name
     spawnOpts: SpawnOptions;
     body: BodyPartConstant[];
+    name?: string;
 }
 
 interface HostileRoom {

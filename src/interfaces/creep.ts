@@ -169,6 +169,24 @@ interface TransportCreepMemory extends CreepMemory {
      * If defined, tells the transportCreep to not look for collection targets (for CPU conservation)
      */
     sleepCollectTil?: number;
+    /**
+     * If define, tells creep where to drop resources
+     */
+    dropPos?: string;
+    /**
+     * Which task the creep is currently running
+     */
+    task?: TransportCreepTask;
+}
+
+const enum TransportCreepTask {
+    STORING,
+    DROPPING,
+    REFILLING,
+    COLLECTING,
+    PICKING_UP,
+    POWER_BANK,
+    MANAGING_LABS,
 }
 
 interface WorkerCreepMemory extends CreepMemory {
@@ -210,6 +228,10 @@ interface GathererMemory extends CreepMemory {
      * Flag for early-remote creeps
      */
     early?: boolean;
+    /**
+     * RoomPosition to drop energy at
+     */
+    dropPos?: string;
 }
 
 interface RemoteMinerMemory extends CreepMemory {

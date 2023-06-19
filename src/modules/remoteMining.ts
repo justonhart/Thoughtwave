@@ -203,12 +203,17 @@ export function assignRemoteSource(source: string, roomName: string) {
 
 export function removeSourceAssignment(source: string) {
     let current = Memory.remoteSourceAssignments[source];
-    deleteRoad(`${getStoragePos(Game.rooms[current.controllingRoom])}:${Memory.rooms[current.controllingRoom].remoteSources[source].miningPos}`);
-    Game.creeps[Memory.rooms[current.controllingRoom].remoteSources[source]?.miner]?.suicide();
-    Memory.rooms[current.controllingRoom].remoteSources[source]?.gatherers.forEach((g) => Game.creeps[g]?.suicide());
-    delete Memory.rooms[current.controllingRoom].remoteSources[source];
-    delete Memory.remoteSourceAssignments[source];
     let roomName = source.split('.')[2];
+    if(Memory.rooms[current.controllingRoom]){
+        deleteRoad(`${getStoragePos(Game.rooms[current.controllingRoom])}:${Memory.rooms[current.controllingRoom].remoteSources[source].miningPos}`);
+    } else {
+        const roadName = Object.keys(Memory.roomData[roomName].roads).find(r => r.includes(source));
+        deleteRoad(roadName);
+    }
+    Game.creeps[Memory.rooms[current.controllingRoom]?.remoteSources[source]?.miner]?.suicide();
+    Memory.rooms[current.controllingRoom]?.remoteSources[source]?.gatherers.forEach((g) => Game.creeps[g]?.suicide());
+    delete Memory.rooms[current.controllingRoom]?.remoteSources[source];
+    delete Memory.remoteSourceAssignments[source];
     if (!otherAssignedSourceInRoom(source)) {
         removeRemoteRoomMemory(roomName);
     }
