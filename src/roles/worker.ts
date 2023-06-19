@@ -62,7 +62,7 @@ export class Worker extends WorkerCreep {
                 //@ts-expect-error
                 structure.ticksToDecay !== undefined &&
                 (structure.structureType === STRUCTURE_RAMPART
-                    ? structure.hits <= Math.min(this.homeroom.getDefenseHitpointTarget() * 0.1, 500000)
+                    ? structure.hits <= Math.min(this.homeroom.getDefenseHitpointTarget() * 0.1, 50000)
                     : structure.hits <= structure.hitsMax * 0.1)
         );
         if (decayingStructuresAtRisk.length) {
