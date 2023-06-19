@@ -1,3 +1,4 @@
+import { roomNeedsCoreStructures } from '../modules/roomDesign';
 import { WaveCreep } from './waveCreep';
 
 export class WorkerCreep extends WaveCreep {
@@ -14,7 +15,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected gatherEnergy() {
-        this.memory.currentTaskPriority = Priority.MEDIUM;
+        this.memory.currentTaskPriority = Priority.LOW;
 
         let target = Game.getObjectById(this.memory.energySource);
         if (!target) {
@@ -39,6 +40,10 @@ export class WorkerCreep extends WaveCreep {
         }
 
         if (target instanceof StructureContainer) {
+            if(!target.store[RESOURCE_ENERGY]){
+                this.stopGathering();
+                return;
+            }
             switch (this.withdraw(target, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
                     this.travelTo(target, { range: 1, maxRooms: 1 });
@@ -76,6 +81,7 @@ export class WorkerCreep extends WaveCreep {
                     this.travelTo(target, { ignoreCreeps: true, range: 1, maxRooms: 1 });
                     break;
                 case 0:
+                default:
                     this.stopGathering();
                     break;
             }
@@ -85,44 +91,93 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
-        if (this.room.storage?.store[RESOURCE_ENERGY]) {
-            return this.room.storage.id;
-        } else if (!this.room.storage && this.room.terminal?.store.energy) {
-            return this.room.terminal.id;
+        this.debugLog('looking for energy source');
+
+        if(this.memory.role === Role.UPGRADER){
+            const upgradeContainer = this.homeroom.memory.stampLayout.container
+                .find((stamp) => stamp.type === STRUCTURE_CONTROLLER)
+                ?.pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store[RESOURCE_ENERGY]);
+            if(upgradeContainer){
+                return upgradeContainer.id;
+            }
         }
 
-        let nonStorageSources: (Ruin | Resource | Structure | Tombstone)[];
+        if (this.homeroom.storage?.store[RESOURCE_ENERGY]) {
+            return this.homeroom.storage.id;
+        } else if (!this.homeroom.storage && this.homeroom.terminal?.store.energy) {
+            return this.homeroom.terminal.id;
+        }
 
-        let ruins = this.room.find(FIND_RUINS, {
+        let ruins = this.homeroom.find(FIND_RUINS, {
             filter: (r) => {
                 return r.store[RESOURCE_ENERGY];
             },
         });
 
-        let tombstones = this.room.find(FIND_TOMBSTONES, { filter: (t) => t.store[RESOURCE_ENERGY] });
+        let tombstones = this.homeroom.find(FIND_TOMBSTONES, { filter: (t) => t.store[RESOURCE_ENERGY] });
 
-        let looseEnergyStacks = this.room
-            .find(FIND_DROPPED_RESOURCES)
-            .filter((res) => res.resourceType === RESOURCE_ENERGY && res.amount >= this.store.getCapacity());
+        let miscSources = [...ruins, ...tombstones];
+        if (miscSources.length) {
+            return this.pos.findClosestByRange(miscSources)?.id;
+        }
 
-        let containers = this.room.structures.filter(
-            (str) =>
-                str.structureType === STRUCTURE_CONTAINER &&
-                str.store.energy >= this.store.getCapacity() &&
-                (!this.room.storage || 
-                !this.room.memory.stampLayout.container.some(
-                    (containerStamp) =>
-                        str.pos.toMemSafe() === containerStamp.pos && (containerStamp.type === 'center' || containerStamp.type === 'rm')
-                ))
-        );
+        //if no storage, check various centralized energy structures (center containers, upgrade containers)
+        let containerPositionsToCheck: string[] = [];
 
-        nonStorageSources = [...tombstones, ...ruins, ...looseEnergyStacks, ...containers];
-        if (nonStorageSources.length) {
-            return this.pos.findClosestByRange(nonStorageSources).id;
+
+        const upgradeContainer = this.homeroom.memory.stampLayout.container
+            .find((stamp) => stamp.type === STRUCTURE_CONTROLLER)
+            ?.pos;
+
+        containerPositionsToCheck.push(upgradeContainer);
+        
+        let centerContainerStamps = this.homeroom.memory.stampLayout.container.filter((stamp) => stamp.type === 'center');
+        let centerContainers = centerContainerStamps
+            .map((stamp) =>
+                stamp.pos
+            );
+
+        containerPositionsToCheck.push(...centerContainers);
+        let checkPositionEnergy = (pos: string):  {pos: string, energy: number} => {
+            return {
+                pos: pos,
+                energy: pos.toRoomPos()
+                    .look()
+                    .reduce(
+                        (energySum, nextLook) =>
+                            nextLook.structure?.structureType === STRUCTURE_CONTAINER
+                                ? energySum + (nextLook.structure as StructureContainer).store.energy
+                                : nextLook.resource?.resourceType === RESOURCE_ENERGY
+                                ? energySum + nextLook.resource.amount
+                                : energySum,
+                        0
+                    ),
+            }
+        };
+
+        //if there is a distributor, it gets priority access to miner sources
+        if(!this.homeroom.myCreeps.some(c => c.memory.role === Role.DISTRIBUTOR)){
+            containerPositionsToCheck.push(...Object.keys(this.homeroom.memory.miningAssignments));
+        }
+
+        const positionsToConsider = containerPositionsToCheck.map(pos => checkPositionEnergy(pos)).filter(pos => pos.energy);
+        if(positionsToConsider.length){
+            const positionToGatherFrom = this.pos.findClosestByRange(positionsToConsider.map(pos => pos.pos.toRoomPos()));
+            const posLook = positionToGatherFrom.look();
+            const posEnergyResource = posLook.find(look => look.resource?.resourceType === RESOURCE_ENERGY)?.resource.id;
+            if(posEnergyResource){
+                return posEnergyResource;
+            }
+
+            const posContainer = posLook.find(look => look.structure?.structureType === STRUCTURE_CONTAINER && (look.structure as StructureContainer).store[RESOURCE_ENERGY] >= (this.homeroom.memory.stampLayout.container.some(s => s.pos === look.structure.pos.toMemSafe() && s.type === 'center') ? 750 : 0))?.structure.id;
+            if(posContainer){
+                return posContainer;
+            }
         }
     }
 
     protected runBuildJob(target: ConstructionSite) {
+        this.debugLog('running build job');
         this.memory.currentTaskPriority = Priority.LOW;
         let jobCost = BUILD_POWER * this.getActiveBodyparts(WORK);
         let buildSuccess = this.build(target);
@@ -151,6 +206,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected runUpgradeJob() {
+        this.debugLog('running upgrade job');
         this.memory.currentTaskPriority = Priority.LOW;
         let jobCost = UPGRADE_CONTROLLER_POWER * this.getActiveBodyparts(WORK);
         switch (this.upgradeController(this.homeroom.controller)) {
@@ -177,6 +233,7 @@ export class WorkerCreep extends WaveCreep {
     }
 
     protected runRepairJob(target: Structure) {
+        this.debugLog('running repair job');
         this.memory.currentTaskPriority = Priority.LOW;
         if (target.hits < target.hitsMax) {
             let jobCost = REPAIR_COST * REPAIR_POWER * this.getActiveBodyparts(WORK);

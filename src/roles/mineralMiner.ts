@@ -8,12 +8,15 @@ export class MineralMiner extends WaveCreep {
             this.memory.currentTaskPriority = Priority.HIGH;
             let container = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_CONTAINER) as StructureContainer;
             if (container?.store.getFreeCapacity() >= this.getActiveBodyparts(WORK)) {
-                const result = this.harvest(this.room.mineral);
-                if (result === ERR_NOT_ENOUGH_RESOURCES) {
-                    // Finished mining
-                    this.memory.recycle = true;
+                const mineral = this.pos.findInRange(FIND_MINERALS, 1).pop();
+                if(mineral){
+                    const result = this.harvest(mineral);
+                    if (result === ERR_NOT_ENOUGH_RESOURCES) {
+                        // Finished mining
+                        this.memory.recycle = true;
+                    }
                 }
-            }
+           }
         } else {
             this.travelTo(assignedPos, { maxOps: 20000, avoidHostileRooms: true });
         }

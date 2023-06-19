@@ -147,12 +147,12 @@ Object.defineProperty(Room.prototype, 'hostileCreeps', {
     configurable: true,
 });
 
-Object.defineProperty(Room.prototype, 'mineral', {
+Object.defineProperty(Room.prototype, 'minerals', {
     get: function (this: Room) {
-        if (!this._mineral) {
-            this._mineral = this.find(FIND_MINERALS).pop();
+        if (!this._minerals) {
+            this._minerals = this.find(FIND_MINERALS);
         }
-        return this._mineral;
+        return this._minerals;
     },
     enumerable: false,
     configurable: true,
@@ -188,12 +188,23 @@ Object.defineProperty(Room.prototype, 'upgraderLink', {
     configurable: true,
 });
 
-Object.defineProperty(Room.prototype, 'workerCapacity', {
+Object.defineProperty(Room.prototype, 'baseWorkCapacity', {
     get: function (this: Room) {
-        if (!this._workerCapacity) {
-            this._workerCapacity = PopulationManagement.calculateWorkerCapacity(this);
+        if (!this._baseWorkCapacity) {
+            this._baseWorkCapacity = PopulationManagement.calculateWorkCapacity(this);
         }
-        return this._workerCapacity;
+        return this._baseWorkCapacity;
+    },
+    enumerable: false,
+    configurable: true,
+});
+
+Object.defineProperty(Room.prototype, 'modifiedWorkCapacity', {
+    get: function (this: Room) {
+        if (!this._modifiedWorkCapacity) {
+            this._modifiedWorkCapacity = PopulationManagement.calculateModifiedWorkCapacity(this);
+        }
+        return this._modifiedWorkCapacity;
     },
     enumerable: false,
     configurable: true,
@@ -340,7 +351,7 @@ Room.prototype.getBoostsAvailable = function (this: Room, boostTypes: BoostType[
 };
 
 Room.prototype.getDefenseHitpointTarget = function (this: Room): number {
-    return this.controller.level === 8 ? 300000000 : this.controller.level >= 6 ? this.controller.level * this.controller.level * 50000 : 200000;
+    return this.controller.level === 8 ? 300000000 : this.controller.level >= 6 ? this.controller.level * 50000 : 50000;
 };
 
 Room.prototype.getNextNukeProtectionTask = function (this: Room): Id<Structure> | Id<ConstructionSite> {
@@ -458,4 +469,15 @@ Room.prototype.addShipment = function (this: Room, destination: string, resource
 
 Room.prototype.addMarketOrder = function (this: Room, marketId: string, amount: number) {
     return addMarketOrder(this.name, marketId, amount);
+};
+
+Room.prototype.addSpawnAssignment = function (this: Room, creepBody: BodyPartConstant[], opts: SpawnOptions, name?: string): ScreepsReturnCode {
+    const assignment: SpawnAssignment = {
+        designee: this.name,
+        body: creepBody,
+        spawnOpts: opts,
+        name: name
+    };
+    Memory.spawnAssignments.push(assignment);
+    return OK;
 };
