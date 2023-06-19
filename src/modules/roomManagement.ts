@@ -608,7 +608,7 @@ function runSpawning(room: Room) {
 
     availableSpawns.forEach((spawn) => {
         const result = spawn.spawnWorker(roomUnderAttack);
-        if (result === undefined && !spawn.store.getFreeCapacity()) {
+        if (result !== OK && !spawn.store.getFreeCapacity()) {
             // did not spawn any workers so check if we can renew managers
             const renewableManager = room.myCreepsByMemory.find(
                 (creep) =>
@@ -1168,11 +1168,7 @@ function manageStructures(room: Room) {
     if (
         room.getEventLog().some((log) => log.event === EVENT_OBJECT_DESTROYED && log.data.type !== 'creep') ||
         !room.memory.finishedConstructionAtRcl ||
-        room.memory.finishedConstructionAtRcl < room.controller.level ||
-        (room.controller.level === 6 &&
-            Game.time % 100 === 0 &&
-            Object.keys(room.memory.stampLayout.extractor).length > 1 &&
-            !room.myConstructionSites.length)
+        room.memory.finishedConstructionAtRcl < room.controller.level
     ) {
         let cpuUsed = Game.cpu.getUsed();
         // Cleanup any leftover storage/terminal that is in the way
@@ -1287,7 +1283,7 @@ export function unclaimRoom(roomName: string) {
         creep.suicide();
     });
 
-    room.remoteSources.forEach(source => removeSourceAssignment(source));
+    room.remoteSources.forEach((source) => removeSourceAssignment(source));
 
     Memory.rooms[roomName].unclaim = true;
 
