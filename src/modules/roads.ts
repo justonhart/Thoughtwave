@@ -82,7 +82,7 @@ export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: Roa
                                         matrix.set(x, y, 255);
                                     } else {
                                         const tileTerrain = terrain.get(x, y);
-                                        if (tileTerrain !== TERRAIN_MASK_WALL || matrix.get(x, y) !== 255) {
+                                        if (tileTerrain !== TERRAIN_MASK_WALL && matrix.get(x, y) !== 255) {
                                             // Lower cost due to being a mined at lair
                                             if (Memory.remoteSourceAssignments[sourcePos]) {
                                                 matrix.set(

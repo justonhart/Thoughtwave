@@ -115,8 +115,8 @@ export class PopulationManagement {
             const sourceRoom = nextSource.split('.')[2];
             return (
                 incomeTotal +
-                ((Memory.roomData[sourceRoom].roomStatus === RoomMemoryStatus.RESERVED_ME ||
-                    Memory.roomData[sourceRoom].roomStatus === RoomMemoryStatus.VACANT) &&
+                ((Memory.roomData[sourceRoom]?.roomStatus === RoomMemoryStatus.RESERVED_ME ||
+                    Memory.roomData[sourceRoom]?.roomStatus === RoomMemoryStatus.VACANT) &&
                 Memory.remoteData[sourceRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
                     ? !room.storage?.my
                         ? SOURCE_ENERGY_NEUTRAL_CAPACITY
@@ -277,7 +277,7 @@ export class PopulationManagement {
         return room.remoteSources.find(
             (s) =>
                 room.memory.remoteSources[s].miner === AssignmentStatus.UNASSIGNED &&
-                [RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT].includes(Memory.roomData[s.toRoomPos().roomName].roomStatus) &&
+                [RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT].includes(Memory.roomData[s.toRoomPos().roomName]?.roomStatus) &&
                 Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY &&
                 roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`)
@@ -365,7 +365,7 @@ export class PopulationManagement {
         return room.remoteSources.find((s) => {
             const sourceRoomName = s.split('.')[2];
             const shouldSkip =
-                Memory.roomData[sourceRoomName].roomStatus === RoomMemoryStatus.OWNED_INVADER ||
+                Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.OWNED_INVADER ||
                 Memory.remoteData[sourceRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS ||
                 Memory.remoteData[sourceRoomName].reservationState === RemoteRoomReservationStatus.ENEMY ||
                 (!isEarlySpawning && room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) ||
@@ -471,7 +471,7 @@ export class PopulationManagement {
         return room.remoteSources
             .find(
                 (remoteSource) =>
-                    Memory.roomData[remoteSource.split('.')[2]].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                    Memory.roomData[remoteSource.split('.')[2]]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                     Memory.remoteData[remoteSource.split('.')[2]].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                     Memory.remoteData[remoteSource.split('.')[2]].reserver === AssignmentStatus.UNASSIGNED &&
                     roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[remoteSource].miningPos}`)
@@ -1047,7 +1047,7 @@ export class PopulationManagement {
 
         return room.remoteMiningRooms.find(
             (remoteRoom) =>
-                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                Memory.roomData[remoteRoom]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
                 Memory.remoteData[remoteRoom].mineralAvailableAt <= Game.time &&
@@ -1077,7 +1077,7 @@ export class PopulationManagement {
         return room.remoteSources
             .find(
                 (source) =>
-                    Memory.roomData[source.split('.')[2]].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                    Memory.roomData[source.split('.')[2]]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                     Memory.remoteData[source.split('.')[2]].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                     Memory.remoteData[source.split('.')[2]].keeperExterminator === AssignmentStatus.UNASSIGNED &&
                     roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[source].miningPos}`)

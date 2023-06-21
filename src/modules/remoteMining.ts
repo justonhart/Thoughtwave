@@ -214,7 +214,7 @@ export function removeSourceAssignment(source: string) {
     if (miner) {
         miner.memory.recycle = true;
     }
-    Memory.rooms[current.controllingRoom]?.remoteSources[source]?.gatherers?.forEach((g) => (Memory[g].recycle = true));
+    Memory.rooms[current.controllingRoom]?.remoteSources[source]?.gatherers?.forEach((g) => (Memory.creeps[g].recycle = true));
     delete Memory.rooms[current.controllingRoom]?.remoteSources[source];
     delete Memory.remoteSourceAssignments[source];
     if (!otherAssignedSourceInRoom(source)) {
