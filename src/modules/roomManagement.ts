@@ -557,7 +557,7 @@ function runSpawning(room: Room) {
             }
         });
 
-        if (room.storage?.my && room.remoteSources.length && !roomUnderAttack) {
+        if (room.storage?.my && room.remoteSources.length) {
             let exterminatorNeed = PopulationManagement.findExterminatorNeed(room);
             if (exterminatorNeed) {
                 let spawn = availableSpawns.pop();
@@ -587,7 +587,7 @@ function runSpawning(room: Room) {
                 const spawn = availableSpawns.pop();
                 spawn?.spawnRemoteMineralMiner(remoteMineralMinerNeed);
             }
-        } else if (!room.storage?.my && room.remoteSources.length && !roomUnderAttack) {
+        } else if (!room.storage?.my && room.remoteSources.length) {
             let earlyRemoteMinerNeed = PopulationManagement.findRemoteMinerNeed(room);
             if (earlyRemoteMinerNeed) {
                 let spawn = availableSpawns.pop();
@@ -607,14 +607,12 @@ function runSpawning(room: Room) {
     }
 
     availableSpawns.forEach((spawn) => {
-        const result = spawn.spawnWorker(roomUnderAttack);
+        const result = spawn.spawnWorker();
         if (result !== OK && !spawn.store.getFreeCapacity()) {
             // did not spawn any workers so check if we can renew managers
             const renewableManager = room.myCreepsByMemory.find(
                 (creep) =>
-                    creep.memory.role === Role.MANAGER &&
-                    creep.ticksToLive < 1500 - Math.floor(600 / creep.body.length) &&
-                    spawn.pos.getRangeTo(creep) === 1
+                    creep.memory.role === Role.MANAGER && creep.ticksToLive < 1500 - Math.floor(600 / creep.body.length) && spawn.pos.isNearTo(creep)
             );
             if (renewableManager) {
                 spawn.renewCreep(renewableManager);
@@ -821,17 +819,28 @@ export function addRemoteSourceClaim(room: Room) {
         let existingClaim = Memory.remoteSourceClaims[sourceToClaim.source];
         if (existingClaim) {
             if (existingClaim.estimatedIncome < sourceToClaim.stats.estimatedIncome) {
-                Memory.remoteSourceClaims[sourceToClaim.source] = { claimant: room.name, estimatedIncome: sourceToClaim.stats.estimatedIncome };
-                room.memory.outstandingClaim = sourceToClaim.source;
+                setNewSourceClaim(room, sourceToClaim);
                 delete Memory.rooms[existingClaim.claimant].outstandingClaim;
             }
         } else {
-            Memory.remoteSourceClaims[sourceToClaim.source] = { claimant: room.name, estimatedIncome: sourceToClaim.stats.estimatedIncome };
-            room.memory.outstandingClaim = sourceToClaim.source;
+            setNewSourceClaim(room, sourceToClaim);
         }
     }
 
     return sourceToClaim;
+}
+
+function setNewSourceClaim(room: Room, sourceToClaim: { source: string; replaceSource?: string; stats: RemoteStats }) {
+    Memory.remoteSourceClaims[sourceToClaim.source] = { claimant: room.name, estimatedIncome: sourceToClaim.stats.estimatedIncome };
+    room.memory.outstandingClaim = sourceToClaim.source;
+    if (sourceToClaim.replaceSource) {
+        console.log(
+            `Replaced RemoteSourceAssignment ${sourceToClaim.replaceSource} with ${sourceToClaim.source} (${sourceToClaim.stats.estimatedIncome}).`
+        );
+        removeSourceAssignment(sourceToClaim.replaceSource);
+    } else {
+        Memory.cpuUsage.average += 3; // Add 3 cpu to avg to avoid adding to many remotes at once since avg is calculated over larger range of ticks
+    }
 }
 
 export function executeRemoteSourceClaim(room: Room) {

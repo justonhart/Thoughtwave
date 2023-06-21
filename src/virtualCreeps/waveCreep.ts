@@ -159,7 +159,8 @@ export class WaveCreep extends Creep {
 
     protected recycleCreep() {
         this.memory.currentTaskPriority = Priority.HIGH; // Be able to move creeps off container
-        if (!this.memory.targetId) {
+        const target = Game.getObjectById(this.memory.targetId) as StructureSpawn | StructureContainer;
+        if (!target || target.pos.roomName !== this.homeroom.name) {
             this.memory.targetId = this.homeroom.structures.find(
                 (s) => s.structureType === STRUCTURE_CONTAINER && this.homeroom.mySpawns.some((spawn) => s.pos.isNearTo(spawn))
             )?.id;
@@ -169,7 +170,6 @@ export class WaveCreep extends Creep {
             }
         }
 
-        const target = Game.getObjectById(this.memory.targetId) as StructureSpawn | StructureContainer;
         if (target instanceof StructureContainer) {
             if (this.pos.isEqualTo(target)) {
                 this.homeroom.mySpawns.find((s) => this.pos.isNearTo(s))?.recycleCreep(this);

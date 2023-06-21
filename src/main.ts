@@ -4,6 +4,7 @@ import manageFlags from './modules/flagsManagement';
 import { manageMemory } from './modules/memoryManagement';
 import { addOperation, manageOperations } from './modules/operationsManagement';
 import { createAndUpgradePCs, runPowerCreeps, spawnPowerCreeps } from './modules/powerCreepManagement';
+import { removeSourceAssignment } from './modules/remoteMining';
 import { manageEmpireResources } from './modules/resourceManagement';
 import { driveRoom } from './modules/roomManagement';
 import { runVisuals } from './modules/visuals';
@@ -11,7 +12,7 @@ import { WaveCreep } from './virtualCreeps/waveCreep';
 require('./prototypes/requirePrototypes');
 
 module.exports.loop = function () {
-    let cpuUsed = 0;
+    let cpuUsed = Game.cpu.getUsed();
     let cpuUsageString = `${Game.time}:   `;
 
     try {
@@ -158,9 +159,25 @@ module.exports.loop = function () {
     }
 
     Memory.cpuUsage.totalOverTime += parseInt(cpuUsed.toFixed(2));
-    if (Game.time % 100 === 0) {
-        Memory.cpuUsage.average = parseInt((Memory.cpuUsage.totalOverTime / 100).toFixed(2));
+    // Average Cpu calculated every 1500 ticks (avg creep life)
+    if (Game.time % 1500 === 0) {
+        Memory.cpuUsage.average = parseInt((Memory.cpuUsage.totalOverTime / 1500).toFixed(2));
         Memory.cpuUsage.totalOverTime = 0;
+
+        // Check remote source assignments and remove the lowest if cpu is running full
+        if (Memory.cpuUsage.average / Game.cpu.limit > 0.95) {
+            let lowestAmount = Infinity;
+            let lowestSourcePos: string;
+            for (const [sourcePos, remoteAssignment] of Object.entries(Memory.remoteSourceAssignments)) {
+                if (remoteAssignment.estimatedIncome < lowestAmount) {
+                    lowestAmount = remoteAssignment.estimatedIncome;
+                    lowestSourcePos = sourcePos;
+                }
+            }
+            if (lowestSourcePos) {
+                removeSourceAssignment(lowestSourcePos);
+            }
+        }
     }
 
     // Disable all structure notifications (rerun every 1k ticks for whenever new structures are added)

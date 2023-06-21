@@ -2,7 +2,9 @@ import { decodeRoad, getRoadSegments } from './roads';
 import { drawLayout } from './roomDesign';
 
 export function runVisuals() {
-    visualizeRoomData();
+    if (Memory.debug?.drawRoomData) {
+        visualizeRoomData();
+    }
 
     if (Memory.debug?.drawRemoteConnections) {
         drawLinesToRemoteRooms();
@@ -21,7 +23,7 @@ function visualizeRoomData() {
             Game.map.visual.rect(new RoomPosition(0, 0, roomName), 50, 50, { opacity: 0.15, stroke: '#00ffff', strokeWidth: 2 });
         }
 
-        if(Memory.debug.drawRoads){
+        if (Memory.debug.drawRoads) {
             let rv = new RoomVisual(roomName);
             let roads = Memory.roomData[roomName]?.roads ? Object.values(Memory.roomData[roomName].roads) : [];
             if (roads?.length) {

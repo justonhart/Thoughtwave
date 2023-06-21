@@ -55,7 +55,7 @@ export class Manager extends WaveCreep {
         const managerLink: StructureLink = structuresToManage.find((structure) => structure.structureType === STRUCTURE_LINK) as StructureLink;
         const nuker: StructureNuker = structuresToManage.find((structure) => structure.structureType === STRUCTURE_NUKER) as StructureNuker;
         const factory: StructureFactory = structuresToManage.find((structure) => structure.structureType === STRUCTURE_FACTORY) as StructureFactory;
-        const spawns: StructureSpawn[] = structuresToManage.filter((structure) => structure.structureType === STRUCTURE_SPAWN) as StructureSpawn[];
+        const spawn: StructureSpawn = structuresToManage.find((structure) => structure.structureType === STRUCTURE_SPAWN) as StructureSpawn;
         const powerSpawn: StructurePowerSpawn = structuresToManage.find(
             (structure) => structure.structureType === STRUCTURE_POWER_SPAWN
         ) as StructurePowerSpawn;
@@ -112,10 +112,9 @@ export class Manager extends WaveCreep {
             }
         }
 
-        let spawnInNeed = spawns.find((spawn) => spawn.store[RESOURCE_ENERGY] < 300);
-        if (spawnInNeed && storage.store.energy) {
-            this.withdraw(storage, RESOURCE_ENERGY, Math.min(300 - spawnInNeed.store[RESOURCE_ENERGY], storage.store[RESOURCE_ENERGY]));
-            this.memory.targetId = spawnInNeed.id;
+        if (spawn?.store[RESOURCE_ENERGY] < 300 && storage.store.energy) {
+            this.withdraw(storage, RESOURCE_ENERGY, Math.min(300 - spawn.store[RESOURCE_ENERGY], storage.store[RESOURCE_ENERGY]));
+            this.memory.targetId = spawn.id;
             return;
         }
 
