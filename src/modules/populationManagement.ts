@@ -394,7 +394,7 @@ export class PopulationManagement {
         const carryNeeded = Math.ceil(sourceOutputPerCycle / energyTransferredPerCarryPerCycle);
 
         const currentCarry = room.memory.remoteSources[source].gatherers.reduce(
-            (carrySum, nextCreep) => carrySum + Game.creeps[nextCreep].getActiveBodyparts(CARRY),
+            (carrySum, nextCreep) => carrySum + Game.creeps[nextCreep].body.filter((part) => part.type === CARRY).length,
             0
         );
         return carryNeeded - currentCarry;
