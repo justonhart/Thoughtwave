@@ -5,6 +5,7 @@ const MINERAL_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(RE
 
 export class Manager extends WaveCreep {
     private actionTaken = false;
+    private linkUsed = false;
     memory: ManagerMemory;
     protected run() {
         const managerPos = this.memory.destination?.toRoomPos();
@@ -76,7 +77,10 @@ export class Manager extends WaveCreep {
             if (centerLink) {
                 if (!centerLink?.store.energy) {
                     if (managerLink?.store.energy > 0) {
-                        managerLink.transferEnergy(centerLink);
+                        if(!this.linkUsed){
+                            managerLink.transferEnergy(centerLink);
+                            this.linkUsed = true;
+                        }
                     } else {
                         this.withdraw(storage, RESOURCE_ENERGY);
                         this.memory.targetId = managerLink.id;
@@ -88,7 +92,10 @@ export class Manager extends WaveCreep {
 
         if (!this.room.managerLink?.cooldown && this.room.upgraderLink?.store.energy <= 400 && storage.store.energy) {
             if (managerLink?.store.energy > 0) {
-                managerLink.transferEnergy(this.room.upgraderLink);
+                if(!this.linkUsed){
+                    managerLink.transferEnergy(this.room.upgraderLink);
+                    this.linkUsed = true;
+                }
             } else {
                 this.withdraw(storage, RESOURCE_ENERGY);
                 this.memory.targetId = managerLink.id;
