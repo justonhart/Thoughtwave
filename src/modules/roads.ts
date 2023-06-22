@@ -82,7 +82,7 @@ export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: Roa
                                         matrix.set(x, y, 255);
                                     } else {
                                         const tileTerrain = terrain.get(x, y);
-                                        if (tileTerrain !== TERRAIN_MASK_WALL || matrix.get(x, y) !== 255) {
+                                        if (tileTerrain !== TERRAIN_MASK_WALL && matrix.get(x, y) !== 255) {
                                             // Lower cost due to being a mined at lair
                                             if (Memory.remoteSourceAssignments[sourcePos]) {
                                                 matrix.set(
@@ -201,11 +201,38 @@ export function posExistsOnRoad(pos: RoomPosition, roadKey?: string): boolean {
     if (!Memory.roomData[pos.roomName]?.roads) {
         return false;
     }
-    let roadPositions: RoomPosition[] = roadKey
-        ? decodeRoad(Memory.roomData[pos.roomName].roads[roadKey], pos.roomName)
-        : _.flatten(Object.values(Memory.roomData[pos.roomName].roads).map((roadCode) => decodeRoad(roadCode, pos.roomName)));
 
-    return roadPositions.some((roadPos) => roadPos.isEqualTo(pos));
+    if (roadKey) {
+        let roads = Memory.roomData[pos.roomName].roads[roadKey];
+        if (!roads) {
+            const key = roadKey.split(':');
+            if (key.length === 2) {
+                roads = Memory.roomData[pos.roomName].roads[`${key[0]}:${key[1]}`];
+            }
+        }
+        return Memory.roomData[pos.roomName].roads[roadKey]
+            ?.split(/(.{2})/)
+            ?.some((roadString: string) => pos.x === decode(roadString.charAt(0)) && pos.y === decode(roadString.charAt(1)));
+    }
+    return Object.values(Memory.roomData[pos.roomName].roads)
+        ?.join('')
+        ?.split(/(.{2})/)
+        ?.some((roadString: string) => pos.x === decode(roadString.charAt(0)) && pos.y === decode(roadString.charAt(1)));
+}
+
+function recursiveRoadRoomGet(roomName: string, roadKey: string, traveledRooms?: string[]): string[] {
+    if (!traveledRooms) {
+        traveledRooms = [roomName];
+    }
+    Object.values(Game.map.describeExits(roomName))
+        .filter((adjacentRoom) => !traveledRooms.includes(adjacentRoom))
+        .forEach((adjacentRoom) => {
+            if (Memory.roomData[adjacentRoom]?.roads?.[roadKey]) {
+                traveledRooms.push(adjacentRoom);
+                recursiveRoadRoomGet(adjacentRoom, roadKey, traveledRooms);
+            }
+        });
+    return traveledRooms ?? [];
 }
 
 //trace a road through all rooms from starting point to return RoomPosition array
@@ -265,7 +292,14 @@ function getExitDirection(exitPos: RoomPosition): DirectionConstant | ScreepsRet
 }
 
 export function getAllRoadRooms(roadKey: string): string[] {
-    return Array.from(new Set(getFullRoad(roadKey).map((pos) => pos.roomName)));
+    const startingRoomName = roadKey.split(':')[0].toRoomPos().roomName;
+    const roadCode = Memory.roomData[startingRoomName].roads?.[roadKey];
+
+    if (!roadCode?.length) {
+        return [];
+    }
+
+    return recursiveRoadRoomGet(startingRoomName, roadKey);
 }
 
 export function roadIsPaved(roadKey: string): boolean | ScreepsReturnCode {

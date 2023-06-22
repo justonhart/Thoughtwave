@@ -204,14 +204,17 @@ export function assignRemoteSource(source: string, roomName: string) {
 export function removeSourceAssignment(source: string) {
     let current = Memory.remoteSourceAssignments[source];
     let roomName = source.split('.')[2];
-    if(Memory.rooms[current.controllingRoom]){
+    if (Memory.rooms[current.controllingRoom]) {
         deleteRoad(`${getStoragePos(Game.rooms[current.controllingRoom])}:${Memory.rooms[current.controllingRoom].remoteSources[source].miningPos}`);
     } else {
-        const roadName = Object.keys(Memory.roomData[roomName].roads).find(r => r.includes(source));
+        const roadName = Object.keys(Memory.roomData[roomName].roads).find((r) => r.includes(source));
         deleteRoad(roadName);
     }
-    Game.creeps[Memory.rooms[current.controllingRoom]?.remoteSources[source]?.miner]?.suicide();
-    Memory.rooms[current.controllingRoom]?.remoteSources[source]?.gatherers.forEach((g) => Game.creeps[g]?.suicide());
+    const miner = Game.creeps[Memory.rooms[current.controllingRoom]?.remoteSources[source]?.miner];
+    if (miner) {
+        miner.memory.recycle = true;
+    }
+    Memory.rooms[current.controllingRoom]?.remoteSources[source]?.gatherers?.forEach((g) => (Memory.creeps[g].recycle = true));
     delete Memory.rooms[current.controllingRoom]?.remoteSources[source];
     delete Memory.remoteSourceAssignments[source];
     if (!otherAssignedSourceInRoom(source)) {
@@ -219,7 +222,7 @@ export function removeSourceAssignment(source: string) {
     }
 }
 
-export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolean): { source: string; stats: RemoteStats }[] {
+export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolean): { source: string; replaceSource?: string; stats: RemoteStats }[] {
     let exits = getExitDirections(roomName);
     let safeRoomsDepthOne: string[] = []; //rooms we can pass through for mining
     let safeRoomsDepthTwo: string[] = [];
@@ -240,7 +243,7 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
         }
     }
 
-    if(Game.rooms[roomName].storage?.my){
+    if (Game.rooms[roomName].storage?.my) {
         for (let depthOneRoomName of safeRoomsDepthOne.filter((room) => !isKeeperRoom(room) || Memory.remoteData[room])) {
             let depthOneExits = getExitDirections(depthOneRoomName);
             for (let exit of depthOneExits) {
@@ -282,7 +285,7 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
         }
     }
 
-        let openSources: { source: string; stats: RemoteStats }[] = [
+    let openSources: { source: string; stats: RemoteStats }[] = [
         ..._.flatten(safeRoomsDepthOne.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
         ..._.flatten(safeRoomsDepthTwo.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
         ..._.flatten(safeRoomsDepthThree.map((r) => Memory.roomData[r].sources.map((s) => `${s}.${r}`))),
@@ -296,7 +299,10 @@ export function findRemoteMiningOptions(roomName: string, noKeeperRooms?: boolea
     return openSources.filter((option) => option.stats);
 }
 
-export function findSuitableRemoteSource(roomName: string, noKeeperRooms: boolean = false): { source: string; stats: RemoteStats } {
+export function findSuitableRemoteSource(
+    roomName: string,
+    noKeeperRooms: boolean = false
+): { source: string; replaceSource?: string; stats: RemoteStats } {
     let options = findRemoteMiningOptions(roomName, noKeeperRooms);
 
     let remoteRooms = new Set(Object.keys(Memory.rooms[roomName].remoteSources)?.map((pos) => pos.split('.')[2]));
@@ -312,14 +318,33 @@ export function findSuitableRemoteSource(roomName: string, noKeeperRooms: boolea
         options = options.filter((option) => option.stats?.sourceSize === 3000);
     }
 
+    // Add Source based on a minIncome calculated via cpu usage OR if it is below the minIncome then check for a source on already an existing assignment with a lower income and replace it
     const cpuUsagePercentage = Memory.cpuUsage.average / Game.cpu.limit;
-    const minIncome = cpuUsagePercentage < 0.75 ? 500 : cpuUsagePercentage < 0.8 ? 600 : cpuUsagePercentage < 0.85 ? 700 : 1000;
-    options = options.filter((option) => option.stats.estimatedIncome / option.stats.gathererCount >= minIncome);
+    const minIncome =
+        cpuUsagePercentage < 0.75 ? 500 : cpuUsagePercentage < 0.8 ? 600 : cpuUsagePercentage < 0.85 ? 700 : cpuUsagePercentage < 0.9 ? 1000 : 2000;
+    let lowestAmount = Infinity;
+    let lowestSourcePos: string;
+    for (const [sourcePos, remoteAssignment] of Object.entries(Memory.remoteSourceAssignments)) {
+        if (remoteAssignment.estimatedIncome < lowestAmount) {
+            lowestAmount = remoteAssignment.estimatedIncome;
+            lowestSourcePos = sourcePos;
+        }
+    }
+    return options
+        .sort((a, b) => b.stats.estimatedIncome - a.stats.estimatedIncome)
+        .find((option) => {
+            // Bigger than cpu min income
+            if (option.stats.estimatedIncome / option.stats.gathererCount >= minIncome) {
+                return true;
+            }
 
-    //prefer central rooms over other rooms and prefer closer to farther
-    options.sort((a, b) => b.stats.estimatedIncome - a.stats.estimatedIncome);
-
-    return options.shift();
+            // Check if there is a lower income remoteAssignment. If so replace it.
+            if (lowestSourcePos && lowestAmount < option.stats.estimatedIncome) {
+                option.replaceSource = lowestSourcePos;
+                return true;
+            }
+            return false;
+        });
 }
 
 export function otherAssignedSourceInRoom(source: string): boolean {

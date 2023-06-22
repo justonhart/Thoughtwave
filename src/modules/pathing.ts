@@ -502,7 +502,7 @@ export class Pathing {
         const route = Game.map.findRoute(originRoom, destination, {
             routeCallback: (roomName) => {
                 if (options.avoidHostileRooms && roomName !== originRoom && roomName !== destination && Pathing.checkAvoid(roomName)) {
-                    if (!Memory.roomData[roomName]?.owner) {
+                    if (Memory.roomData[roomName] && !Memory.roomData[roomName].owner) {
                         // Hostile but not owned room
                         options.avoidedTemporaryHostileRooms = true;
                     }
@@ -524,7 +524,7 @@ export class Pathing {
             },
         });
         if (route === ERR_NO_PATH) {
-            console.log(`Could not findRoute to ${destination}`);
+            console.log(`Could not findRoute to ${destination} from ${originRoom}`);
             return ERR_NO_PATH;
         }
         route.forEach((routeStep) => allowedRooms.push(routeStep.room));

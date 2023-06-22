@@ -1,7 +1,7 @@
 import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { getBoostsAvailable } from './labManagement';
 import { getResourceAvailability } from './resourceManagement';
-import { getFullRoad, getRoad, roadIsPaved, roadIsSafe } from './roads';
+import { roadIsPaved, roadIsSafe } from './roads';
 import { getStoragePos, roomNeedsCoreStructures } from './roomDesign';
 
 const BODY_TO_BOOST_MAP: { [key in BoostType]: BodyPartConstant } = {
@@ -55,12 +55,19 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
 };
 
 export class PopulationManagement {
-    static spawnWorker(spawn: StructureSpawn, roomUnderAttack?: boolean): ScreepsReturnCode {
-        const currentWork = spawn.room.myCreeps
-            .filter((c) => c.memory.role === Role.WORKER || c.memory.role == Role.UPGRADER)
-            .reduce((workSum, nextCreep) => workSum + nextCreep.getActiveBodyparts(WORK), 0);
+    private static numSpawnedWorkersThisTick = {};
+
+    static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
+        const currentWork =
+            spawn.room.myCreeps
+                .filter((c) => c.memory.role === Role.WORKER || c.memory.role === Role.UPGRADER)
+                .reduce((workSum, nextCreep) => workSum + nextCreep.getActiveBodyparts(WORK), 0) +
+            (this.numSpawnedWorkersThisTick[spawn.room.name] ?? 0);
         const modifiedWorkCapacity = spawn.room.modifiedWorkCapacity;
-        if ((roomNeedsCoreStructures(spawn.room) ? modifiedWorkCapacity / 5 * spawn.room.controller.level >= 4 ? 1.5 : 1 : modifiedWorkCapacity) > currentWork) {
+        if (
+            (roomNeedsCoreStructures(spawn.room) ? ((modifiedWorkCapacity / 5) * spawn.room.controller.level >= 4 ? 1.5 : 1) : modifiedWorkCapacity) >
+            currentWork
+        ) {
             const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
             const workNeeded = modifiedWorkCapacity - currentWork;
             const workerWorkCount = spawn.room.myCreeps.reduce(
@@ -70,11 +77,14 @@ export class PopulationManagement {
             );
 
             //since build costs 5* as much as work, we want to limit the number of building creeps
-            const roleNeeded = spawn.room.controller.level < 8 
-                ? workerWorkCount < modifiedWorkCapacity / 5 
-                    ? Role.WORKER 
-                    : Role.UPGRADER 
-                : spawn.room.myCreepsByMemory.some(c => c.memory.role === Role.UPGRADER) ? Role.WORKER : Role.UPGRADER;
+            const roleNeeded =
+                spawn.room.controller.level < 8
+                    ? workerWorkCount < modifiedWorkCapacity / 5
+                        ? Role.WORKER
+                        : Role.UPGRADER
+                    : spawn.room.myCreepsByMemory.some((c) => c.memory.role === Role.UPGRADER)
+                    ? Role.WORKER
+                    : Role.UPGRADER;
 
             const options: SpawnOptions = {
                 boosts: !roomNeedsCoreStructures(spawn.room) && spawn.room.controller.level < 8 ? [BoostType.UPGRADE] : [],
@@ -85,7 +95,12 @@ export class PopulationManagement {
             };
 
             const name = this.generateName(options.memory.role, spawn.name);
-            let result = spawn.spawnMax(WORKER_PART_BLOCK, name, options, spawn.room.controller.level === 8 && options.memory.role === Role.UPGRADER ? 15 : workNeeded);
+            let result = spawn.spawnMax(
+                WORKER_PART_BLOCK,
+                name,
+                options,
+                spawn.room.controller.level === 8 && options.memory.role === Role.UPGRADER ? 15 : workNeeded
+            );
             return result;
         }
 
@@ -100,12 +115,15 @@ export class PopulationManagement {
             const sourceRoom = nextSource.split('.')[2];
             return (
                 incomeTotal +
-                (((Memory.roomData[sourceRoom].roomStatus === RoomMemoryStatus.RESERVED_ME || Memory.roomData[sourceRoom].roomStatus === RoomMemoryStatus.VACANT) && Memory.remoteData[sourceRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) ? 
-                (!room.storage?.my
-                    ? SOURCE_ENERGY_NEUTRAL_CAPACITY
-                    : isKeeperRoom(sourceRoom) || isCenterRoom(sourceRoom)
-                    ? SOURCE_ENERGY_KEEPER_CAPACITY
-                    : SOURCE_ENERGY_CAPACITY) : 0)
+                ((Memory.roomData[sourceRoom]?.roomStatus === RoomMemoryStatus.RESERVED_ME ||
+                    Memory.roomData[sourceRoom]?.roomStatus === RoomMemoryStatus.VACANT) &&
+                Memory.remoteData[sourceRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
+                    ? !room.storage?.my
+                        ? SOURCE_ENERGY_NEUTRAL_CAPACITY
+                        : isKeeperRoom(sourceRoom) || isCenterRoom(sourceRoom)
+                        ? SOURCE_ENERGY_KEEPER_CAPACITY
+                        : SOURCE_ENERGY_CAPACITY
+                    : 0)
             );
         }, 0);
 
@@ -259,7 +277,7 @@ export class PopulationManagement {
         return room.remoteSources.find(
             (s) =>
                 room.memory.remoteSources[s].miner === AssignmentStatus.UNASSIGNED &&
-                [RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT].includes(Memory.roomData[s.toRoomPos().roomName].roomStatus) &&
+                [RoomMemoryStatus.RESERVED_ME, RoomMemoryStatus.VACANT].includes(Memory.roomData[s.toRoomPos().roomName]?.roomStatus) &&
                 Memory.remoteData[s.toRoomPos().roomName].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[s.toRoomPos().roomName].reservationState !== RemoteRoomReservationStatus.ENEMY &&
                 roadIsSafe(`${getStoragePos(room).toMemSafe()}:${room.memory.remoteSources[s].miningPos}`)
@@ -347,7 +365,7 @@ export class PopulationManagement {
         return room.remoteSources.find((s) => {
             const sourceRoomName = s.split('.')[2];
             const shouldSkip =
-                Memory.roomData[sourceRoomName].roomStatus === RoomMemoryStatus.OWNED_INVADER ||
+                Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.OWNED_INVADER ||
                 Memory.remoteData[sourceRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS ||
                 Memory.remoteData[sourceRoomName].reservationState === RemoteRoomReservationStatus.ENEMY ||
                 (!isEarlySpawning && room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) ||
@@ -376,7 +394,7 @@ export class PopulationManagement {
         const carryNeeded = Math.ceil(sourceOutputPerCycle / energyTransferredPerCarryPerCycle);
 
         const currentCarry = room.memory.remoteSources[source].gatherers.reduce(
-            (carrySum, nextCreep) => carrySum + Game.creeps[nextCreep].getActiveBodyparts(CARRY),
+            (carrySum, nextCreep) => carrySum + Game.creeps[nextCreep].body.filter((part) => part.type === CARRY).length,
             0
         );
         return carryNeeded - currentCarry;
@@ -453,7 +471,7 @@ export class PopulationManagement {
         return room.remoteSources
             .find(
                 (remoteSource) =>
-                    Memory.roomData[remoteSource.split('.')[2]].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                    Memory.roomData[remoteSource.split('.')[2]]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                     Memory.remoteData[remoteSource.split('.')[2]].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                     Memory.remoteData[remoteSource.split('.')[2]].reserver === AssignmentStatus.UNASSIGNED &&
                     roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[remoteSource].miningPos}`)
@@ -737,7 +755,7 @@ export class PopulationManagement {
         levelCap: number = 15
     ): ScreepsReturnCode {
         let partsBlockCost = partsBlock.map((part) => BODYPART_COST[part]).reduce((sum, partCost) => sum + partCost);
-        let partsArray = [];
+        let partsArray = [] as BodyPartConstant[];
 
         for (
             let i = 0;
@@ -785,63 +803,69 @@ export class PopulationManagement {
         }
 
         // Prioritize center and miner sources (all others are randomly selected)
-        if (spawn.room.memory.stampLayout) {
-            const prioritizedExtensions = spawn.room.memory.stampLayout.extension.filter(
-                (extensionDetail) => extensionDetail.type?.includes('source') || extensionDetail.type === 'center'
-            );
-            opts.energyStructures = spawn.room.myStructures
-                .filter((structure) => structure.structureType === STRUCTURE_SPAWN || structure.structureType === STRUCTURE_EXTENSION)
-                .sort((structA, structB) => {
-                    if (
-                        structA.structureType === STRUCTURE_SPAWN &&
-                        spawn.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === structA.pos.toMemSafe())
-                    ) {
-                        return -1;
-                    }
+        const prioritizedExtensions = spawn.room.memory.stampLayout.extension.filter(
+            (extensionDetail) => extensionDetail.type?.includes('source') || extensionDetail.type === 'center'
+        );
+        opts.energyStructures = spawn.room.myStructures
+            .filter((structure) => structure.structureType === STRUCTURE_SPAWN || structure.structureType === STRUCTURE_EXTENSION)
+            .sort((structA, structB) => {
+                if (
+                    structA.structureType === STRUCTURE_SPAWN &&
+                    spawn.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === structA.pos.toMemSafe())
+                ) {
+                    return -1;
+                }
 
-                    if (
-                        structB.structureType === STRUCTURE_SPAWN &&
-                        spawn.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === structB.pos.toMemSafe())
-                    ) {
-                        return 1;
-                    }
+                if (
+                    structB.structureType === STRUCTURE_SPAWN &&
+                    spawn.room.memory.stampLayout.spawn.some((stamp) => stamp.pos === structB.pos.toMemSafe())
+                ) {
+                    return 1;
+                }
 
-                    if (
-                        prioritizedExtensions.some(
-                            (extensionDetail) =>
-                                extensionDetail.pos.toRoomPos().x === structA.pos.x && extensionDetail.pos.toRoomPos().y === structA.pos.y
-                        )
-                    ) {
-                        return -1;
-                    }
-                    if (
-                        prioritizedExtensions.some(
-                            (extensionDetail) =>
-                                extensionDetail.pos.toRoomPos().x === structB.pos.x && extensionDetail.pos.toRoomPos().y === structB.pos.y
-                        )
-                    ) {
-                        return 1;
-                    }
+                if (
+                    prioritizedExtensions.some(
+                        (extensionDetail) =>
+                            extensionDetail.pos.toRoomPos().x === structA.pos.x && extensionDetail.pos.toRoomPos().y === structA.pos.y
+                    )
+                ) {
+                    return -1;
+                }
+                if (
+                    prioritizedExtensions.some(
+                        (extensionDetail) =>
+                            extensionDetail.pos.toRoomPos().x === structB.pos.x && extensionDetail.pos.toRoomPos().y === structB.pos.y
+                    )
+                ) {
+                    return 1;
+                }
 
-                    return 0;
-                }) as Array<StructureSpawn | StructureExtension>;
+                return 0;
+            }) as Array<StructureSpawn | StructureExtension>;
 
-            let result = spawn.spawnCreep(body, name, opts);
+        let result = spawn.spawnCreep(body, name, opts);
 
-            if (result !== OK) {
-                console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
-            } else {
-                spawn.room.reservedEnergy != undefined ? (spawn.room.reservedEnergy += partsArrayCost) : (spawn.room.reservedEnergy = partsArrayCost);
-                requestsToAdd.forEach((request) => {
-                    spawn.room.addRequest(request.resource, request.amount);
-                });
-                labTasksToAdd.forEach((task) => {
-                    spawn.room.addLabTask(task);
-                });
+        if (result !== OK) {
+            console.log(`Unexpected result from smartSpawn in spawn ${spawn.name}: ${result} - body: ${body} - opts: ${JSON.stringify(opts)}`);
+        } else {
+            // Keep track of how many work parts are being spawned in the same tick (TODO: this is a very specialized logic in a general method so it should get refactored later)
+            if (opts.memory.role === Role.WORKER || opts.memory.role === Role.UPGRADER) {
+                if (!this.numSpawnedWorkersThisTick[spawn.room.name]) {
+                    this.numSpawnedWorkersThisTick[spawn.room.name] = body.filter((part) => part === WORK).length;
+                } else {
+                    this.numSpawnedWorkersThisTick[spawn.room.name] += body.filter((part) => part === WORK).length;
+                }
             }
-
-            return result;
+            spawn.room.reservedEnergy != undefined ? (spawn.room.reservedEnergy += partsArrayCost) : (spawn.room.reservedEnergy = partsArrayCost);
+            requestsToAdd.forEach((request) => {
+                spawn.room.addRequest(request.resource, request.amount);
+            });
+            labTasksToAdd.forEach((task) => {
+                spawn.room.addLabTask(task);
+            });
         }
+
+        return result;
     }
 
     static setLabTasksAndRequests(
@@ -921,7 +945,7 @@ export class PopulationManagement {
                 levelCap = 2;
             }
             // Use immobile only after center finished building to avoid spot being taken
-            if (newManager.type !== 'rm' && spawn.room.controller.level > 4 && spawn.pos.isNearTo(newManager.pos.toRoomPos())) {
+            if (spawn.room.controller.level > 4 && spawn.pos.isNearTo(newManager.pos.toRoomPos())) {
                 options.directions = [spawn.pos.getDirectionTo(newManager.pos.toRoomPos())];
                 immobile = true;
             }
@@ -968,7 +992,9 @@ export class PopulationManagement {
     }
 
     static needsTransporter(room: Room) {
-        let transportCarryCount = room.myCreeps.filter(c => c.memory.role === Role.DISTRIBUTOR || c.memory.role === Role.TRANSPORTER).reduce((carrySum, nextCreep) => nextCreep.getActiveBodyparts(CARRY) + carrySum , 0);
+        let transportCarryCount = room.myCreeps
+            .filter((c) => c.memory.role === Role.DISTRIBUTOR || c.memory.role === Role.TRANSPORTER)
+            .reduce((carrySum, nextCreep) => nextCreep.getActiveBodyparts(CARRY) + carrySum, 0);
         return transportCarryCount < Object.keys(room.memory.miningAssignments).length * 10;
     }
 
@@ -982,14 +1008,13 @@ export class PopulationManagement {
         }
 
         let mineralMiningAssignments = room.memory.mineralMiningAssignments;
-        return Object.keys(mineralMiningAssignments).some(
-            (k) => {
-                const mineralMiningPos = k.toRoomPos();
-                const mineralNotEmpty = mineralMiningPos.findInRange(FIND_MINERALS, 1).pop()?.mineralAmount > 0;
-                const extractorBuilt = mineralMiningPos.findInRange(FIND_MY_STRUCTURES, 1, {filter: s => s.structureType === STRUCTURE_EXTRACTOR}).length > 0;
-                return mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED && extractorBuilt && mineralNotEmpty;
-            }
-        );
+        return Object.keys(mineralMiningAssignments).some((k) => {
+            const mineralMiningPos = k.toRoomPos();
+            const mineralNotEmpty = mineralMiningPos.findInRange(FIND_MINERALS, 1).pop()?.mineralAmount > 0;
+            const extractorBuilt =
+                mineralMiningPos.findInRange(FIND_MY_STRUCTURES, 1, { filter: (s) => s.structureType === STRUCTURE_EXTRACTOR }).length > 0;
+            return mineralMiningAssignments[k] === AssignmentStatus.UNASSIGNED && extractorBuilt && mineralNotEmpty;
+        });
     }
 
     static spawnMineralMiner(spawn: StructureSpawn): ScreepsReturnCode {
@@ -1016,13 +1041,13 @@ export class PopulationManagement {
 
     static findRemoteMineralMinerNeed(room: Room) {
         return false;
-        if (room.storage?.store.getFreeCapacity() < 100000 ){
+        if (room.storage?.store.getFreeCapacity() < 100000) {
             return false;
         }
 
         return room.remoteMiningRooms.find(
             (remoteRoom) =>
-                Memory.roomData[remoteRoom].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                Memory.roomData[remoteRoom]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                 Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                 Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
                 Memory.remoteData[remoteRoom].mineralAvailableAt <= Game.time &&
@@ -1052,7 +1077,7 @@ export class PopulationManagement {
         return room.remoteSources
             .find(
                 (source) =>
-                    Memory.roomData[source.split('.')[2]].roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                    Memory.roomData[source.split('.')[2]]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                     Memory.remoteData[source.split('.')[2]].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                     Memory.remoteData[source.split('.')[2]].keeperExterminator === AssignmentStatus.UNASSIGNED &&
                     roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[source].miningPos}`)
