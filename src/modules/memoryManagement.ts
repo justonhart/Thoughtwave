@@ -4,6 +4,7 @@ import { getAllRoomNeeds } from './resourceManagement';
 export function manageMemory() {
     initMissingMemoryValues();
 
+    // Clean dead Creeps
     for (let creepName in Memory.creeps) {
         if (!Game.creeps[creepName]) {
             handleDeadCreep(creepName);
@@ -19,11 +20,18 @@ export function manageMemory() {
 
     handleDeadSquads();
 
-    // if(!!InterShardMemory.getLocal()){
-    //     cleanIntershardOutboundList();
-    // }
+    initGlobalMemory();
 
-    //set map of all room resource needs
+    if (Game.time % 100 === 0) {
+        deleteExpiredRoomData();
+    }
+
+    mangeVisionRequests();
+    cleanSpawnAssignments();
+}
+
+function initGlobalMemory() {
+    //set map of all room resource needs TODO: heavy cpu usage
     global.resourceNeeds = getAllRoomNeeds();
 
     global.roomConstructionsChecked = false;
@@ -33,11 +41,6 @@ export function manageMemory() {
     global.remoteSourcesChecked = false;
 
     global.empireData = getEmpireData();
-
-    deleteExpiredRoomData();
-
-    mangeVisionRequests();
-    cleanSpawnAssignments();
 }
 
 export function validateAssignments() {
@@ -281,7 +284,7 @@ function initMissingMemoryValues() {
 }
 
 function mangeVisionRequests() {
-    const observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room]?.observer);
+    let observerRooms: string[];
 
     Object.keys(Memory.visionRequests).forEach((requestId) => {
         const request = Memory.visionRequests[requestId];
@@ -291,6 +294,9 @@ function mangeVisionRequests() {
         }
 
         if (!request.assigned) {
+            if (!observerRooms) {
+                observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room]?.observer);
+            }
             let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 10);
             if (suitableRoom) {
                 if (!Memory.rooms[suitableRoom].visionRequests) {

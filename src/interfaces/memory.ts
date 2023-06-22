@@ -121,6 +121,7 @@ interface DebugSettings {
     logCpu?: boolean;
     drawRoads?: boolean;
     drawRemoteConnections?: boolean;
+    drawRoomData?: boolean;
     logRoomPlacementCpu?: boolean;
     logRoomCpu?: boolean;
     logCreepCpu?: boolean;

@@ -131,10 +131,11 @@ export class Gatherer extends TransportCreep {
                 stamp.pos.toRoomPos().findInRange(FIND_MY_CREEPS, 1, { filter: (c) => c.memory.role === Role.MANAGER }).length
         );
 
-        let checkPositionEnergy = (pos: string):  {pos: string, energy: number} => {
+        let checkPositionEnergy = (pos: string): { pos: string; energy: number } => {
             return {
                 pos: pos,
-                energy: pos.toRoomPos()
+                energy: pos
+                    .toRoomPos()
                     .look()
                     .reduce(
                         (energySum, nextLook) =>
@@ -145,16 +146,18 @@ export class Gatherer extends TransportCreep {
                                 : energySum,
                         0
                     ),
-            }
-        }
+            };
+        };
 
         if (containerStampsAdjacentToManager.length) {
-            positionsToCompare.push(...containerStampsAdjacentToManager.map(s => s.pos));
+            positionsToCompare.push(...containerStampsAdjacentToManager.map((s) => s.pos));
         } else {
-            positionsToCompare.push(...this.homeroom.memory.stampLayout.container.filter((stamp) => stamp.type === 'center').map(s => s.pos));
+            positionsToCompare.push(...this.homeroom.memory.stampLayout.container.filter((stamp) => stamp.type === 'center').map((s) => s.pos));
         }
 
-        return positionsToCompare.map(pos => checkPositionEnergy(pos)).reduce((leastEnergyPos, nextPos) => nextPos.energy < leastEnergyPos.energy ? nextPos : leastEnergyPos).pos;
+        return positionsToCompare
+            .map((pos) => checkPositionEnergy(pos))
+            .reduce((leastEnergyPos, nextPos) => (nextPos.energy < leastEnergyPos.energy ? nextPos : leastEnergyPos)).pos;
     }
 
     private repairRoad(road: StructureRoad): void {
@@ -211,7 +214,11 @@ export class Gatherer extends TransportCreep {
     }
 
     private runStoreProcedures() {
-        if (!this.onEdge() && posExistsOnRoad(this.pos) && this.getActiveBodyparts(WORK)) {
+        if (
+            !this.onEdge() &&
+            posExistsOnRoad(this.pos, `${this.homeroom.storage.pos.toMemSafe()}:${this.getMiningPosition().toMemSafe()}`) &&
+            this.getActiveBodyparts(WORK)
+        ) {
             let road = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_ROAD) as StructureRoad;
             if (road) {
                 this.repairRoad(road);

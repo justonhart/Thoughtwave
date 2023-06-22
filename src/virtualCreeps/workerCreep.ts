@@ -40,7 +40,7 @@ export class WorkerCreep extends WaveCreep {
         }
 
         if (target instanceof StructureContainer) {
-            if(!target.store[RESOURCE_ENERGY]){
+            if (!target.store[RESOURCE_ENERGY]) {
                 this.stopGathering();
                 return;
             }
@@ -93,11 +93,13 @@ export class WorkerCreep extends WaveCreep {
     protected findEnergySource(): Id<Structure> | Id<ConstructionSite> | Id<Creep> | Id<Resource> | Id<Tombstone> | Id<Ruin> {
         this.debugLog('looking for energy source');
 
-        if(this.memory.role === Role.UPGRADER){
+        if (this.memory.role === Role.UPGRADER) {
             const upgradeContainer = this.homeroom.memory.stampLayout.container
                 .find((stamp) => stamp.type === STRUCTURE_CONTROLLER)
-                ?.pos.toRoomPos().lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store[RESOURCE_ENERGY]);
-            if(upgradeContainer){
+                ?.pos.toRoomPos()
+                .lookFor(LOOK_STRUCTURES)
+                .find((s) => s.structureType === STRUCTURE_CONTAINER && (s as StructureContainer).store[RESOURCE_ENERGY]);
+            if (upgradeContainer) {
                 return upgradeContainer.id;
             }
         }
@@ -124,24 +126,20 @@ export class WorkerCreep extends WaveCreep {
         //if no storage, check various centralized energy structures (center containers, upgrade containers)
         let containerPositionsToCheck: string[] = [];
 
+        const upgradeContainer = this.homeroom.memory.stampLayout.container.find((stamp) => stamp.type === STRUCTURE_CONTROLLER)?.pos;
+        if (upgradeContainer) {
+            containerPositionsToCheck.push(upgradeContainer);
+        }
 
-        const upgradeContainer = this.homeroom.memory.stampLayout.container
-            .find((stamp) => stamp.type === STRUCTURE_CONTROLLER)
-            ?.pos;
-
-        containerPositionsToCheck.push(upgradeContainer);
-        
         let centerContainerStamps = this.homeroom.memory.stampLayout.container.filter((stamp) => stamp.type === 'center');
-        let centerContainers = centerContainerStamps
-            .map((stamp) =>
-                stamp.pos
-            );
+        let centerContainers = centerContainerStamps.map((stamp) => stamp.pos);
 
         containerPositionsToCheck.push(...centerContainers);
-        let checkPositionEnergy = (pos: string):  {pos: string, energy: number} => {
+        let checkPositionEnergy = (pos: string): { pos: string; energy: number } => {
             return {
                 pos: pos,
-                energy: pos.toRoomPos()
+                energy: pos
+                    .toRoomPos()
                     .look()
                     .reduce(
                         (energySum, nextLook) =>
@@ -152,25 +150,32 @@ export class WorkerCreep extends WaveCreep {
                                 : energySum,
                         0
                     ),
-            }
+            };
         };
 
         //if there is a distributor, it gets priority access to miner sources
-        if(!this.homeroom.myCreeps.some(c => c.memory.role === Role.DISTRIBUTOR)){
+        if (!this.homeroom.myCreeps.some((c) => c.memory.role === Role.DISTRIBUTOR)) {
             containerPositionsToCheck.push(...Object.keys(this.homeroom.memory.miningAssignments));
         }
 
-        const positionsToConsider = containerPositionsToCheck.map(pos => checkPositionEnergy(pos)).filter(pos => pos.energy);
-        if(positionsToConsider.length){
-            const positionToGatherFrom = this.pos.findClosestByRange(positionsToConsider.map(pos => pos.pos.toRoomPos()));
+        const positionsToConsider = containerPositionsToCheck.map((pos) => checkPositionEnergy(pos)).filter((pos) => pos.energy);
+        if (positionsToConsider.length) {
+            const positionToGatherFrom = this.pos.findClosestByRange(positionsToConsider.map((pos) => pos.pos.toRoomPos()));
             const posLook = positionToGatherFrom.look();
-            const posEnergyResource = posLook.find(look => look.resource?.resourceType === RESOURCE_ENERGY)?.resource.id;
-            if(posEnergyResource){
+            const posEnergyResource = posLook.find((look) => look.resource?.resourceType === RESOURCE_ENERGY)?.resource.id;
+            if (posEnergyResource) {
                 return posEnergyResource;
             }
 
-            const posContainer = posLook.find(look => look.structure?.structureType === STRUCTURE_CONTAINER && (look.structure as StructureContainer).store[RESOURCE_ENERGY] >= (this.homeroom.memory.stampLayout.container.some(s => s.pos === look.structure.pos.toMemSafe() && s.type === 'center') ? 750 : 0))?.structure.id;
-            if(posContainer){
+            const posContainer = posLook.find(
+                (look) =>
+                    look.structure?.structureType === STRUCTURE_CONTAINER &&
+                    (look.structure as StructureContainer).store[RESOURCE_ENERGY] >=
+                        (this.homeroom.memory.stampLayout.container.some((s) => s.pos === look.structure.pos.toMemSafe() && s.type === 'center')
+                            ? 750
+                            : 0)
+            )?.structure.id;
+            if (posContainer) {
                 return posContainer;
             }
         }
