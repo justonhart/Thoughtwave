@@ -139,6 +139,10 @@ interface Room {
     myConstructionSites: ConstructionSite[];
     reservedEnergy: number;
     addSpawnAssignment(creepBody: BodyPartConstant[], opts: SpawnOptions, name?: string): ScreepsReturnCode;
+    /**
+     * The amount of work being spawned this tick. Used for work capacity calculations
+     */
+    workSpawning: number;
 
     // Caching - Only used in roomPrototypes
     _myCreepsByMemory: Creep[];
