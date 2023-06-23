@@ -55,14 +55,12 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
 };
 
 export class PopulationManagement {
-    private static numSpawnedWorkersThisTick = {};
-
     static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
         const currentWork =
             spawn.room.myCreeps
                 .filter((c) => c.memory.role === Role.WORKER || c.memory.role === Role.UPGRADER)
                 .reduce((workSum, nextCreep) => workSum + nextCreep.getActiveBodyparts(WORK), 0) +
-            (this.numSpawnedWorkersThisTick[spawn.room.name] ?? 0);
+            (spawn.room.workSpawning ?? 0);
         const modifiedWorkCapacity = spawn.room.modifiedWorkCapacity;
         if (
             (roomNeedsCoreStructures(spawn.room) ? ((modifiedWorkCapacity / 5) * spawn.room.controller.level >= 4 ? 1.5 : 1) : modifiedWorkCapacity) >
@@ -850,11 +848,9 @@ export class PopulationManagement {
         } else {
             // Keep track of how many work parts are being spawned in the same tick (TODO: this is a very specialized logic in a general method so it should get refactored later)
             if (opts.memory.role === Role.WORKER || opts.memory.role === Role.UPGRADER) {
-                if (!this.numSpawnedWorkersThisTick[spawn.room.name]) {
-                    this.numSpawnedWorkersThisTick[spawn.room.name] = body.filter((part) => part === WORK).length;
-                } else {
-                    this.numSpawnedWorkersThisTick[spawn.room.name] += body.filter((part) => part === WORK).length;
-                }
+                const workCount = body.reduce((sum, next) => next === WORK ? sum + 1 : sum, 0);
+                spawn.room.workSpawning != undefined ? (spawn.room.workSpawning += workCount) : (spawn.room.workSpawning = workCount);
+ 
             }
             spawn.room.reservedEnergy != undefined ? (spawn.room.reservedEnergy += partsArrayCost) : (spawn.room.reservedEnergy = partsArrayCost);
             requestsToAdd.forEach((request) => {
