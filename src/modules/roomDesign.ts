@@ -1201,7 +1201,7 @@ function addRoadToPois(poi: RoomPosition, stamps: Stamps, rcl: number, type: str
     if (type === 'mineral') {
         const lastStep = path.pop();
         const pos = new RoomPosition(lastStep.x, lastStep.y, stamps.storage[0].pos.toRoomPos().roomName);
-        if (!isCloseToEdge(pos) && !containsStamp(stamps, [pos])) {
+        if (!containsStamp(stamps, [pos])) {
             stamps.container.push({
                 type,
                 rcl: 6,
@@ -1270,6 +1270,7 @@ function findPathToPoi(poi: RoomPosition, stamps: Stamps, type: string, terrain:
         ignoreDestructibleStructures: true,
         ignoreCreeps: true,
         ignoreRoads: true,
+        maxRooms: 1,
         range: range,
         costCallback: function (roomName, costMatrix) {
             const matrix = costMatrix.clone();
