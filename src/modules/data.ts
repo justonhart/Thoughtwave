@@ -119,6 +119,12 @@ export function updateRoomData(room: Room) {
         }
     }
 
+    //@ts-ignore
+    const thorium = room.minerals.find(m => m.mineralType === 'T');
+    if(thorium){
+        data.thoriumAmount = thorium.mineralAmount;
+    }
+
     Memory.roomData[room.name] = data;
 }
 

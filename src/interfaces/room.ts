@@ -89,6 +89,7 @@ interface RoomData {
     powerBank?: boolean;
     deposits?: DepositConstant[];
     roads?: { [roadKey: string]: string }; // [startPos:endPos]: roadCode[]
+    thoriumAmount?: number; 
 }
 
 const enum RoomMemoryStatus {
