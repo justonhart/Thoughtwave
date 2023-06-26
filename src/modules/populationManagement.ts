@@ -63,9 +63,10 @@ export class PopulationManagement {
             (spawn.room.workSpawning ?? 0);
         const modifiedWorkCapacity = spawn.room.modifiedWorkCapacity;
         if (
-            (roomNeedsCoreStructures(spawn.room) ? ((modifiedWorkCapacity / 5) * spawn.room.controller.level >= 4 ? 1.5 : 1) : modifiedWorkCapacity) >
+            (roomNeedsCoreStructures(spawn.room) ? ((modifiedWorkCapacity / 5) * (spawn.room.controller.level >= 4 ? 1.5 : 1)) : modifiedWorkCapacity) >
             currentWork
         ) {
+            if(spawn.room.name === 'W2S13') console.log('hit');
             const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
             const workNeeded = modifiedWorkCapacity - currentWork;
             const workerWorkCount = spawn.room.myCreeps.reduce(
