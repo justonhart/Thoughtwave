@@ -10,7 +10,7 @@ export class RemoteMineralMiner extends WaveCreep {
             return;
         }
 
-        if (!this.store.getFreeCapacity()) {
+        if (!this.store.getFreeCapacity() || Memory.remoteData[this.memory.assignment].mineralAvailableAt > Game.time) {
             if (this.pos.isNearTo(this.homeroom.storage)) {
                 let resourceToStore: any = Object.keys(this.store).shift();
                 let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
@@ -52,7 +52,6 @@ export class RemoteMineralMiner extends WaveCreep {
                 } else if (mineral.mineralAmount && this.store.getFreeCapacity()) {
                     this.harvest(mineral);
                 } else if (mineral.mineralAmount === 0) {
-                    console.log(Game.time + mineral.ticksToRegeneration);
                     Memory.remoteData[this.memory.assignment].mineralAvailableAt = Game.time + mineral.ticksToRegeneration;
                 }
             }
