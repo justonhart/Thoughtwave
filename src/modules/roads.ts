@@ -52,13 +52,12 @@ export function getRoad(startPos: RoomPosition, endPos: RoomPosition, opts?: Roa
             }
 
             if (Memory.remoteData[roomName]) {
-                let miningRoomsWithPos = Object.entries(Memory.remoteSourceAssignments).filter(
-                    ([source, miningData]) => source.split('.')[2] === roomName
-                );
-                let miningPositions = miningRoomsWithPos.map(([source, miningData]) => {
-                    let miningPos = Memory.rooms[miningData.controllingRoom].remoteSources[source].miningPos;
-                    return miningPos;
-                });
+                const miningPositions = Object.entries(Memory.remoteSourceAssignments)
+                    .filter(
+                        ([source, miningData]) =>
+                            source.split('.')[2] === roomName && Memory.rooms[miningData.controllingRoom]?.remoteSources?.[source]
+                    )
+                    .map(([source, miningData]) => Memory.rooms[miningData.controllingRoom].remoteSources[source].miningPos);
 
                 miningPositions.forEach((pos) => matrix.set(pos.toRoomPos().x, pos.toRoomPos().y, 255));
 

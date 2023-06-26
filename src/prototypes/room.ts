@@ -64,6 +64,21 @@ RoomPosition.prototype.findClosestCreepByRange = function (this: RoomPosition, f
     return target.reduce((closestCreep, nextCreep) => (this.getRangeTo(closestCreep) < this.getRangeTo(nextCreep) ? closestCreep : nextCreep));
 };
 
+RoomPosition.prototype.findFirstInRange = function <T extends _HasRoomPosition | RoomPosition>(this: RoomPosition, objects: T[], range: number) {
+    const targetRoom = Game.rooms[this.roomName];
+    if (!targetRoom) {
+        // No visibility
+        return;
+    }
+
+    if (!objects.length) {
+        return;
+    } else if (objects.length === 1) {
+        return objects[0];
+    }
+    return objects.find((obj) => this.getRangeTo(obj) <= range);
+};
+
 Room.prototype.getRepairTarget = function (this: Room): Id<Structure> {
     let targets = this.memory.repairQueue;
 
@@ -476,7 +491,7 @@ Room.prototype.addSpawnAssignment = function (this: Room, creepBody: BodyPartCon
         designee: this.name,
         body: creepBody,
         spawnOpts: opts,
-        name: name
+        name: name,
     };
     Memory.spawnAssignments.push(assignment);
     return OK;

@@ -55,7 +55,7 @@ export function calculateRemoteSourceStats(source: string, roomName: string, ign
             return undefined;
         }
     } catch (e) {
-        console.log(`Caught error calculating road stats: ${e}`);
+        console.log(`Caught error calculating road stats for room ${roomName} and source ${source}: ${e}`);
         return undefined;
     }
 
@@ -189,7 +189,8 @@ export function assignRemoteSource(source: string, roomName: string) {
             }
             if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
                 remoteData.mineralMiner = AssignmentStatus.UNASSIGNED;
-                remoteData.mineralAvailableAt = Game.time;
+                remoteData.mineralAvailableAt =
+                    (Game.getObjectById(Game.rooms[remoteRoomName].minerals?.pop()?.id)?.ticksToRegeneration ?? 0) + Game.time;
             }
 
             Memory.remoteData[remoteRoomName] = remoteData;

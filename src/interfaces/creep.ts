@@ -284,6 +284,7 @@ interface ReserverMemory extends CreepMemory {
 }
 interface RemoteMineralMinerMemory extends CreepMemory {
     assignment?: string;
+    targetId?: Id<Mineral>;
 }
 
 interface MineralMinerMemory extends CreepMemory {
