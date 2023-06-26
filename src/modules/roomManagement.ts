@@ -609,13 +609,16 @@ function runSpawning(room: Room) {
     availableSpawns.forEach((spawn) => {
         const result = spawn.spawnWorker();
         if (result !== OK && !spawn.store.getFreeCapacity()) {
-            // did not spawn any workers so check if we can renew managers
-            const renewableManager = room.myCreepsByMemory.find(
+            // did not spawn any workers so check if we can renew a creep around it (exclude recycle and boosted creeps)
+            const renewableCreep = room.myCreeps.find(
                 (creep) =>
-                    creep.memory.role === Role.MANAGER && creep.ticksToLive < 1500 - Math.floor(600 / creep.body.length) && spawn.pos.isNearTo(creep)
+                    !creep.memory.recycle &&
+                    !creep.body.some((part) => part.boost) &&
+                    spawn.pos.isNearTo(creep) &&
+                    creep.ticksToLive < 1500 - Math.floor(600 / creep.body.length)
             );
-            if (renewableManager) {
-                spawn.renewCreep(renewableManager);
+            if (renewableCreep) {
+                spawn.renewCreep(renewableCreep);
             }
         }
     });

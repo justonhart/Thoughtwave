@@ -45,6 +45,10 @@ export class Protector extends CombatCreep {
                 }
             }
 
+            if (creepActionReturnCode !== OK) {
+                this.defendSelf();
+            }
+
             // Enable retargeting on same tick
             if (!this.memory.combat.flee && creepActionReturnCode !== OK && creepActionReturnCode !== ERR_NOT_IN_RANGE) {
                 delete this.memory.targetId;
@@ -55,8 +59,8 @@ export class Protector extends CombatCreep {
                 this.healSelf(!!this.getActiveBodyparts(ATTACK));
             }
 
-            if(!target){
-                this.travelTo(new RoomPosition(25, 25, this.room.name), {range: 22});
+            if (!target) {
+                this.travelTo(new RoomPosition(25, 25, this.room.name), { range: 22 });
             }
         } else if (this.damaged()) {
             this.healSelf(this.defendSelf());

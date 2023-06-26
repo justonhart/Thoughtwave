@@ -166,22 +166,18 @@ export class CombatCreep extends WaveCreep {
     }
 
     /**
-     * Return fire when getting hit
+     * Attack anything in range
      * @returns true, if creep has melee attacked
      */
     protected defendSelf(): boolean {
-        if (
-            this.pos.roomName !== this.homeroom.name &&
-            this.damaged() &&
-            (this.getActiveBodyparts(ATTACK) || this.getActiveBodyparts(RANGED_ATTACK))
-        ) {
+        if (this.pos.roomName !== this.homeroom.name && (this.getActiveBodyparts(ATTACK) || this.getActiveBodyparts(RANGED_ATTACK))) {
             const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
             const enemy = this.room.hostileCreeps.find(
                 (creep) => (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) && this.pos.getRangeTo(creep) <= range
             );
             if (enemy) {
-                this.attackCreep(enemy);
-                return range === 1;
+                const result = this.attackCreep(enemy);
+                return result === OK && range === 1;
             }
         }
         return false;
@@ -189,6 +185,10 @@ export class CombatCreep extends WaveCreep {
 
     protected recycleCreep() {
         super.recycleCreep();
-        this.healSelf(this.defendSelf());
+        let hasMeleeAttacked = false;
+        if (this.damaged()) {
+            hasMeleeAttacked = this.defendSelf();
+        }
+        this.healSelf(hasMeleeAttacked);
     }
 }

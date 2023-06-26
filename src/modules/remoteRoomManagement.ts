@@ -161,10 +161,7 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
             body.push(HEAL, MOVE);
         }
 
-        // Cant beat enemy
-        if (body.length === 50) {
-            return;
-        }
+        // TODO: Combat update spawn multiple creeps if necessary
         Memory.spawnAssignments.push({
             designee: controllingRoomName,
             body: body,

@@ -18,7 +18,7 @@ const OPERATION_STARTING_STAGE_MAP: { [key in OperationType]?: OperationStage } 
     [OperationType.CLEAN]: OperationStage.ACTIVE,
     [OperationType.POWER_BANK]: OperationStage.PREPARE,
     [OperationType.TRANSFER]: OperationStage.ACTIVE,
-    [OperationType.THORIUM]: OperationStage.ACTIVE
+    [OperationType.THORIUM]: OperationStage.ACTIVE,
 };
 
 const OPERATOR_PARTS_MAP: { [key in OperationType]?: BodyPartConstant[] } = {
@@ -243,66 +243,95 @@ function manageColonizeOperation(opId: string) {
                 break;
             }
 
-            if(!OPERATION.workers){
+            if (!OPERATION.workers) {
                 OPERATION.workers = [];
             }
 
-            OPERATION.workers = OPERATION.workers.filter(name => {
-                return !!Game.creeps[name] || Memory.spawnAssignments.some(a => a.name === name);
-            })
+            OPERATION.workers = OPERATION.workers.filter((name) => {
+                return !!Game.creeps[name] || Memory.spawnAssignments.some((a) => a.name === name);
+            });
 
-            if(targetRoom?.memory.miningAssignments){
+            if (targetRoom?.memory.miningAssignments) {
                 //creep management
-                const workCount = OPERATION.workers.reduce((sum, next) => Game.creeps[next] ? Game.creeps[next].getActiveBodyparts(WORK) + sum : Memory.spawnAssignments.find(a => a.name === next).body.reduce((partSum, nextPart) => nextPart === WORK ? partSum + 1 : partSum, 0) + sum, 0);
-                if(Object.values(targetRoom.memory.miningAssignments).some(a => a === AssignmentStatus.UNASSIGNED)){
-                    const emptyMiningAssignment = Object.keys(targetRoom.memory.miningAssignments).find(assignment => targetRoom.memory.miningAssignments[assignment] === AssignmentStatus.UNASSIGNED);
+                const workCount = OPERATION.workers.reduce(
+                    (sum, next) =>
+                        Game.creeps[next]
+                            ? Game.creeps[next].getActiveBodyparts(WORK) + sum
+                            : Memory.spawnAssignments
+                                  .find((a) => a.name === next)
+                                  .body.reduce((partSum, nextPart) => (nextPart === WORK ? partSum + 1 : partSum), 0) + sum,
+                    0
+                );
+                if (Object.values(targetRoom.memory.miningAssignments).some((a) => a === AssignmentStatus.UNASSIGNED)) {
+                    const emptyMiningAssignment = Object.keys(targetRoom.memory.miningAssignments).find(
+                        (assignment) => targetRoom.memory.miningAssignments[assignment] === AssignmentStatus.UNASSIGNED
+                    );
                     const options: SpawnOptions = {
                         memory: {
                             role: Role.MINER,
                             room: OPERATION.targetRoom,
-                            assignment: emptyMiningAssignment
-                        }
-                    }
+                            assignment: emptyMiningAssignment,
+                        },
+                    };
                     const name = `om${Game.time.toString().slice(-4)}`;
                     targetRoom.memory.miningAssignments[emptyMiningAssignment] = name;
-                    originRoom.addSpawnAssignment(PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 5), options, name);
-                } else if(!OPERATION.transporter || (!Game.creeps[OPERATION.transporter] && !Memory.spawnAssignments.some(a => a.name === OPERATION.transporter))){
-                    if(OPERATION.transporter && (!Game.creeps[OPERATION.transporter] && !Memory.spawnAssignments.some(a => a.name === OPERATION.transporter))){
+                    originRoom.addSpawnAssignment(
+                        PopulationManagement.createPartsArray([WORK, MOVE], originRoom.energyCapacityAvailable, 5),
+                        options,
+                        name
+                    );
+                } else if (
+                    !OPERATION.transporter ||
+                    (!Game.creeps[OPERATION.transporter] && !Memory.spawnAssignments.some((a) => a.name === OPERATION.transporter))
+                ) {
+                    if (
+                        OPERATION.transporter &&
+                        !Game.creeps[OPERATION.transporter] &&
+                        !Memory.spawnAssignments.some((a) => a.name === OPERATION.transporter)
+                    ) {
                         delete OPERATION.transporter;
                     }
 
-                    if(!OPERATION.transporter){
+                    if (!OPERATION.transporter) {
                         const options: SpawnOptions = {
                             memory: {
                                 role: Role.TRANSPORTER,
-                                room: OPERATION.targetRoom
-                            }
-                        }
+                                room: OPERATION.targetRoom,
+                            },
+                        };
                         const name = `od${Game.time.toString().slice(-4)}`;
-                        let result = originRoom.addSpawnAssignment(PopulationManagement.createPartsArray([CARRY,MOVE], originRoom.energyCapacityAvailable, 25), options, name);
-                        if(result === OK){
+                        let result = originRoom.addSpawnAssignment(
+                            PopulationManagement.createPartsArray([CARRY, MOVE], originRoom.energyCapacityAvailable, 25),
+                            options,
+                            name
+                        );
+                        if (result === OK) {
                             OPERATION.transporter = name;
                         }
                     }
-                } else if(workCount < Object.keys(targetRoom.memory.miningAssignments).length * 10){
+                } else if (workCount < Object.keys(targetRoom.memory.miningAssignments).length * 10) {
                     const workNeeded = 10 * Object.keys(targetRoom.memory.miningAssignments).length - workCount;
                     const options: SpawnOptions = {
                         memory: {
                             role: Role.WORKER,
-                            room: OPERATION.targetRoom
-                        }
-                    }
+                            room: OPERATION.targetRoom,
+                        },
+                    };
                     const name = `ow${Game.time.toString().slice(-4)}`;
-                    let result = originRoom.addSpawnAssignment(PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], originRoom.energyCapacityAvailable, workNeeded), options, name);
-                    if(result === OK){
+                    let result = originRoom.addSpawnAssignment(
+                        PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], originRoom.energyCapacityAvailable, workNeeded),
+                        options,
+                        name
+                    );
+                    if (result === OK) {
                         OPERATION.workers.push(name);
                     }
                 }
             }
 
-            if(targetRoom.mySpawns.length){
+            if (targetRoom.mySpawns.length) {
                 OPERATION.stage = OperationStage.COMPLETE;
-            }            
+            }
             break;
     }
     Memory.operations[opId] = OPERATION;
@@ -524,7 +553,8 @@ function manageRoomRecoveryOperation(opId: string) {
     miningAssignments.forEach((key) => {
         if (
             Memory.rooms[OPERATION.targetRoom]?.miningAssignments?.[key] === AssignmentStatus.UNASSIGNED ||
-            (!Game.creeps[targetRoom.memory.miningAssignments[key]] && !Memory.spawnAssignments.some(a => a.name === targetRoom.memory.miningAssignments[key]))
+            (!Game.creeps[targetRoom.memory.miningAssignments[key]] &&
+                !Memory.spawnAssignments.some((a) => a.name === targetRoom.memory.miningAssignments[key]))
         ) {
             const name = `om${Game.time.toString().slice(-4)}${i++}`;
             Memory.rooms[OPERATION.targetRoom].miningAssignments[key] = name;
@@ -539,43 +569,59 @@ function manageRoomRecoveryOperation(opId: string) {
                         waypoints: OPERATION.waypoints,
                     },
                 },
-                name: name
+                name: name,
             });
         }
     });
 
-    if(!OPERATION.transporter){
+    if (!OPERATION.transporter) {
         const options: SpawnOptions = {
             memory: {
                 role: Role.TRANSPORTER,
-                room: OPERATION.targetRoom
-            }
-        }
+                room: OPERATION.targetRoom,
+            },
+        };
         const name = `ot${Game.time.toString().slice(-4)}`;
-        let result = originRoom.addSpawnAssignment(PopulationManagement.createPartsArray([CARRY, MOVE], originRoom.energyCapacityAvailable, 25), options, name);
-        if(result === OK ){
+        let result = originRoom.addSpawnAssignment(
+            PopulationManagement.createPartsArray([CARRY, MOVE], originRoom.energyCapacityAvailable, 25),
+            options,
+            name
+        );
+        if (result === OK) {
             OPERATION.transporter = name;
         }
     }
 
-    OPERATION.workers = OPERATION.workers?.filter(name => !!Game.creeps[name] || Memory.spawnAssignments.some(a => a.name === name)) ?? [];
-    const workCount = OPERATION.workers.reduce((sum, next) => Game.creeps[next] ? Game.creeps[next].getActiveBodyparts(WORK) + sum : Memory.spawnAssignments.find(a => a.name === next).body.reduce((partSum, nextPart) => nextPart === WORK ? partSum + 1 : partSum, 0) + sum, 0);
-    if(workCount < Object.keys(targetRoom.memory.miningAssignments).length * 10){
+    OPERATION.workers = OPERATION.workers?.filter((name) => !!Game.creeps[name] || Memory.spawnAssignments.some((a) => a.name === name)) ?? [];
+    const workCount = OPERATION.workers.reduce(
+        (sum, next) =>
+            Game.creeps[next]
+                ? Game.creeps[next].getActiveBodyparts(WORK) + sum
+                : Memory.spawnAssignments
+                      .find((a) => a.name === next)
+                      .body.reduce((partSum, nextPart) => (nextPart === WORK ? partSum + 1 : partSum), 0) + sum,
+        0
+    );
+    if (workCount < Object.keys(targetRoom.memory.miningAssignments).length * 10) {
         const workNeeded = Object.keys(targetRoom.memory.miningAssignments).length * 10 - workCount;
         const options: SpawnOptions = {
             memory: {
                 role: Role.WORKER,
-                room: OPERATION.targetRoom
-            }
+                room: OPERATION.targetRoom,
+            },
         };
         const name = `ow${Game.time.toString().slice(-4)}`;
-        let result = originRoom.addSpawnAssignment(PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], originRoom.energyCapacityAvailable, workNeeded), options, name);
-        if(result === OK){
+        let result = originRoom.addSpawnAssignment(
+            PopulationManagement.createPartsArray([WORK, CARRY, MOVE, MOVE], originRoom.energyCapacityAvailable, workNeeded),
+            options,
+            name
+        );
+        if (result === OK) {
             OPERATION.workers.push(name);
         }
     }
-    
-    if(!roomNeedsCoreStructures(targetRoom)){
+
+    if (!roomNeedsCoreStructures(targetRoom)) {
         OPERATION.stage = OperationStage.COMPLETE;
     }
 
@@ -911,9 +957,10 @@ function spawnPowerBankProtector(op: PowerBankOperation) {
         ).length;
 
     if (!assignedProtectorCount) {
-        const body = PopulationManagement.createDynamicCreepBody(Game.rooms[op.originRoom], [RANGED_ATTACK, HEAL, MOVE], 300, 160, {
-            boosts: [BoostType.RANGED_ATTACK],
-        });
+        const body = PopulationManagement.createPartsArray(
+            [RANGED_ATTACK, RANGED_ATTACK, HEAL, MOVE, MOVE, MOVE],
+            Game.rooms[op.originRoom].energyCapacityAvailable
+        );
         Memory.spawnAssignments.push({
             designee: op.originRoom,
             body: body,
@@ -1064,85 +1111,91 @@ function createSquad(
     Memory.squads[squadId] = { squadType: SquadType.DUO, forcedDestinations: op.waypoints, assignment: op.targetRoom };
 }
 
-function manageThoriumOperation(opId: string){
+function manageThoriumOperation(opId: string) {
     const OPERATION = Memory.operations[opId] as ThoriumOperation;
     const originRoom = Game.rooms[OPERATION.originRoom];
     const targetRoom = Game.rooms[OPERATION.targetRoom];
 
-    if(!OPERATION.reactor && targetRoom){
+    if (!OPERATION.reactor && targetRoom) {
         //@ts-ignore
         OPERATION.reactor = targetRoom.find(FIND_REACTORS).pop()?.id;
     }
 
     const reactor = Game.getObjectById(OPERATION.reactor) as Reactor;
 
-    switch(OPERATION.stage){
+    switch (OPERATION.stage) {
         case OperationStage.ACTIVE:
-            if(!targetRoom || !reactor?.my){
+            if (!targetRoom || !reactor?.my) {
                 OPERATION.stage = OperationStage.CLAIM;
                 return;
             }
 
             const hostilesInReactorRoom = targetRoom?.hostileCreeps;
 
-            if(hostilesInReactorRoom?.length === 0){
+            if (hostilesInReactorRoom?.length === 0) {
                 //@ts-ignore
-                if(reactor.store[RESOURCE_THORIUM] < 750 && originRoom.getResourceAmount(RESOURCE_THORIUM)){
-                    if(OPERATION.transporter){
-                        const valid = Game.creeps[OPERATION.transporter] || Memory.spawnAssignments.some(a => a.name === OPERATION.transporter);
-                        if(!valid){
+                if (reactor.store[RESOURCE_THORIUM] < 750 && originRoom.getResourceAmount(RESOURCE_THORIUM)) {
+                    if (OPERATION.transporter) {
+                        const valid = Game.creeps[OPERATION.transporter] || Memory.spawnAssignments.some((a) => a.name === OPERATION.transporter);
+                        if (!valid) {
                             delete OPERATION.transporter;
                         }
                     }
 
-                    if(!OPERATION.transporter){
+                    if (!OPERATION.transporter) {
                         const spawnOptions: SpawnOptions = {
                             memory: {
                                 role: Role.THORIUM_TRANSPORTER,
                                 operationId: opId,
-                                room: OPERATION.originRoom
-                            } as OperativeMemory
-                        }
+                                room: OPERATION.originRoom,
+                            } as OperativeMemory,
+                        };
                         const name = `tt${Game.time.toString().slice(-4)}`;
                         const thoriumNeeded = 1000 - reactor.store[RESOURCE_THORIUM];
                         const partBlocksNeeded = Math.min(Math.floor(thoriumNeeded / 50), 25);
-                        const body = PopulationManagement.createPartsArray([CARRY,MOVE], originRoom.energyCapacityAvailable, partBlocksNeeded);
+                        const body = PopulationManagement.createPartsArray([CARRY, MOVE], originRoom.energyCapacityAvailable, partBlocksNeeded);
                         let result = originRoom.addSpawnAssignment(body, spawnOptions, name);
-                        if(result === OK){
+                        if (result === OK) {
                             OPERATION.transporter = name;
                         }
                     }
                 }
             } else {
-                if(hostilesInReactorRoom.some(c => c.owner.username !== 'Invader' && c.body.some(part => part.type === ATTACK || part.type === CLAIM || part.type === RANGED_ATTACK))){
+                if (
+                    hostilesInReactorRoom.some(
+                        (c) =>
+                            c.owner.username !== 'Invader' &&
+                            c.body.some((part) => part.type === ATTACK || part.type === CLAIM || part.type === RANGED_ATTACK)
+                    )
+                ) {
                     OPERATION.stage = OperationStage.SUSPEND;
                 }
             }
             break;
         case OperationStage.CLAIM:
-            if(OPERATION.claimer){
-                const valid = Game.creeps[OPERATION.claimer] || Memory.spawnAssignments.some(a => a.name === OPERATION.claimer);
-                if(!valid){
+            if (OPERATION.claimer) {
+                const valid = Game.creeps[OPERATION.claimer] || Memory.spawnAssignments.some((a) => a.name === OPERATION.claimer);
+                if (!valid) {
                     delete OPERATION.claimer;
                 }
             }
 
-            if(!OPERATION.claimer){
+            if (!OPERATION.claimer) {
                 const spawnOptions: SpawnOptions = {
                     memory: {
                         role: Role.REACTOR_CLAIMER,
                         operationId: opId,
-                        room: OPERATION.originRoom
-                    } as OperativeMemory
+                        room: OPERATION.originRoom,
+                    } as OperativeMemory,
                 };
                 const claimerName = `oc99${Game.time.toString().slice(-4)}`;
                 let result = originRoom.addSpawnAssignment([CLAIM, MOVE], spawnOptions, claimerName);
-                if(result === OK){
+                if (result === OK) {
                     OPERATION.claimer = claimerName;
                 }
             }
 
-            if(reactor?.my){
+            if (reactor?.my) {
                 OPERATION.stage = OperationStage.ACTIVE;
             }
             break;

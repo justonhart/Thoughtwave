@@ -140,7 +140,7 @@ const enum Role {
     KEEPER_EXTERMINATOR = 'KEEPER_EXTERMINATOR',
     REMOTE_MINERAL_MINER = 'REMOTE_MINERAL_MINER',
     REACTOR_CLAIMER = 'REACTOR_CLAIMER',
-    THORIUM_TRANSPORTER = "THORIUM_TRANSPORTER"
+    THORIUM_TRANSPORTER = 'THORIUM_TRANSPORTER',
 }
 
 interface MinerMemory extends CreepMemory {
@@ -286,6 +286,7 @@ interface ReserverMemory extends CreepMemory {
 }
 interface RemoteMineralMinerMemory extends CreepMemory {
     assignment?: string;
+    targetId?: Id<Mineral>;
 }
 
 interface MineralMinerMemory extends CreepMemory {

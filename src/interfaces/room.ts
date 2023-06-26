@@ -89,7 +89,7 @@ interface RoomData {
     powerBank?: boolean;
     deposits?: DepositConstant[];
     roads?: { [roadKey: string]: string }; // [startPos:endPos]: roadCode[]
-    thoriumAmount?: number; 
+    thoriumAmount?: number;
 }
 
 const enum RoomMemoryStatus {
@@ -223,6 +223,7 @@ interface Room {
 
 interface RoomPosition {
     findClosestCreepByRange: (this: RoomPosition, forHostile: boolean) => void;
+    findFirstInRange<T extends _HasRoomPosition | RoomPosition>(this: RoomPosition, positions: T[], range: number): T;
     toMemSafe(): string;
     neighbors(includeDiagonal?: boolean, includeCenter?: boolean): RoomPosition[];
 }

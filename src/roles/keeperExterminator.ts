@@ -11,7 +11,7 @@ export class KeeperExterminator extends CombatCreep {
                 this.memory.targetId = this.findTarget();
                 target = Game.getObjectById(this.memory.targetId);
             }
-            //if destination is set, then miningPosition construction site needs defended
+            //if destination is set, then miningPosition construction site needs to be defended
             if (this.memory.destination) {
                 let target = this.room.hostileCreeps.find((creep) => this.pos.isNearTo(creep));
                 if (target) {
@@ -30,6 +30,8 @@ export class KeeperExterminator extends CombatCreep {
                     );
                     if (keeper) {
                         this.memory.targetId = keeper.id;
+                        this.attackCreep(keeper);
+                        this.attacked = true;
                     }
                 } else if (target instanceof Creep) {
                     if (this.pos.isNearTo(target)) {
@@ -37,10 +39,15 @@ export class KeeperExterminator extends CombatCreep {
                         this.attacked = true;
                         this.move(this.pos.getDirectionTo(target)); // Stay in range if the enemy creep moves
                     } else {
+                        const hostileCreepInRange = this.pos.findFirstInRange(this.room.hostileCreeps, 1);
+                        if (hostileCreepInRange) {
+                            this.attackCreep(hostileCreepInRange);
+                        }
                         this.travelTo(target, { range: 1, avoidSourceKeepers: false, efficiency: 1 });
                     }
                 }
-                if (!this.attacked) {
+                // Only heal when necessary or keeper is alive
+                if (!this.attacked && (!(target instanceof StructureKeeperLair) || !target.ticksToSpawn || this.damaged())) {
                     this.heal(this);
                 }
             }
@@ -50,11 +57,10 @@ export class KeeperExterminator extends CombatCreep {
     }
 
     private findTarget(): Id<Creep> | Id<Structure> | Id<ConstructionSite> {
-        let sourcesMined = Object.keys(Memory.remoteSourceAssignments).filter((key) => key.split('.')[2] === this.memory.assignment);
-
         const targetRoom = Game.rooms[this.memory.assignment];
 
-        if (targetRoom) {
+        // Attack invaders
+        if (targetRoom && Memory.remoteData[this.memory.assignment].threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS) {
             let invaders = targetRoom.hostileCreeps.filter(
                 (c) =>
                     (c.body.some((p) => p.type === ATTACK) || c.body.some((p) => p.type === RANGED_ATTACK) || c.body.some((p) => p.type === HEAL)) &&
@@ -65,31 +71,36 @@ export class KeeperExterminator extends CombatCreep {
             }
         }
 
-        let threats = [];
-        sourcesMined.forEach((source) => {
-            let sourceMemory = Memory.rooms[Memory.remoteSourceAssignments[source].controllingRoom].remoteSources[source];
+        let sourcesWithConstruction = [];
+        const mineralMinerName = Memory.remoteData[this.memory.assignment].mineralMiner;
+
+        // Get next lair based on lowest time until keeper spawns in (if it is undefined it means there is a keeper already at the lair)
+        let minedSources = Object.keys(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).filter((key) => {
             if (
-                (sourceMemory.setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER && sourceMemory.miner === AssignmentStatus.UNASSIGNED) ||
-                Game.creeps[sourceMemory.miner]?.pos.inRangeTo(sourceMemory.miningPos.toRoomPos(), 1)
+                Memory.remoteSourceAssignments[key] &&
+                Memory.rooms[Memory.remoteSourceAssignments[key].controllingRoom].remoteSources[key].setupStatus ===
+                    RemoteSourceSetupStatus.BUILDING_CONTAINER
             ) {
-                this.memory.destination = sourceMemory.miningPos;
-                return;
+                sourcesWithConstruction.push(key);
             }
 
-            let threat = targetRoom?.hostileCreeps?.find((creep) => source.toRoomPos().getRangeTo(creep) <= 5);
-            if (threat) {
-                threats.push(threat);
-            }
+            return (
+                Memory.remoteSourceAssignments[key] ||
+                (mineralMinerName && Game.getObjectById(Memory.creeps[mineralMinerName].targetId)?.pos?.toMemSafe() === key)
+            );
         });
 
-        if (threats.length) {
-            return this.pos.findClosestByPath(threats)?.id;
+        // Limit it to sources with construction
+        if (sourcesWithConstruction.length) {
+            minedSources = minedSources.filter((minedSource) => sourcesWithConstruction.includes(minedSource));
         }
 
-        let lairs = Object.keys(Memory.remoteData[this.memory.assignment].sourceKeeperLairs)
-            .filter((key) => Memory.remoteSourceAssignments[key])
-            .map((key) => Game.getObjectById(Memory.remoteData[this.memory.assignment].sourceKeeperLairs[key].id)) as StructureKeeperLair[];
-        let nextSpawn = lairs?.reduce((lowestTimer, next) => (lowestTimer?.ticksToSpawn <= next?.ticksToSpawn ? lowestTimer : next));
+        const lairs = minedSources.map((key) =>
+            Game.getObjectById(Memory.remoteData[this.memory.assignment].sourceKeeperLairs[key].id)
+        ) as StructureKeeperLair[];
+        const nextSpawn = lairs?.reduce((lowestTimer, next) =>
+            lowestTimer.ticksToSpawn === undefined ? lowestTimer : lowestTimer?.ticksToSpawn <= next?.ticksToSpawn ? lowestTimer : next
+        );
         if (nextSpawn) {
             return nextSpawn.id;
         }

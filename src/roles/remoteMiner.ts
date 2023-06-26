@@ -4,7 +4,7 @@ export class RemoteMiner extends WaveCreep {
     memory: RemoteMinerMemory;
 
     protected run() {
-        if(this.memory.early){
+        if (this.memory.early) {
             this.runEarly();
         } else {
             this.runFull();
@@ -12,12 +12,12 @@ export class RemoteMiner extends WaveCreep {
     }
 
     private runEarly() {
-        if(this.damaged() || Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.evacuate){
+        if (this.damaged() || Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.evacuate) {
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
-            return; 
+            return;
         }
 
-        if(!this.pos.isEqualTo(this.getMiningPosition())){
+        if (!this.pos.isEqualTo(this.getMiningPosition())) {
             this.travelTo(this.getMiningPosition());
         } else {
             let source = Game.getObjectById(this.getSourceId());
@@ -43,7 +43,7 @@ export class RemoteMiner extends WaveCreep {
         // Clear out left over containers
         if (this.memory.targetId2) {
             const structure = Game.getObjectById(this.memory.targetId2) as StructureContainer;
-        if (!structure) {
+            if (!structure) {
                 delete this.memory.targetId2;
             } else {
                 const dismantleStatus = this.dismantle(structure);
@@ -62,8 +62,8 @@ export class RemoteMiner extends WaveCreep {
                 this.keeperPresentOrSpawning() &&
                 (this.homeroom.memory.remoteSources[this.memory.assignment].setupStatus !== RemoteSourceSetupStatus.BUILDING_CONTAINER ||
                     this.pos.getRangeTo(
-                        Object.values(Game.creeps).find(
-                            (creep) => creep.memory.role === Role.KEEPER_EXTERMINATOR && creep.memory.assignment === this.memory.assignment
+                        this.homeroom.myCreepsByMemory.find(
+                            (creep) => creep.memory.role === Role.KEEPER_EXTERMINATOR && creep.memory.assignment === this.getMiningPosition().roomName
                         )
                     ) > 10)
             ) {
