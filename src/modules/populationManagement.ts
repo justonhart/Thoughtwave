@@ -59,11 +59,10 @@ export class PopulationManagement {
         const currentWork =
             spawn.room.myCreeps
                 .filter((c) => c.memory.role === Role.WORKER || c.memory.role === Role.UPGRADER)
-                .reduce((workSum, nextCreep) => workSum + nextCreep.getActiveBodyparts(WORK), 0) +
-            (spawn.room.workSpawning ?? 0);
+                .reduce((workSum, nextCreep) => workSum + nextCreep.getActiveBodyparts(WORK), 0) + (spawn.room.workSpawning ?? 0);
         const modifiedWorkCapacity = spawn.room.modifiedWorkCapacity;
         if (
-            (roomNeedsCoreStructures(spawn.room) ? ((modifiedWorkCapacity / 5) * (spawn.room.controller.level >= 4 ? 1.5 : 1)) : modifiedWorkCapacity) >
+            (roomNeedsCoreStructures(spawn.room) ? (modifiedWorkCapacity / 5) * (spawn.room.controller.level >= 4 ? 1.5 : 1) : modifiedWorkCapacity) >
             currentWork
         ) {
             const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
@@ -92,13 +91,13 @@ export class PopulationManagement {
                 } as WorkerCreepMemory,
             };
 
+            const levelCap = spawn.room.controller.level === 8 && options.memory.role === Role.UPGRADER ? 15 : workNeeded;
+            if (!levelCap) {
+                return ERR_NOT_FOUND;
+            }
+
             const name = this.generateName(options.memory.role, spawn.name);
-            let result = spawn.spawnMax(
-                WORKER_PART_BLOCK,
-                name,
-                options,
-                spawn.room.controller.level === 8 && options.memory.role === Role.UPGRADER ? 15 : workNeeded
-            );
+            let result = spawn.spawnMax(WORKER_PART_BLOCK, name, options, levelCap);
             return result;
         }
 
@@ -548,7 +547,7 @@ export class PopulationManagement {
         healNeeded: number,
         opts?: SpawnOptions
     ): BodyPartConstant[] {
-        const getSortValue = (part: BodyPartConstant): number => (part === MOVE ? 2 : part === TOUGH ? 1 : 0);
+        const getSortValue = (part: BodyPartConstant): number => (part === MOVE ? 3 : part === TOUGH ? 2 : part === HEAL ? 1 : 0);
         parts = parts.filter((part, index) => parts.indexOf(part) === index).sort((a, b) => getSortValue(b) - getSortValue(a));
         let energyAvailable = room.energyCapacityAvailable;
         let hasEnergyLeft = true;
@@ -561,10 +560,6 @@ export class PopulationManagement {
         // ToughNeeded is calculated after knowing which boost is used
         if (parts.some((part) => part === TOUGH) && healNeeded > 0) {
             needed.tough = 1;
-        }
-
-        if (opts?.boosts) {
-            var boostMap = getBoostsAvailable(room, Array.from(opts.boosts));
         }
 
         while (hasEnergyLeft && partsArray.length < 50 && (needed.damage > 0 || needed.heal > 0 || needed.tough > 0 || needed.move > 0)) {
@@ -848,9 +843,8 @@ export class PopulationManagement {
         } else {
             // Keep track of how many work parts are being spawned in the same tick (TODO: this is a very specialized logic in a general method so it should get refactored later)
             if (opts.memory.role === Role.WORKER || opts.memory.role === Role.UPGRADER) {
-                const workCount = body.reduce((sum, next) => next === WORK ? sum + 1 : sum, 0);
+                const workCount = body.reduce((sum, next) => (next === WORK ? sum + 1 : sum), 0);
                 spawn.room.workSpawning != undefined ? (spawn.room.workSpawning += workCount) : (spawn.room.workSpawning = workCount);
- 
             }
             spawn.room.reservedEnergy != undefined ? (spawn.room.reservedEnergy += partsArrayCost) : (spawn.room.reservedEnergy = partsArrayCost);
             requestsToAdd.forEach((request) => {
@@ -1036,19 +1030,22 @@ export class PopulationManagement {
     }
 
     static findRemoteMineralMinerNeed(room: Room) {
-        return false;
-        if (room.storage?.store.getFreeCapacity() < 100000) {
+        if (room.storage?.store?.getFreeCapacity() < 100000 || room.energyStatus === EnergyStatus.CRITICAL) {
             return false;
         }
 
-        return room.remoteMiningRooms.find(
-            (remoteRoom) =>
-                Memory.roomData[remoteRoom]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
-                Memory.remoteData[remoteRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
-                Memory.remoteData[remoteRoom].reservationState !== RemoteRoomReservationStatus.ENEMY &&
-                Memory.remoteData[remoteRoom].mineralAvailableAt <= Game.time &&
-                Memory.remoteData[remoteRoom].mineralMiner === AssignmentStatus.UNASSIGNED
-        );
+        return room.remoteSources
+            .find((source) => {
+                const sourceRoom = source.split('.')[2];
+                return (
+                    Memory.roomData[sourceRoom]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
+                    Memory.remoteData[sourceRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+                    Memory.remoteData[sourceRoom].mineralMiner === AssignmentStatus.UNASSIGNED &&
+                    Memory.remoteData[sourceRoom].mineralAvailableAt <= Game.time &&
+                    roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[source].miningPos}`)
+                );
+            })
+            ?.split('.')[2];
     }
 
     static spawnRemoteMineralMiner(spawn: StructureSpawn, remoteRoomName: string): ScreepsReturnCode {

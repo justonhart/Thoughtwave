@@ -222,6 +222,7 @@ interface Room {
 
 interface RoomPosition {
     findClosestCreepByRange: (this: RoomPosition, forHostile: boolean) => void;
+    findFirstInRange<T extends _HasRoomPosition | RoomPosition>(this: RoomPosition, positions: T[], range: number): T;
     toMemSafe(): string;
     neighbors(includeDiagonal?: boolean, includeCenter?: boolean): RoomPosition[];
 }
