@@ -1037,7 +1037,7 @@ export class PopulationManagement {
         return room.remoteSources
             .find((source) => {
                 const sourceRoom = source.split('.')[2];
-                const mineral = Memory.roomData[sourceRoom].mineralTypes?.pop();
+                const mineral = Memory.roomData[sourceRoom].mineralTypes?.[0];
                 return (
                     Memory.roomData[sourceRoom]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                     Memory.remoteData[sourceRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
