@@ -63,7 +63,7 @@ export class PopulationManagement {
             (spawn.room.workSpawning ?? 0);
         const modifiedWorkCapacity = spawn.room.modifiedWorkCapacity;
         if (
-            (roomNeedsCoreStructures(spawn.room) ? ((modifiedWorkCapacity / 5) * spawn.room.controller.level >= 4 ? 1.5 : 1) : modifiedWorkCapacity) >
+            (roomNeedsCoreStructures(spawn.room) ? ((modifiedWorkCapacity / 5) * (spawn.room.controller.level >= 4 ? 1.5 : 1)) : modifiedWorkCapacity) >
             currentWork
         ) {
             const WORKER_PART_BLOCK = [WORK, CARRY, MOVE];
