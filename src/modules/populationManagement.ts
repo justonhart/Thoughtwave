@@ -1037,11 +1037,14 @@ export class PopulationManagement {
         return room.remoteSources
             .find((source) => {
                 const sourceRoom = source.split('.')[2];
+                const mineral = Memory.roomData[sourceRoom].mineralTypes?.pop();
                 return (
                     Memory.roomData[sourceRoom]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
                     Memory.remoteData[sourceRoom].threatLevel !== RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
                     Memory.remoteData[sourceRoom].mineralMiner === AssignmentStatus.UNASSIGNED &&
                     Memory.remoteData[sourceRoom].mineralAvailableAt <= Game.time &&
+                    mineral &&
+                    room.getResourceAmount(mineral) + room.getCompressedResourceAmount(mineral) < 100000 &&
                     roadIsSafe(`${getStoragePos(room).toMemSafe()}:${Memory.rooms[room.name].remoteSources[source].miningPos}`)
                 );
             })
