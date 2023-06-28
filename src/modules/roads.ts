@@ -351,3 +351,17 @@ export function roadCodeContainsMultipleSegments(roadCode: string): boolean {
     }
     return false;
 }
+
+/**
+ * Deletes roads that aren't on stamps or in memory
+ * @param room the room to clean
+ */
+export function deleteExtraRoads(room: Room){
+    const roads = room.find(FIND_STRUCTURES, {filter: s => s.structureType === STRUCTURE_ROAD});
+    roads.forEach(r => {
+        const shouldDelete = !posExistsOnRoad(r.pos) && !room.memory.stampLayout.road.some(stamp => stamp.pos === r.pos.toMemSafe());
+        if(shouldDelete){
+            r.destroy();
+        }
+    })
+}
