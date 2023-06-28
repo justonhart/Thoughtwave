@@ -25,9 +25,9 @@ import { ThoriumTransporter } from '../roles/thoriumTransporter';
 export default function driveCreep(creep: Creep) {
     let waveCreep: WaveCreep;
 
-    if (!creep.memory.role) {
-        handleIncomingCreep(creep);
-    }
+    // if (!creep.memory.role) {
+    //     handleIncomingCreep(creep);
+    // }
 
     switch (creep.memory.role) {
         case Role.WORKER:
