@@ -1,5 +1,5 @@
 import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
-import { getBoostsAvailable } from './labManagement';
+import { SOURCE_KEEPER_TOMBSTONE_CAPACITY } from './remoteMining';
 import { getResourceAvailability } from './resourceManagement';
 import { roadIsPaved, roadIsSafe } from './roads';
 import { getStoragePos, roomNeedsCoreStructures } from './roomDesign';
@@ -383,7 +383,7 @@ export class PopulationManagement {
         const sourceOutputPerCycle = isEarlySpawning
             ? SOURCE_ENERGY_NEUTRAL_CAPACITY
             : isKeeperRoom(sourceRoom) || isCenterRoom(sourceRoom)
-            ? SOURCE_ENERGY_KEEPER_CAPACITY
+            ? SOURCE_ENERGY_KEEPER_CAPACITY + SOURCE_KEEPER_TOMBSTONE_CAPACITY
             : SOURCE_ENERGY_CAPACITY;
         const gathererTripDuration = Memory.remoteSourceAssignments[source].roadLength * (isEarlySpawning ? 2 : 3);
         const tripsPerCycle = ENERGY_REGEN_TIME / gathererTripDuration;

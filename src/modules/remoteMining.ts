@@ -3,6 +3,8 @@ import { removeRemoteRoomMemory } from './remoteRoomManagement';
 import { deleteRoad, getRoad, storeRoadInMemory } from './roads';
 import { getStoragePos } from './roomDesign';
 
+export const SOURCE_KEEPER_TOMBSTONE_CAPACITY = 620;
+
 //Calculate maintenance cost of road to source per road decay cycle. Considers pre-existing roads in homeroom and roomData to be .5 cost of plains. Doesn't consider travel wear
 function calculateSourceRoadStats(
     source: string,
@@ -48,7 +50,7 @@ export function calculateRemoteSourceStats(source: string, roomName: string, ign
             ? SOURCE_ENERGY_KEEPER_CAPACITY
             : SOURCE_ENERGY_CAPACITY;
 
-    const SOURCE_KEEPER_OUTPUT_PER_CYCLE = isKeeperRoom(source.toRoomPos().roomName) ? 620 : 0;
+    const SOURCE_KEEPER_OUTPUT_PER_CYCLE = isKeeperRoom(source.toRoomPos().roomName) ? SOURCE_KEEPER_TOMBSTONE_CAPACITY : 0;
 
     let roadStats;
     try {
