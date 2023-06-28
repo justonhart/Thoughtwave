@@ -133,7 +133,7 @@ export function findStampLocation(room: Room, storeInMemory: boolean = true) {
     } as Stamps;
     // 15 center extensions. If it goes above 20 then itll be in rcl 5
     let extensionCount = 16;
-    let linkRcl = 6;
+    let linkRcl = 7;
     // Block all available spots around sources for link and extension
     findBestMiningPostitions(room, terrain).forEach((bestSpot) => {
         addUniqueRoad(stamps, { type: `source${stamps.container.length}`, rcl: 3, pos: bestSpot.adjacentSpaces.shift().toMemSafe() });
@@ -997,6 +997,9 @@ function bfs(startPos: RoomPosition, stamps: Stamps, terrain: RoomTerrain, room:
         stamps.container.push({ type: STRUCTURE_CONTROLLER, rcl: 2, pos: bestControllerPos.toMemSafe() });
         stamps.link.push({ type: STRUCTURE_CONTROLLER, rcl: 6, pos: bestControllerPos.toMemSafe() });
         avoidPositions = new RoomPosition(bestControllerPos.x, bestControllerPos.y, room.name).neighbors(true, true);
+    } else {
+        // No controller link needed to decrease source rcl by one
+        stamps.link.filter((linkStamp) => linkStamp.type?.includes('source')).forEach((minerLinkStamp) => minerLinkStamp.rcl--);
     }
 
     visited = new Set();
