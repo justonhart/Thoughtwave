@@ -205,14 +205,17 @@ export function assignRemoteSource(source: string, roomName: string) {
 }
 
 export function removeSourceAssignment(source: string) {
-    let current = Memory.remoteSourceAssignments[source];
-    let roomName = source.split('.')[2];
-    if (Memory.rooms[current.controllingRoom]) {
-        deleteRoad(`${getStoragePos(Game.rooms[current.controllingRoom])}:${Memory.rooms[current.controllingRoom].remoteSources[source].miningPos}`);
-    } else {
-        const roadName = Object.keys(Memory.roomData[roomName].roads).find((r) => r.includes(source));
+    const current = Memory.remoteSourceAssignments[source];
+    const roomName = source.split('.')[2];
+    const controllingRoom = Game.rooms[current.controllingRoom]; 
+    if(controllingRoom?.controller.my && controllingRoom.memory.remoteSources[source]){
+        const roadName = `${getStoragePos(controllingRoom).toMemSafe()}:${controllingRoom.memory.remoteSources[source].miningPos}`;
         deleteRoad(roadName);
+    } else if(Memory.roomData[roomName].sources.length === 1) {
+        //since we can't generate exact road name, perform a more haphazard delete of roads with endpoints in range 1
+        Object.keys(Memory.roomData[roomName].roads).filter(roadName => roadName.split(":")[1].toRoomPos().isNearTo(source.toRoomPos())).forEach(adjacentEndingRoad => deleteRoad(adjacentEndingRoad));
     }
+
     const miner = Game.creeps[Memory.rooms[current.controllingRoom]?.remoteSources[source]?.miner];
     if (miner) {
         miner.memory.recycle = true;
