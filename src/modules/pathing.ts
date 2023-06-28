@@ -51,6 +51,11 @@ export class Pathing {
         destination: HasPos | RoomPosition,
         opts?: TravelToOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
+        // Creep cannot move
+        if (!creep.getActiveBodyparts(MOVE)) {
+            return;
+        }
+
         const options = { ...Pathing.defaultOpts, ...opts }; // Enable overriding any default options
         // TODO: save reusePath in creep memory to force new path calculation (decrease it by one every time)
         if (!options.reusePath && creep.memory._m?.path) {
