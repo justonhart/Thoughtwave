@@ -129,7 +129,7 @@ export class RemoteMiner extends WaveCreep {
                         let source = Game.getObjectById(this.getSourceId());
                         if (this.store.energy && container.hits < container.hitsMax) {
                             this.repair(container);
-                        } else if (source.energy && (container.store.getFreeCapacity() || this.store.getFreeCapacity())) {
+                        } else if (source.energy) {
                             this.harvest(source);
                         } else {
                             this.say('...');

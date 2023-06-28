@@ -234,6 +234,10 @@ interface GathererMemory extends CreepMemory {
      * RoomPosition to drop energy at
      */
     dropPos?: string;
+    /**
+     * Dropped Resource/Tombstone around the assignment
+     */
+    looseResourceId?: Id<Tombstone> | Id<Resource>;
 }
 
 interface RemoteMinerMemory extends CreepMemory {

@@ -1,7 +1,9 @@
+export const SOURCE_KEEPER_TOMBSTONE_CAPACITY = 620;
+
 export function addRoomData(room: Room) {
     let data: RoomData = {
         sources: room.find(FIND_SOURCES).map((source) => `${source.pos.x}.${source.pos.y}`),
-        mineralTypes: room.minerals?.map(mineral => mineral.mineralType),
+        mineralTypes: room.minerals?.map((mineral) => mineral.mineralType),
         asOf: Game.time,
     };
 
