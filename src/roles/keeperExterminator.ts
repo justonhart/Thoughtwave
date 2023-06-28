@@ -86,7 +86,7 @@ export class KeeperExterminator extends CombatCreep {
 
             return (
                 Memory.remoteSourceAssignments[key] ||
-                (mineralMinerName && Game.getObjectById(Memory.creeps[mineralMinerName].targetId)?.pos?.toMemSafe() === key)
+                (mineralMinerName && Game.getObjectById(Memory.creeps[mineralMinerName]?.targetId)?.pos?.toMemSafe() === key)
             );
         });
 
