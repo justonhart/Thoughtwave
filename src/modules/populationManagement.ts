@@ -1,5 +1,4 @@
-import { isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
-import { SOURCE_KEEPER_TOMBSTONE_CAPACITY } from './remoteMining';
+import { SOURCE_KEEPER_TOMBSTONE_CAPACITY, isCenterRoom, isKeeperRoom as isKeeperRoom } from './data';
 import { getResourceAvailability } from './resourceManagement';
 import { roadIsPaved, roadIsSafe } from './roads';
 import { getStoragePos, roomNeedsCoreStructures } from './roomDesign';

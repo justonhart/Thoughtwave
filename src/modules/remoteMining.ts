@@ -1,9 +1,7 @@
-import { computeRoomNameFromDiff, getExitDirections, isCenterRoom, isKeeperRoom } from './data';
+import { SOURCE_KEEPER_TOMBSTONE_CAPACITY, computeRoomNameFromDiff, getExitDirections, isCenterRoom, isKeeperRoom } from './data';
 import { removeRemoteRoomMemory } from './remoteRoomManagement';
 import { deleteRoad, getRoad, storeRoadInMemory } from './roads';
 import { getStoragePos } from './roomDesign';
-
-export const SOURCE_KEEPER_TOMBSTONE_CAPACITY = 620;
 
 //Calculate maintenance cost of road to source per road decay cycle. Considers pre-existing roads in homeroom and roomData to be .5 cost of plains. Doesn't consider travel wear
 function calculateSourceRoadStats(
