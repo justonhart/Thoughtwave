@@ -44,27 +44,86 @@ export class Gatherer extends TransportCreep {
             return;
         }
 
-        if (this.store.getUsedCapacity() >= 50) {
+        const isSKRoom = isKeeperRoom(this.memory.assignment.split('.')[2]);
+        // Return if gatherer picked up energy unless it is an SK room. In SK rooms gatherers pick up loose energy so they should check if they can pick up more energy.
+        if (
+            this.store.getUsedCapacity() >= 50 &&
+            (this.memory._m.destination.toRoomPos().roomName === this.homeroom.name ||
+                !this.store.getFreeCapacity() ||
+                (Game.getObjectById(this.getContainerId()) as StructureContainer)?.store.getUsedCapacity() < 100)
+        ) {
             this.runStoreProcedures();
         } else {
+            const rangeToMiningPos = this.pos.getRangeTo(this.getMiningPosition());
+            const rangeForResourceCheck = isSKRoom ? 5 : 1;
             this.memory.currentTaskPriority = Priority.MEDIUM;
-            if (this.pos.isNearTo(this.getMiningPosition())) {
-                let container = Game.getObjectById(this.getContainerId()) as StructureContainer;
-                if (container && (container.store.getUsedCapacity() > 1000 || container.store.getUsedCapacity() >= this.store.getCapacity())) {
-                    this.withdraw(container, Object.keys(container.store).shift() as ResourceConstant);
-                    this.runStoreProcedures();
-                } else if (isKeeperRoom(this.memory.assignment.split('.')[2]) && this.keeperPresentOrSpawning()) {
+
+            // Check for looseResources (ensuring it only checks once using the lastMove info)
+            if (rangeToMiningPos === rangeForResourceCheck && Math.abs(this.memory._m.lastMove - Game.time) <= 1) {
+                const resourceId = this.findLooseResources(rangeForResourceCheck);
+                if (resourceId) {
+                    this.memory.looseResourceId = resourceId;
+                }
+            }
+
+            if (this.memory.looseResourceId) {
+                this.runPickupLooseResource(rangeForResourceCheck);
+            } else if (rangeToMiningPos <= 1) {
+                const container = Game.getObjectById(this.getContainerId()) as StructureContainer;
+                if (container && (container.store.getUsedCapacity() > 1000 || container.store.getUsedCapacity() >= this.store.getFreeCapacity())) {
+                    const resource = Object.keys(container.store).shift() as ResourceConstant;
+                    this.withdraw(container, resource);
+                } else if (isSKRoom && this.keeperPresentOrSpawning()) {
                     this.avoidLairs();
                 }
-            } else if (
-                isKeeperRoom(this.memory.assignment.split('.')[2]) &&
-                this.keeperPresentOrSpawning() &&
-                this.pos.getRangeTo(this.memory.assignment.toRoomPos()) <= 7
-            ) {
+            } else if (isSKRoom && this.keeperPresentOrSpawning() && rangeToMiningPos <= 7) {
                 this.avoidLairs();
             } else {
                 this.travelTo(this.getMiningPosition(), { range: 1, useMemoryRoads: true, reusePath: 10000 });
             }
+        }
+    }
+
+    private runPickupLooseResource(rangeForResourceCheck: number) {
+        const looseResource = Game.getObjectById(this.memory.looseResourceId);
+        if (!looseResource || (looseResource instanceof Tombstone && !looseResource.store.getUsedCapacity())) {
+            delete this.memory.looseResourceId;
+        } else if (this.pos.isNearTo(looseResource)) {
+            let incomingAmount = 0;
+            if (looseResource instanceof Tombstone) {
+                const resourceType = Object.keys(looseResource.store).shift() as ResourceConstant;
+                this.withdraw(looseResource, resourceType);
+                incomingAmount = looseResource.store[resourceType];
+            } else {
+                this.pickup(looseResource);
+                incomingAmount = looseResource.amount;
+            }
+            if (incomingAmount + this.store.getUsedCapacity() === this.store.getCapacity()) {
+                delete this.memory.looseResourceId;
+                this.runStoreProcedures();
+            } else {
+                const resourceId = this.findLooseResources(rangeForResourceCheck);
+                this.memory.looseResourceId = resourceId;
+            }
+        } else {
+            this.travelTo(looseResource, { range: 1 });
+        }
+    }
+
+    // Prioritize loose resources as they decrease each tick
+    private findLooseResources(rangeForResourceCheck: number) {
+        const resource = this.getMiningPosition()
+            .findInRange(FIND_DROPPED_RESOURCES, rangeForResourceCheck)
+            ?.filter((d) => d.id !== this.memory.looseResourceId && d.amount > 100)?.[0];
+        if (resource) {
+            return resource.id;
+        }
+
+        const tombstone = this.getMiningPosition()
+            .findInRange(FIND_TOMBSTONES, rangeForResourceCheck)
+            .filter((t) => t.store.getUsedCapacity() > 100 && t.id !== this.memory.looseResourceId)?.[0];
+        if (tombstone) {
+            return tombstone.id;
         }
     }
 

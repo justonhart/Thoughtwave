@@ -1,4 +1,4 @@
-import { computeRoomNameFromDiff, getExitDirections, isCenterRoom, isKeeperRoom } from './data';
+import { SOURCE_KEEPER_TOMBSTONE_CAPACITY, computeRoomNameFromDiff, getExitDirections, isCenterRoom, isKeeperRoom } from './data';
 import { removeRemoteRoomMemory } from './remoteRoomManagement';
 import { deleteRoad, getRoad, storeRoadInMemory } from './roads';
 import { getStoragePos } from './roomDesign';
@@ -47,6 +47,8 @@ export function calculateRemoteSourceStats(source: string, roomName: string, ign
         isKeeperRoom(source.toRoomPos().roomName) || isCenterRoom(source.toRoomPos().roomName)
             ? SOURCE_ENERGY_KEEPER_CAPACITY
             : SOURCE_ENERGY_CAPACITY;
+
+    const SOURCE_KEEPER_OUTPUT_PER_CYCLE = isKeeperRoom(source.toRoomPos().roomName) ? SOURCE_KEEPER_TOMBSTONE_CAPACITY : 0;
 
     let roadStats;
     try {
@@ -110,7 +112,7 @@ export function calculateRemoteSourceStats(source: string, roomName: string, ign
         EXTERMINATOR_COST_PER_CYCLE +
         CONTAINER_MAINTENANCE_PER_CYCLE +
         ROAD_MAINTENANCE_PER_CYCLE;
-    const ESTIMATED_INCOME_PER_CYCLE = SOURCE_OUTPUT_PER_CYCLE - TOTAL_COSTS_PER_CYCLE;
+    const ESTIMATED_INCOME_PER_CYCLE = SOURCE_OUTPUT_PER_CYCLE + SOURCE_KEEPER_OUTPUT_PER_CYCLE - TOTAL_COSTS_PER_CYCLE;
 
     let stats: RemoteStats = {
         sourceSize: SOURCE_OUTPUT_PER_CYCLE,
