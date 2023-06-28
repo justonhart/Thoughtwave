@@ -92,6 +92,10 @@ export function validateAssignments() {
                 if (Memory.remoteData[remoteRoomName]?.keeperExterminator && !Game.creeps[Memory.remoteData[remoteRoomName].keeperExterminator]) {
                     Memory.remoteData[remoteRoomName].keeperExterminator = AssignmentStatus.UNASSIGNED;
                 }
+
+                if(Memory.remoteData[remoteRoomName]?.mineralMiner && !Game.creeps[Memory.remoteData[remoteRoomName].mineralMiner]){
+                    Memory.remoteData[remoteRoomName].mineralMiner = AssignmentStatus.UNASSIGNED;
+                }
             });
         });
 }
