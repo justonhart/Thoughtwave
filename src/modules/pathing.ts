@@ -52,7 +52,7 @@ export class Pathing {
         opts?: TravelToOpts
     ): CreepMoveReturnCode | ERR_NO_PATH | ERR_INVALID_TARGET | ERR_NOT_FOUND {
         // Creep cannot move
-        if (!creep.getActiveBodyparts(MOVE)) {
+        if (!(creep instanceof PowerCreep) && !creep.getActiveBodyparts(MOVE)) {
             return;
         }
 
