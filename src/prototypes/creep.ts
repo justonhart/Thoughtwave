@@ -55,7 +55,7 @@ Creep.prototype.debugLog = function (this: Creep, contents: any, force?: boolean
 };
 
 Creep.prototype.hasActiveBodyparts = function (this: Creep, part: BodyPartConstant) {
-    for (var i = this.body.length; i-- > 0; ) {
+    for (let i = this.body.length; i-- > 0; ) {
         if (this.body[i].hits > 0) {
             if (this.body[i].type === part) {
                 return true;

@@ -201,7 +201,7 @@ export class HomeRoomCombatPlanner extends CombatPlanner {
         }
         return targetRoom.hostileCreeps.filter(
             (hostileCreep) =>
-                hostileCreep.getActiveBodyparts(WORK) || hostileCreep.getActiveBodyparts(RANGED_ATTACK) || hostileCreep.getActiveBodyparts(ATTACK)
+                hostileCreep.hasActiveBodyparts(WORK) || hostileCreep.hasActiveBodyparts(RANGED_ATTACK) || hostileCreep.hasActiveBodyparts(ATTACK)
         );
     }
 
@@ -256,7 +256,7 @@ export class HomeRoomCombatPlanner extends CombatPlanner {
 
             // Get any creep that is next to a rampart ()
             this.room.hostileCreeps
-                .filter((hostileCreep) => hostileCreep.getActiveBodyparts(HEAL))
+                .filter((hostileCreep) => hostileCreep.hasActiveBodyparts(HEAL))
                 .forEach((hostileHealerCreep) => this.setProtectorPos(availableProtectors, availableRamparts, hostileHealerCreep));
 
             // Check Exit Rooms

@@ -3,14 +3,17 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 export class Miner extends WaveCreep {
     memory: MinerMemory;
     protected run() {
-        if(this.room.memory.miningAssignments[this.memory.assignment] !== this.name && !Game.creeps[this.room.memory.miningAssignments[this.memory.assignment]]?.spawning){
+        if (
+            this.room.memory.miningAssignments[this.memory.assignment] !== this.name &&
+            !Game.creeps[this.room.memory.miningAssignments[this.memory.assignment]]?.spawning
+        ) {
             this.memory.recycle = true;
         }
         this.memory.currentTaskPriority = Priority.HIGH;
         let assignedPos = this.memory.assignment.toRoomPos();
         if (this.pos.isEqualTo(assignedPos)) {
             // Prioritize filling extensions and repairing container
-            if (this.getActiveBodyparts(CARRY)) {
+            if (this.hasActiveBodyparts(CARRY)) {
                 const minerExtension = this.room.myStructures.find(
                     (structure) =>
                         structure.structureType === STRUCTURE_EXTENSION &&

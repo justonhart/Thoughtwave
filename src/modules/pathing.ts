@@ -332,7 +332,7 @@ export class Pathing {
             }
         }
 
-        if(!goals.length) {
+        if (!goals.length) {
             goals = [
                 {
                     pos: destination,
@@ -400,7 +400,7 @@ export class Pathing {
                         .filter(
                             (creep) =>
                                 creep.owner.username === 'Source Keeper' &&
-                                (creep.getActiveBodyparts(ATTACK) > 0 || creep.getActiveBodyparts(RANGED_ATTACK) > 0)
+                                (creep.hasActiveBodyparts(ATTACK) || creep.hasActiveBodyparts(RANGED_ATTACK))
                         )
                         .forEach((creep) => {
                             const avoidArea = getArea(creep.pos, 3);

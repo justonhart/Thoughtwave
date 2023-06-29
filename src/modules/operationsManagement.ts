@@ -501,7 +501,7 @@ function manageSimpleOperation(opId: string) {
         OPERATION.originRoom = findOperationOrigin(OPERATION.targetRoom)?.roomName;
     }
 
-    if(OPERATION.type === OperationType.TRANSFER && (OPERATION as ResourceOperation).targetAmount === undefined){
+    if (OPERATION.type === OperationType.TRANSFER && (OPERATION as ResourceOperation).targetAmount === undefined) {
         (OPERATION as ResourceOperation).targetAmount = 200000;
         (OPERATION as ResourceOperation).currentAmount = 0;
     }
@@ -530,8 +530,11 @@ function manageSimpleOperation(opId: string) {
         });
     }
 
-    if (OPERATION.expireAt <= Game.time || (OPERATION.type === OperationType.TRANSFER && (OPERATION as ResourceOperation).currentAmount >= (OPERATION as ResourceOperation).targetAmount)) {
-        console.log((OPERATION as ResourceOperation).currentAmount + " | " + (OPERATION as ResourceOperation).targetAmount);
+    if (
+        OPERATION.expireAt <= Game.time ||
+        (OPERATION.type === OperationType.TRANSFER && (OPERATION as ResourceOperation).currentAmount >= (OPERATION as ResourceOperation).targetAmount)
+    ) {
+        console.log((OPERATION as ResourceOperation).currentAmount + ' | ' + (OPERATION as ResourceOperation).targetAmount);
         OPERATION.stage = OperationStage.COMPLETE;
     }
     Memory.operations[opId] = OPERATION;
@@ -828,7 +831,7 @@ function manageAddPowerBankOperation(opId: string) {
 
                     // Avoid conflict
                     const hasEnemies = targetRoom.hostileCreeps.some(
-                        (creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK)
+                        (creep) => creep.hasActiveBodyparts(RANGED_ATTACK) || creep.hasActiveBodyparts(ATTACK)
                     );
                     // Don't bother getting powerbanks with only one space of access (could do that later but will have to boost healer/attacker)
                     if (numFreeSpaces > 1 && !hasEnemies) {

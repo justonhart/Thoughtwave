@@ -6,26 +6,26 @@ import { getStoragePos } from './roomDesign';
 
 /**
  * Operates similarly to regular remote room, but doesn't spawn reservers or protectors & uses half-sized miners, and consequently half gatherers that don't build roads
- * @param controllingRoomName 
- * @param remoteRoomName 
+ * @param controllingRoomName
+ * @param remoteRoomName
  */
-export function manageEarlyRemoteRoom(controllingRoomName: string, remoteRoomName: string){
+export function manageEarlyRemoteRoom(controllingRoomName: string, remoteRoomName: string) {
     runEarlyThreatMonitoring(remoteRoomName);
 }
 
-function runEarlyThreatMonitoring(remoteRoomName: string){
+function runEarlyThreatMonitoring(remoteRoomName: string) {
     let room = Game.rooms[remoteRoomName];
-    if(room){
-        if(room.hostileCreeps.some(c => c.body.some(part => part.type === ATTACK || part.type === RANGED_ATTACK))){
+    if (room) {
+        if (room.hostileCreeps.some((c) => c.body.some((part) => part.type === ATTACK || part.type === RANGED_ATTACK))) {
             Memory.remoteData[remoteRoomName].threatLevel = RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS;
             Memory.remoteData[remoteRoomName].threatReset = Game.time + 1500;
             Memory.remoteData[remoteRoomName].evacuate = true;
         } else {
             Memory.remoteData[remoteRoomName].threatLevel = RemoteRoomThreatLevel.SAFE;
             delete Memory.remoteData[remoteRoomName].threatReset;
-            delete Memory.remoteData[remoteRoomName].evacuate; 
-        } 
-    } else if(Memory.remoteData[remoteRoomName].threatReset <= Game.time){
+            delete Memory.remoteData[remoteRoomName].evacuate;
+        }
+    } else if (Memory.remoteData[remoteRoomName].threatReset <= Game.time) {
         Memory.remoteData[remoteRoomName].threatLevel = RemoteRoomThreatLevel.SAFE;
         delete Memory.remoteData[remoteRoomName].threatReset;
         delete Memory.remoteData[remoteRoomName].evacuate;
@@ -192,12 +192,15 @@ export function calculateRemoteMinerWorkNeeded(roomName: string) {
 
 function monitorThreatLevel(room: Room) {
     const creeps = room.hostileCreeps.filter((c) => c.owner.username !== 'Source Keeper');
-    
+
     const currentThreatLevel = Memory.remoteData[room.name].threatLevel;
 
-    if(currentThreatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS && room.getEventLog().some(e => e.event === EVENT_ATTACK && !Game.getObjectById(e.objectId as Id<Creep>)?.my)){
+    if (
+        currentThreatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&
+        room.getEventLog().some((e) => e.event === EVENT_ATTACK && !Game.getObjectById(e.objectId as Id<Creep>)?.my)
+    ) {
         Memory.remoteData[room.name].evacuate = true;
-    } else if(currentThreatLevel < RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS && Memory.remoteData[room.name].evacuate){
+    } else if (currentThreatLevel < RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS && Memory.remoteData[room.name].evacuate) {
         Memory.remoteData[room.name].evacuate = false;
     }
 
@@ -206,7 +209,7 @@ function monitorThreatLevel(room: Room) {
         // No need to check for this every tick in every remote room
         hasInvaderCore = !!room.hostileStructures.some((s) => s.structureType === STRUCTURE_INVADER_CORE);
     }
-    return creeps.some((c) => c.getActiveBodyparts(ATTACK) + c.getActiveBodyparts(RANGED_ATTACK) > 0)
+    return creeps.some((c) => c.hasActiveBodyparts(ATTACK) || c.hasActiveBodyparts(RANGED_ATTACK))
         ? RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS
         : creeps.length
         ? RemoteRoomThreatLevel.ENEMY_NON_COMBAT_CREEPS

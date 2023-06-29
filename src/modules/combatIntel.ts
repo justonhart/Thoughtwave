@@ -87,10 +87,10 @@ export class CombatIntel {
                   (creep: Creep) =>
                       !Memory.playersToIgnore?.includes(creep.owner.username) &&
                       creep.owner.username !== 'Source Keeper' &&
-                      (creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(HEAL))
+                      (creep.hasActiveBodyparts(RANGED_ATTACK) || creep.hasActiveBodyparts(ATTACK) || creep.hasActiveBodyparts(HEAL))
               )
             : room.myCreeps.filter(
-                  (creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(HEAL)
+                  (creep) => creep.hasActiveBodyparts(RANGED_ATTACK) || creep.hasActiveBodyparts(ATTACK) || creep.hasActiveBodyparts(HEAL)
               );
 
         if (!pos) {
@@ -267,7 +267,7 @@ export class CombatIntel {
      */
     public static getMaxDmgOverLifetime(creeps: Creep[], ttl?: number): number {
         return creeps
-            .filter((creep) => creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
+            .filter((creep) => creep.hasActiveBodyparts(ATTACK) || creep.hasActiveBodyparts(RANGED_ATTACK))
             .reduce(
                 (totalDmg, nextCreep) =>
                     (totalDmg +=

@@ -85,7 +85,7 @@ function driveHomeRoom(room: Room) {
             room.hostileCreeps.some(
                 (creep) =>
                     creep.owner.username !== 'Invader' &&
-                    (creep.getActiveBodyparts(WORK) || creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) &&
+                    (creep.hasActiveBodyparts(WORK) || creep.hasActiveBodyparts(ATTACK) || creep.hasActiveBodyparts(RANGED_ATTACK)) &&
                     creep.pos.x > 2 &&
                     creep.pos.y > 2 &&
                     creep.pos.x < 47 &&
@@ -733,12 +733,12 @@ function setThreatLevel(room: Room) {
     if (room.hostileCreeps.length) {
         if (
             room.hostileCreeps.some(
-                (creep) => creep.owner.username !== 'Invader' && (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK))
+                (creep) => creep.owner.username !== 'Invader' && (creep.hasActiveBodyparts(ATTACK) || creep.hasActiveBodyparts(RANGED_ATTACK))
             )
         ) {
             threatLevel = HomeRoomThreatLevel.ENEMY_ATTTACK_CREEPS;
             sendEmailOnAttack(room, room.hostileCreeps[0].owner.username);
-        } else if (room.hostileCreeps.some((creep) => creep.owner.username !== 'Invader' && creep.getActiveBodyparts(WORK))) {
+        } else if (room.hostileCreeps.some((creep) => creep.owner.username !== 'Invader' && creep.hasActiveBodyparts(WORK))) {
             threatLevel = HomeRoomThreatLevel.ENEMY_DISMANTLERS;
             sendEmailOnAttack(room, room.hostileCreeps[0].owner.username);
         } else if (room.hostileCreeps.some((creep) => creep.owner.username === 'Invader')) {

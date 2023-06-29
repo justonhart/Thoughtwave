@@ -7,7 +7,7 @@ export class Sentry extends WaveCreep {
             return;
         }
 
-        const hostileCreeps = this.room.hostileCreeps.filter((creep) => creep.getActiveBodyparts(RANGED_ATTACK) || creep.getActiveBodyparts(ATTACK));
+        const hostileCreeps = this.room.hostileCreeps.filter((creep) => creep.hasActiveBodyparts(RANGED_ATTACK) || creep.hasActiveBodyparts(ATTACK));
         const centerRoomPos = new RoomPosition(25, 25, targetRoom.name);
         if (hostileCreeps.length) {
             return this.travelTo(hostileCreeps[0], {

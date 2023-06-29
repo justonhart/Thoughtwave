@@ -3,9 +3,9 @@ import { WaveCreep } from './waveCreep';
 
 export class CombatCreep extends WaveCreep {
     protected attackCreep(target: Creep): CreepActionReturnCode {
-        if (this.getActiveBodyparts(ATTACK)) {
+        if (this.hasActiveBodyparts(ATTACK)) {
             return this.attack(target);
-        } else if (this.getActiveBodyparts(RANGED_ATTACK)) {
+        } else if (this.hasActiveBodyparts(RANGED_ATTACK)) {
             // Can't use nearTo as we want to use MassAttack even if it is not the targetHostileCreep that is near us
             if (
                 this.room
@@ -36,13 +36,13 @@ export class CombatCreep extends WaveCreep {
             this.flee();
         }
 
-        if (this.getActiveBodyparts(ATTACK)) {
+        if (this.hasActiveBodyparts(ATTACK)) {
             if (this.pos.isNearTo(target) && !target.onEdge()) {
                 // Close Range movement to stick to the enemy
                 return this.move(this.pos.getDirectionTo(target));
             }
             return this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: 1, maxRooms: 1, exitCost: 10 });
-        } else if (this.getActiveBodyparts(RANGED_ATTACK)) {
+        } else if (this.hasActiveBodyparts(RANGED_ATTACK)) {
             let range = 5;
             let shouldFlee = true;
 
@@ -76,7 +76,7 @@ export class CombatCreep extends WaveCreep {
                 shouldFlee = this.pos.getRangeTo(target) <= range;
             } else {
                 // Check combined Damage of all ranged creeps ==> Can be false if creeps are targeting different enemies
-                const rangedAttackers = this.room.myCreeps.filter((creep) => creep.getActiveBodyparts(RANGED_ATTACK));
+                const rangedAttackers = this.room.myCreeps.filter((creep) => creep.hasActiveBodyparts(RANGED_ATTACK));
                 const combatIntelMeTotal = CombatIntel.calculateCreepsCombatData(rangedAttackers);
                 if (
                     CombatIntel.getPredictedDamage(
@@ -97,10 +97,10 @@ export class CombatCreep extends WaveCreep {
     }
 
     protected attackStructure(target: Structure): CreepActionReturnCode {
-        if (this.getActiveBodyparts(ATTACK)) {
+        if (this.hasActiveBodyparts(ATTACK)) {
             return this.attack(target);
         } else if (
-            this.getActiveBodyparts(RANGED_ATTACK) &&
+            this.hasActiveBodyparts(RANGED_ATTACK) &&
             (this.nonMassAttackStructures().includes(target.structureType) || this.pos.getRangeTo(target) > 1)
         ) {
             return this.rangedAttack(target);
@@ -119,7 +119,7 @@ export class CombatCreep extends WaveCreep {
      * @returns boolean, to see if creep has arrived in new room
      */
     public fledToNewRoom(): boolean {
-        if (!this.memory.combat?.flee && this.hits / this.hitsMax < 0.4 && this.getActiveBodyparts(HEAL)) {
+        if (!this.memory.combat?.flee && this.hits / this.hitsMax < 0.4 && this.hasActiveBodyparts(HEAL)) {
             this.memory.combat.flee = true;
         } else if (this.memory.combat?.flee && this.hits / this.hitsMax > 0.95) {
             this.memory.combat.flee = false;
@@ -160,7 +160,7 @@ export class CombatCreep extends WaveCreep {
     }
 
     protected healSelf(hasMeleeAttacked: boolean) {
-        if (!hasMeleeAttacked && (this.damaged() || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
+        if (!hasMeleeAttacked && (this.damaged() || this.memory.targetId) && this.hasActiveBodyparts(HEAL)) {
             this.heal(this);
         }
     }
@@ -173,11 +173,11 @@ export class CombatCreep extends WaveCreep {
         if (
             this.pos.roomName !== this.homeroom.name &&
             this.damaged() &&
-            (this.getActiveBodyparts(ATTACK) || this.getActiveBodyparts(RANGED_ATTACK))
+            (this.hasActiveBodyparts(ATTACK) || this.hasActiveBodyparts(RANGED_ATTACK))
         ) {
-            const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
+            const range = this.hasActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
             const enemy = this.room.hostileCreeps.find(
-                (creep) => (creep.getActiveBodyparts(ATTACK) || creep.getActiveBodyparts(RANGED_ATTACK)) && this.pos.getRangeTo(creep) <= range
+                (creep) => (creep.hasActiveBodyparts(ATTACK) || creep.hasActiveBodyparts(RANGED_ATTACK)) && this.pos.getRangeTo(creep) <= range
             );
             if (enemy) {
                 this.attackCreep(enemy);

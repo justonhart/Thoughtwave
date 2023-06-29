@@ -107,8 +107,8 @@ export function updateRoomData(room: Room) {
             const boostedAttacker = room.hostileCreeps.some(
                 (creep) =>
                     creep.owner.username !== 'Invader' &&
-                    creep.getActiveBodyparts(TOUGH) &&
-                    creep.getActiveBodyparts(ATTACK) + creep.getActiveBodyparts(RANGED_ATTACK) + creep.getActiveBodyparts(WORK) > 0 &&
+                    creep.hasActiveBodyparts(TOUGH) &&
+                    (creep.hasActiveBodyparts(ATTACK) || creep.hasActiveBodyparts(RANGED_ATTACK) || creep.hasActiveBodyparts(WORK)) &&
                     creep.body.some((part) => part.boost)
             );
             if (boostedAttacker) {

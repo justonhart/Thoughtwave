@@ -11,12 +11,12 @@ export class SquadAttacker extends CombatCreep {
         sq.pathing();
         // Healing (+ RANGED_ATTACK if possible)
         let healingTarget: Creep;
-        if (this.getActiveBodyparts(HEAL)) {
+        if (this.hasActiveBodyparts(HEAL)) {
             const healingTarget = sq.getSquadHealingTarget();
             if (healingTarget) {
                 if (this.pos.isNearTo(healingTarget)) {
                     this.heal(healingTarget);
-                    if (this.getActiveBodyparts(RANGED_ATTACK)) {
+                    if (this.hasActiveBodyparts(RANGED_ATTACK)) {
                         // close range heal and rangedAttack can both happen in the same tick
                         this.attackTarget(3, sq);
                     }
@@ -28,11 +28,11 @@ export class SquadAttacker extends CombatCreep {
 
         // Attacking (WORK/ATTACK/RANGED_ATTACK)
         if (!healingTarget && !this.memory.stop) {
-            if (this.getActiveBodyparts(WORK)) {
+            if (this.hasActiveBodyparts(WORK)) {
                 this.dismantleTarget(sq);
-            } else if (this.getActiveBodyparts(ATTACK)) {
+            } else if (this.hasActiveBodyparts(ATTACK)) {
                 this.attackTarget(1, sq);
-            } else if (this.getActiveBodyparts(RANGED_ATTACK)) {
+            } else if (this.hasActiveBodyparts(RANGED_ATTACK)) {
                 this.attackTarget(3, sq);
             }
         }

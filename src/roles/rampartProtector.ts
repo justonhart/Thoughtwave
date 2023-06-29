@@ -3,7 +3,7 @@ import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class RampartProtector extends CombatCreep {
     protected run() {
-        if ((this.damaged() || this.memory.targetId) && this.getActiveBodyparts(HEAL)) {
+        if ((this.damaged() || this.memory.targetId) && this.hasActiveBodyparts(HEAL)) {
             this.heal(this);
         }
 
@@ -42,7 +42,7 @@ export class RampartProtector extends CombatCreep {
      * @returns
      */
     private findWeakestCreepInRange(): Creep {
-        const range = this.getActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
+        const range = this.hasActiveBodyparts(RANGED_ATTACK) ? 3 : 1;
         const hostileCreepsInRange = this.room.hostileCreeps.filter((hostileCreep) => this.pos.getRangeTo(hostileCreep) <= range);
         if (hostileCreepsInRange?.length === 1) {
             return hostileCreepsInRange[0];

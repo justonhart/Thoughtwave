@@ -4,8 +4,8 @@ import { TransportCreep } from '../virtualCreeps/transportCreep';
 
 export class Gatherer extends TransportCreep {
     memory: GathererMemory;
-    protected run(){
-        if(this.memory.early){
+    protected run() {
+        if (this.memory.early) {
             this.runEarly();
         } else {
             this.runFull();
@@ -13,14 +13,16 @@ export class Gatherer extends TransportCreep {
     }
 
     private runEarly() {
-        if(this.store.getUsedCapacity()){
-            this.dropCargoEarly()
+        if (this.store.getUsedCapacity()) {
+            this.dropCargoEarly();
         } else {
-            if(!this.pos.isNearTo(this.getMiningPosition())){
-                this.travelTo(this.getMiningPosition(), {range: 1});
+            if (!this.pos.isNearTo(this.getMiningPosition())) {
+                this.travelTo(this.getMiningPosition(), { range: 1 });
             } else {
-                let resource = this.getMiningPosition().lookFor(LOOK_RESOURCES).find(res => res.resourceType === RESOURCE_ENERGY);
-                if(resource){
+                let resource = this.getMiningPosition()
+                    .lookFor(LOOK_RESOURCES)
+                    .find((res) => res.resourceType === RESOURCE_ENERGY);
+                if (resource) {
                     this.pickup(resource);
                 }
             }
@@ -35,18 +37,14 @@ export class Gatherer extends TransportCreep {
             this.triggerReplacementSpawn();
         }
 
-        if (
-            this.damaged() ||
-            (Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.evacuate &&
-                !this.store.getUsedCapacity())
-        ) {
+        if (this.damaged() || (Memory.remoteData[this.memory.assignment.toRoomPos().roomName]?.evacuate && !this.store.getUsedCapacity())) {
             delete this.memory.targetId;
             this.travelTo(new RoomPosition(25, 25, this.memory.room), { range: 22 }); // Travel back to home room
             return;
         }
 
         if (this.store.getUsedCapacity()) {
-            if (!this.onEdge() && posExistsOnRoad(this.pos) && this.getActiveBodyparts(WORK)) {
+            if (!this.onEdge() && posExistsOnRoad(this.pos) && this.hasActiveBodyparts(WORK)) {
                 let road = this.pos.lookFor(LOOK_STRUCTURES).find((s) => s.structureType === STRUCTURE_ROAD) as StructureRoad;
                 if (road) {
                     this.repairRoad(road);
@@ -107,10 +105,10 @@ export class Gatherer extends TransportCreep {
 
     protected storeCargo() {
         this.memory.currentTaskPriority = Priority.MEDIUM;
-        if(this.pos.isNearTo(this.homeroom.storage)){
+        if (this.pos.isNearTo(this.homeroom.storage)) {
             let resourceToStore: any = Object.keys(this.store).shift();
             let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
-            if(storeResult === OK) {
+            if (storeResult === OK) {
                 delete Memory.rooms[this.memory.room].remoteSources[this.memory.assignment].setupStatus;
                 this.manageLifecycle();
                 this.travelTo(this.getMiningPosition());
@@ -123,8 +121,8 @@ export class Gatherer extends TransportCreep {
 
     private dropCargoEarly() {
         this.memory.currentTaskPriority = Priority.MEDIUM;
-        let dropPos = this.homeroom.memory.stampLayout.container.find(stamp => stamp.type === 'center').pos.toRoomPos();
-        if(this.pos.isEqualTo(dropPos)){
+        let dropPos = this.homeroom.memory.stampLayout.container.find((stamp) => stamp.type === 'center').pos.toRoomPos();
+        if (this.pos.isEqualTo(dropPos)) {
             this.drop(RESOURCE_ENERGY);
             this.travelTo(this.getMiningPosition());
         } else {
@@ -175,7 +173,9 @@ export class Gatherer extends TransportCreep {
     }
 
     private triggerReplacementSpawn() {
-        this.homeroom.memory.remoteSources[this.memory.assignment].gatherers = this.homeroom.memory.remoteSources[this.memory.assignment].gatherers.filter(gatherer => gatherer !== this.name);
+        this.homeroom.memory.remoteSources[this.memory.assignment].gatherers = this.homeroom.memory.remoteSources[
+            this.memory.assignment
+        ].gatherers.filter((gatherer) => gatherer !== this.name);
     }
 
     private getMiningPosition(): RoomPosition {

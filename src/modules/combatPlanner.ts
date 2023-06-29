@@ -38,7 +38,7 @@ export class CombatPlanner {
             targetRoom = this.room;
         }
         return targetRoom.hostileCreeps.filter(
-            (hostileCreep) => hostileCreep.getActiveBodyparts(RANGED_ATTACK) || hostileCreep.getActiveBodyparts(ATTACK)
+            (hostileCreep) => hostileCreep.hasActiveBodyparts(RANGED_ATTACK) || hostileCreep.hasActiveBodyparts(ATTACK)
         );
     }
 

@@ -2,7 +2,7 @@ import { CombatCreep } from '../virtualCreeps/combatCreep';
 
 export class Protector extends CombatCreep {
     protected run() {
-        if (!this.getActiveBodyparts(RANGED_ATTACK) && !this.getActiveBodyparts(ATTACK)) {
+        if (!this.hasActiveBodyparts(RANGED_ATTACK) && !this.hasActiveBodyparts(ATTACK)) {
             this.memory.combat.flee = true;
         }
 
@@ -15,7 +15,7 @@ export class Protector extends CombatCreep {
             const target = Game.getObjectById(this.memory.targetId);
 
             // Heal Self and other creeps in room when there is no target or the target is a powerBank
-            if ((!target || target instanceof StructurePowerBank) && this.getActiveBodyparts(HEAL)) {
+            if ((!target || target instanceof StructurePowerBank) && this.hasActiveBodyparts(HEAL)) {
                 if (this.damaged()) {
                     this.healSelf(false);
                     return;
@@ -49,14 +49,14 @@ export class Protector extends CombatCreep {
             if (!this.memory.combat.flee && creepActionReturnCode !== OK && creepActionReturnCode !== ERR_NOT_IN_RANGE) {
                 delete this.memory.targetId;
             }
-            if (creepActionReturnCode !== OK && this.getActiveBodyparts(ATTACK)) {
+            if (creepActionReturnCode !== OK && this.hasActiveBodyparts(ATTACK)) {
                 this.healSelf(false);
             } else {
-                this.healSelf(!!this.getActiveBodyparts(ATTACK));
+                this.healSelf(this.hasActiveBodyparts(ATTACK));
             }
 
-            if(!target){
-                this.travelTo(new RoomPosition(25, 25, this.room.name), {range: 22});
+            if (!target) {
+                this.travelTo(new RoomPosition(25, 25, this.room.name), { range: 22 });
             }
         } else if (this.damaged()) {
             this.healSelf(this.defendSelf());

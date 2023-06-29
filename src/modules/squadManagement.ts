@@ -814,7 +814,7 @@ export class SquadManagement {
             this.isFleeing = false;
         }
 
-        const range = this.currentCreep.getActiveBodyparts(RANGED_ATTACK) ? 2 : 1;
+        const range = this.currentCreep.hasActiveBodyparts(RANGED_ATTACK) ? 2 : 1;
         if (this.isPartOfQuad()) {
             if (!this.isFleeing && !this.closeToTargetRoom()) {
                 if (this.getInLineFormation()) {
