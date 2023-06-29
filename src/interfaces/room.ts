@@ -37,6 +37,7 @@ interface RoomMemory {
      * Id of the operation controlling this room
      */
     controllingOperation?: string;
+    combatPlanner?: CombatPlannerMemory;
 }
 
 /**
@@ -327,4 +328,14 @@ interface RemoteStats {
     reserverUpkeep: number;
     exterminatorUpkeep: number;
     miningPos: RoomPosition;
+}
+
+interface CombatPlannerMemory {
+    hostileCreeps: hostileCreepInfo[];
+}
+
+interface hostileCreepInfo {
+    lastSeen: number;
+    lastPos: string;
+    body: string; // Body composition in a string format
 }

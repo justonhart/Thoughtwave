@@ -48,11 +48,22 @@ Object.defineProperty(Creep.prototype, 'operation', {
     configurable: true,
 });
 
-Creep.prototype.debugLog = function(this: Creep, contents: any, force?: boolean){
-    if(this.memory.debug || force){
+Creep.prototype.debugLog = function (this: Creep, contents: any, force?: boolean) {
+    if (this.memory.debug || force) {
         console.log(`[${Game.time}] ${this.name} - ${contents}`);
     }
-}
+};
+
+Creep.prototype.hasActiveBodyparts = function (this: Creep, part: BodyPartConstant) {
+    for (var i = this.body.length; i-- > 0; ) {
+        if (this.body[i].hits > 0) {
+            if (this.body[i].type === part) {
+                return true;
+            }
+        } else break;
+    }
+    return false;
+};
 
 // -------------------------------------------- POWER CREEPS -------------------------------------------- //
 PowerCreep.prototype.travelTo = function (destination, opts) {

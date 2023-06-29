@@ -50,6 +50,7 @@ interface Creep {
      * @param force bypass the Creep.memory.debug bool check when printing
      */
     debugLog(contents: any, force?: boolean): void;
+    hasActiveBodyparts(part: BodyPartConstant): boolean;
 }
 
 interface PriorityQueue {
