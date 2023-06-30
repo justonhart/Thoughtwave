@@ -192,7 +192,7 @@ export function assignRemoteSource(source: string, roomName: string) {
             if (isKeeperRoom(remoteRoomName) || isCenterRoom(remoteRoomName)) {
                 remoteData.mineralMiner = AssignmentStatus.UNASSIGNED;
                 remoteData.mineralAvailableAt =
-                    (Game.getObjectById(Game.rooms[remoteRoomName].minerals?.pop()?.id)?.ticksToRegeneration ?? 0) + Game.time;
+                    (Game.getObjectById(Game.rooms[remoteRoomName]?.minerals?.pop()?.id)?.ticksToRegeneration ?? 0) + Game.time;
             }
 
             Memory.remoteData[remoteRoomName] = remoteData;
@@ -207,13 +207,15 @@ export function assignRemoteSource(source: string, roomName: string) {
 export function removeSourceAssignment(source: string) {
     const current = Memory.remoteSourceAssignments[source];
     const roomName = source.split('.')[2];
-    const controllingRoom = Game.rooms[current.controllingRoom]; 
-    if(controllingRoom?.controller.my && controllingRoom.memory.remoteSources[source]){
+    const controllingRoom = Game.rooms[current.controllingRoom];
+    if (controllingRoom?.controller.my && controllingRoom.memory.remoteSources[source]) {
         const roadName = `${getStoragePos(controllingRoom).toMemSafe()}:${controllingRoom.memory.remoteSources[source].miningPos}`;
         deleteRoad(roadName);
-    } else if(Memory.roomData[roomName].sources.length === 1) {
+    } else if (Memory.roomData[roomName].sources.length === 1) {
         //since we can't generate exact road name, perform a more haphazard delete of roads with endpoints in range 1
-        Object.keys(Memory.roomData[roomName].roads).filter(roadName => roadName.split(":")[1].toRoomPos().isNearTo(source.toRoomPos())).forEach(adjacentEndingRoad => deleteRoad(adjacentEndingRoad));
+        Object.keys(Memory.roomData[roomName].roads)
+            .filter((roadName) => roadName.split(':')[1].toRoomPos().isNearTo(source.toRoomPos()))
+            .forEach((adjacentEndingRoad) => deleteRoad(adjacentEndingRoad));
     }
 
     const miner = Game.creeps[Memory.rooms[current.controllingRoom]?.remoteSources[source]?.miner];

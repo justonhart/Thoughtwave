@@ -78,7 +78,7 @@ export class KeeperExterminator extends CombatCreep {
         let minedSources = Object.keys(Memory.remoteData[this.memory.assignment].sourceKeeperLairs).filter((key) => {
             if (
                 Memory.remoteSourceAssignments[key] &&
-                Memory.rooms[Memory.remoteSourceAssignments[key].controllingRoom].remoteSources[key].setupStatus ===
+                Memory.rooms[Memory.remoteSourceAssignments[key].controllingRoom].remoteSources[key]?.setupStatus ===
                     RemoteSourceSetupStatus.BUILDING_CONTAINER
             ) {
                 sourcesWithConstruction.push(key);

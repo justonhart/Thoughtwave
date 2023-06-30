@@ -3,6 +3,7 @@ import { WaveCreep } from '../virtualCreeps/waveCreep';
 
 export class RemoteMineralMiner extends WaveCreep {
     protected run() {
+        if (!Memory.remoteData[this.memory.assignment]) return (this.memory.recycle = true);
         const mineral = Game.getObjectById(this.getMineralId());
 
         if ((this.damaged() && !this.keeperPresentOrSpawning(mineral)) || Memory.remoteData[this.memory.assignment]?.evacuate) {
@@ -83,7 +84,7 @@ export class RemoteMineralMiner extends WaveCreep {
         }
 
         if (Game.rooms[this.memory.assignment]) {
-            let id = Game.rooms[this.memory.assignment].minerals?.pop()?.id;
+            let id = Game.rooms[this.memory.assignment]?.minerals?.pop()?.id;
             this.memory.targetId = id;
             return id;
         }

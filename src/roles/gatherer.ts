@@ -153,6 +153,9 @@ export class Gatherer extends TransportCreep {
             let storeResult = this.transfer(this.homeroom.storage, resourceToStore);
             if (storeResult === OK) {
                 delete Memory.rooms[this.memory.room].remoteSources[this.memory.assignment].setupStatus;
+                if (!this.memory.doNotRenew && this.getActiveBodyparts(WORK) > 1) {
+                    this.memory.doNotRenew = true;
+                }
                 this.manageLifecycle();
                 this.travelTo(this.getMiningPosition());
             }
