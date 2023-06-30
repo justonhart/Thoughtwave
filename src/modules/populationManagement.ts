@@ -61,7 +61,7 @@ export class PopulationManagement {
             spawn.room.myCreeps
                 .filter((c) => c.memory.role === Role.WORKER || c.memory.role === Role.UPGRADER)
                 .reduce((workSum, nextCreep) => workSum + nextCreep.getActiveBodyparts(WORK), 0) + (spawn.room.workSpawning ?? 0);
-        const modifiedWorkCapacity = spawn.room.modifiedWorkCapacity;
+        const modifiedWorkCapacity = (!roomNeedsCoreStructures(spawn.room) && spawn.room.controller.level === 8 && !spawn.room.memory.needsWallRepair) ? 20 : spawn.room.modifiedWorkCapacity;
         if (
             (roomNeedsCoreStructures(spawn.room) ? (modifiedWorkCapacity / 5) * (spawn.room.controller.level >= 4 ? 1.5 : 1) : modifiedWorkCapacity) >
             currentWork

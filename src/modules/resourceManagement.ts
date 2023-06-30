@@ -25,7 +25,7 @@ export function manageEmpireResources() {
 
         const roomsWithExtraEnergy = roomEnergyMap.filter(
             (room) =>
-                room.energy >= 300000 &&
+                Game.rooms[room.roomName].energyStatus >= EnergyStatus.STABLE &&
                 !Memory.rooms[room.roomName].shipments.some(
                     (id) => Memory.shipments[id]?.resource === RESOURCE_ENERGY || Memory.shipments[id]?.resource === RESOURCE_BATTERY
                 )
@@ -35,7 +35,7 @@ export function manageEmpireResources() {
             let recipient = roomEnergyMap.find(
                 (otherRoom) =>
                     Game.rooms[otherRoom.roomName]?.canSpawn() &&
-                    sender.energy > 150000 + otherRoom.energy + 10 * otherRoom.batteries &&
+                    sender.energy > 25000 + otherRoom.energy + 10 * otherRoom.batteries &&
                     !shipments.some((s) => s.recipient === otherRoom.roomName)
             );
             if (recipient) {
@@ -88,7 +88,6 @@ export function manageEmpireResources() {
         switch (request.status) {
             case ResourceRequestStatus.SUBMITTED:
                 const suppliers = terminalRooms
-                    .filter((room) => room.energyStatus > EnergyStatus.CRITICAL)
                     .map((room) => ({
                         roomName: room.name,
                         amount: room.getResourceAmount(request.resource) - room.getOutgoingResourceAmount(request.resource),
@@ -221,7 +220,7 @@ function calculateEnergyToSend(senderName: string, recipientName: string) {
     let costPerTenThousand = Game.market.calcTransactionCost(10000, senderName, recipientName);
     let sendAmount = 10000 + costPerTenThousand;
     let multiple = 1;
-    while (sendAmount * (multiple + 1) < 50000) {
+    while (sendAmount * (multiple + 1) < 20000) {
         multiple++;
     }
 
@@ -319,13 +318,14 @@ export function generateEmpireResourceData(): EmpireResourceData {
     let data: EmpireResourceData = { producers: {}, inventory: {} };
 
     roomsToCheck.forEach((room) => {
-        room.minerals.forEach((mineral) => {
+        room.minerals.forEach(mineral => {
             if (data.producers[mineral.mineralType]) {
                 data.producers[mineral.mineralType].push(room.name);
             } else {
                 data.producers[mineral.mineralType] = [room.name];
             }
         });
+        
 
         if (room.storage) {
             Object.keys(room.storage.store).forEach((resource) => {
