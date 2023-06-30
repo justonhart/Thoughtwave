@@ -436,7 +436,17 @@ export class PopulationManagement {
             }
         }
 
-        const carryNeed = this.calculateCarryNeedForRemoteSource(spawn.room, source);
+        let carryNeed = this.calculateCarryNeedForRemoteSource(spawn.room, source);
+
+        // Spawn bigger body gatherer if there are multiple smaller ones so that number of gatherers is kept to a minimum
+        const maxBodySize = Math.min((spawn.room.energyCapacityAvailable - 100) / 50 + 1, 50); // WORK + 50 energy parts (CARRY/MOVE)
+        if (carryNeed < maxBodySize && !spawn.room.memory.remoteSources[source].setupStatus) {
+            carryNeed = spawn.room.memory.remoteSources[source].gatherers.reduce(
+                (carrySum, nextCreep) =>
+                    Game.creeps[nextCreep].body.length < maxBodySize ? carrySum + Game.creeps[nextCreep].body.length : carrySum,
+                carryNeed
+            );
+        }
 
         let PARTS =
             spawn.room.memory.remoteSources[source].setupStatus === RemoteSourceSetupStatus.BUILDING_ROAD

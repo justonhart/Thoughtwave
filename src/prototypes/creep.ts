@@ -48,13 +48,25 @@ Object.defineProperty(Creep.prototype, 'operation', {
     configurable: true,
 });
 
-Creep.prototype.debugLog = function(this: Creep, contents: any, force?: boolean){
-    if(this.memory.debug || force){
+Creep.prototype.debugLog = function (this: Creep, contents: any, force?: boolean) {
+    if (this.memory.debug || force) {
         console.log(`[${Game.time}] ${this.name} - ${contents}`);
     }
-}
+};
 
 // -------------------------------------------- POWER CREEPS -------------------------------------------- //
 PowerCreep.prototype.travelTo = function (destination, opts) {
     return Pathing.travelTo(this, destination, opts);
+};
+
+PowerCreep.prototype.travelToRoom = function (roomName, opts) {
+    if (this.room.name === roomName && !this.onEdge()) {
+        return IN_ROOM;
+    }
+    return Pathing.travelTo(this, new RoomPosition(25, 25, roomName), { range: 20, avoidSourceKeepers: true, maxRooms: 30, maxOps: 20000, ...opts });
+};
+
+PowerCreep.prototype.onEdge = function () {
+    const { x, y } = Pathing.normalizePos(this.pos);
+    return x <= 0 || y <= 0 || x >= 49 || y >= 49;
 };

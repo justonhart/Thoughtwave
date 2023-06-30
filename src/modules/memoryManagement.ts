@@ -93,7 +93,7 @@ export function validateAssignments() {
                     Memory.remoteData[remoteRoomName].keeperExterminator = AssignmentStatus.UNASSIGNED;
                 }
 
-                if(Memory.remoteData[remoteRoomName]?.mineralMiner && !Game.creeps[Memory.remoteData[remoteRoomName].mineralMiner]){
+                if (Memory.remoteData[remoteRoomName]?.mineralMiner && !Game.creeps[Memory.remoteData[remoteRoomName].mineralMiner]) {
                     Memory.remoteData[remoteRoomName].mineralMiner = AssignmentStatus.UNASSIGNED;
                 }
             });
@@ -308,7 +308,7 @@ function mangeVisionRequests() {
 
         if (!request.assigned) {
             if (!observerRooms) {
-                observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room]?.observer);
+                observerRooms = Object.keys(Memory.rooms).filter((room) => Game.rooms[room]?.observer);
             }
             let suitableRoom = observerRooms.find((room) => Game.map.getRoomLinearDistance(request.targetRoom, room) <= 10);
             if (suitableRoom) {

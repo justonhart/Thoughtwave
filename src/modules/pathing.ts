@@ -445,7 +445,7 @@ export class Pathing {
                     }
                 }
 
-                room.memory.stampLayout?.managers.forEach((managerStamp) => {
+                Memory.rooms[room.name]?.stampLayout?.managers.forEach((managerStamp) => {
                     if (!Pathing.sameCoord(managerStamp.pos.toRoomPos(), destination) || Memory.creeps[creepName]?.role !== Role.MANAGER) {
                         matrix.set(managerStamp.pos.toRoomPos().x, managerStamp.pos.toRoomPos().y, 50);
                     }

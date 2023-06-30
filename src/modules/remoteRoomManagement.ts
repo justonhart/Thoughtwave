@@ -95,7 +95,7 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
             });
     }
 
-    const threatLevel = Memory.remoteData[remoteRoomName].threatLevel;
+    const threatLevel = Memory.remoteData[remoteRoomName]?.threatLevel;
     if (
         Memory.roomData[remoteRoomName]?.roomStatus !== RoomMemoryStatus.OWNED_INVADER &&
         threatLevel === RemoteRoomThreatLevel.INVADER_CORE &&
@@ -190,7 +190,7 @@ export function calculateRemoteMinerWorkNeeded(roomName: string) {
 function monitorThreatLevel(room: Room) {
     const creeps = room.hostileCreeps.filter((c) => c.owner.username !== 'Source Keeper');
 
-    const currentThreatLevel = Memory.remoteData[room.name].threatLevel;
+    const currentThreatLevel = Memory.remoteData[room.name]?.threatLevel;
 
     if (
         currentThreatLevel === RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS &&

@@ -2,6 +2,9 @@ export class Hero extends PowerCreep {
     public run(): void {
         this.initMemory();
 
+        if (this.travelToRoom(this.memory.room) !== IN_ROOM) {
+            return;
+        }
         let target = Game.getObjectById(this.memory.targetId) as Structure;
         if (this.shouldRenew()) {
             this.renewCreep(target);
@@ -49,6 +52,9 @@ export class Hero extends PowerCreep {
     private initMemory(): void {
         if (!this.memory.cooldown) {
             this.memory.cooldown = {};
+        }
+        if (!this.memory.room) {
+            this.memory.room = this.room.name;
         }
     }
 
