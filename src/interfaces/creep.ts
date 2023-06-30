@@ -33,6 +33,7 @@ interface CreepMemory {
     nextRole?: Role;
     spawnReplacementAt?: number;
     recycle?: boolean;
+    doNotRenew?: boolean;
 }
 
 interface Creep {

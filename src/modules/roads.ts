@@ -305,7 +305,14 @@ export function roadIsPaved(roadKey: string): boolean | ScreepsReturnCode {
     let road = getFullRoad(roadKey);
     let canSeeAllRooms = road.every((pos) => Game.rooms[pos.roomName]);
     if (canSeeAllRooms) {
-        return road.every((pos) => pos.lookFor(LOOK_STRUCTURES).some((structure) => structure.structureType === STRUCTURE_ROAD));
+        return road.every(
+            (pos) =>
+                pos.x === 0 ||
+                pos.y === 0 ||
+                pos.x === 49 ||
+                pos.y === 49 ||
+                pos.lookFor(LOOK_STRUCTURES).some((structure) => structure.structureType === STRUCTURE_ROAD)
+        );
     } else {
         return ERR_NOT_FOUND;
     }
@@ -356,12 +363,12 @@ export function roadCodeContainsMultipleSegments(roadCode: string): boolean {
  * Deletes roads that aren't on stamps or in memory
  * @param room the room to clean
  */
-export function deleteExtraRoads(room: Room){
-    const roads = room.find(FIND_STRUCTURES, {filter: s => s.structureType === STRUCTURE_ROAD});
-    roads.forEach(r => {
-        const shouldDelete = !posExistsOnRoad(r.pos) && !room.memory.stampLayout.road.some(stamp => stamp.pos === r.pos.toMemSafe());
-        if(shouldDelete){
+export function deleteExtraRoads(room: Room) {
+    const roads = room.find(FIND_STRUCTURES, { filter: (s) => s.structureType === STRUCTURE_ROAD });
+    roads.forEach((r) => {
+        const shouldDelete = !posExistsOnRoad(r.pos) && !room.memory.stampLayout.road.some((stamp) => stamp.pos === r.pos.toMemSafe());
+        if (shouldDelete) {
             r.destroy();
         }
-    })
+    });
 }

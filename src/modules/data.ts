@@ -183,7 +183,7 @@ export function addHostileRoom(roomName: string) {
 }
 
 export function observerInRange(roomName: string): boolean {
-    const observerRooms = Object.keys(Game.rooms).filter((room) => Game.rooms[room].observer);
+    const observerRooms = Object.keys(Memory.rooms).filter((room) => Game.rooms[room].observer);
     return observerRooms.some((room) => Game.map.getRoomLinearDistance(roomName, room) <= 10);
 }
 

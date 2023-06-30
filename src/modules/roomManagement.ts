@@ -613,6 +613,7 @@ function runSpawning(room: Room) {
             const renewableCreep = room.myCreeps.find(
                 (creep) =>
                     !creep.memory.recycle &&
+                    !creep.memory.doNotRenew &&
                     !creep.body.some((part) => part.boost) &&
                     spawn.pos.isNearTo(creep) &&
                     creep.ticksToLive < 1500 - Math.floor(600 / creep.body.length)
@@ -1352,4 +1353,10 @@ export function unclaimRoom(roomName: string) {
     Memory.rooms[roomName].unclaim = true;
 
     return 'done';
+}
+
+export function resetRemoteMining() {
+    Object.values(Game.rooms)
+        .filter((room) => room.controller?.my)
+        .forEach((room) => room.remoteSources.forEach((source) => removeSourceAssignment(source)));
 }

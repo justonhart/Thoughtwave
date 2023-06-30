@@ -88,6 +88,7 @@ export function manageEmpireResources() {
         switch (request.status) {
             case ResourceRequestStatus.SUBMITTED:
                 const suppliers = terminalRooms
+                    .filter((room) => room.energyStatus > EnergyStatus.CRITICAL)
                     .map((room) => ({
                         roomName: room.name,
                         amount: room.getResourceAmount(request.resource) - room.getOutgoingResourceAmount(request.resource),
@@ -318,14 +319,13 @@ export function generateEmpireResourceData(): EmpireResourceData {
     let data: EmpireResourceData = { producers: {}, inventory: {} };
 
     roomsToCheck.forEach((room) => {
-        room.minerals.forEach(mineral => {
+        room.minerals.forEach((mineral) => {
             if (data.producers[mineral.mineralType]) {
                 data.producers[mineral.mineralType].push(room.name);
             } else {
                 data.producers[mineral.mineralType] = [room.name];
             }
         });
-        
 
         if (room.storage) {
             Object.keys(room.storage.store).forEach((resource) => {
