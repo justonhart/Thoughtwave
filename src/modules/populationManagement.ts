@@ -361,7 +361,7 @@ export class PopulationManagement {
         return room.remoteSources.find((s) => {
             const sourceRoomName = s.split('.')[2];
             const shouldSkip =
-                Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.OWNED_INVADER ||
+                (isEarlySpawning ? (Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.RESERVED_INVADER || Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.OWNED_INVADER) : Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.OWNED_INVADER) ||
                 Memory.remoteData[sourceRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS ||
                 Memory.remoteData[sourceRoomName].reservationState === RemoteRoomReservationStatus.ENEMY ||
                 (!isEarlySpawning && room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) ||
