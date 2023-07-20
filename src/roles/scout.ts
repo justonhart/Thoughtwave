@@ -113,6 +113,7 @@ export class Scout extends WaveCreep {
         const adjacentRooms = Object.values(Game.map.describeExits(this.room.name));
         return adjacentRooms.find(
             (room) =>
+                Game.map.getRoomStatus(room).status === Game.map.getRoomStatus(this.room.name).status && 
                 !Memory.roomData[room]?.hostile &&
                 !this.memory.roomsVisited.some((visit) => visit.roomName === room && visit.depth <= this.getDepth() + 1)
         );
