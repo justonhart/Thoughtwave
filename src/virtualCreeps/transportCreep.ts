@@ -464,14 +464,18 @@ export class TransportCreep extends WaveCreep {
                 return lab.id;
             }
         }
+        
+        const ignoreNonEnergyCollections = this.room.energyAvailable < this.room.energyCapacityAvailable;
 
-        const ruinsWithResources = room.find(FIND_RUINS, {
-            filter: (ruin) => (this.room.storage ? ruin.store.getUsedCapacity() > 1000 : ruin.store[RESOURCE_ENERGY]),
-        });
-        if (ruinsWithResources.length) {
-            const ruin = this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 });
-            this.debugLog(`found ruin to empty: ${ruin.pos.toMemSafe()}`);
-            return ruin.id;
+        if(!ignoreNonEnergyCollections){
+            const ruinsWithResources = room.find(FIND_RUINS, {
+                filter: (ruin) => (this.room.storage ? ruin.store.getUsedCapacity() > 1000 : ruin.store[RESOURCE_ENERGY]),
+            });
+            if (ruinsWithResources.length) {
+                const ruin = this.pos.findClosestByPath(ruinsWithResources, { ignoreCreeps: true, range: 1 });
+                this.debugLog(`found ruin to empty: ${ruin.pos.toMemSafe()}`);
+                return ruin.id;
+            }
         }
 
         if (this.room.storage) {
