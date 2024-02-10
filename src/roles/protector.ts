@@ -62,6 +62,9 @@ export class Protector extends CombatCreep {
             if (!target) {
                 this.travelTo(new RoomPosition(25, 25, this.room.name), { range: 22 });
             }
+        } else if (this.memory.targetId && this.memory?._m?.destination) {
+            // Found target but protector left room (maybe to find different entrance)
+            this.travelTo(this.memory._m.destination.toRoomPos());
         } else if (this.damaged()) {
             this.healSelf(this.defendSelf());
         }
