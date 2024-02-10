@@ -129,7 +129,11 @@ module.exports.loop = function () {
 
     // Run PriorityQueue
     WaveCreep.getCreepsWithPriorityTask().forEach((creepName) => {
-        Game.creeps[creepName].runPriorityQueueTask();
+        if (Game.creeps[creepName]) {
+            Game.creeps[creepName].runPriorityQueueTask();
+        } else {
+            WaveCreep.deletePriorityQueueTask(creepName);
+        }
     });
 
     try {
