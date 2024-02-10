@@ -77,7 +77,7 @@ export class Manager extends WaveCreep {
             if (centerLink) {
                 if (!centerLink?.store.energy) {
                     if (managerLink?.store.energy > 0) {
-                        if(!this.linkUsed){
+                        if (!this.linkUsed) {
                             managerLink.transferEnergy(centerLink);
                             this.linkUsed = true;
                         }
@@ -92,7 +92,7 @@ export class Manager extends WaveCreep {
 
         if (!this.room.managerLink?.cooldown && this.room.upgraderLink?.store.energy <= 400 && storage.store.energy) {
             if (managerLink?.store.energy > 0) {
-                if(!this.linkUsed){
+                if (!this.linkUsed) {
                     managerLink.transferEnergy(this.room.upgraderLink);
                     this.linkUsed = true;
                 }
@@ -110,6 +110,20 @@ export class Manager extends WaveCreep {
         }
 
         if (terminal) {
+            // Terminal is full so empty extra resources first
+            if (terminal.store.getFreeCapacity() < 1000) {
+                let remRes = this.getResourceToRemoveFromTerminal();
+                if (remRes) {
+                    const amountToTransfer = MINERAL_COMPOUNDS.includes(remRes)
+                        ? Math.min(terminal.store[remRes] - 5000, this.store.getFreeCapacity())
+                        : Math.min(this.store.getFreeCapacity(), terminal.store[remRes]);
+                    this.withdraw(terminal, remRes, amountToTransfer);
+                    this.memory.targetId = storage.id;
+                    this.room.memory.transferBuffer[remRes] = { amount: amountToTransfer, creepName: this.name };
+                    return;
+                }
+            }
+
             let shipmentToWork = this.room.memory.shipments?.find((shipment) => !shipmentReady(terminal, shipment));
             if (shipmentToWork) {
                 let result = this.workShipment(shipmentToWork);
