@@ -5,6 +5,7 @@ export class KeeperExterminator extends CombatCreep {
     memory: KeeperExterminatorMemory;
     protected run() {
         this.manageLifecycle();
+        delete this.memory.currentTaskPriority;
         let target = Game.getObjectById(this.memory.targetId);
         if (this.room.name === this.memory.assignment || target) {
             if (!target) {
@@ -32,6 +33,9 @@ export class KeeperExterminator extends CombatCreep {
                         this.memory.targetId = keeper.id;
                         this.attackCreep(keeper);
                         this.attacked = true;
+                    } else {
+                        // Avoid blocking path when idle
+                        this.memory.currentTaskPriority = Priority.LOW;
                     }
                 } else if (target instanceof Creep) {
                     if (this.pos.isNearTo(target)) {

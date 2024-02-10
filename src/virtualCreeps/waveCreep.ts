@@ -87,6 +87,10 @@ export class WaveCreep extends Creep {
         WaveCreep.priorityQueue.delete(creep.name);
     }
 
+    public static deletePriorityQueueTask(creepName: string) {
+        WaveCreep.priorityQueue.delete(creepName);
+    }
+
     public static getCreepsWithPriorityTask(): string[] {
         return Array.from(WaveCreep.priorityQueue.keys());
     }

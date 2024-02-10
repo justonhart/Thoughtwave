@@ -34,7 +34,7 @@ Creep.prototype.runPriorityQueueTask = function () {
 
 Object.defineProperty(Creep.prototype, 'homeroom', {
     get: function (this: Creep) {
-        return Game.rooms[this.memory.room];
+        return this.memory.room ? Game.rooms[this.memory.room] : this.room;
     },
     enumerable: false,
     configurable: true,
