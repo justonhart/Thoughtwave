@@ -196,6 +196,21 @@ export function manageEmpireResources() {
             });
         });
 
+    // Sell extra resources when storage is getting full
+    if (Game.time % 49 === 0) {
+        terminalRooms
+            .filter(
+                (room) =>
+                    room.energyStatus >= EnergyStatus.RECOVERING && !room.memory.shipments.length && room.storage.store.getFreeCapacity() < 50000
+            )
+            .forEach((room) => {
+                const maxResource = getExtraResources(room).reduce((max, res) => (max.amount > res.amount ? max : res));
+                if (maxResource?.amount > 50000) {
+                    addQualifyingMarketOrder(room, maxResource.resource, Math.min(maxResource.amount - 20000, 5000));
+                }
+            });
+    }
+
     //Manage shipments not associated to requests - those are handled with requests
     Object.entries(Memory.shipments)
         .filter(([shipmentId, shipment]) => !shipment.requestId)
@@ -261,10 +276,16 @@ export function getAllRoomNeeds(): { [resource: string]: { roomName: string; amo
     return needs;
 }
 
+/**
+ * Gets all the resources which are above a certain amount for that room.
+ * TODO: Add Commodities/Deposits to this.
+ * @param room
+ * @returns
+ */
 export function getExtraResources(room: Room): { resource: ResourceConstant; amount: number }[] {
     let extraResources: { resource: ResourceConstant; amount: number }[] = [];
 
-    const ALL_MINERALS_AND_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME)] as ResourceConstant[];
+    const ALL_MINERALS_AND_COMPOUNDS = [...Object.keys(MINERAL_MIN_AMOUNT), ...Object.keys(REACTION_TIME), RESOURCE_OPS] as ResourceConstant[];
     ALL_MINERALS_AND_COMPOUNDS.forEach((resource) => {
         const maxResourceAmount = resource.charAt(0) === 'X' && resource.length > 1 ? 20000 : 5000;
         const amountExtra =
@@ -307,6 +328,46 @@ function getQualifyingMarketOrders() {
             global.qualifyingMarketOrders[res] = orderId;
         }
     });
+}
+
+/**
+ * Add Market Orders for a specific resource/room.
+ * @param room
+ * @param resourceType
+ * @param max
+ * @returns
+ */
+function addQualifyingMarketOrder(room: Room, resourceType: ResourceConstant, max: number) {
+    let orders = Game.market
+        .getAllOrders()
+        .filter(
+            (o) =>
+                o.type === ORDER_BUY &&
+                !Memory.blacklistedRooms.includes(o.roomName) &&
+                o.resourceType === resourceType &&
+                !Object.values(Memory.shipments).some((s) => s.marketOrderId === o.id)
+        );
+
+    if (!orders.length) {
+        return;
+    }
+    // Get highest priced order
+    let order = orders.length === 1 ? orders[0] : orders.reduce((max, next) => (next?.price > max?.price ? next : max));
+
+    // Create shipment
+    const shipment: Shipment = {
+        sender: room.name,
+        recipient: order.roomName,
+        resource: resourceType,
+        amount: Math.min(order.remainingAmount, max),
+        marketOrderId: order.id,
+    };
+    let result = addShipment(shipment);
+    if (result !== OK) {
+        console.log(`${Game.time} - Error adding shipment: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`);
+    } else {
+        console.log(`${Game.time} - Added Market shipment: ${shipment.sender} -> ${shipment.amount} ${shipment.resource} to ${shipment.recipient}`);
+    }
 }
 
 function updateBlacklistedRooms() {
