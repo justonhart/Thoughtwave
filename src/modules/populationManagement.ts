@@ -56,7 +56,7 @@ const ROLE_TAG_MAP: { [key in Role]: string } = {
 export class PopulationManagement {
     static spawnWorker(spawn: StructureSpawn): ScreepsReturnCode {
         const currentWork =
-            spawn.room.myCreeps
+            spawn.room.myCreepsByMemory
                 .filter((c) => c.memory.role === Role.WORKER || c.memory.role === Role.UPGRADER)
                 .reduce((workSum, nextCreep) => workSum + nextCreep.getActiveBodyparts(WORK), 0) + (spawn.room.workSpawning ?? 0);
         const modifiedWorkCapacity = spawn.room.modifiedWorkCapacity;
@@ -136,7 +136,7 @@ export class PopulationManagement {
 
     static calculateModifiedWorkCapacity(room: Room): number {
         const workCapacity = room.baseWorkCapacity;
-        let modifiedWorkCapacity;
+        let modifiedWorkCapacity: number;
         switch (room.energyStatus) {
             case EnergyStatus.CRITICAL:
                 modifiedWorkCapacity = 0;
@@ -155,6 +155,11 @@ export class PopulationManagement {
                 break;
             default:
                 modifiedWorkCapacity = workCapacity;
+        }
+
+        // minimize workers after ramparts are close to max hits
+        if (room.myStructures.some((struct) => struct.structureType === STRUCTURE_RAMPART && struct.hits / struct.hitsMax > 0.9)) {
+            modifiedWorkCapacity = Math.min(workCapacity, 15); // 15 = one upgrader
         }
 
         return modifiedWorkCapacity;
@@ -361,7 +366,10 @@ export class PopulationManagement {
         return room.remoteSources.find((s) => {
             const sourceRoomName = s.split('.')[2];
             const shouldSkip =
-                (isEarlySpawning ? (Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.RESERVED_INVADER || Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.OWNED_INVADER) : Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.OWNED_INVADER) ||
+                (isEarlySpawning
+                    ? Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.RESERVED_INVADER ||
+                      Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.OWNED_INVADER
+                    : Memory.roomData[sourceRoomName]?.roomStatus === RoomMemoryStatus.OWNED_INVADER) ||
                 Memory.remoteData[sourceRoomName].threatLevel >= RemoteRoomThreatLevel.ENEMY_ATTTACK_CREEPS ||
                 Memory.remoteData[sourceRoomName].reservationState === RemoteRoomReservationStatus.ENEMY ||
                 (!isEarlySpawning && room.memory.remoteSources[s].setupStatus === RemoteSourceSetupStatus.BUILDING_CONTAINER) ||
@@ -991,6 +999,7 @@ export class PopulationManagement {
     }
 
     static needsTransporter(room: Room) {
+        return false;
         let transportCarryCount = room.myCreeps
             .filter((c) => c.memory.role === Role.DISTRIBUTOR || c.memory.role === Role.TRANSPORTER)
             .reduce((carrySum, nextCreep) => nextCreep.getActiveBodyparts(CARRY) + carrySum, 0);
