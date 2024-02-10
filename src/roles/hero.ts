@@ -44,6 +44,10 @@ export class Hero extends PowerCreep {
      */
     private runActivePowers(target: Structure) {
         this.boostSource(target);
+        if (this.room.storage?.store?.ops > 50000) {
+            // boost spawn to avoid having too many ops
+            this.boostSpawn(target);
+        }
     }
 
     /**
