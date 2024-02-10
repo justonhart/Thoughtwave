@@ -323,9 +323,12 @@ function runHomeSecurity(homeRoom: Room): boolean {
             (hostileCreepData.creeps.length >= 4 &&
                 currentNumProtectors + (hostileCreepData.creeps.length > 12 ? 1 : -1) - Math.floor(hostileCreepData.creeps.length / 4) < 0)
         ) {
-            Game.notify(
-                `Room ${homeRoom.name} is under attack by ${homeRoom.hostileCreeps[0].owner.username} at ${Game.time}! Active Defense initiated.`
-            );
+            if (homeRoom.hostileCreeps[0].owner.username !== 'Invader') {
+                // Only notify on enemy player attacks
+                Game.notify(
+                    `Room ${homeRoom.name} is under attack by ${homeRoom.hostileCreeps[0].owner.username} at ${Game.time}! Active Defense initiated.`
+                );
+            }
             // Against squads we need two units (ranged for spread out dmg and melee for single target damage)
             const attackerBody = PopulationManagement.createPartsArray([ATTACK, ATTACK, ATTACK, ATTACK, MOVE], homeRoom.energyCapacityAvailable, 10);
             if (attackerBody.length) {
