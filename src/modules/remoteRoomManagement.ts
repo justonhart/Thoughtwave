@@ -1,5 +1,5 @@
 import { CombatIntel } from './combatIntel';
-import { isKeeperRoom as isKeeperRoom } from './data';
+import { addVisionRequest, hasVisionRequest, isKeeperRoom as isKeeperRoom } from './data';
 import { PopulationManagement } from './populationManagement';
 import { deleteRoad, getRoad, storeRoadInMemory } from './roads';
 import { getStoragePos } from './roomDesign';
@@ -124,6 +124,12 @@ export function manageRemoteRoom(controllingRoomName: string, remoteRoomName: st
         !PopulationManagement.hasProtector(remoteRoomName) &&
         !reassignIdleProtector(controllingRoomName, remoteRoomName)
     ) {
+        // Add vision to remote room for better dynamic spawning (only waits one tick)
+        if (!remoteRoom && !hasVisionRequest(remoteRoomName)) {
+            addVisionRequest({ targetRoom: remoteRoomName });
+            return;
+        }
+
         let body: BodyPartConstant[];
         let boosts = [];
         if (remoteRoom) {
@@ -233,12 +239,14 @@ function createKeeperLairData(remoteRoomName: string): { [id: Id<Source> | Id<Mi
 
 /**
  * Reassign idle protectors to needed room. If there are none check if a room has more than one protector and reassign one of them.
+ * TODO: remove or adjust to check if idleProtector is strong enough to handle threat
  *
  * @param controllingRoomName -
  * @param remoteRoomName -
  * @returns Boolean to check if a reassignment was possible
  */
 function reassignIdleProtector(controllingRoomName: string, remoteRoomName: string): boolean {
+    return false;
     const protectors = Game.rooms[controllingRoomName].myCreepsByMemory.filter(
         (creep) => creep.memory.role === Role.PROTECTOR && creep.ticksToLive > 200
     );

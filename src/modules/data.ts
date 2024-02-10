@@ -188,6 +188,10 @@ export function addVisionRequest(request: VisionRequest): string {
     return requestId;
 }
 
+export function hasVisionRequest(targetRoom: string): boolean {
+    return Object.values(Memory.visionRequests).some((request) => request.targetRoom === targetRoom);
+}
+
 export function getExitDirections(roomName: string): DirectionConstant[] {
     return Object.keys(Game.map.describeExits(roomName)).map((key) => parseInt(key)) as DirectionConstant[];
 }
