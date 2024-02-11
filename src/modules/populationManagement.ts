@@ -159,7 +159,7 @@ export class PopulationManagement {
 
         // minimize workers after ramparts are close to max hits
         if (room.myStructures.some((struct) => struct.structureType === STRUCTURE_RAMPART && struct.hits / struct.hitsMax > 0.9)) {
-            modifiedWorkCapacity = Math.min(workCapacity, 15); // 15 = one upgrader
+            modifiedWorkCapacity = Math.min(workCapacity, 30); // 30 = one upgrader + one worker
         }
 
         return modifiedWorkCapacity;
