@@ -157,14 +157,14 @@ export class Manager extends WaveCreep {
             return;
         }
 
-        if (factory && this.room.memory?.factoryTask && !this.room.memory.factoryTask?.started) {
-            this.workFactoryTask(this.room.memory.factoryTask);
-            return;
-        }
-
         if (this.room.memory.factoryTask && factory?.store[this.room.memory.factoryTask.product]) {
             this.withdraw(factory, this.room.memory.factoryTask.product);
             this.memory.targetId = storage.id;
+            return;
+        }
+
+        if (factory && this.room.memory?.factoryTask && !this.room.memory.factoryTask?.started) {
+            this.workFactoryTask(this.room.memory.factoryTask);
             return;
         }
 
