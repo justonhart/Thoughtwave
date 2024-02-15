@@ -1,7 +1,7 @@
 interface RoomCreepsCombatData {
     totalDmg: number; // Total damage (ignores attack if not in range)
-    totalAttack: number;
-    totalRanged: number;
+    totalAttack: number; // Total melee damage
+    totalRanged: number; // Total ranged damage
     totalHeal: number; // Assumes meleeHeal
     highestDmgMultiplier: number;
     highestToughHits: number;

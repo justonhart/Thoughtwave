@@ -50,7 +50,7 @@ export class CombatCreep extends WaveCreep {
             const combatIntelMe = CombatIntel.getCreepCombatData(this.room, false, this.pos);
 
             if (
-                CombatIntel.getPredictedDamage(combatIntelEnemy.totalDmg, combatIntelMe.highestDmgMultiplier, combatIntelMe.highestToughHits) <=
+                CombatIntel.getPredictedDamage(combatIntelEnemy.totalDmg, combatIntelEnemy.highestDmgMultiplier, combatIntelMe.highestToughHits) <=
                 combatIntelMe.totalHeal
             ) {
                 // More heal than enemy dmg
@@ -61,18 +61,14 @@ export class CombatCreep extends WaveCreep {
                     return this.move(this.pos.getDirectionTo(target));
                 }
             } else if (
-                // More Heal than enemy Damage or more Damage than enemy heal and damage
-                CombatIntel.getPredictedDamage(combatIntelEnemy.totalRanged, combatIntelMe.highestDmgMultiplier, combatIntelMe.highestToughHits) <=
-                    combatIntelMe.totalHeal ||
-                (CombatIntel.getPredictedDamage(
-                    combatIntelMe.totalRanged,
-                    combatIntelEnemy.highestDmgMultiplier,
-                    combatIntelEnemy.highestToughHits
-                ) >= combatIntelEnemy.totalHeal &&
-                    combatIntelMe.totalRanged > combatIntelEnemy.totalRanged)
+                // Outdamage the enemy (accounts for heal but not hp)
+                CombatIntel.getPredictedDamage(combatIntelMe.totalRanged, combatIntelMe.highestDmgMultiplier, combatIntelEnemy.highestToughHits) -
+                    combatIntelEnemy.totalHeal >
+                CombatIntel.getPredictedDamage(combatIntelEnemy.totalRanged, combatIntelEnemy.highestDmgMultiplier, combatIntelMe.highestToughHits) -
+                    combatIntelMe.totalHeal
             ) {
-                // More heal than enemy ranged dmg
-                range = 3;
+                // Stay in range of 2 so they can't escape if enemy has no melee parts
+                range = combatIntelEnemy.totalAttack > 0 ? 3 : 2;
                 shouldFlee = this.pos.getRangeTo(target) <= range;
             } else {
                 // Check combined Damage of all ranged creeps ==> Can be false if creeps are targeting different enemies
@@ -91,6 +87,10 @@ export class CombatCreep extends WaveCreep {
                 }
             }
 
+            // Stay in position
+            if (this.pos.getRangeTo(target) === range) {
+                return;
+            }
             // TODO: avoid walls when fleeing
             return this.travelTo(target, { ignoreCreeps: false, reusePath: 0, range: range, flee: shouldFlee, exitCost: 10 });
         }
