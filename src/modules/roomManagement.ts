@@ -245,6 +245,7 @@ function runTowers(room: Room) {
                 return (
                     CombatIntel.getPredictedDamage(
                         myTowerInfo.dmgAtPos + myCreepInfo.totalDmg,
+                        myCreepInfo.highestDmgMultiplier, // TODO: calculate dmg per creep with multiplier so this can be set to 1
                         hostileCreepInfo.highestDmgMultiplier,
                         hostileCreepInfo.highestToughHits
                     ) > hostileCreepInfo.totalHeal

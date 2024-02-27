@@ -7,20 +7,35 @@ export class CombatIntel {
     public static towerMinHeal = 100;
 
     /**
-     * Calculate actual damage done against creeps with tough parts
-     * @param damage
-     * @param damageMultiplier
-     * @param toughHits
+     * Calculate actual damage done against creeps with tough parts using creep1s damage info and creep2s defensive info.
+     * @param damage creep1
+     * @param damageMultiplier creep1
+     * @param protectionMultiplier creep2
+     * @param protectionToughHits creep2
      * @returns
      */
-    public static getPredictedDamage(damage: number, damageMultiplier: number, toughHits: number): number {
-        if (damage * damageMultiplier < toughHits) {
-            // Damage is not enough to go through all of the tough parts
-            return damage * damageMultiplier;
+    public static getPredictedDamage(damage: number, damageMultiplier: number, protectionMultiplier: number, protectionToughHits: number): number {
+        // Apply the enemy's damage multiplier to calculate the incoming damage.
+        const incomingDamage = damage * damageMultiplier;
+
+        // Calculate the effective damage that tough parts can absorb.
+        // Since protectionMultiplier is the portion of damage that gets through,
+        // we divide the toughHits by protectionMultiplier to get the total damage
+        // that can be absorbed.
+        const effectiveToughAbsorption = protectionToughHits / protectionMultiplier;
+
+        if (incomingDamage < effectiveToughAbsorption) {
+            // If the incoming damage is less than what tough parts can absorb,
+            // then all damage is absorbed by tough parts, but we must apply
+            // the protection multiplier to the incoming damage to get the actual
+            // damage that gets through.
+            return incomingDamage * protectionMultiplier;
         } else {
-            // Damage exceeds tough parts
-            damage -= toughHits / damageMultiplier;
-            return toughHits + damage;
+            // If the incoming damage exceeds what tough parts can absorb,
+            // the tough parts will absorb as much as they can and the rest will get through.
+            // The damage that gets through is the incoming damage minus what the tough parts
+            // have absorbed, with the protection multiplier applied to that absorbed part.
+            return (incomingDamage - (effectiveToughAbsorption - protectionToughHits)) * protectionMultiplier;
         }
     }
 

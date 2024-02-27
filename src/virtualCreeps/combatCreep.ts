@@ -48,10 +48,13 @@ export class CombatCreep extends WaveCreep {
 
             const combatIntelEnemy = CombatIntel.getCreepCombatData(this.room, true, target.pos);
             const combatIntelMe = CombatIntel.getCreepCombatData(this.room, false, this.pos);
-
             if (
-                CombatIntel.getPredictedDamage(combatIntelEnemy.totalDmg, combatIntelEnemy.highestDmgMultiplier, combatIntelMe.highestToughHits) <=
-                combatIntelMe.totalHeal
+                CombatIntel.getPredictedDamage(
+                    combatIntelEnemy.totalDmg,
+                    combatIntelEnemy.highestDmgMultiplier,
+                    combatIntelMe.highestDmgMultiplier,
+                    combatIntelMe.highestToughHits
+                ) <= combatIntelMe.totalHeal
             ) {
                 // More heal than enemy dmg
                 range = 1;
@@ -62,9 +65,19 @@ export class CombatCreep extends WaveCreep {
                 }
             } else if (
                 // Outdamage the enemy (accounts for heal but not hp)
-                CombatIntel.getPredictedDamage(combatIntelMe.totalRanged, combatIntelMe.highestDmgMultiplier, combatIntelEnemy.highestToughHits) -
+                CombatIntel.getPredictedDamage(
+                    combatIntelMe.totalRanged,
+                    combatIntelMe.highestDmgMultiplier,
+                    combatIntelEnemy.highestDmgMultiplier,
+                    combatIntelEnemy.highestToughHits
+                ) -
                     combatIntelEnemy.totalHeal >
-                CombatIntel.getPredictedDamage(combatIntelEnemy.totalRanged, combatIntelEnemy.highestDmgMultiplier, combatIntelMe.highestToughHits) -
+                CombatIntel.getPredictedDamage(
+                    combatIntelEnemy.totalRanged,
+                    combatIntelEnemy.highestDmgMultiplier,
+                    combatIntelMe.highestDmgMultiplier,
+                    combatIntelMe.highestToughHits
+                ) -
                     combatIntelMe.totalHeal
             ) {
                 // Stay in range of 2 so they can't escape if enemy has no melee parts
@@ -77,6 +90,7 @@ export class CombatCreep extends WaveCreep {
                 if (
                     CombatIntel.getPredictedDamage(
                         combatIntelMeTotal.totalRanged,
+                        combatIntelMeTotal.highestDmgMultiplier,
                         combatIntelEnemy.highestDmgMultiplier,
                         combatIntelEnemy.highestToughHits
                     ) >= combatIntelEnemy.totalHeal &&
